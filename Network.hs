@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- 
 -- Module      :  Network
@@ -8,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Network.hs,v 1.2 2002/02/06 15:40:42 simonmar Exp $
+-- $Id: Network.hs,v 1.3 2002/02/13 12:03:12 simonmar Exp $
 --
 -- Basic network interface
 --
