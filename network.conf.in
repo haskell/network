@@ -1,7 +1,7 @@
 #include "config.h"
 
 Package {
-        name           = "net",
+        name           = "network",
 #ifdef INSTALLING
 	import_dirs    = [ "$libdir/imports" ],
 #else
@@ -25,7 +25,7 @@ Package {
         include_dirs   = [ "$libdir/libraries/net/cbits" ],
 #endif
         c_includes     = [ "HsNet.h" ],
-        package_deps   = [ "core" ],
+        package_deps   = [ "base" ],
         extra_ghc_opts = [],
         extra_cc_opts  = [],
         extra_ld_opts  = []
