@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.5 2002/02/14 14:10:21 simonmar Exp $
+-- $Id: Socket.hsc,v 1.6 2002/03/13 12:14:33 simonmar Exp $
 --
 -- Low-level socket bindings
 --
@@ -460,6 +460,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      new_sock <- throwErrnoIfMinus1Retry_repeatOnBlock "accept" 
 			(threadWaitRead (fromIntegral s))
 			(c_accept s sockaddr ptr_len)
+     GHC.Posix.setNonBlockingFD new_sock
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
