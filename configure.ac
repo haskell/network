@@ -1,4 +1,4 @@
-AC_INIT([network], [], [libraries@haskell.org], [network])
+AC_INIT([Haskell network package], [1.0], [libraries@haskell.org], [network])
 
 # Safety check: Ensure that we are in the correct source directory.
 AC_CONFIG_SRCDIR([include/HsNet.h])
