@@ -89,7 +89,7 @@ connectTo :: HostName		-- Hostname
 
 connectTo hostname (Service serv) = do
     proto <- getProtocolNumber "tcp"
-    bracketOnError
+    Exception.bracketOnError
 	(socket AF_INET Stream proto)
 	(sClose)  -- only done if there's an error
 	(\sock -> do
@@ -101,7 +101,7 @@ connectTo hostname (Service serv) = do
 
 connectTo hostname (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
-    bracketOnError
+    Exception.bracketOnError
 	(socket AF_INET Stream proto)
 	(sClose)  -- only done if there's an error
         (\sock -> do
@@ -112,7 +112,7 @@ connectTo hostname (PortNumber port) = do
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 connectTo _ (UnixSocket path) = do
-    bracketOnError
+    Exception.bracketOnError
 	(socket AF_UNIX Stream 0)
 	(sClose)
 	(\sock -> do
@@ -135,7 +135,7 @@ listenOn :: PortID 	-- ^ Port Identifier
 
 listenOn (Service serv) = do
     proto <- getProtocolNumber "tcp"
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_INET Stream proto)
 	(sClose)
 	(\sock -> do
@@ -148,7 +148,7 @@ listenOn (Service serv) = do
 
 listenOn (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
-    bracketOnError
+    Exception.bracketOnError
     	(socket AF_INET Stream proto)
 	(sClose)
 	(\sock -> do
@@ -160,7 +160,7 @@ listenOn (PortNumber port) = do
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 listenOn (UnixSocket path) =
-    bracketOnError
+    Exception.bracketOnError
     	(socket AF_UNIX Stream 0)
 	(sClose)
 	(\sock -> do
@@ -268,25 +268,6 @@ socketPort s = do
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
      SockAddrUnix path	    -> UnixSocket path
 #endif
-
--- ---------------------------------------------------------------------------
--- Utils
-
--- Like bracket, but only performs the final action if there was an 
--- exception raised by the middle bit.
-bracketOnError
-	:: IO a		-- ^ computation to run first (\"acquire resource\")
-	-> (a -> IO b)  -- ^ computation to run last (\"release resource\")
-	-> (a -> IO c)	-- ^ computation to run in-between
-	-> IO c		-- returns the value from the in-between computation
-bracketOnError before after thing =
-  block (do
-    a <- before 
-    r <- Exception.catch 
-	   (unblock (thing a))
-	   (\e -> do { after a; throw e })
-    return r
- )
 
 -----------------------------------------------------------------------------
 -- Extra documentation
