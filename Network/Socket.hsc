@@ -1400,7 +1400,9 @@ unpackFamily f = case f of
 	(#const AF_ISO) -> AF_ISO
 #endif
 #ifdef AF_OSI
+# if (!defined(AF_ISO)) || (defined(AF_ISO) && (AF_ISO != AF_OSI))
 	(#const AF_OSI) -> AF_OSI
+# endif
 #endif
 #ifdef AF_NETMAN
 	(#const AF_NETMAN) -> AF_NETMAN
