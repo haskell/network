@@ -33,7 +33,7 @@ module Network.BSD (
     getHostByAddr,	    -- :: HostAddress -> Family -> IO HostEntry
     hostAddress,	    -- :: HostEntry -> HostAddress
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
+#if defined(HAVE_GETHOSTENT) && !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
     setHostEntry,	    -- :: Bool -> IO ()
     getHostEntry,	    -- :: IO HostEntry
     endHostEntry,	    -- :: IO ()
@@ -382,7 +382,7 @@ getHostByAddr family addr = do
 foreign import ccall safe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
+#if defined(HAVE_GETHOSTENT) && !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getHostEntry :: IO HostEntry
 getHostEntry = do
  throwNoSuchThingIfNull 	"getHostEntry" "unable to retrieve host entry"

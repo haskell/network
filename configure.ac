@@ -45,4 +45,6 @@ AC_EGREP_HEADER(sendfile, sys/socket.h,
  [ AC_DEFINE([HAVE_BSD_SENDFILE], [1], [Define to 1 if you have a BSDish sendfile(2) implementation.]) AC_MSG_RESULT(yes) ],
  AC_MSG_RESULT(no))
 
+AC_CHECK_FUNCS(gethostent)
+
 AC_OUTPUT
