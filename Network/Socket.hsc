@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.11 2002/04/23 18:58:04 sof Exp $
+-- $Id: Socket.hsc,v 1.12 2002/05/01 05:49:17 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -66,6 +66,11 @@ module Network.Socket (
 #ifdef SO_PEERCRED
 	-- get the credentials of our domain socket peer.
     getPeerCred,         -- :: Socket -> IO (Int{-pid-}, Int{-uid-}, Int{-gid-})
+#endif
+
+#ifndef mingw32_TARGET_OS
+    sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr () -> Int -> IO ()
+    recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr ())
 #endif
 
     PortNumber(..),	 -- instance (Eq, Ord, Enum, Num, Real, 
@@ -766,6 +771,51 @@ getPeerCred sock = do
      gid <- (#peek struct ucred, gid) ptr_cr
      return (pid, uid, gid)
 #endif
+
+#ifndef mingw32_TARGET_OS
+-- sending/receiving ancillary socket data; low-level mechanism
+-- for transmitting file descriptors, mainly.
+sendAncillary :: Socket
+	      -> Int
+	      -> Int
+	      -> Int
+	      -> Ptr ()
+	      -> Int
+	      -> IO ()
+sendAncillary sock level ty flags datum len = do
+  let fd = fdSocket sock
+  throwErrnoIfMinus1 "sendAncillary" $
+     c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
+     			(fromIntegral flags) datum (fromIntegral len)
+  return ()
+
+recvAncillary :: Socket
+	      -> Int
+	      -> Int
+	      -> IO (Int,Int,Ptr (),Int)
+recvAncillary sock flags len = do
+  let fd = fdSocket sock
+  alloca      $ \ ptr_len   ->
+   alloca      $ \ ptr_lev   ->
+    alloca      $ \ ptr_ty    ->
+     alloca      $ \ ptr_pData -> do
+      poke ptr_len (fromIntegral len)
+      throwErrnoIfMinus1 "sendAncillary" $
+       c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
+      len <- fromIntegral `liftM` peek ptr_len
+      lev <- fromIntegral `liftM` peek ptr_lev
+      ty  <- fromIntegral `liftM` peek ptr_ty
+      pD  <- peek ptr_pData
+      return (lev,ty,pD, len)
+foreign import ccall unsafe "sendAncillary"
+  c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr () -> CInt -> IO CInt
+
+foreign import ccall unsafe "recvAncillary"
+  c_recvAncillary :: CInt -> Ptr CInt -> Ptr CInt -> CInt -> Ptr (Ptr ()) -> Ptr CInt -> IO CInt
+
+#endif
+
+
 {-
 A calling sequence table for the main functions is shown in the table below.
 

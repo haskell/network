@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.2 2001/08/17 12:51:08 simonmar Exp $
+ * $Id: HsNet.h,v 1.3 2002/05/01 05:49:18 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -48,6 +48,23 @@ extern StgInt initWinSock ();
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
+
+extern StgInt
+sendAncillary(int sock,
+	      int level,
+	      int type,
+	      int flags,
+	      void* data,
+	      int len);
+
+extern StgInt
+recvAncillary(int  sock,
+	      int* pLevel,
+	      int* pType,
+	      int  flags,
+	      void** pData,
+	      int* pLen);
+
 
 #endif /* HAVE_WINSOCK_H && !__CYGWIN */
 
