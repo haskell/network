@@ -919,7 +919,7 @@ sendAncillary sock level ty flags datum len = do
   let fd = fdSocket sock
   _ <-
 #if !defined(__HUGS__)
-  throwErrnoIfMinus1Retry_repeatOnBlock "sendAncillary"
+   throwErrnoIfMinus1Retry_repeatOnBlock "sendAncillary"
      (threadWaitWrite (fromIntegral fd)) $
 #endif
      c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
