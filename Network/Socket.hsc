@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.15 2002/05/06 23:17:03 sof Exp $
+-- $Id: Socket.hsc,v 1.16 2002/05/15 17:08:45 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -818,7 +818,8 @@ sendAncillary :: Socket
 	      -> IO ()
 sendAncillary sock level ty flags datum len = do
   let fd = fdSocket sock
-  throwErrnoIfMinus1 "sendAncillary" $
+  throwErrnoIfMinus1Retry_repeatOnBlock "sendAncillary"
+     (threadWaitWrite (fromIntegral fd)) $
      c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
      			(fromIntegral flags) datum (fromIntegral len)
   return ()
@@ -834,8 +835,9 @@ recvAncillary sock flags len = do
     alloca      $ \ ptr_ty    ->
      alloca      $ \ ptr_pData -> do
       poke ptr_len (fromIntegral len)
-      throwErrnoIfMinus1 "sendAncillary" $
-       c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
+      throwErrnoIfMinus1Retry_repeatOnBlock "recvAncillary" 
+           (threadWaitRead (fromIntegral fd)) $
+	   c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
       len <- fromIntegral `liftM` peek ptr_len
       lev <- fromIntegral `liftM` peek ptr_lev
       ty  <- fromIntegral `liftM` peek ptr_ty
