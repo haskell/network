@@ -68,7 +68,7 @@ recvAncillary(int  sock,
   
   int rc;
   
-  cmsg = (struct cmsghdr*)malloc((*pLen) + sizeof(struct cmsghdr));
+  cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(*pLen));
   if (cmsg==NULL) {
     return -1;
   }
@@ -78,7 +78,7 @@ recvAncillary(int  sock,
   msg.msg_iov = iov;
   msg.msg_iovlen = 1;
   msg.msg_control = cmsg;
-  msg.msg_controllen = *pLen;
+  msg.msg_controllen = CMSG_LEN(*pLen);
 
   if ((rc = recvmsg(sock,&msg,flags)) < 0) {
     return rc;
@@ -88,7 +88,8 @@ recvAncillary(int  sock,
 
   *pLevel = cptr->cmsg_level;
   *pType  = cptr->cmsg_type;
-  *pLen   = cptr->cmsg_len;
+  /* The length of the data portion only */
+  *pLen   = cptr->cmsg_len - sizeof(struct cmsghdr);
   *pData  = CMSG_DATA(cptr);
 
   return rc;
