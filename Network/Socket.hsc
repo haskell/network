@@ -1629,6 +1629,7 @@ shutdown (MkSocket s _ _ _ _) stype = do
 
 -- -----------------------------------------------------------------------------
 
+-- | Closes a socket
 sClose	 :: Socket -> IO ()
 sClose (MkSocket s _ _ _ _) = do c_close s; return ()
 
