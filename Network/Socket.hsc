@@ -1805,12 +1805,7 @@ foreign import ccall unsafe "getWSErrorDescr"
 
 
 # else 
-throwSocketErrorIfMinus1Retry name act = do
-  r <- act
-  if (r == -1) 
-   then ioError (userError (name ++ ": socket error - " ++ str))
-   else return r
-
+throwSocketErrorIfMinus1Retry name act = throwErrnoIfMinus1Retry name act
 # endif
 #endif /* __GLASGOW_HASKELL */
 
