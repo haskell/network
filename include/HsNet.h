@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.14 2003/03/04 02:55:27 sof Exp $
+ * $Id: HsNet.h,v 1.15 2003/06/06 12:49:00 stolz Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -63,6 +63,15 @@ extern const char* getWSErrorDescr(int err);
 
 #ifndef HAVE_IN_ADDR_T
 typedef	u_int32_t	in_addr_t;
+#endif
+
+#ifdef HAVE_BSD_SENDFILE
+#include <sys/uio.h>
+#endif
+#ifdef HAVE_LINUX_SENDFILE
+#if !defined(__USE_FILE_OFFSET64)
+#include <sys/sendfile.h>
+#endif
 #endif
 
 extern int
