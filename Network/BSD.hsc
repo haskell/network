@@ -171,7 +171,7 @@ getServiceByName name proto = do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByName" "no such service entry"
-   $ (trySysCall.c_getservbyname) cstr_name cstr_proto
+   $ (trySysCall (c_getservbyname cstr_name cstr_proto))
  >>= peek
 
 foreign import ccall unsafe "getservbyname" 
@@ -181,7 +181,7 @@ getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
 getServiceByPort (PortNum port) proto = do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
-   $ (trySysCall.c_getservbyport) (fromIntegral port) cstr_proto
+   $ (trySysCall (c_getservbyport (fromIntegral port) cstr_proto))
  >>= peek
 
 foreign import ccall unsafe "getservbyport" 
@@ -245,7 +245,15 @@ instance Storable ProtocolEntry where
 	p_aliases <- (#peek struct protoent, p_aliases) p
 			   >>= peekArray0 nullPtr
 			   >>= mapM peekCString
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
+         -- With WinSock, the protocol number is only a short;
+	 -- hoist it in as such, but represent it on the Haskell side
+	 -- as a CInt.
+	p_proto_short  <- (#peek struct protoent, p_proto) p 
+	let p_proto = fromIntegral (p_proto_short :: CShort)
+#else
 	p_proto        <- (#peek struct protoent, p_proto) p 
+#endif
 	return (ProtocolEntry { 
 			protoName    = p_name,
 			protoAliases = p_aliases,
