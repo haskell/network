@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.8 2002/03/28 15:19:25 sof Exp $
+# $Id: Makefile,v 1.9 2002/05/01 05:42:42 sof Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -16,6 +16,10 @@ SRC_HSC2HS_OPTS += -Iinclude
 # Only bother with cbits/initWinSock.c when it's really needed.
 ifeq "$(TARGETPLATFORM)" "i386-unknown-mingw32"
 C_SRCS=cbits/initWinSock.c
+STUBOBJS=cbits/initWinSock.o
+else
+C_SRCS=cbits/ancilData.c
+STUBOBJS+=cbits/ancilData.o
 endif
 
 include $(TOP)/mk/target.mk
