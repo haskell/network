@@ -283,9 +283,9 @@ getProtocolNumber proto = do
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB
 getProtocolEntry = do
- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
-   $ (trySysCall.c_getprotoent) Nothing
- >>= peek
+ ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
+   		$ trySysCall c_getprotoent
+ peek ent
 
 foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
@@ -350,9 +350,9 @@ hostAddress (HostEntry nm _ _ ls) =
 getHostByName :: HostName -> IO HostEntry
 getHostByName name = do
   withCString name $ \ name_cstr -> do
-  throwNoSuchThingIfNull "getHostByName" "no such host entry"
-    $ trySysCall $ c_gethostbyname name_cstr Nothing
-  >>= peek
+   ent <- throwNoSuchThingIfNull "getHostByName" "no such host entry"
+    		$ trySysCall $ c_gethostbyname name_cstr
+   peek ent
 
 foreign import ccall unsafe "gethostbyname" 
    c_gethostbyname :: CString -> IO (Ptr HostEntry)
