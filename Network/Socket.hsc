@@ -76,7 +76,10 @@ module Network.Socket (
     socketToHandle,	-- :: Socket -> IOMode -> IO Handle
 
     sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
+    sendBufTo,          -- :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
+
     recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
+    recvBufFrom,        -- :: Socket -> Int -> Ptr a -> IO (Int, SockAddr)
     
     send,		-- :: Socket -> String -> IO Int
     recv,		-- :: Socket -> Int    -> IO String
@@ -629,22 +632,36 @@ sendTo :: Socket	-- (possibly) bound/connected Socket
        -> SockAddr
        -> IO Int	-- Number of Bytes sent
 
-sendTo (MkSocket s _family _stype _protocol status) xs addr = do
- withSockAddr addr $ \p_addr sz -> do
+sendTo sock xs addr = do
  withCString xs $ \str -> do
+   sendBufTo sock str (length xs) addr
+
+sendBufTo :: Socket	      -- (possibly) bound/connected Socket
+          -> Ptr a -> Int     -- Data to send
+          -> SockAddr
+          -> IO Int	      -- Number of Bytes sent
+
+sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
+ withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
 #if !defined(__HUGS__)
      throwErrnoIfMinus1Retry_repeatOnBlock "sendTo"
 	(threadWaitWrite (fromIntegral s)) $
 #endif
-	c_sendto s str (fromIntegral $ length xs) 0{-flags-} 
+	c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
 			p_addr (fromIntegral sz)
 
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
-recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes
+recvFrom sock nbytes =
+  allocaBytes nbytes $ \ptr -> do
+    (len, sockaddr) <- recvBufFrom sock nbytes ptr
+    str <- peekCStringLen (ptr, len)
+    return (str, len, sockaddr)
+
+recvBufFrom :: Socket -> Int -> Ptr a -> IO (Int, SockAddr)
+recvBufFrom sock@(MkSocket s _family _stype _protocol status) nbytes ptr
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   = 
-  allocaBytes nbytes $ \ptr -> do
     withNewSockAddr AF_INET $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
       	poke ptr_len (fromIntegral sz)
@@ -668,8 +685,7 @@ recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes
 		   getPeerName sock
 		else
 		   peekSockAddr ptr_addr 
-           str <- peekCStringLen (ptr,len')
-           return (str, len', sockaddr)
+           return (len', sockaddr)
 
 -----------------------------------------------------------------------------
 -- send & recv
@@ -1778,13 +1794,13 @@ foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
 foreign import CALLCONV unsafe "send"
-  c_send :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "sendto"
-  c_sendto :: CInt -> Ptr CChar -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
+  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recvfrom"
-  c_recvfrom :: CInt -> Ptr CChar -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getsockname"
