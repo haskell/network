@@ -138,6 +138,7 @@ module Network.Socket (
 
     packFamily, unpackFamily,
     packSocketType,
+    throwSocketErrorIfMinus1_
 
 ) where
 
@@ -385,7 +386,7 @@ socket :: Family 	 -- Family Name (usually AF_INET)
        -> IO Socket	 -- Unconnected Socket
 
 socket family stype protocol = do
-    fd <- throwErrnoIfMinus1Retry "socket" $
+    fd <- throwSocketErrorIfMinus1Retry "socket" $
 		c_socket (packFamily family) (packSocketType stype) protocol
 #if !defined(__HUGS__)
     GHC.Posix.setNonBlockingFD fd
@@ -404,7 +405,7 @@ socketPair :: Family 	          -- Family Name (usually AF_INET)
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-    rc <- throwErrnoIfMinus1Retry "socketpair" $
+    rc <- throwSocketErrorIfMinus1Retry "socketpair" $
 		c_socketpair (packFamily family)
 			     (packSocketType stype)
 			     protocol fdArr
@@ -454,7 +455,7 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
 	 show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
-   status <- throwErrnoIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
+   status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
@@ -487,12 +488,25 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
    let  connectLoop = do
        	   r <- c_connect s p_addr (fromIntegral sz)
        	   if r == -1
-       	       then do err <- getErrno
+       	       then do 
+#if !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS))
+	       	       err <- getErrno
 		       case () of
 			 _ | err == eINTR       -> connectLoop
 			 _ | err == eINPROGRESS -> connectBlocked
 --			 _ | err == eAGAIN      -> connectBlocked
 			 otherwise              -> throwErrno "connect"
+#else
+		       rc <- c_getLastError
+		       case rc of
+		         10093 -> do -- WSANOTINITIALISED
+			   withSocketsDo (return ())
+	       	           r <- c_connect s p_addr (fromIntegral sz)
+	       	           if r == -1
+			    then (c_getLastError >>= throwSocketError "connect")
+			    else return r
+			 _ -> throwSocketError "connect" rc
+#endif
        	       else return r
 
 	connectBlocked = do 
@@ -533,7 +547,7 @@ listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
     ioError (userError ("listen: can't peform listen on socket in status " ++
           show status))
    else do
-    throwErrnoIfMinus1Retry "listen" (c_listen s (fromIntegral backlog))
+    throwSocketErrorIfMinus1Retry "listen" (c_listen s (fromIntegral backlog))
     return Listening
 
 -----------------------------------------------------------------------------
@@ -683,7 +697,7 @@ getPeerName   :: Socket -> IO SockAddr
 getPeerName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    withObject (fromIntegral sz) $ \int_star -> do
-   throwErrnoIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
+   throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
    sz <- peek int_star
    peekSockAddr ptr
     
@@ -691,7 +705,7 @@ getSocketName :: Socket -> IO SockAddr
 getSocketName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    withObject (fromIntegral sz) $ \int_star -> do
-   throwErrnoIfMinus1Retry "getSocketName" $ c_getsockname s ptr int_star
+   throwSocketErrorIfMinus1Retry "getSocketName" $ c_getsockname s ptr int_star
    peekSockAddr ptr
 
 -----------------------------------------------------------------------------
@@ -1547,7 +1561,7 @@ sdownCmdToInt ShutdownBoth    = 2
 
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown (MkSocket s _ _ _ _) stype = do
-  throwErrnoIfMinus1Retry "shutdown" (c_shutdown s (sdownCmdToInt stype))
+  throwSocketErrorIfMinus1Retry "shutdown" (c_shutdown s (sdownCmdToInt stype))
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -1720,7 +1734,8 @@ foreign import CALLCONV unsafe "setsockopt"
 -----------------------------------------------------------------------------
 -- Support for thread-safe blocking operations in GHC.
 
-#if defined(__GLASGOW_HASKELL__) && !defined(mingw32_TARGET_OS)
+#if defined(__GLASGOW_HASKELL__) && !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS))
+
 
 {-# SPECIALISE 
     throwErrnoIfMinus1Retry_mayBlock
@@ -1742,13 +1757,60 @@ throwErrnoIfMinus1Retry_repeatOnBlock :: Num a => String -> IO b -> IO a -> IO a
 throwErrnoIfMinus1Retry_repeatOnBlock name on_block act = do
   throwErrnoIfMinus1Retry_mayBlock name (on_block >> repeat) act
   where repeat = throwErrnoIfMinus1Retry_repeatOnBlock name on_block act
+
+throwSocketErrorIfMinus1Retry name act = throwErrnoIfMinus1Retry name act
+
+throwSocketErrorIfMinus1_ name act 
+  = throwErrnoIfMinus1_ name act
 #else
 
 throwErrnoIfMinus1Retry_mayBlock name _ act
-   = throwErrnoIfMinus1Retry name act
+  = throwSocketErrorIfMinus1Retry name act
 
 throwErrnoIfMinus1Retry_repeatOnBlock name _ act
-  = throwErrnoIfMinus1Retry name act
+  = throwSocketErrorIfMinus1Retry name act
 
+throwSocketErrorIfMinus1_ name act 
+  = throwSocketErrorIfMinus1Retry name act
+
+# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
+throwSocketErrorIfMinus1Retry name act = do
+  r <- act
+  if (r == -1) 
+   then do
+    rc   <- c_getLastError
+    case rc of
+      10093 -> do -- WSANOTINITIALISED
+        withSocketsDo (return ())
+	r <- act
+	if (r == -1)
+	 then (c_getLastError >>= throwSocketError name)
+	 else return r
+      _ -> throwSocketError name rc
+   else return r
+
+throwSocketError name rc = do
+    pstr <- c_getWSError rc
+    str  <- peekCString pstr
+#  if __GLASGOW_HASKELL__
+    ioError (IOError Nothing OtherError name str Nothing)
+#  else    
+    ioError (userError (name ++ ": socket error - " ++ str))
+#  endif
+foreign import CALLCONV unsafe "WSAGetLastError"
+  c_getLastError :: IO CInt
+
+foreign import ccall unsafe "getWSErrorDescr"
+  c_getWSError :: CInt -> IO (Ptr CChar)
+
+
+# else 
+throwSocketErrorIfMinus1Retry name act = do
+  r <- act
+  if (r == -1) 
+   then ioError (userError (name ++ ": socket error - " ++ str))
+   else return r
+
+# endif
 #endif /* __GLASGOW_HASKELL */
 

@@ -168,7 +168,7 @@ getServiceByName :: ServiceName 	-- Service Name
 getServiceByName name proto = do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
- ptr <- c_getservbyname cstr_name cstr_proto
+ ptr <- trySysCall $ c_getservbyname cstr_name cstr_proto
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getServiceByName" "no such service entry" Nothing)
@@ -180,7 +180,7 @@ foreign import ccall unsafe "getservbyname"
 getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
 getServiceByPort (PortNum port) proto = do
  withCString proto $ \ cstr_proto -> do
- ptr <- c_getservbyport (fromIntegral port) cstr_proto
+ ptr <- trySysCall $ c_getservbyport (fromIntegral port) cstr_proto
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	  "getServiceByPort" "no such service entry" Nothing)
@@ -197,7 +197,7 @@ getServicePortNumber name = do
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getServiceEntry	:: IO ServiceEntry
 getServiceEntry = do
-    ptr <- c_getservent
+    ptr <- trySysCall $ c_getservent
     if ptr == nullPtr
        then ioError (IOError Nothing NoSuchThing
 	   "getServiceEntry" "no such service entry" Nothing)
@@ -206,12 +206,12 @@ getServiceEntry = do
 foreign import ccall unsafe "getservent" c_getservent :: IO (Ptr ServiceEntry)
 
 setServiceEntry	:: Bool -> IO ()
-setServiceEntry flg = c_setservent (fromBool flg)
+setServiceEntry flg = trySysCall $ c_setservent (fromBool flg)
 
 foreign import ccall unsafe  "setservent" c_setservent :: CInt -> IO ()
 
 endServiceEntry	:: IO ()
-endServiceEntry = c_endservent
+endServiceEntry = trySysCall $ c_endservent
 
 foreign import ccall unsafe  "endservent" c_endservent :: IO ()
 
@@ -261,7 +261,7 @@ instance Storable ProtocolEntry where
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = do
  withCString name $ \ name_cstr -> do
- ptr <- c_getprotobyname name_cstr
+ ptr <- trySysCall $ c_getprotobyname name_cstr
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getProtocolByName" "no such protocol entry" Nothing)
@@ -273,7 +273,7 @@ foreign import  ccall unsafe  "getprotobyname"
 
 getProtocolByNumber :: ProtocolNumber -> IO ProtocolEntry
 getProtocolByNumber num = do
- ptr <- c_getprotobynumber (fromIntegral num)
+ ptr <- trySysCall $ c_getprotobynumber (fromIntegral num)
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getProtocolByNumber" "no such protocol entry" Nothing)
@@ -291,7 +291,7 @@ getProtocolNumber proto = do
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB
 getProtocolEntry = do
- ptr <- c_getprotoent
+ ptr <- trySysCall $ c_getprotoent
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getProtocolEntry" "no such protocol entry" Nothing)
@@ -300,12 +300,12 @@ getProtocolEntry = do
 foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
 setProtocolEntry :: Bool -> IO ()	-- Keep DB Open ?
-setProtocolEntry flg = c_setprotoent (fromBool flg)
+setProtocolEntry flg = trySysCall $ c_setprotoent (fromBool flg)
 
 foreign import ccall unsafe "setprotoent" c_setprotoent :: CInt -> IO ()
 
 endProtocolEntry :: IO ()
-endProtocolEntry = c_endprotoent
+endProtocolEntry = trySysCall $ c_endprotoent
 
 foreign import ccall unsafe "endprotoent" c_endprotoent :: IO ()
 
@@ -360,7 +360,7 @@ hostAddress (HostEntry nm _ _ ls) =
 getHostByName :: HostName -> IO HostEntry
 getHostByName name = do
   withCString name $ \ name_cstr -> do
-  ptr <- c_gethostbyname name_cstr
+  ptr <- trySysCall $ c_gethostbyname name_cstr
   if ptr == nullPtr
      then ioError (IOError Nothing NoSuchThing
 	   "getHostByName" "no such host entry" Nothing)
@@ -372,7 +372,7 @@ foreign import ccall unsafe "gethostbyname"
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
  withObject addr $ \ ptr_addr -> do
- ptr <- c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
+ ptr <- trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getHostByAddr" "no such host entry" Nothing)
@@ -384,7 +384,7 @@ foreign import ccall unsafe "gethostbyaddr"
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getHostEntry :: IO HostEntry
 getHostEntry = do
- ptr <- c_gethostent
+ ptr <- trySysCall $ c_gethostent
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getHostEntry" "unable to retrieve host entry" Nothing)
@@ -393,7 +393,7 @@ getHostEntry = do
 foreign import ccall unsafe "gethostent" c_gethostent :: IO (Ptr HostEntry)
 
 setHostEntry :: Bool -> IO ()
-setHostEntry flg = c_sethostent (fromBool flg)
+setHostEntry flg = trySysCall $ c_sethostent (fromBool flg)
 
 foreign import ccall unsafe "sethostent" c_sethostent :: CInt -> IO ()
 
@@ -453,7 +453,7 @@ instance Storable NetworkEntry where
 getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = do
  withCString name $ \ name_cstr -> do
- ptr <- c_getnetbyname name_cstr
+ ptr <- trySysCall $ c_getnetbyname name_cstr
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getNetworkByName" "no such network entry" Nothing)
@@ -464,7 +464,7 @@ foreign import ccall unsafe "getnetbyname"
 
 getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
 getNetworkByAddr addr family = do
- ptr <- c_getnetbyaddr addr (packFamily family)
+ ptr <- trySysCall $ c_getnetbyaddr addr (packFamily family)
  if ptr == nullPtr
     then ioError (IOError Nothing NoSuchThing
 	"getNetworkByAddr" "no such network entry" Nothing)
@@ -475,7 +475,7 @@ foreign import ccall unsafe "getnetbyaddr"
 
 getNetworkEntry :: IO NetworkEntry
 getNetworkEntry = do
- ptr <- c_getnetent
+ ptr <- trySysCall $ c_getnetent
  if ptr == nullPtr
    then ioError (IOError Nothing NoSuchThing
 	"getNetworkEntry" "no more network entries" Nothing)
@@ -484,12 +484,12 @@ getNetworkEntry = do
 foreign import ccall unsafe "getnetent" c_getnetent :: IO (Ptr NetworkEntry)
 
 setNetworkEntry :: Bool -> IO ()
-setNetworkEntry flg = c_setnetent (fromBool flg)
+setNetworkEntry flg = trySysCall $ c_setnetent (fromBool flg)
 
 foreign import ccall unsafe "setnetent" c_setnetent :: CInt -> IO ()
 
 endNetworkEntry :: IO ()
-endNetworkEntry = c_endnetent
+endNetworkEntry = trySysCall $ c_endnetent
 
 foreign import ccall unsafe "endnetent" c_endnetent :: IO ()
 
@@ -509,7 +509,7 @@ getHostName :: IO HostName
 getHostName = do
   let size = 256
   allocaArray0 size $ \ cstr -> do
-    throwErrnoIfMinus1_ "getHostName" $ c_gethostname cstr (fromIntegral size)
+    throwSocketErrorIfMinus1_ "getHostName" $ c_gethostname cstr (fromIntegral size)
     peekCString cstr
 
 foreign import ccall unsafe "gethostname" 
@@ -555,4 +555,19 @@ readlink sym = do
 
 foreign import ccall unsafe "readlink"
    c_readlink :: CString -> Ptr CChar -> CSize -> IO CInt
+#endif
+
+-- ---------------------------------------------------------------------------
+-- Winsock only:
+--   The BSD API networking calls made locally return NULL upon failure.
+--   That failure may very well be due to WinSock not being initialised,
+--   so if NULL is seen try init'ing and repeat the call.
+#if !defined(mingw32_TARGET_OS) && !defined(_WIN32)
+trySysCall act = act
+#else
+trySysCall act = do
+  ptr <- act
+  if (ptr == nullPtr)
+   then withSocketsDo act
+   else return ptr
 #endif

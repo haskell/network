@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.16 2003/01/13 14:12:23 simonmar Exp $
+# $Id: Makefile,v 1.17 2003/03/04 02:55:24 sof Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -20,7 +20,7 @@ EXTRA_SRCS += cbits/HsNet.c
 
 # Only bother with cbits/initWinSock.c when it's really needed.
 ifeq "$(TARGETPLATFORM)" "i386-unknown-mingw32"
-EXTRA_SRCS += cbits/initWinSock.c
+EXTRA_SRCS += cbits/initWinSock.c cbits/winSockErr.c
 Network/Socket_HC_OPTS += -DCALLCONV=stdcall
 else
 EXTRA_SRCS += cbits/ancilData.c

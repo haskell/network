@@ -23,7 +23,7 @@ initWinSock ()
     wVersionRequested = MAKEWORD( 1, 1 );
 
     err = WSAStartup ( wVersionRequested, &wsaData );
-
+    
     if ( err != 0 ) {
        return err;
     }

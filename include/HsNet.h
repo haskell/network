@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.13 2003/02/11 04:34:05 sof Exp $
+ * $Id: HsNet.h,v 1.14 2003/03/04 02:55:27 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -21,7 +21,7 @@
 
 extern void  shutdownWinSock();
 extern int   initWinSock ();
-
+extern const char* getWSErrorDescr(int err);
 #else
 
 #ifdef HAVE_LIMITS_H
