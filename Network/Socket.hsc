@@ -169,6 +169,7 @@ import Control.Concurrent.MVar
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 # if defined(mingw32_TARGET_OS)
 import GHC.Conc         (asyncDoProc)
+import Foreign( FunPtr )
 # endif
 import GHC.Handle
 import GHC.IOBase

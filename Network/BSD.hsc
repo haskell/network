@@ -103,7 +103,7 @@ import Network.Socket
 
 import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
 import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
-import Foreign.C.Types ( CInt, CULong, CChar, CSize )
+import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
 import Foreign.Ptr ( Ptr, nullPtr )
 import Foreign.Storable ( Storable(..) )
 import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
