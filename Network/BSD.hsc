@@ -1,7 +1,7 @@
 {-# OPTIONS -fglasgow-exts #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Prelude
+-- Module      :  Network.BSD
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/net/LICENSE)
 -- 
