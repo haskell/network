@@ -72,9 +72,7 @@ module Network.Socket (
 
     socketPort,		-- :: Socket -> IO PortNumber
 
-#if defined(__GLASGOW_HASKELL__)
     socketToHandle,	-- :: Socket -> IOMode -> IO Handle
-#endif
 
     sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
     recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
@@ -145,6 +143,7 @@ module Network.Socket (
 
 #ifdef __HUGS__
 import Hugs.Prelude
+import Hugs.IO ( openFd )
 #endif
 
 import Foreign
@@ -1614,15 +1613,18 @@ inet_ntoa haddr = do
 -- socketHandle turns a Socket into a Haskell IO Handle. By default, the new
 -- handle is unbuffered. Use hSetBuffering to alter this.
 
-#ifdef __GLASGOW_HASKELL__
-# ifndef __PARALLEL_HASKELL__
+#ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ _) mode = do
+# ifdef __GLASGOW_HASKELL__
     openFd (fromIntegral fd) (Just GHC.Posix.Stream) (show s) mode True{-bin-} False{-no truncate-}
-# else
+# endif
+# ifdef __HUGS__
+    openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
+# endif
+#else
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"
-# endif
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
