@@ -1617,8 +1617,6 @@ foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()
 
 foreign import ccall unsafe "my_inet_ntoa"
   c_inet_ntoa :: HostAddress -> IO (Ptr CChar)
-#def inline char *my_inet_ntoa(addr) \
-  { struct in_addr a; a.s_addr = addr; return inet_ntoa(a); }
 
 foreign import CALLCONV unsafe "inet_addr"
   c_inet_addr :: Ptr CChar -> IO HostAddress

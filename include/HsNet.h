@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.7 2002/08/28 17:21:28 sof Exp $
+ * $Id: HsNet.h,v 1.8 2002/10/18 15:26:29 simonmar Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -76,6 +76,18 @@ recvAncillary(int  sock,
 	      void** pData,
 	      int* pLen);
 
+
+#ifndef INLINE
+#define INLINE extern inline
+#endif
+
+INLINE char *
+my_inet_ntoa(in_addr_t addr)
+{ 
+    struct in_addr a;
+    a.s_addr = addr;
+    return inet_ntoa(a);
+}
 
 #endif /* HAVE_WINSOCK_H && !__CYGWIN */
 
