@@ -1,5 +1,6 @@
 
-#include "Rts.h"
+#include "config.h"
+#include "HsFFI.h"
 #include "HsNet.h"
 
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
@@ -35,7 +36,7 @@ initWinSock ()
 }
 
 static void
-shutdownHandler()
+shutdownHandler(void)
 {
   WSACleanup();
 }
