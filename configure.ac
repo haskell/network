@@ -8,6 +8,8 @@ AC_CONFIG_HEADERS([include/HsNetworkConfig.h])
 dnl ** check for specific header (.h) files that we are interested in
 AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h netinet/tcp.h sys/socket.h sys/uio.h sys/un.h])
 
+AC_CHECK_FUNCS([readlink symlink])
+
 dnl ** check what fields struct msghdr contains
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#if HAVE_SYS_TYPES_H
 # include <sys/types.h>
