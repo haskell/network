@@ -23,7 +23,6 @@ typedef struct AcceptData {
     int   newSock;
     void* sockAddr;
     int   size;
-    int   rc;
 } AcceptData;
 
 /*
@@ -41,18 +40,11 @@ newAcceptParams(int sock,
     data->newSock  = 0;
     data->sockAddr = sockaddr;
     data->size     = sz;
-    data->rc       = 0;
     
     return data;
 }
 
 /* Accessors for return code and accept()'s socket result. */
-
-int
-acceptReturnCode(void* d)
-{
-    return (((AcceptData*)d)->rc);
-}
 
 int
 acceptNewSock(void* d)
@@ -61,19 +53,20 @@ acceptNewSock(void* d)
 }
 
 /* Routine invoked by an RTS worker thread */
-void
+int
 acceptDoProc(void* param)
 {
     SOCKET s;
+
     AcceptData* data = (AcceptData*)param;
     s = accept( data->fdSock,
 		data->sockAddr,
 		&data->size);
-    if ( s == INVALID_SOCKET ) {
-	data->rc = GetLastError();
-    } else {
-	data->rc = 0;
-    }
     data->newSock = s;
+    if ( s == INVALID_SOCKET ) {
+	return GetLastError();
+    } else {
+	return 0;
+    }
 }
 #endif

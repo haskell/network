@@ -580,8 +580,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_TARGET_OS) && !defined(__HUGS__)
      paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
-     asyncDoProc c_acceptDoProc paramData
-     rc        <- c_acceptReturnCode paramData
+     rc        <- asyncDoProc c_acceptDoProc paramData
      new_sock  <- c_acceptNewSock    paramData
      c_free paramData
      when (rc /= 0)
@@ -603,15 +602,12 @@ accept sock@(MkSocket s family stype protocol status) = do
      return ((MkSocket new_sock family stype protocol new_status), addr)
 
 #if defined(mingw32_TARGET_OS) && !defined(__HUGS__)
-foreign import ccall unsafe "HsNet.h acceptReturnCode"
-  c_acceptReturnCode:: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"
   c_newAcceptParams :: CInt -> CInt -> Ptr a -> IO (Ptr ())
 foreign import ccall unsafe "HsNet.h &acceptDoProc"
-  c_acceptDoProc :: FunPtr (Ptr () -> IO ())
-	
+  c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
 foreign import ccall unsafe "free"
   c_free:: Ptr a -> IO ()
 #endif

@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.16 2003/07/03 15:24:02 sof Exp $
+ * $Id: HsNet.h,v 1.17 2003/07/16 17:47:32 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -27,9 +27,8 @@ extern const char* getWSErrorDescr(int err);
 extern void* newAcceptParams(int sock,
 			     int sz,
 			     void* sockaddr);
-extern int   acceptReturnCode(void* d);
 extern int   acceptNewSock(void* d);
-extern void  acceptDoProc(void* param);
+extern int   acceptDoProc(void* param);
 # endif
 
 #else
