@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.12 2002/12/04 20:13:52 sof Exp $
+ * $Id: HsNet.h,v 1.13 2003/02/11 04:34:05 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -9,7 +9,11 @@
 #define HSNET_H
 
 #ifndef INLINE
+#ifdef _MSC_VER
+#define INLINE __inline
+#else
 #define INLINE extern inline
+#endif
 #endif
 
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
