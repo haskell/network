@@ -16,17 +16,17 @@
 --
 --  In addition, four methods are provided for parsing different
 --  kinds of URI string (as noted in RFC2396bis):
---      'parseUri',
---      'parseUriReference',
---      'parseRelativeUri' and
---      'parseAbsoluteUri'.
+--      'parseURI',
+--      'parseURIReference',
+--      'parseRelativeReference' and
+--      'parseabsoluteURI'.
 --
 --  Further, four methods are provided for classifying different
 --  kinds of URI string (as noted in RFC2396bis):
---      'isUri',
---      'isUriReference',
---      'isRelativeUri' and
---      'isAbsoluteUri'.
+--      'isURI',
+--      'isURIReference',
+--      'isRelativeReference' and
+--      'isAbsoluteURI'.
 --
 --  The current official reference for URI handling is RFC2396 [1],
 --  as updated by RFC 2732 [2].
@@ -64,20 +64,19 @@ module Network.URI
     ( -- * The URI type
       URI(..)
     , URIAuth(..)
-    , nullUri
+    , nullURI
       -- ** Component functions for backwards compatibility
     , scheme, authority, path, query, fragment
       -- * Parsing
     , parseURI                  -- :: String -> Maybe URI
-    , parseUri                  -- :: String -> Maybe URI
-    , parseUriReference         -- :: String -> Maybe URI
-    , parseRelativeUri          -- :: String -> Maybe URI
-    , parseAbsoluteUri          -- :: String -> Maybe URI
+    , parseURIReference         -- :: String -> Maybe URI
+    , parseRelativeReference    -- :: String -> Maybe URI
+    , parseabsoluteURI          -- :: String -> Maybe URI
       -- * Test for strings containing various kinds of URI
-    , isUri
-    , isUriReference
-    , isRelativeUri
-    , isAbsoluteUri
+    , isURI
+    , isURIReference
+    , isRelativeReference
+    , isAbsoluteURI
     , isIPv6address
     , isIPv4address
       -- * Relative URIs
@@ -87,8 +86,8 @@ module Network.URI
       -- * Operations on URI strings
       -- | Support for putting strings into URI-friendly
       --   escaped format and getting them back again.
-      --   This can't be done transparently, because certain characters
-      --   have different meanings in different kinds of URI.
+      --   This can't be done transparently in all cases, because certain
+      --   characters have different meanings in different kinds of URI.
     , uriToString                       -- :: URI -> ShowS
     , isReserved, isUnreserved          -- :: Char -> Bool
     , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
@@ -151,8 +150,8 @@ data URIAuth = URIAuth
     } deriving Eq
 
 -- |Blank URI
-nullUri :: URI
-nullUri = URI
+nullURI :: URI
+nullURI = URI
     { uriScheme     = ""
     , uriAuthority  = Nothing
     , uriPath       = ""
@@ -163,7 +162,7 @@ nullUri = URI
 --  URI as instance of Show.  Note that for security reasons, the default
 --  behaviour is to suppress any userinfo field (see RFC2396bis, section 7.5).
 --  This can be overridden by using uriToString directly with first
---  argument @id@.
+--  argument @id@ (noting that this returns a ShowS value rather than a string).
 --
 --  [[[Another design would be to embed the userinfo mapping function in
 --  the URIAuth value, with the default value suppressing userinfo formatting,
@@ -196,9 +195,11 @@ testDefaultUserInfoMap =
 
 --  Additional component access functions for backward compatibility
 
+{-# DEPRECATED scheme "use uriScheme" #-}
 scheme :: URI -> String
 scheme = orNull init . uriScheme
 
+{-# DEPRECATED authority "use uriAuthority, and note changed functionality" #-}
 authority :: URI -> String
 authority = dropss . ($"") . uriAuthToString id . uriAuthority
     where
@@ -206,12 +207,15 @@ authority = dropss . ($"") . uriAuthToString id . uriAuthority
         dropss ('/':'/':s) = s
         dropss s           = s
 
+{-# DEPRECATED path "use uriPath" #-}
 path :: URI -> String
 path = uriPath
 
+{-# DEPRECATED query "use uriQuery, and note changed functionality" #-}
 query :: URI -> String
 query = orNull tail . uriQuery
 
+{-# DEPRECATED fragment "use uriFragment, and note changed functionality" #-}
 fragment :: URI -> String
 fragment = orNull tail . uriFragment
 
@@ -223,61 +227,66 @@ orNull f as = f as
 --  Parse a URI
 ------------------------------------------------------------
 
--- |Parse a 'URI' (Defined for compatibility with old Network.URI module)
+{- Old compatibility code.
+-- parseURI not does not allow relative URIs
+-- Use parseURIReference fpr equivalent functionality
+--
+-- Parse a 'URI' (Defined for compatibility with old Network.URI module)
 --
 parseURI :: String -> Maybe URI
-parseURI = parseUriReference
+parseURI = parseURIReference
+-}
 
 -- |Turn a string containing a URI into a 'URI'.
 --  Returns 'Nothing' if the string is not a valid URI;
 --  (an absolute URI with optional fragment identifier).
 --
 --  NOTE: this is different from network.URI, whose @parseURI@
---  function works like 'parseUriReference' in this module.
+--  function works like 'parseURIReference' in this module.
 --
-parseUri :: String -> Maybe URI
-parseUri = parseUriAny uri
+parseURI :: String -> Maybe URI
+parseURI = parseURIAny uri
 
 -- |Parse a URI reference to a 'URI' value.
 --  Returns 'Nothing' if the string is not a valid URI reference.
 --  (an absolute or relative URI with optional fragment identifier).
 --
-parseUriReference :: String -> Maybe URI
-parseUriReference = parseUriAny uriReference
+parseURIReference :: String -> Maybe URI
+parseURIReference = parseURIAny uriReference
 
 -- |Parse a relative URI to a 'URI' value.
 --  Returns 'Nothing' if the string is not a valid relative URI.
 --  (a relative URI with optional fragment identifier).
 --
-parseRelativeUri :: String -> Maybe URI
-parseRelativeUri = parseUriAny relativeUri
+parseRelativeReference :: String -> Maybe URI
+parseRelativeReference = parseURIAny relativeRef
 
 -- |Parse an absolute URI to a 'URI' value.
 --  Returns 'Nothing' if the string is not a valid absolute URI.
 --  (an absolute URI without a fragment identifier).
 --
-parseAbsoluteUri :: String -> Maybe URI
-parseAbsoluteUri = parseUriAny absoluteUri
+parseabsoluteURI :: String -> Maybe URI
+parseabsoluteURI = parseURIAny absoluteURI
 
 -- |Test if string contains a valid URI;
 --
-isUri :: String -> Bool
-isUri = isValidParse uri
+isURI :: String -> Bool
+isURI = isValidParse uri
 
 -- |Test if string contains a valid URI reference
 --
-isUriReference :: String -> Bool
-isUriReference = isValidParse uriReference
+isURIReference :: String -> Bool
+isURIReference = isValidParse uriReference
 
 -- |Test if string contains a valid relative URI.
 --
-isRelativeUri :: String -> Bool
-isRelativeUri = isValidParse relativeUri
+isRelativeReference :: String -> Bool
+isRelativeReference = isValidParse relativeRef
 
 -- |Test if string contains a valid absolute URI.
 --
-isAbsoluteUri :: String -> Bool
-isAbsoluteUri = isValidParse absoluteUri
+isAbsoluteURI :: String -> Bool
+isAbsoluteURI = isValidParse absoluteURI
 
 -- |Test if string contains a valid IPv6 address
 --
@@ -291,25 +300,25 @@ isIPv4address = isValidParse ipv4address
 
 -- |Test function: parse and reconstruct a URI reference
 --
-testUriReference :: String -> String
-testUriReference uristr = show (parseAll uriReference "" uristr)
+testURIReference :: String -> String
+testURIReference uristr = show (parseAll uriReference "" uristr)
 
 --  Helper function for turning a string into a URI
 --
-parseUriAny :: UriParser URI -> String -> Maybe URI
-parseUriAny parser uristr = case parseAll parser "" uristr of
+parseURIAny :: URIParser URI -> String -> Maybe URI
+parseURIAny parser uristr = case parseAll parser "" uristr of
         Left  _ -> Nothing
         Right u -> Just u
 
 --  Helper function to test a string match to a parser
 --
-isValidParse :: UriParser a -> String -> Bool
+isValidParse :: URIParser a -> String -> Bool
 isValidParse parser uristr = case parseAll parser "" uristr of
         -- Left  e -> error (show e)
         Left  _ -> False
         Right u -> True
 
-parseAll :: UriParser a -> String -> String -> Either ParseError a
+parseAll :: URIParser a -> String -> String -> Either ParseError a
 parseAll parser filename uristr = parse newparser filename uristr
     where
         newparser =
@@ -324,13 +333,13 @@ parseAll parser filename uristr = parse newparser filename uristr
 
 --  Parser parser type.
 --  Currently
-type UriParser a = GenParser Char () a
+type URIParser a = GenParser Char () a
 
 --  RFC2396bis, section 2.1
 --
 --  Parse and return a 'pct-encoded' sequence
 --
-escaped :: UriParser String
+escaped :: URIParser String
 escaped =
     do  { char '%'
         ; h1 <- hexDigitChar
@@ -351,10 +360,10 @@ isGenDelims c = c `elem` ":/?#[]@"
 
 isSubDelims c = c `elem` "!$&'()*+,;="
 
-genDelims :: UriParser String
+genDelims :: URIParser String
 genDelims = do { c <- satisfy isGenDelims ; return [c] }
 
-subDelims :: UriParser String
+subDelims :: URIParser String
 subDelims = do { c <- satisfy isSubDelims ; return [c] }
 
 --  RFC2396bis, section 2.3
@@ -367,7 +376,7 @@ subDelims = do { c <- satisfy isSubDelims ; return [c] }
 isUnreserved :: Char -> Bool
 isUnreserved c = isAlphaNumChar c || (c `elem` "-_.~")
 
-unreservedChar :: UriParser String
+unreservedChar :: URIParser String
 unreservedChar = do { c <- satisfy isUnreserved ; return [c] }
 
 --  RFC2396bis, section 3
@@ -379,7 +388,7 @@ unreservedChar = do { c <- satisfy isUnreserved ; return [c] }
 --               / path-rootless
 --               / path-empty
 
-uri :: UriParser URI
+uri :: URIParser URI
 uri =
     do  { us <- try uscheme
         -- ; ua <- option Nothing ( do { try (string "//") ; uauthority } )
@@ -396,7 +405,7 @@ uri =
             }
         }
 
-hierPart :: UriParser ((Maybe URIAuth),String)
+hierPart :: URIParser ((Maybe URIAuth),String)
 hierPart =
         do  { try (string "//")
             ; ua <- uauthority
@@ -414,7 +423,7 @@ hierPart =
 
 --  RFC2396bis, section 3.1
 
-uscheme :: UriParser String
+uscheme :: URIParser String
 uscheme =
     do  { s <- oneThenMany alphaChar (satisfy isSchemeChar)
         ; char ':'
@@ -423,7 +432,7 @@ uscheme =
 
 --  RFC2396bis, section 3.2
 
-uauthority :: UriParser (Maybe URIAuth)
+uauthority :: URIParser (Maybe URIAuth)
 uauthority =
     do  { uu <- option "" (try userinfo)
         ; uh <- host
@@ -437,7 +446,7 @@ uauthority =
 
 --  RFC2396bis, section 3.2.1
 
-userinfo :: UriParser String
+userinfo :: URIParser String
 userinfo =
     do  { uu <- many (uchar ";:&=+$,")
         ; char '@'
@@ -446,10 +455,10 @@ userinfo =
 
 --  RFC2396bis, section 3.2.2
 
-host :: UriParser String
+host :: URIParser String
 host = ipLiteral <|> try ipv4address <|> regName
 
-ipLiteral :: UriParser String
+ipLiteral :: URIParser String
 ipLiteral =
     do  { char '['
         ; ua <- ( ipv6address <|> ipvFuture )
@@ -458,7 +467,7 @@ ipLiteral =
         }
     <?> "IP address literal"
 
-ipvFuture :: UriParser String
+ipvFuture :: URIParser String
 ipvFuture =
     do  { char 'v'
         ; h <- hexDigitChar
@@ -469,7 +478,7 @@ ipvFuture =
 
 isIpvFutureChar c = isUnreserved c || isSubDelims c || (c==';')
 
-ipv6address :: UriParser String
+ipv6address :: URIParser String
 ipv6address =
         try ( do
                 { a2 <- count 6 h4c
@@ -529,14 +538,14 @@ ipv6address =
                 } )
     <?> "IPv6 address"
 
-opt_n_h4c_h4 :: Int -> UriParser String
+opt_n_h4c_h4 :: Int -> URIParser String
 opt_n_h4c_h4 n = option "" $
     do  { a1 <- countMinMax 0 n h4c
         ; a2 <- h4
         ; return $ concat a1 ++ a2
         }
 
-ls32 :: UriParser String
+ls32 :: URIParser String
 ls32 =  try ( do
                 { a1 <- h4c
                 ; a2 <- h4
@@ -544,7 +553,7 @@ ls32 =  try ( do
                 } )
     <|> ipv4address
 
-h4c :: UriParser String
+h4c :: URIParser String
 h4c = try $
     do  { a1 <- h4
         ; char ':'
@@ -552,10 +561,10 @@ h4c = try $
         ; return $ a1 ++ ":"
         }
 
-h4 :: UriParser String
+h4 :: URIParser String
 h4 = countMinMax 1 4 hexDigitChar
 
-ipv4address :: UriParser String
+ipv4address :: URIParser String
 ipv4address =
     do  { a1 <- decOctet ; char '.'
         ; a2 <- decOctet ; char '.'
@@ -564,7 +573,7 @@ ipv4address =
         ; return $ a1++"."++a2++"."++a3++"."++a4
         }
 
-decOctet :: UriParser String
+decOctet :: URIParser String
 decOctet =
     do  { a1 <- countMinMax 1 3 digitChar
         ; if read a1 > 255 then
@@ -573,7 +582,7 @@ decOctet =
             return a1
         }
 
-regName :: UriParser String
+regName :: URIParser String
 regName =
     do  { ss <- countMinMax 0 255 ( unreservedChar <|> escaped <|> subDelims )
         ; return $ concat ss
@@ -582,7 +591,7 @@ regName =
 
 --  RFC2396bis, section 3.2.3
 
-port :: UriParser String
+port :: URIParser String
 port =
     do  { char ':'
         ; p <- many digitChar
@@ -611,7 +620,7 @@ port =
 --   pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
 
 {-   Old path specification
-upath :: UriParser String
+upath :: URIParser String
 upath =
     do  { ss <- oneThenMany segment slashSegment
         ; return $ concat ss
@@ -619,7 +628,7 @@ upath =
 -}
 
 {-
-upath :: UriParser String
+upath :: URIParser String
 upath = pathAbEmpty
     <|> pathAbs
     <|> pathNoScheme
@@ -627,63 +636,63 @@ upath = pathAbEmpty
     <|> pathEmpty
 -}
 
-pathAbEmpty :: UriParser String
+pathAbEmpty :: URIParser String
 pathAbEmpty =
     do  { ss <- many slashSegment
         ; return $ concat ss
         }
 
-pathAbs :: UriParser String
+pathAbs :: URIParser String
 pathAbs =
     do  { char '/'
         ; ss <- option "" pathRootLess
         ; return $ '/':ss
         }
 
-pathNoScheme :: UriParser String
+pathNoScheme :: URIParser String
 pathNoScheme =
     do  { s1 <- segmentNzc
         ; ss <- many slashSegment
         ; return $ concat (s1:ss)
         }
 
-pathRootLess :: UriParser String
+pathRootLess :: URIParser String
 pathRootLess =
     do  { s1 <- segmentNz
         ; ss <- many slashSegment
         ; return $ concat (s1:ss)
         }
 
-slashSegment :: UriParser String
+slashSegment :: URIParser String
 slashSegment =
     do  { char '/'
         ; s <- segment
         ; return ('/':s)
         }
 
-segment :: UriParser String
+segment :: URIParser String
 segment =
     do  { ps <- many pchar
         ; return $ concat ps
         }
 
-segmentNz :: UriParser String
+segmentNz :: URIParser String
 segmentNz =
     do  { ps <- many1 pchar
         ; return $ concat ps
         }
 
-segmentNzc :: UriParser String
+segmentNzc :: URIParser String
 segmentNzc =
     do  { ps <- many1 (uchar "@")
         ; return $ concat ps
         }
 
-pchar :: UriParser String
+pchar :: URIParser String
 pchar = uchar ":@"
 
 -- helper function for pchar and friends
-uchar :: String -> UriParser String
+uchar :: String -> URIParser String
 uchar extras =
         unreservedChar
     <|> escaped
@@ -692,7 +701,7 @@ uchar extras =
 
 --  RFC2396bis, section 3.4
 
-uquery :: UriParser String
+uquery :: URIParser String
 uquery =
     do  { ss <- many $ uchar (":@"++"/?")
         ; return $ '?':concat ss
@@ -700,7 +709,7 @@ uquery =
 
 --  RFC2396bis, section 3.5
 
-ufragment :: UriParser String
+ufragment :: URIParser String
 ufragment =
     do  { ss <- many $ uchar (":@"++"/?")
         ; return $ '#':concat ss
@@ -710,8 +719,8 @@ ufragment =
 --
 --  RFC2396bis, section 4.1
 
-uriReference :: UriParser URI
-uriReference = uri <|> relativeUri
+uriReference :: URIParser URI
+uriReference = uri <|> relativeRef
 
 --  RFC2396bis, section 4.2
 --
@@ -722,8 +731,8 @@ uriReference = uri <|> relativeUri
 --                 / path-noscheme
 --                 / path-empty
 
-relativeUri :: UriParser URI
-relativeUri =
+relativeRef :: URIParser URI
+relativeRef =
     do  { notMatching uscheme
         -- ; ua <- option Nothing ( do { try (string "//") ; uauthority } )
         -- ; up <- upath
@@ -739,7 +748,7 @@ relativeUri =
             }
         }
 
-relativePart :: UriParser ((Maybe URIAuth),String)
+relativePart :: URIParser ((Maybe URIAuth),String)
 relativePart =
         do  { try (string "//")
             ; ua <- uauthority
@@ -757,8 +766,8 @@ relativePart =
 
 --  RFC2396bis, section 4.3
 
-absoluteUri :: UriParser URI
-absoluteUri =
+absoluteURI :: URIParser URI
+absoluteURI =
     do  { us <- uscheme
         -- ; ua <- option Nothing ( do { try (string "//") ; uauthority } )
         -- ; up <- upath
@@ -793,16 +802,16 @@ isHexDigitChar c = isHexDigit c
 
 isSchemeChar c   = (isAlphaNumChar c) || (c `elem` "+-.")
 
-alphaChar :: UriParser Char
+alphaChar :: URIParser Char
 alphaChar = satisfy isAlphaChar         -- or: Parsec.letter ?
 
-digitChar :: UriParser Char
+digitChar :: URIParser Char
 digitChar = satisfy isDigitChar         -- or: Parsec.digit ?
 
-alphaNumChar :: UriParser Char
+alphaNumChar :: URIParser Char
 alphaNumChar = satisfy isAlphaNumChar
 
-hexDigitChar :: UriParser Char
+hexDigitChar :: URIParser Char
 hexDigitChar = satisfy isHexDigitChar   -- or: Parsec.hexDigit ?
 
 --  Additional parser combinators for common patterns
@@ -837,6 +846,10 @@ notMatching p = do { a <- try p ; unexpected (show a) } <|> return ()
 -- |Turn a 'URI' into a string.
 --
 --  Uses a supplied function to map the userinfo part of the URI.
+--
+--  The Show instance for URI uses a mapping that hides any password
+--  that may be present in the URI.  Use this function with argument @id@
+--  to preserve the password in the formatted output.
 --
 uriToString :: (String->String) -> URI -> ShowS
 uriToString userinfomap URI { uriScheme=scheme
@@ -897,11 +910,11 @@ escapeChar p c
 -- |Can be used to make a string valid for use in a URI.
 --
 escapeString
-    :: String           -- ^ the string to process
-    -> (Char->Bool)     -- ^ a predicate which returns 'False'
+    :: (Char->Bool)     -- ^ a predicate which returns 'False'
                         --   if the character should be escaped
+    -> String           -- ^ the string to process
     -> String           -- ^ the resulting URI string
-escapeString s p = concatMap (escapeChar p) s
+escapeString p s = concatMap (escapeChar p) s
 
 -- |Turns all instances of escaped characters in the string back
 --  into literal characters.
@@ -1251,7 +1264,7 @@ normalizeEscape []             = []
 normalizePathSegments :: String -> String
 normalizePathSegments uristr = normstr juri
     where
-        juri = parseUri uristr
+        juri = parseURI uristr
         normstr Nothing  = uristr
         normstr (Just u) = show (normuri u)
         normuri u = u { uriPath = removeDotSegments (uriPath u) }
