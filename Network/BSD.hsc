@@ -1,3 +1,4 @@
+{-# OPTIONS -fglasgow-exts #-}
 -----------------------------------------------------------------------------
 -- 
 -- Module      :  Prelude
@@ -8,7 +9,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- $Id: BSD.hsc,v 1.2 2001/08/17 12:51:08 simonmar Exp $
+-- $Id: BSD.hsc,v 1.3 2002/02/13 12:02:10 simonmar Exp $
 --
 -- Misc BSD bindings
 --

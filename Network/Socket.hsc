@@ -1,3 +1,4 @@
+{-# OPTIONS -fglasgow-exts #-}
 -----------------------------------------------------------------------------
 -- 
 -- Module      :  Network.Socket
@@ -8,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.3 2002/02/06 15:40:42 simonmar Exp $
+-- $Id: Socket.hsc,v 1.4 2002/02/13 12:02:24 simonmar Exp $
 --
 -- Low-level socket bindings
 --
@@ -1405,8 +1406,8 @@ withSocketsDo act = do
       shutdownWinSock
       return v
 
-foreign import unsafe "initWinSock" initWinSock :: IO Int
-foreign import unsafe "shutdownWinSock" shutdownWinSock :: IO ()
+foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
+foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()
 
 #endif
 
