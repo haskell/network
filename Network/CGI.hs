@@ -29,6 +29,7 @@ import Data.Char ( ord, chr, toUpper, isDigit, isAlphaNum, isHexDigit )
 import System.Environment ( getEnv )
 import Control.Monad(MonadPlus(..), guard)
 import System.IO
+import System.IO.Error (isEOFError)
 
 import Text.Html
 import Control.Exception as Exception
