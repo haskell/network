@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.19 2002/06/18 10:25:05 simonmar Exp $
+-- $Id: Socket.hsc,v 1.20 2002/06/18 12:34:12 simonmar Exp $
 --
 -- Low-level socket bindings
 --
@@ -588,9 +588,6 @@ send (MkSocket s _family _stype _protocol status) xs = do
 
 recv :: Socket -> Int -> IO String
 recv sock@(MkSocket s _family _stype _protocol status) nbytes = do
-#ifdef IP_TTL
-    | TimeToLive    {- IP_TTL       -}
-#endif
   allocaBytes nbytes $ \ptr -> do
         len <- throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
         	   (threadWaitRead (fromIntegral s)) $
@@ -622,9 +619,6 @@ socketPort (MkSocket _ family _ _ _) =
 -- used in programs such as FTP to determine where to send the
 -- returning data.  The corresponding call to get the details of the
 -- local machine is $getSocketName$.
-#ifdef IP_TTL
-    TimeToLive   -> #const IPPROTO_IP
-#endif
 
 getPeerName   :: Socket -> IO SockAddr
 getPeerName (MkSocket s family _ _ _) = do
@@ -665,9 +659,6 @@ data SocketOption
     | Broadcast     {- SO_BROADCAST -}
 #endif
 #ifdef SO_SNDBUF
-#endif
-#ifdef IP_TTL
-    TimeToLive    -> #const IP_TTL
     | SendBuffer    {- SO_SNDBUF    -}
 #endif
 #ifdef SO_RCVBUF
@@ -678,6 +669,9 @@ data SocketOption
 #endif
 #ifdef SO_OOBINLINE
     | OOBInline     {- SO_OOBINLINE -}
+#endif
+#ifdef IP_TTL
+    | TimeToLive    {- IP_TTL       -}
 #endif
 #ifdef TCP_MAXSEG
     | MaxSegment    {- TCP_MAXSEG   -}
@@ -710,6 +704,9 @@ data SocketOption
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so = 
   case so of
+#ifdef IP_TTL
+    TimeToLive   -> #const IPPROTO_IP
+#endif
 #ifdef TCP_MAXSEG
     MaxSegment   -> #const IPPROTO_TCP
 #endif
@@ -750,6 +747,9 @@ packSocketOption so =
 #endif
 #ifdef SO_OOBINLINE
     OOBInline     -> #const SO_OOBINLINE
+#endif
+#ifdef IP_TTL
+    TimeToLive    -> #const IP_TTL
 #endif
 #ifdef TCP_MAXSEG
     MaxSegment    -> #const TCP_MAXSEG
