@@ -125,8 +125,12 @@ import Data.Maybe( isJust )
 
 import Control.Monad( MonadPlus(..) )
 
+#ifdef __GLASGOW_HASKELL__
 import Data.Typeable	( Typeable )
 import Data.Generics	( Data )
+#else
+import Data.Typeable	( Typeable(..), TyCon, mkTyCon, mkTyConApp )
+#endif
 
 ------------------------------------------------------------
 --  The URI datatype
@@ -153,6 +157,14 @@ data URI = URI
 #endif
 	)
 
+#ifndef __GLASGOW_HASKELL__
+uriTc :: TyCon
+uriTc = mkTyCon "URI"
+
+instance Typeable URI where
+  typeOf _ = mkTyConApp uriTc []
+#endif
+
 -- |Type for authority value within a URI
 data URIAuth = URIAuth
     { uriUserInfo   :: String           -- ^ @anonymous\@@
@@ -163,6 +175,14 @@ data URIAuth = URIAuth
 	, Typeable, Data
 #endif
 	)
+
+#ifndef __GLASGOW_HASKELL__
+uriAuthTc :: TyCon
+uriAuthTc = mkTyCon "URIAuth"
+
+instance Typeable URIAuth where
+  typeOf _ = mkTyConApp uriAuthTc []
+#endif
 
 -- |Blank URI
 nullURI :: URI
