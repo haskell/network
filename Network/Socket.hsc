@@ -1694,7 +1694,7 @@ inet_ntoa haddr = do
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ _) mode = do
 # ifdef __GLASGOW_HASKELL__
-    openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) (show s) mode True{-bin-} False{-no truncate-}
+    openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-} False{-no truncate-}
 # endif
 # ifdef __HUGS__
     openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
