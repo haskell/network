@@ -56,10 +56,10 @@ module Network (
 
 import Network.BSD
 import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
-import qualified Network.Socket as Socket ( accept, socketPort )
+import qualified Network.Socket as Socket ( accept )
 import System.IO
 import Prelude
-import Control.Exception as Exception ( catch, block, unblock, throw )
+import Control.Exception as Exception
 
 -- ---------------------------------------------------------------------------
 -- High Level ``Setup'' functions
@@ -184,8 +184,14 @@ accept :: Socket 		-- ^ Listening Socket
 				-- the 'PortNumber' of the remote connection.
 accept sock = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
- (HostEntry peer _ _ _)           <- getHostByAddr AF_INET haddr
- handle				  <- socketToHandle sock' ReadWriteMode
+ peer <- Exception.catchJust ioErrors
+	  (do 	
+	     (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
+	     return peer
+	  )
+	  (\e -> inet_ntoa haddr)
+		-- if getHostByName fails, we fall back to the IP address
+ handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
 
 -- -----------------------------------------------------------------------------
