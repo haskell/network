@@ -136,6 +136,8 @@ import System.IO
 import Control.Monad ( liftM )
 import Data.Ratio ( (%) )
 
+import qualified Control.Exception
+
 #ifdef __GLASGOW_HASKELL__
 import Control.Concurrent.MVar
 
@@ -1559,9 +1561,7 @@ withSocketsDo act = do
    if ( x /= 0 ) then
      ioError (userError "Failed to initialise WinSock")
     else do
-      v <- act
-      shutdownWinSock
-      return v
+      act `Control.Exception.finally` shutdownWinSock
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
 foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()
