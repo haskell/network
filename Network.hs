@@ -34,6 +34,7 @@ module Network (
 	connectTo,	-- :: HostName -> PortID -> IO Handle
 
 	-- * Simple sending and receiving
+	{-$sendrecv-}
 	sendTo,		-- :: HostName -> PortID -> String -> IO ()
 	recvFrom,	-- :: HostName -> PortID -> IO String
 
@@ -210,9 +211,14 @@ accept sock@(MkSocket _ family _ _ _) =
 -- -----------------------------------------------------------------------------
 -- sendTo/recvFrom
 
--- Send and recived data from/to the given host and port number.  These
--- should normally only be used where the socket will not be required for
--- further calls.
+{-$sendrecv
+Send and receive data from\/to the given host and port number.  These
+should normally only be used where the socket will not be required for
+further calls. Also, note that due to the use of 'hGetContents' in 'recvFrom'
+the socket will remain open (i.e. not available) even if the function already
+returned. Their use is strongly discouraged except for small test-applications
+or invocations from the command line.
+-}
 
 sendTo :: HostName 	-- Hostname
        -> PortID	-- Port Number
