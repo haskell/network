@@ -561,9 +561,10 @@ sendTo (MkSocket s _family _stype _protocol status) xs addr = do
 	c_sendto s str (fromIntegral $ length xs) 0{-flags-} 
 			p_addr (fromIntegral sz)
 
-
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
-recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes = do
+recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes
+ | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
+ | otherwise   = 
   allocaBytes nbytes $ \ptr -> do
     withNewSockAddr AF_INET $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
@@ -573,17 +574,20 @@ recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes = do
         	   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
 				ptr_addr ptr_len
         let len' = fromIntegral len
-	flg <- sIsConnected sock
-	  -- For at least one implementation (WinSock 2), recvfrom() ignores
-	  -- filling in the sockaddr for connected TCP sockets. Cope with 
-	  -- this by using getPeerName instead.
-	sockaddr <- 
+	if len' == 0
+	 then ioError (mkEOFError "Network.Socket.recvFrom")
+	 else do
+   	   flg <- sIsConnected sock
+	     -- For at least one implementation (WinSock 2), recvfrom() ignores
+	     -- filling in the sockaddr for connected TCP sockets. Cope with 
+	     -- this by using getPeerName instead.
+	   sockaddr <- 
 		if flg then
 		   getPeerName sock
 		else
 		   peekSockAddr ptr_addr 
-        str <- peekCStringLen (ptr,len')
-        return (str, len', sockaddr)
+           str <- peekCStringLen (ptr,len')
+           return (str, len', sockaddr)
 
 -----------------------------------------------------------------------------
 -- send & recv
@@ -599,13 +603,17 @@ send (MkSocket s _family _stype _protocol status) xs = do
 	c_send s str (fromIntegral $ length xs) 0{-flags-} 
 
 recv :: Socket -> Int -> IO String
-recv sock@(MkSocket s _family _stype _protocol status) nbytes = do
-  allocaBytes nbytes $ \ptr -> do
+recv sock@(MkSocket s _family _stype _protocol status) nbytes 
+ | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
+ | otherwise   = do
+     allocaBytes nbytes $ \ptr -> do
         len <- throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
         	   (threadWaitRead (fromIntegral s)) $
         	   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
         let len' = fromIntegral len
-        peekCStringLen (ptr,len')
+	if len' == 0
+	 then ioError (mkEOFError "Network.Socket.recv")
+	 else peekCStringLen (ptr,len')
 
 -- ---------------------------------------------------------------------------
 -- socketPort
@@ -1538,6 +1546,12 @@ socketToHandle s@(MkSocket fd _ _ _ _) mode = do
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"
 #endif
+
+mkInvalidRecvArgError :: String -> IOError
+mkInvalidRecvArgError loc = IOException $ IOError Nothing InvalidArgument loc "non-positive length" Nothing
+
+mkEOFError :: String -> IOError
+mkEOFError loc = IOException $ IOError Nothing EOF loc "end of file" Nothing
 
 -- ---------------------------------------------------------------------------
 -- WinSock support
