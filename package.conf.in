@@ -20,20 +20,20 @@ library-dirs:	LIB_DIR
 hs-libraries:   "HSnetwork"
 
 #ifdef solaris2_HOST_OS
-extra-libs:	"nsl",  "socket"
+extra-libraries:	"nsl",  "socket"
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-extra-libs:	"wsock32"
+extra-libraries:	"wsock32"
 #else
-extra-libs:
+extra-libraries:
 #endif
 
 include-dirs: 	INCLUDE_DIR
 includes:	"HsNet.h"
 depends:	base, parsec
-extra-hugs-opts:
-extra-cc-opts:
-extra-ld-opts:
+hugs-options:
+cc-options:
+ld-options:
 framework-dirs:
-extra-frameworks:
+frameworks:
 haddock-interfaces:	HADDOCK_IFACE
 haddock-html:		HTML_DIR
