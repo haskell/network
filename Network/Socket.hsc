@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.17 2002/05/31 14:18:39 sof Exp $
+-- $Id: Socket.hsc,v 1.18 2002/05/31 14:50:40 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -21,11 +21,11 @@
 #include "config.h"
 #include "HsNet.h"
 
-#if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
 #define WITH_WINSOCK  1
 #endif
 
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
+#if !defined(mingw32_TARGET_OS)
 #define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
