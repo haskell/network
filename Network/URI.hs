@@ -99,6 +99,8 @@ module Network.URI
     , normalizeCase             -- :: String -> String
     , normalizeEscape           -- :: String -> String
     , normalizePathSegments     -- :: String -> String
+    -- * Deprecated functions
+    , reserved, unreserved      -- :: Char -> Bool
     )
 where
 
@@ -1263,6 +1265,18 @@ traceShow msg x = trace (msg ++ show x) x
 
 traceVal :: Show a => String -> a -> b -> b
 traceVal msg x y = trace (msg ++ show x) y
+
+------------------------------------------------------------
+--  Deprecated functions
+------------------------------------------------------------
+
+{-# DEPRECATED reserved "use isReserved" #-}
+reserved :: Char -> Bool
+reserved = isReserved
+
+{-# DEPRECATED unreserved "use isUnreserved" #-}
+unreserved :: Char -> Bool
+unreserved = isUnreserved
 
 --------------------------------------------------------------------------------
 --
