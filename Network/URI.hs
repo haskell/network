@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URI.hs,v 1.8 2004/10/14 16:14:45 gklyne Exp $
+--  $Id: URI.hs,v 1.9 2004/10/16 17:09:56 ross Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -9,7 +9,7 @@
 --  Copyright   :  (c) 2004, Graham Klyne
 --  License     :  BSD-style (see end of this file)
 --
---  Maintainer  :  Graham Klyne
+--  Maintainer  :  Graham Klyne <gk@ninebynine.org>
 --  Stability   :  provisional
 --  Portability :  H98
 --
@@ -21,17 +21,17 @@
 --
 --  In addition, four methods are provided for parsing different
 --  kinds of URI string (as noted in RFC2396bis):
---      parseUri
---      parseUriReference
---      parseRelativeUri
---      parseAbsoluteUri
+--      'parseUri',
+--      'parseUriReference',
+--      'parseRelativeUri' and
+--      'parseAbsoluteUri'.
 --
 --  Further, four methods are provided for classifying different
 --  kinds of URI string (as noted in RFC2396bis):
---      isUri
---      isUriReference
---      isRelativeUri
---      isAbsoluteUri
+--      'isUri',
+--      'isUriReference',
+--      'isRelativeUri' and
+--      'isAbsoluteUri'.
 --
 --  The current official reference for URI handling is RFC2396 [1],
 --  as updated by RFC 2732 [2].
@@ -43,17 +43,21 @@
 --  the syntax definition in that document and the parser implementation.
 --
 --  RFC 1808 [4] contains a number of test cases for relative URI handling.
---  Dan Connolly's Python module 'uripath.py' [5] also contains useful details
+--  Dan Connolly's Python module @uripath.py@ [5] also contains useful details
 --  and test cases.
 --
---  [1] http://www.ietf.org/rfc/rfc2396.txt
---  [2] http://www.ietf.org/rfc/rfc2732.txt
---  [3] http://gbiv.com/protocols/uri/rev-2002/rfc2396bis.html
+--  (1) <http://www.ietf.org/rfc/rfc2396.txt>
+--
+--  (2) <http://www.ietf.org/rfc/rfc2732.txt>
+--
+--  (3) <http://gbiv.com/protocols/uri/rev-2002/rfc2396bis.html>
 --      (This implementation based on a version dated Sep-2003,
 --      also available as CVS revision 1.64 from
---      http://cvs.apache.org/viewcvs.cgi/ietf-uri/rev-2002/)
---  [4] http://www.ietf.org/rfc/rfc1808.txt
---  [5] http://www.w3.org/2000/10/swap/uripath.py
+--      <http://cvs.apache.org/viewcvs.cgi/ietf-uri/rev-2002/>)
+--
+--  (4) <http://www.ietf.org/rfc/rfc1808.txt>
+--
+--  (5) <http://www.w3.org/2000/10/swap/uripath.py>
 --
 --  Some of the code has been copied from the GHC implementation, but
 --  the parser is replaced with one that performs more complete
@@ -62,46 +66,30 @@
 --------------------------------------------------------------------------------
 
 module Network.URI
-    ( -- * The @URI@ type
+    ( -- * The URI type
       URI(..)
-      -- * Type for authority value within a URI
     , URIAuth(..)
-      -- * Blank URI
     , nullUri
-      -- * component finctions for backward compatibility
+      -- ** Component functions for backwards compatibility
     , scheme, authority, path, query, fragment
-      -- * Parse a @URI@.
-      --   (Defined for backward compatibility.)
+      -- * Parsing
     , parseURI                  -- :: String -> Maybe URI
-      -- * Parse a URI to a @URI@ value.
     , parseUri                  -- :: String -> Maybe URI
-      -- * Parse a URI reference to a @URI@ value.
     , parseUriReference         -- :: String -> Maybe URI
-      -- * Parse a relative URI to a @URI@ value.
     , parseRelativeUri          -- :: String -> Maybe URI
-      -- * Parse an absolute URI to a @URI@ value.
     , parseAbsoluteUri          -- :: String -> Maybe URI
-      -- * Test for string containing various kinds of URI
-      -- |Test for string containing any URI
+      -- * Test for strings containing various kinds of URI
     , isUri
-      -- |Test for string containing a URI reference.
     , isUriReference
-      -- |Test for string containing a relative URI.
     , isRelativeUri
-      -- |Test for string containing an absolute URI.
     , isAbsoluteUri
-      -- |Test for string containing an IPv6 address literal.
     , isIPv6address
-      -- |Test for string containing an IPv4 address literal.
     , isIPv4address
-      -- * Compute an absolute @URI@ for a supplied URI
-      --   relative to a given base.
+      -- * Relative URIs
     , relativeTo                -- :: URI -> URI -> Maybe URI
     , nonStrictRelativeTo       -- :: URI -> URI -> Maybe URI
-      -- * Compute a relative @URI@ for a supplied URI
-      --   with reference to a given base.
     , relativeFrom              -- :: URI -> URI -> URI
-      -- * Operations on @URI@ strings
+      -- * Operations on URI strings
       -- | Support for putting strings into URI-friendly
       --   escaped format and getting them back again.
       --   This can't be done transparently, because certain characters
@@ -133,9 +121,9 @@ import Debug.Trace( trace )
 
 import Numeric( showIntAtBase )
 
-import Maybe( isJust )
+import Data.Maybe( isJust )
 
-import Monad( MonadPlus(..) )
+import Control.Monad( MonadPlus(..) )
 
 ------------------------------------------------------------
 --  The URI datatype
@@ -158,12 +146,14 @@ data URI = URI
     , uriFragment   :: String           -- ^ @#frag@
     } deriving Eq
 
+-- |Type for authority value within a URI
 data URIAuth = URIAuth
     { uriUserInfo   :: String           -- ^ @anonymous\@@
     , uriRegName    :: String           -- ^ @www.haskell.org@
     , uriPort       :: String           -- ^ @:42@
     } deriving Eq
 
+-- |Blank URI
 nullUri :: URI
 nullUri = URI
     { uriScheme     = ""
@@ -173,7 +163,7 @@ nullUri = URI
     , uriFragment   = ""
     }
 
--- |URI as instance of Show.  Note that for security reasons, the default
+--  URI as instance of Show.  Note that for security reasons, the default
 --  behaviour is to suppress any userinfo field (see RFC2396bis, section 7.5).
 --  This can be overridden by using uriToString directly with first
 --  argument @id@.
@@ -236,37 +226,37 @@ orNull f as = f as
 --  Parse a URI
 ------------------------------------------------------------
 
--- |Defined for compatibility with old Network.URI module
+-- |Parse a 'URI' (Defined for compatibility with old Network.URI module)
 --
 parseURI :: String -> Maybe URI
 parseURI = parseUriReference
 
--- |Turn a string containing a URI into a @URI@.
---  Returns @Nothing@ if the string is not a valid URI;
+-- |Turn a string containing a URI into a 'URI'.
+--  Returns 'Nothing' if the string is not a valid URI;
 --  (an absolute URI with optional fragment identifier).
 --
 --  NOTE: this is different from network.URI, whose @parseURI@
---  function works like @parseUriReference@ in this module.
+--  function works like 'parseUriReference' in this module.
 --
 parseUri :: String -> Maybe URI
 parseUri = parseUriAny uri
 
--- |Turn a string into a @URI@.
---  Returns @Nothing@ if the string is not a valid URI reference.
+-- |Parse a URI reference to a 'URI' value.
+--  Returns 'Nothing' if the string is not a valid URI reference.
 --  (an absolute or relative URI with optional fragment identifier).
 --
 parseUriReference :: String -> Maybe URI
 parseUriReference = parseUriAny uriReference
 
--- |Turn a string into a @URI@.
---  Returns @Nothing@ if the string is not a valid relative URI.
+-- |Parse a relative URI to a 'URI' value.
+--  Returns 'Nothing' if the string is not a valid relative URI.
 --  (a relative URI with optional fragment identifier).
 --
 parseRelativeUri :: String -> Maybe URI
 parseRelativeUri = parseUriAny relativeUri
 
--- |Turn a string into a @URI@.
---  Returns @Nothing@ if the string is not a valid absolute URI.
+-- |Parse an absolute URI to a 'URI' value.
+--  Returns 'Nothing' if the string is not a valid absolute URI.
 --  (an absolute URI without a fragment identifier).
 --
 parseAbsoluteUri :: String -> Maybe URI
@@ -374,8 +364,8 @@ subDelims = do { c <- satisfy isSubDelims ; return [c] }
 --
 -- |Returns 'True' if the character is an \"unreserved\" character in
 --  a URI.  These characters do not need to be escaped in a URI.  The
---  only characters allowed in a URI are either 'reserved',
---  'unreserved', or an escape sequence (@%@ followed by two hex digits).
+--  only characters allowed in a URI are either \"reserved\",
+--  \"unreserved\", or an escape sequence (@%@ followed by two hex digits).
 --
 isUnreserved :: Char -> Bool
 isUnreserved c = isAlphaNumChar c || (c `elem` "-_.~")
@@ -847,9 +837,9 @@ notMatching p = do { a <- try p ; unexpected (show a) } <|> return ()
 --  Reconstruct a URI string
 ------------------------------------------------------------
 --
---  Turn a URI into a string.
+-- |Turn a 'URI' into a string.
 --
---  Uses a supplied function to map the userinfo part of
+--  Uses a supplied function to map the userinfo part of the URI.
 --
 uriToString :: (String->String) -> URI -> ShowS
 uriToString userinfomap URI { uriScheme=scheme
@@ -929,8 +919,8 @@ unEscapeString (c:s) = c : unEscapeString s
 -- Resolving a relative URI relative to a base URI
 ------------------------------------------------------------
 
--- |Returns a new @URI@ which represents the value of the
---  first @URI@ interpreted as relative to the second @URI@.
+-- |Returns a new 'URI' which represents the value of the
+--  first 'URI' interpreted as relative to the second 'URI'.
 --  For example:
 --
 --  > "foo" `relativeTo` "http://bar.org/" = "http://bar.org/foo"
@@ -949,6 +939,8 @@ nonStrictRelativeTo ref base = relativeTo ref' base
 isDefined :: ( MonadPlus m, Eq (m a) ) => m a -> Bool
 isDefined a = a /= mzero
 
+-- |Compute an absolute 'URI' for a supplied URI
+--  relative to a given base.
 relativeTo :: URI -> URI -> Maybe URI
 relativeTo ref base
     | isDefined ( uriScheme ref ) =
@@ -1050,12 +1042,13 @@ notSpecial _     = True
 -- Finding a URI relative to a base URI
 ------------------------------------------------------------
 
--- |Returns a new @URI@ which represents the ralative location of
---  the first @URI@ with respect to the second @URI@.  Thus, the
+-- |Returns a new 'URI' which represents the ralative location of
+--  the first 'URI' with respect to the second 'URI'.  Thus, the
 --  values supplied are expected to be absolure URIs, and the result
 --  returned may be a relative URI.
 --
 --  Example:
+--
 --  > "http://example.com/Root/sub1/name2#frag"
 --  >   `relativeFrom` "http://example.com/Root/sub2/name2#frag"
 --  >   == "../sub2/name2#frag"
@@ -1232,7 +1225,7 @@ stripWS         = stripLeadingWS . stripTrailingWS
 --  Other normalization functions
 ------------------------------------------------------------
 
---  Case normalization; cf. RFC2396bis section 6.2.2.1
+-- |Case normalization; cf. RFC2396bis section 6.2.2.1
 --  NOTE:  authority case normalization is not performed
 --
 normalizeCase :: String -> String
@@ -1245,7 +1238,7 @@ normalizeCase uristr = ncScheme uristr
         ncEscape (c:cs)         = c:ncEscape cs
         ncEscape []             = []
 
---  Encoding normalization; cf. RFC2396bis section 6.2.2.2
+-- |Encoding normalization; cf. RFC2396bis section 6.2.2.2
 --
 normalizeEscape :: String -> String
 normalizeEscape ('%':h1:h2:cs)
@@ -1256,7 +1249,7 @@ normalizeEscape ('%':h1:h2:cs)
 normalizeEscape (c:cs)         = c:normalizeEscape cs
 normalizeEscape []             = []
 
---  Path segment normalization; cf. RFC2396bis section 6.2.2.4
+-- |Path segment normalization; cf. RFC2396bis section 6.2.2.4
 --
 normalizePathSegments :: String -> String
 normalizePathSegments uristr = normstr juri
@@ -1310,9 +1303,12 @@ traceVal msg x y = trace (msg ++ show x) y
 --
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/Network/URI.hs,v $
--- $Author: gklyne $
--- $Revision: 1.8 $
+-- $Author: ross $
+-- $Revision: 1.9 $
 -- $Log: URI.hs,v $
+-- Revision 1.9  2004/10/16 17:09:56  ross
+-- adjustments to markup
+--
 -- Revision 1.8  2004/10/14 16:14:45  gklyne
 -- Replace Network.URI module in cvs.haskell.org repository with
 -- completely rewritten version.  The internal URI record structure is
