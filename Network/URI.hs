@@ -86,6 +86,9 @@ module Network.URI
       --   escaped format and getting them back again.
       --   This can't be done transparently in all cases, because certain
       --   characters have different meanings in different kinds of URI.
+      --   The URI spec [3], section 2.4, indicates that all URI compenents
+      --   should be escaped before they are assembled as a URI:
+      --   "Once produced, a URI is always in its percent-encoded form"
     , uriToString               -- :: URI -> ShowS
     , isReserved, isUnreserved  -- :: Char -> Bool
     , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
