@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.12 2002/05/01 05:49:17 sof Exp $
+-- $Id: Socket.hsc,v 1.13 2002/05/01 17:50:24 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -17,6 +17,14 @@
 -- sockets, exposing the C socket API.
 --
 -----------------------------------------------------------------------------
+
+#ifdef mingw32_TARGET_OS
+#define WITH_WINSOCK  1
+#endif
+
+#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
+#define DOMAIN_SOCKET_SUPPORT 1
+#endif
 
 module Network.Socket (
 
@@ -29,7 +37,9 @@ module Network.Socket (
     ProtocolNumber,
 
     socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
+#if defined(DOMAIN_SOCKET_SUPPORT)
     socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
+#endif
     connect,		-- :: Socket -> SockAddr -> IO ()
     bindSocket,		-- :: Socket -> SockAddr -> IO ()
     listen,		-- :: Socket -> Int -> IO ()
@@ -68,7 +78,7 @@ module Network.Socket (
     getPeerCred,         -- :: Socket -> IO (Int{-pid-}, Int{-uid-}, Int{-gid-})
 #endif
 
-#ifndef mingw32_TARGET_OS
+#ifndef WITH_WINSOCK
     sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr () -> Int -> IO ()
     recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr ())
 #endif
@@ -241,13 +251,13 @@ data SockAddr		-- C Names
   = SockAddrInet
 	PortNumber	-- sin_port  (network byte order)
 	HostAddress	-- sin_addr  (ditto)
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if defined(DOMAIN_SOCKET_SUPPORT)
   | SockAddrUnix
         String          -- sun_path
 #endif
   deriving (Eq)
 
-#if defined(mingw32_TARGET_OS) || defined(cygwin32_TARGET_OS)
+#if defined(WITH_WINSOCK) || defined(cygwin32_TARGET_OS)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_TARGET_OS)
 type CSaFamily = (#type u_char)
@@ -258,7 +268,7 @@ type CSaFamily = (#type sa_family_t)
 -- we can't write an instance of Storable for SockAddr, because the Storable
 -- class can't easily handle alternatives.
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrUnix path) = do
 	(#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
 	let pathC = map castCharToCChar path
@@ -272,7 +282,7 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
   case family :: CSaFamily of
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if defined(DOMAIN_SOCKET_SUPPORT)
 	(#const AF_UNIX) -> do
 		str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
 		return (SockAddrUnix str)
@@ -283,13 +293,13 @@ peekSockAddr p = do
 		return (SockAddrInet (PortNum port) addr)
 
 -- size of struct sockaddr by family
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if defined(DOMAIN_SOCKET_SUPPORT)
 sizeOfSockAddr_Family AF_UNIX = #const sizeof(struct sockaddr_un)
 #endif
 sizeOfSockAddr_Family AF_INET = #const sizeof(struct sockaddr_in)
 
 -- size of struct sockaddr by SockAddr
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if defined(DOMAIN_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrUnix _)   = #const sizeof(struct sockaddr_un)
 #endif
 sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
@@ -336,6 +346,7 @@ socket family stype protocol = do
 -- protocol. Differs from a normal pipe in being a bi-directional channel
 -- of communication.
 
+#if defined(DOMAIN_SOCKET_SUPPORT)
 socketPair :: Family 	          -- Family Name (usually AF_INET)
            -> SocketType 	  -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
@@ -355,6 +366,9 @@ socketPair family stype protocol = do
     	   , MkSocket fd2 family stype protocol socket_status2
 	   )
 
+foreign import ccall unsafe "socketpair"
+  c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
+#endif
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -772,7 +786,7 @@ getPeerCred sock = do
      return (pid, uid, gid)
 #endif
 
-#ifndef mingw32_TARGET_OS
+#if defined(DOMAIN_SOCKET_SUPPORT)
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
 sendAncillary :: Socket
@@ -1425,7 +1439,7 @@ sIsWritable  :: Socket -> IO Bool
 sIsWritable = sIsReadable -- sort of.
 
 sIsAcceptable :: Socket -> IO Bool
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if defined(DOMAIN_SOCKET_SUPPORT)
 sIsAcceptable (MkSocket _ AF_UNIX Stream _ status) = do
     value <- readMVar status
     return (value == Connected || value == Bound || value == Listening)
@@ -1472,7 +1486,7 @@ socketToHandle (MkSocket s family stype protocol status) m =
 -- use @withSocketsDo@...:
 
 withSocketsDo :: IO a -> IO a
-#if !defined(HAVE_WINSOCK_H) || defined(cygwin32_TARGET_OS)
+#if !defined(WITH_WINSOCK)
 withSocketsDo x = x
 #else
 withSocketsDo act = do
@@ -1507,8 +1521,6 @@ foreign import ccall unsafe "close"
 
 foreign import ccall unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
-foreign import ccall unsafe "socketpair"
-  c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
 foreign import ccall unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import ccall unsafe "connect"
