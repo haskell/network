@@ -8,7 +8,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.2 2001/08/17 12:51:08 simonmar Exp $
+-- $Id: Socket.hsc,v 1.3 2002/02/06 15:40:42 simonmar Exp $
 --
 -- Low-level socket bindings
 --
@@ -41,6 +41,9 @@ module Network.Socket (
 
     sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
     recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
+    
+    send,		-- :: Socket -> String -> IO Int
+    recv,		-- :: Socket -> Int    -> IO String
 
     inet_addr,		-- :: String -> IO HostAddress
     inet_ntoa,		-- :: HostAddress -> IO String
@@ -58,6 +61,11 @@ module Network.Socket (
     getSocketOption,     -- :: Socket -> SocketOption -> IO Int
     setSocketOption,     -- :: Socket -> SocketOption -> Int -> IO ()
 
+#ifdef SO_PEERCRED
+	-- get the credentials of our domain socket peer.
+    getPeerCred,         -- :: Socket -> IO (Int{-pid-}, Int{-uid-}, Int{-gid-})
+#endif
+
     PortNumber(..),	 -- instance (Eq, Ord, Enum, Num, Real, 
 			 --		Integral, Storable)
 
@@ -68,6 +76,9 @@ module Network.Socket (
     maxListenQueue,	-- :: Int
 
     withSocketsDo,	-- :: IO a -> IO a
+    
+     -- in case you ever want to get at the underlying file descriptor..
+    fdSocket,           -- :: Socket -> CInt
 
     -- The following are exported ONLY for use in the BSD module and
     -- should not be used anywhere else.
@@ -94,6 +105,7 @@ import Control.Concurrent.MVar
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 import GHC.Handle
 import GHC.IOBase
+import qualified GHC.Posix
 #endif
 
 -----------------------------------------------------------------------------
@@ -133,14 +145,12 @@ instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
 instance Show Socket where
-  ...
-
-instance Eq Socket where
-  (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
-
-instance Show Socket where
   showsPrec n (MkSocket fd _ _ _ _) = 
 	showString "<socket: " . shows fd . showString ">"
+
+
+fdSocket :: Socket -> CInt
+fdSocket (MkSocket fd _ _ _ _) = fd
 
 type ProtocolNumber = CInt
 
@@ -167,10 +177,10 @@ intToPortNumber v = PortNum (htons (fromIntegral v))
 portNumberToInt :: PortNumber -> Int
 portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
-foreign import "ntohs" unsafe ntohs :: Word16 -> Word16
-foreign import "htons" unsafe htons :: Word16 -> Word16
-foreign import "ntohl" unsafe ntohl :: Word32 -> Word32
-foreign import "htonl" unsafe htonl :: Word32 -> Word32
+foreign import ccall unsafe "ntohs" ntohs :: Word16 -> Word16
+foreign import ccall unsafe "htons" htons :: Word16 -> Word16
+foreign import ccall unsafe "ntohl" ntohl :: Word32 -> Word32
+foreign import ccall unsafe "htonl" htonl :: Word32 -> Word32
 
 instance Enum PortNumber where
     toEnum   = intToPortNumber
@@ -230,23 +240,29 @@ data SockAddr		-- C Names
 #endif
   deriving (Eq)
 
+#ifndef mingw32_TARGET_OS
+type CSaFamily = (#type sa_family_t)
+#else
+type CSaFamily = (#type unsigned short)
+#endif
+
 -- we can't write an instance of Storable for SockAddr, because the Storable
 -- class can't easily handle alternatives.
 
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
 pokeSockAddr p (SockAddrUnix path) = do
-	(#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CUShort)
+	(#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
 	let pathC = map castCharToCChar path
 	pokeArray0 0 ((#ptr struct sockaddr_un, sun_path) p) pathC
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
-	(#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CUShort)
+	(#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CSaFamily)
 	(#poke struct sockaddr_in, sin_port) p port
 	(#poke struct sockaddr_in, sin_addr) p addr	
 
 peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
-  case family :: CUShort of
+  case family :: CSaFamily of
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
 	(#const AF_UNIX) -> do
 		str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
@@ -303,10 +319,10 @@ socket :: Family 	 -- Family Name (usually AF_INET)
 socket family stype protocol = do
     fd <- throwErrnoIfMinus1Retry "socket" $
 		c_socket (packFamily family) (packSocketType stype) protocol
-    setSocketNonBlocking fd
+    GHC.Posix.setNonBlockingFD fd
     socket_status <- newMVar NotConnected
     return (MkSocket fd family stype protocol socket_status)
-      
+
 -----------------------------------------------------------------------------
 -- Binding a socket
 --
@@ -374,6 +390,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 		       case () of
 			 _ | err == eINTR       -> connectLoop
 			 _ | err == eINPROGRESS -> connectBlocked
+--			 _ | err == eAGAIN      -> connectBlocked
 			 otherwise              -> throwErrno "connect"
        	       else return r
 
@@ -450,7 +467,7 @@ accept sock@(MkSocket s family stype protocol status) = do
 -----------------------------------------------------------------------------
 -- sendTo & recvFrom
 
-sendTo :: Socket	-- Bound/Connected Socket
+sendTo :: Socket	-- (possibly) bound/connected Socket
        -> String	-- Data to send
        -> SockAddr
        -> IO Int	-- Number of Bytes sent
@@ -466,18 +483,49 @@ sendTo (MkSocket s _family _stype _protocol status) xs addr = do
 
 
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
-recvFrom (MkSocket s _family _stype _protocol status) nbytes = do
+recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes = do
   allocaBytes nbytes $ \ptr -> do
     withNewSockAddr AF_INET $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
+      	poke ptr_len (fromIntegral sz)
         len <- throwErrnoIfMinus1Retry_repeatOnBlock "recvFrom" 
         	   (threadWaitRead (fromIntegral s)) $
         	   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
 				ptr_addr ptr_len
         let len' = fromIntegral len
-        sockaddr <- peekSockAddr ptr_addr
+	flg <- sIsConnected sock
+	  -- For at least one implementation (WinSock 2), recvfrom() ignores
+	  -- filling in the sockaddr for connected TCP sockets. Cope with 
+	  -- this by using getPeerName instead.
+	sockaddr <- 
+		if flg then
+		   getPeerName sock
+		else
+		   peekSockAddr ptr_addr 
         str <- peekCStringLen (ptr,len')
         return (str, len', sockaddr)
+
+-----------------------------------------------------------------------------
+-- send & recv
+
+send :: Socket	-- Bound/Connected Socket
+     -> String	-- Data to send
+     -> IO Int	-- Number of Bytes sent
+send (MkSocket s _family _stype _protocol status) xs = do
+ withCString xs $ \str -> do
+   liftM fromIntegral $
+     throwErrnoIfMinus1Retry_repeatOnBlock "send"
+	(threadWaitWrite (fromIntegral s)) $
+	c_send s str (fromIntegral $ length xs) 0{-flags-} 
+
+recv :: Socket -> Int -> IO String
+recv sock@(MkSocket s _family _stype _protocol status) nbytes = do
+  allocaBytes nbytes $ \ptr -> do
+        len <- throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
+        	   (threadWaitRead (fromIntegral s)) $
+        	   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
+        let len' = fromIntegral len
+        peekCStringLen (ptr,len')
 
 -- ---------------------------------------------------------------------------
 -- socketPort
@@ -668,17 +716,33 @@ getSocketOption :: Socket
 		-> IO Int	 -- Option Value
 getSocketOption (MkSocket s _ _ _ _) so = do
    alloca $ \ptr_v ->
-     alloca $ \ptr_sz ->
-       liftM fromIntegral $
+     withObject (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwErrnoIfMinus1 "getSocketOption" $
 	 c_getsockopt s (socketOptLevel so) (packSocketOption so) ptr_v ptr_sz
+       fromIntegral `liftM` peek ptr_v
 
+
+#ifdef SO_PEERCRED
+getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
+getPeerCred sock = do
+  let fd = fdSocket sock
+  let sz = (fromIntegral (#const sizeof(struct ucred)))
+  withObject sz $ \ ptr_cr -> 
+   alloca       $ \ ptr_sz -> do
+     poke ptr_sz sz
+     throwErrnoIfMinus1 "getPeerCred" $
+       c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
+     pid <- (#peek struct ucred, pid) ptr_cr
+     uid <- (#peek struct ucred, uid) ptr_cr
+     gid <- (#peek struct ucred, gid) ptr_cr
+     return (pid, uid, gid)
+#endif
 {-
 A calling sequence table for the main functions is shown in the table below.
 
 \begin{figure}[h]
 \begin{center}
-\begin{tabular}{|l|c|c|c|c|c|c|c|}
+\begin{tabular}{|l|c|c|c|c|c|c|c|}d
 \hline
 {\bf A Call to} & socket & connect & bindSocket & listen & accept & read & write \\
 \hline
@@ -865,7 +929,7 @@ data Family
 #ifdef AF_RIF
         | AF_RIF	-- raw interface 
 #endif
-	deriving (Eq, Ord, Show)
+	deriving (Eq, Ord, Read, Show)
 
 ------ ------
 			
@@ -1196,7 +1260,7 @@ data SocketType
 #ifdef SOCK_SEQPACKET
 	| SeqPacket
 #endif
-	deriving (Eq, Ord, Show)
+	deriving (Eq, Ord, Read, Show)
 	
 packSocketType stype = case stype of
 	NoSocketType -> 0
@@ -1309,13 +1373,12 @@ inet_ntoa haddr = do
   peekCString pstr
 
 -- socketHandle turns a Socket into a Haskell IO Handle. By default, the new
--- handle will not be buffered, use hSetBuffering if you want to change
--- it subsequently.
+-- handle is unbuffered. Use hSetBuffering to alter this.
 
 #ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ _) mode = do
-    openFd (fromIntegral fd) (show s) mode True{-bin-} False{-no truncate-}
+    openFd (fromIntegral fd) (Just GHC.Posix.Stream) (show s) mode True{-bin-} False{-no truncate-}
 #else
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"
@@ -1342,54 +1405,54 @@ withSocketsDo act = do
       shutdownWinSock
       return v
 
-foreign import "initWinSock" initWinSock :: IO Int
-foreign import "shutdownWinSock" shutdownWinSock :: IO ()
+foreign import unsafe "initWinSock" initWinSock :: IO Int
+foreign import unsafe "shutdownWinSock" shutdownWinSock :: IO ()
 
 #endif
 
 -- ---------------------------------------------------------------------------
 -- foreign imports from the C library
 
-foreign import "my_inet_ntoa" unsafe
+foreign import ccall unsafe "my_inet_ntoa"
   c_inet_ntoa :: HostAddress -> IO (Ptr CChar)
 #def inline char *my_inet_ntoa(addr) \
   { struct in_addr a; a.s_addr = addr; return inet_ntoa(a); }
 
-foreign import "inet_addr" unsafe
+foreign import ccall unsafe "inet_addr"
   c_inet_addr :: Ptr CChar -> IO HostAddress
 
-foreign import "shutdown" unsafe
+foreign import ccall unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt 
-foreign import "close" unsafe
+foreign import ccall unsafe "close"
   c_close :: CInt -> IO CInt
 
-foreign import "socket" unsafe
+foreign import ccall unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
-foreign import "bind" unsafe
+foreign import ccall unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import "connect" unsafe
+foreign import ccall unsafe "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import "accept" unsafe
+foreign import ccall unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
-foreign import "listen" unsafe
+foreign import ccall unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
-foreign import "write" unsafe
-  c_write :: CInt -> Ptr CChar -> CSize -> IO CInt
-foreign import "read" unsafe
-  c_read :: CInt -> Ptr CChar -> CSize -> IO CSize
-foreign import "sendto" unsafe
+foreign import ccall unsafe "send"
+  c_send :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+foreign import ccall unsafe "sendto"
   c_sendto :: CInt -> Ptr CChar -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
-foreign import "recvfrom" unsafe
+foreign import ccall unsafe "recv"
+  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+foreign import ccall unsafe "recvfrom"
   c_recvfrom :: CInt -> Ptr CChar -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
-foreign import "getpeername" unsafe
+foreign import ccall unsafe "getpeername"
   c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
-foreign import "getsockname" unsafe
+foreign import ccall unsafe "getsockname"
   c_getsockname :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 
-foreign import "getsockopt" unsafe
+foreign import ccall unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
-foreign import "setsockopt" unsafe
+foreign import ccall unsafe "setsockopt"
   c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
 
 -----------------------------------------------------------------------------
@@ -1417,13 +1480,6 @@ throwErrnoIfMinus1Retry_repeatOnBlock :: Num a => String -> IO b -> IO a -> IO a
 throwErrnoIfMinus1Retry_repeatOnBlock name on_block act = do
   throwErrnoIfMinus1Retry_mayBlock name (on_block >> repeat) act
   where repeat = throwErrnoIfMinus1Retry_repeatOnBlock name on_block act
-
-setSocketNonBlocking fd = do
-  flags <- fcntl_read fd (#const F_GETFL)
-  fcntl_write fd (#const F_SETFL) (flags .|. #const O_NONBLOCK)
-
-foreign import "fcntl" unsafe fcntl_read  :: CInt -> CInt -> IO CInt
-foreign import "fcntl" unsafe fcntl_write :: CInt -> CInt -> CInt -> IO CInt
 #else
 
 throwErrnoIfMinus1Retry_mayBlock name _ act
@@ -1431,9 +1487,6 @@ throwErrnoIfMinus1Retry_mayBlock name _ act
 
 throwErrnoIfMinus1Retry_repeatOnBlock name _ act
   = throwErrnoIfMinus1Retry name act
-
-setSocketNonBlocking fd 
-  = return ()
 
 #endif /* __GLASGOW_HASKELL */
 

@@ -8,7 +8,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Network.hs,v 1.1 2001/08/01 13:33:26 simonmar Exp $
+-- $Id: Network.hs,v 1.2 2002/02/06 15:40:42 simonmar Exp $
 --
 -- Basic network interface
 --
@@ -17,15 +17,15 @@
 module Network (
 	Socket,
         PortID(..),
-	Hostname,
+	HostName,
 
-	connectTo,	-- :: Hostname -> PortID -> IO Handle
+	connectTo,	-- :: HostName -> PortID -> IO Handle
 	listenOn,	-- :: PortID -> IO Socket
 	
 	accept,		-- :: Socket -> IO (Handle, HostName, PortNumber)
 
-	sendTo,		-- :: Hostname -> PortID -> String -> IO ()
-	recvFrom,	-- :: Hostname -> PortID -> IO String
+	sendTo,		-- :: HostName -> PortID -> String -> IO ()
+	recvFrom,	-- :: HostName -> PortID -> IO String
 
 	socketPort,	-- :: Socket -> IO PortID
 	
@@ -66,7 +66,7 @@ type Hostname = String
 -- Maybe consider this alternative.
 -- data Hostname = Name String | IP Int Int Int Int
 
-connectTo :: Hostname		-- Hostname
+connectTo :: HostName		-- Hostname
 	  -> PortID 		-- Port Identifier
 	  -> IO Handle		-- Connected Socket
 
@@ -145,7 +145,7 @@ accept sock = do
 -- should normally only be used where the socket will not be required for
 -- further calls.
 
-sendTo :: Hostname 	-- Hostname
+sendTo :: HostName 	-- Hostname
        -> PortID	-- Port Number
        -> String	-- Message to send
        -> IO ()
@@ -154,27 +154,27 @@ sendTo h p msg = do
   hPutStr s msg
   hClose s
 
-recvFrom :: Hostname 	-- Hostname
+recvFrom :: HostName 	-- Hostname
 	 -> PortID	-- Port Number
 	 -> IO String	-- Received Data
 recvFrom host port = do
- s <- listenOn port
+ ip  <- getHostByName host
+ let ipHs = hostAddresses ip
+ s   <- listenOn port
  let 
   waiting = do
-     ~(s', SockAddrInet _ haddr) <-  Socket.accept s
-     (HostEntry peer _ _ _)      <- getHostByAddr AF_INET haddr
-     if peer /= host 
+     ~(s', SockAddrInet _ haddr)  <-  Socket.accept s
+     he <- getHostByAddr AF_INET haddr
+     if not (any (`elem` ipHs) (hostAddresses he))
       then do
          sClose s'
          waiting
       else do
 	h <- socketToHandle s' ReadMode
         msg <- hGetContents h
-        hClose h
         return msg
 
  message <- waiting
- sClose s
  return message
 
 -- ---------------------------------------------------------------------------
