@@ -25,18 +25,21 @@ sendAncillary(int sock,
 	      int len)
 {
   struct msghdr msg = {0};
+  struct iovec iov[1];
+  char  buf[2];
+#if defined(cygwin32_TARGET_OS) || defined(solaris_TARGET_OS)
+  /* Contains the older BSD msghdr fields only, so no room
+     for 'type' or 'level' data.
+
+     ToDo: write autoconf feature test for this.
+  */
+  msg.msg_accrights = data;
+  msg.msg_accrightslen=len;
+#else
   struct cmsghdr *cmsg;
   char ancBuffer[CMSG_SPACE(len)];
   char* dPtr;
-  char  buf[2];
-  struct iovec iov[1];
   
-  buf[0] = 'X'; buf[1] = '\0';
-  iov[0].iov_base = buf;
-  iov[0].iov_len  = 2;
-
-  msg.msg_iov = iov;
-  msg.msg_iovlen = 1;
   msg.msg_control = ancBuffer;
   msg.msg_controllen = sizeof(ancBuffer);
 
@@ -48,6 +51,13 @@ sendAncillary(int sock,
   
   memcpy(dPtr, data, len);
   msg.msg_controllen = cmsg->cmsg_len;
+#endif
+  buf[0] = 'X'; buf[1] = '\0';
+  iov[0].iov_base = buf;
+  iov[0].iov_len  = 2;
+
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
   
   return sendmsg(sock,&msg,flags);
 }
@@ -61,29 +71,37 @@ recvAncillary(int  sock,
 	      int* pLen)
 {
   struct msghdr msg = {0};
+  char  duffBuf[10];
+  int rc;
+  struct iovec iov[1];
+#if !defined(cygwin32_TARGET_OS) && !defined(solaris_TARGET_OS)
   struct cmsghdr *cmsg = NULL;
   struct cmsghdr *cptr;
-  struct iovec iov[1];
-  char  duffBuf[10];
-  
-  int rc;
-  
-  cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(*pLen));
-  if (cmsg==NULL) {
-    return -1;
-  }
+#endif
   
   iov[0].iov_base = duffBuf;
   iov[0].iov_len  = sizeof(duffBuf);
   msg.msg_iov = iov;
   msg.msg_iovlen = 1;
+
+#if !defined(cygwin32_TARGET_OS) && !defined(solaris_TARGET_OS)
+  cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(*pLen));
+  if (cmsg==NULL) {
+    return -1;
+  }
+  
   msg.msg_control = cmsg;
   msg.msg_controllen = CMSG_LEN(*pLen);
+#else
+  msg.msg_accrights    = pData;
+  msg.msg_accrightslen = *pLen;
+#endif
 
   if ((rc = recvmsg(sock,&msg,flags)) < 0) {
     return rc;
   }
   
+#if !defined(cygwin32_TARGET_OS) && !defined(solaris_TARGET_OS)
   cptr = (struct cmsghdr*)CMSG_FIRSTHDR(&msg);
 
   *pLevel = cptr->cmsg_level;
@@ -91,6 +109,11 @@ recvAncillary(int  sock,
   /* The length of the data portion only */
   *pLen   = cptr->cmsg_len - sizeof(struct cmsghdr);
   *pData  = CMSG_DATA(cptr);
+#else
+  /* Sensible defaults, I hope.. */
+  *pLevel = 0;
+  *pType  = 0;
+#endif
 
   return rc;
 }
