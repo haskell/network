@@ -155,9 +155,13 @@ instance Storable ServiceEntry where
 	return (ServiceEntry {
 			serviceName     = s_name,
 			serviceAliases  = s_aliases,
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
+			servicePort     = PortNum (fromIntegral (s_port :: CShort)),
+#else
 			   -- s_port is already in network byte order, but it
 			   -- might be the wrong size.
 			servicePort     = PortNum (fromIntegral (s_port :: CInt)),
+#endif
 			serviceProtocol = s_proto
 		})
 
