@@ -171,7 +171,7 @@ import Control.Concurrent.MVar
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 # if defined(mingw32_TARGET_OS)
-import GHC.Conc         (asyncDoProc)
+import GHC.Conc         (asyncDoProc, asyncRead, asyncWrite)
 import Foreign( FunPtr )
 # endif
 import GHC.Handle
@@ -678,13 +678,23 @@ send :: Socket	-- Bound/Connected Socket
      -> String	-- Data to send
      -> IO Int	-- Number of Bytes sent
 send (MkSocket s _family _stype _protocol status) xs = do
+ let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
-#if !defined(__HUGS__)
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_TARGET_OS)
+      do 
+       (l, rc) <- asyncWrite (fromIntegral s) 1{-socket-} (fromIntegral len) str
+       if l == (-1)
+        then ioError (errnoToIOError "Network.Socket.send"
+				     (Errno (fromIntegral rc)) Nothing Nothing)
+        else return (fromIntegral l)
+#else
+# if !defined(__HUGS__)
      throwErrnoIfMinus1Retry_repeatOnBlock "send"
 	(threadWaitWrite (fromIntegral s)) $
+# endif
+	c_send s str (fromIntegral len) 0{-flags-} 
 #endif
-	c_send s str (fromIntegral $ length xs) 0{-flags-} 
 
 recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
@@ -695,11 +705,20 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
         len <- 
-#if !defined(__HUGS__)
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_TARGET_OS)
+          do
+	   (l,rc) <- asyncRead (fromIntegral s) 1{-is socket-} (fromIntegral nbytes) ptr
+	   if (l == -1)
+	    then ioError (errnoToIOError "Network.Socket.recvLen" 
+	    				 (Errno (fromIntegral rc)) Nothing Nothing)
+	    else return (fromIntegral l)
+#else
+# if !defined(__HUGS__)
 	       throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
         	   (threadWaitRead (fromIntegral s)) $
-#endif
+# endif
         	   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
+#endif
         let len' = fromIntegral len
 	if len' == 0
 	 then ioError (mkEOFError "Network.Socket.recv")
