@@ -78,6 +78,7 @@ module Network.Socket (
     
     send,		-- :: Socket -> String -> IO Int
     recv,		-- :: Socket -> Int    -> IO String
+    recvLen,            -- :: Socket -> Int    -> IO (String, Int)
 
     inet_addr,		-- :: String -> IO HostAddress
     inet_ntoa,		-- :: HostAddress -> IO String
@@ -684,7 +685,10 @@ send (MkSocket s _family _stype _protocol status) xs = do
 	c_send s str (fromIntegral $ length xs) 0{-flags-} 
 
 recv :: Socket -> Int -> IO String
-recv sock@(MkSocket s _family _stype _protocol status) nbytes 
+recv sock l = recvLen sock l >>= \ (s,_) -> return s
+
+recvLen :: Socket -> Int -> IO (String, Int)
+recvLen sock@(MkSocket s _family _stype _protocol status) nbytes 
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
@@ -697,7 +701,9 @@ recv sock@(MkSocket s _family _stype _protocol status) nbytes
         let len' = fromIntegral len
 	if len' == 0
 	 then ioError (mkEOFError "Network.Socket.recv")
-	 else peekCStringLen (ptr,len')
+	 else do
+	   s <- peekCStringLen (ptr,len')
+	   return (s, len')
 
 -- ---------------------------------------------------------------------------
 -- socketPort
