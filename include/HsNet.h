@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.18 2003/07/25 13:46:04 ross Exp $
+ * $Id: HsNet.h,v 1.19 2004/02/05 11:46:00 ross Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -13,6 +13,8 @@
 #ifndef INLINE
 #ifdef _MSC_VER
 #define INLINE __inline
+#elif defined(__HUGS__)
+#define INLINE INLINE_ONLY
 #else
 #define INLINE extern inline
 #endif
