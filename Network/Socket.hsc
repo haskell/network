@@ -145,7 +145,7 @@ module Network.Socket (
 import Hugs.Prelude
 import Hugs.IO ( openFd )
 
-{-# CBITS HsNet.c initWinSock.c ancilData.c #-}
+{-# CBITS HsNet.c initWinSock.c ancilData.c winSockErr.c #-}
 #endif
 
 import Data.Word ( Word8, Word16, Word32 )

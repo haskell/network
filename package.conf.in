@@ -17,6 +17,8 @@ Package {
         hs_libraries      = [ "HSnetwork" ],
 #ifdef solaris2_TARGET_OS
 	extra_libraries   = [ "nsl",  "socket" ],
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+        extra_libraries   = [ "wsock32" ],
 #else
 	extra_libraries   = [ ],
 #endif
