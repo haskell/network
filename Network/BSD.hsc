@@ -3,7 +3,7 @@
 -- |
 -- Module      :  Network.BSD
 -- Copyright   :  (c) The University of Glasgow 2001
--- License     :  BSD-style (see the file libraries/net/LICENSE)
+-- License     :  BSD-style (see the file libraries/network/LICENSE)
 -- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
