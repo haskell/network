@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.3 2004/11/05 17:29:09 gklyne Exp $
+--  $Id: URITest.hs,v 1.4 2005/04/05 12:47:32 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -18,13 +18,12 @@
 --  Using GHC, I compile with this command line:
 --  ghc --make -fglasgow-exts
 --      -i..\;C:\Dev\Haskell\Lib\HUnit;C:\Dev\Haskell\Lib\Parsec
---      -o URITest.exe URITest
+--      -o URITest.exe URITest -main-is URITest.main
 --  The -i line may need changing for alternative installations.
 --
 --------------------------------------------------------------------------------
 
--- module Network.URITest where -- Use this when GHC -is-main bug is fixed
-module Main where
+module URITest where
 
 import Network.URI
     ( URI(..), URIAuth(..)
@@ -551,6 +550,9 @@ testRelative87 = testRelJoin "testRelative87"
                     "file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/mini1.xml"
 testRelative88 = testRelative "testRelative88"
                     "foo:a/y/z" "foo:a/b/c" "../b/c"
+testRelative89 = testRelJoin "testRelative89"
+                    "f:/a/" "..//g"
+                    "f://g"
 
 
 testRelativeSuite = TestLabel "Test Relative URIs" testRelativeList
@@ -583,7 +585,7 @@ testRelativeList  = TestList
   -- , testRelative80
   , testRelative81, testRelative82, testRelative83
   , testRelative84, testRelative85, testRelative86
-  , testRelative87, testRelative88
+  , testRelative87, testRelative88, testRelative89
   ]
 
 -- RFC2396 relative-to-absolute URI tests
@@ -850,6 +852,12 @@ tn03nrm = "example://a/b/c/foo"
 tn04str = "eXAMPLE://a/b/%7bfoo%7d"     -- From RFC2396bis, 6.2.2
 tn04nrm = "example://a/b/%7Bfoo%7D"
 
+tn06str = "file:/x/..//y"
+tn06nrm = "file://y"
+
+tn07str = "file:x/..//y/"
+tn07nrm = "file:/y/"
+
 testNormalizeURIString01 = testEq "testNormalizeURIString01"
     tn01nrm (normalizeCase tn01str)
 testNormalizeURIString02 = testEq "testNormalizeURIString02"
@@ -860,6 +868,10 @@ testNormalizeURIString04 = testEq "testNormalizeURIString04"
     tn04nrm ((normalizeCase . normalizeEscape . normalizePathSegments) tn04str)
 testNormalizeURIString05 = testEq "testNormalizeURIString05"
     tn04nrm ((normalizePathSegments . normalizeEscape . normalizeCase) tn04str)
+testNormalizeURIString06 = testEq "testNormalizeURIString06"
+    tn06nrm (normalizePathSegments tn06str)
+testNormalizeURIString07 = testEq "testNormalizeURIString07"
+    tn07nrm (normalizePathSegments tn07str)
 
 testNormalizeURIString = TestList
   [ testNormalizeURIString01
@@ -867,8 +879,14 @@ testNormalizeURIString = TestList
   , testNormalizeURIString03
   , testNormalizeURIString04
   , testNormalizeURIString05
+  , testNormalizeURIString06
+  , testNormalizeURIString07
   ]
 
+tnus67 = runTestTT $ TestList
+  [ testNormalizeURIString06
+  , testNormalizeURIString07
+  ]
 
 -- Test strict vs non-strict relativeTo logic
 
@@ -971,8 +989,13 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.3 $
+-- $Revision: 1.4 $
 -- $Log: URITest.hs,v $
+-- Revision 1.4  2005/04/05 12:47:32  gklyne
+-- Added test case.
+-- Changed module name, now requires GHC -main-is to compile.
+-- All tests run OK with GHC 6.4 on MS-Windows.
+--
 -- Revision 1.3  2004/11/05 17:29:09  gklyne
 -- Changed password-obscuring logic to reflect late change in revised URI
 -- specification (password "anonymous" is no longer a special case).
