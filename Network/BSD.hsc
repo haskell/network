@@ -369,7 +369,7 @@ getHostByName name = do
     		$ trySysCall $ c_gethostbyname name_cstr
    peek ent
 
-foreign import ccall unsafe "gethostbyname" 
+foreign import ccall safe "gethostbyname" 
    c_gethostbyname :: CString -> IO (Ptr HostEntry)
 
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
@@ -379,7 +379,7 @@ getHostByAddr family addr = do
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 
-foreign import ccall unsafe "gethostbyaddr"
+foreign import ccall safe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
