@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.2 2004/10/27 13:06:55 gklyne Exp $
+--  $Id: URITest.hs,v 1.3 2004/11/05 17:29:09 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -35,7 +35,7 @@ import Network.URI
     , relativeTo, nonStrictRelativeTo
     , relativeFrom
     , uriToString
-    , isUnescapedInURI, escapeString, unEscapeString
+    , isUnescapedInURI, escapeURIString, unEscapeString
     , normalizeCase, normalizeEscape, normalizePathSegments
     )
 
@@ -793,9 +793,9 @@ ts04URI = URI   { uriScheme    = "http:"
                 , uriFragment  = "#ddd/eee"
                 }
 
-ts02str = "http://user:********@example.org:99/aaa/bbb?ccc#ddd/eee"
+ts02str = "http://user:...@example.org:99/aaa/bbb?ccc#ddd/eee"
 ts03str = "http://user:pass@example.org:99/aaa/bbb?ccc#ddd/eee"
-ts04str = "http://user:anonymous@example.org:99/aaa/bbb?ccc#ddd/eee"
+ts04str = "http://user:...@example.org:99/aaa/bbb?ccc#ddd/eee"
 
 testShowURI01 = testEq "testShowURI01" ""      (show nullURI)
 testShowURI02 = testEq "testShowURI02" ts02str (show ts02URI)
@@ -817,10 +817,10 @@ te02str = "http://example.org/a</b>/c%/d /e"
 te02esc = "http://example.org/a%3C/b%3E/c%25/d%20/e"
 
 testEscapeURIString01 = testEq "testEscapeURIString01"
-    te01str (escapeString isUnescapedInURI te01str)
+    te01str (escapeURIString isUnescapedInURI te01str)
 
 testEscapeURIString02 = testEq "testEscapeURIString02"
-    te02esc (escapeString isUnescapedInURI te02str)
+    te02esc (escapeURIString isUnescapedInURI te02str)
 
 testEscapeURIString03 = testEq "testEscapeURIString03"
     te01str (unEscapeString te01str)
@@ -971,8 +971,14 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.2 $
+-- $Revision: 1.3 $
 -- $Log: URITest.hs,v $
+-- Revision 1.3  2004/11/05 17:29:09  gklyne
+-- Changed password-obscuring logic to reflect late change in revised URI
+-- specification (password "anonymous" is no longer a special case).
+-- Updated URI test module to use function 'escapeURIString'.
+-- (Should unEscapeString be similarly updated?)
+--
 -- Revision 1.2  2004/10/27 13:06:55  gklyne
 -- Updated URI module function names per:
 -- http://www.haskell.org//pipermail/cvs-libraries/2004-October/002916.html

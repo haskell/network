@@ -86,11 +86,11 @@ module Network.URI
       --   escaped format and getting them back again.
       --   This can't be done transparently in all cases, because certain
       --   characters have different meanings in different kinds of URI.
-    , uriToString                       -- :: URI -> ShowS
-    , isReserved, isUnreserved          -- :: Char -> Bool
+    , uriToString               -- :: URI -> ShowS
+    , isReserved, isUnreserved  -- :: Char -> Bool
     , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
-    , escapeURIChar                -- :: (Char->Bool) -> Char -> String
-    , escapeURIString              -- :: (Char->Bool) -> String -> String
+    , escapeURIChar             -- :: (Char->Bool) -> Char -> String
+    , escapeURIString           -- :: (Char->Bool) -> String -> String
     , unEscapeString            -- :: String -> String
     -- * URI Normalization functions
     , normalizeCase             -- :: String -> String
@@ -178,19 +178,20 @@ defaultUserInfoMap uinf = user++newpass
         (user,pass) = break (==':') uinf
         newpass     = if null pass || (pass == "@")
                                    || (pass == ":@")
-                                   || (pass == ":anonymous@")
+--                                 || (pass == ":anonymous@")
                         then pass
-                        else ":********@"
+                        else ":...@"
 
 testDefaultUserInfoMap =
      [ defaultUserInfoMap ""                == ""
      , defaultUserInfoMap "@"               == "@"
      , defaultUserInfoMap "user@"           == "user@"
      , defaultUserInfoMap "user:@"          == "user:@"
-     , defaultUserInfoMap "user:anonymous@" == "user:anonymous@"
-     , defaultUserInfoMap "user:pass@"      == "user:********@"
-     , defaultUserInfoMap "user:pass"       == "user:********@"
-     , defaultUserInfoMap "user:anonymous"  == "user:********@"
+--   , defaultUserInfoMap "user:anonymous@" == "user:anonymous@"
+     , defaultUserInfoMap "user:anonymous@" == "user:...@"
+     , defaultUserInfoMap "user:pass@"      == "user:...@"
+     , defaultUserInfoMap "user:pass"       == "user:...@"
+     , defaultUserInfoMap "user:anonymous"  == "user:...@"
      ]
 
 ------------------------------------------------------------
