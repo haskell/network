@@ -1578,10 +1578,10 @@ socketToHandle (MkSocket s family stype protocol status) m =
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
-mkInvalidRecvArgError loc = IOException $ IOError Nothing InvalidArgument loc "non-positive length" Nothing
+mkInvalidRecvArgError loc = IOError Nothing InvalidArgument loc "non-positive length" Nothing
 
 mkEOFError :: String -> IOError
-mkEOFError loc = IOException $ IOError Nothing EOF loc "end of file" Nothing
+mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
 
 -- ---------------------------------------------------------------------------
 -- WinSock support
