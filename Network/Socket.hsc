@@ -8,7 +8,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.1 2001/08/01 13:33:27 simonmar Exp $
+-- $Id: Socket.hsc,v 1.2 2001/08/17 12:51:08 simonmar Exp $
 --
 -- Low-level socket bindings
 --
@@ -19,7 +19,7 @@
 
 module Network.Socket (
 
-    Socket,		
+    Socket,		-- instance Eq, Show
     Family(..),		
     SocketType(..),
     SockAddr(..),
@@ -37,7 +37,7 @@ module Network.Socket (
 
     socketPort,		-- :: Socket -> IO PortNumber
 
-    socketToHandle,	-- :: Socket -> IO Handle
+    socketToHandle,	-- :: Socket -> IOMode -> IO Handle
 
     sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
     recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
@@ -128,6 +128,19 @@ data Socket
 	    SocketType				  
 	    ProtocolNumber	 -- Protocol Number
 	    (MVar SocketStatus)  -- Status Flag
+
+instance Eq Socket where
+  (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
+
+instance Show Socket where
+  ...
+
+instance Eq Socket where
+  (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
+
+instance Show Socket where
+  showsPrec n (MkSocket fd _ _ _ _) = 
+	showString "<socket: " . shows fd . showString ">"
 
 type ProtocolNumber = CInt
 
@@ -346,11 +359,6 @@ connect :: Socket	-- Unconnected Socket
 	-> IO ()
 
 connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
- let isDomainSocket = if _family == AF_UNIX then 1 else (0::Int)
-#else
- let isDomainSocket = 0
-#endif
  modifyMVar_ socketStatus $ \currentStatus -> do
  if currentStatus /= NotConnected 
   then
@@ -1306,10 +1314,8 @@ inet_ntoa haddr = do
 
 #ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle (MkSocket fd _ _ _ _) mode = do
-    openFd (fromIntegral fd) socket_str mode True{-bin-} False{-no truncate-}
- where
-  socket_str = "<socket: "++show fd++">"
+socketToHandle s@(MkSocket fd _ _ _ _) mode = do
+    openFd (fromIntegral fd) (show s) mode True{-bin-} False{-no truncate-}
 #else
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"

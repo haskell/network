@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.1 2001/08/01 13:33:27 simonmar Exp $
+ * $Id: HsNet.h,v 1.2 2001/08/17 12:51:08 simonmar Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -10,8 +10,14 @@
 
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
 #include <winsock.h>
+
+extern void   shutdownWinSock();
+extern StgInt initWinSock ();
 #else
 
+#ifdef HAVE_LIMITS_H
+# include <limits.h>
+#endif
 #ifdef HAVE_STDLIB_H
 # include <stdlib.h>
 #endif

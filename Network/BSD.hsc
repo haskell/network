@@ -1,4 +1,3 @@
-{-# OPTIONS -optc-DNON_POSIX_SOURCE #-}
 -----------------------------------------------------------------------------
 -- 
 -- Module      :  Prelude
@@ -9,7 +8,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- $Id: BSD.hsc,v 1.1 2001/08/01 13:33:27 simonmar Exp $
+-- $Id: BSD.hsc,v 1.2 2001/08/17 12:51:08 simonmar Exp $
 --
 -- Misc BSD bindings
 --
