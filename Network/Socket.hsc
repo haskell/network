@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.13 2002/05/01 17:50:24 sof Exp $
+-- $Id: Socket.hsc,v 1.14 2002/05/03 00:27:21 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -75,12 +75,12 @@ module Network.Socket (
 
 #ifdef SO_PEERCRED
 	-- get the credentials of our domain socket peer.
-    getPeerCred,         -- :: Socket -> IO (Int{-pid-}, Int{-uid-}, Int{-gid-})
+    getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
 #endif
 
 #ifndef WITH_WINSOCK
-    sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr () -> Int -> IO ()
-    recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr ())
+    sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
+    recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
 #endif
 
     PortNumber(..),	 -- instance (Eq, Ord, Enum, Num, Real, 
@@ -90,6 +90,10 @@ module Network.Socket (
     aNY_PORT,		-- :: PortNumber
     iNADDR_ANY,		-- :: HostAddress
     sOMAXCONN,		-- :: Int
+    sOL_SOCKET,         -- :: Int
+#ifdef SCM_RIGHTS
+    sCM_RIGHTS,         -- :: Int
+#endif
     maxListenQueue,	-- :: Int
 
     withSocketsDo,	-- :: IO a -> IO a
@@ -793,7 +797,7 @@ sendAncillary :: Socket
 	      -> Int
 	      -> Int
 	      -> Int
-	      -> Ptr ()
+	      -> Ptr a
 	      -> Int
 	      -> IO ()
 sendAncillary sock level ty flags datum len = do
@@ -806,7 +810,7 @@ sendAncillary sock level ty flags datum len = do
 recvAncillary :: Socket
 	      -> Int
 	      -> Int
-	      -> IO (Int,Int,Ptr (),Int)
+	      -> IO (Int,Int,Ptr a,Int)
 recvAncillary sock flags len = do
   let fd = fdSocket sock
   alloca      $ \ ptr_len   ->
@@ -822,10 +826,10 @@ recvAncillary sock flags len = do
       pD  <- peek ptr_pData
       return (lev,ty,pD, len)
 foreign import ccall unsafe "sendAncillary"
-  c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr () -> CInt -> IO CInt
+  c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
 
 foreign import ccall unsafe "recvAncillary"
-  c_recvAncillary :: CInt -> Ptr CInt -> Ptr CInt -> CInt -> Ptr (Ptr ()) -> Ptr CInt -> IO CInt
+  c_recvAncillary :: CInt -> Ptr CInt -> Ptr CInt -> CInt -> Ptr (Ptr a) -> Ptr CInt -> IO CInt
 
 #endif
 
@@ -1384,6 +1388,14 @@ iNADDR_ANY = htonl (#const INADDR_ANY)
 
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
+
+sOL_SOCKET :: Int
+sOL_SOCKET = #const SOL_SOCKET
+
+#ifdef SCM_RIGHTS
+sCM_RIGHTS :: Int
+sCM_RIGHTS = #const SCM_RIGHTS
+#endif
 
 maxListenQueue :: Int
 maxListenQueue = sOMAXCONN
