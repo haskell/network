@@ -529,6 +529,7 @@ getEntries getOne atEnd = loop
 -- Symbolic links
 
 #ifdef HAVE_SYMLINK
+{-# DEPRECATED symlink "use System.Posix.createSymbolicLink" #-}
 symlink :: String -> String -> IO ()
 symlink actual_path sym_path = do
    withCString actual_path $ \ actual_path_cstr -> do
@@ -540,6 +541,7 @@ foreign import ccall unsafe "symlink"
 #endif
 
 #ifdef HAVE_READLINK
+{-# DEPRECATED readlink "use System.Posix.readSymbolicLink" #-}
 readlink :: String -> IO String
 readlink sym = do
    withCString sym $ \ sym_cstr -> do
