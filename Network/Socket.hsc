@@ -145,6 +145,8 @@ module Network.Socket (
 #ifdef __HUGS__
 import Hugs.Prelude
 import Hugs.IO ( openFd )
+
+{-# CBITS HsNet.c initWinSock.c ancilData.c #-}
 #endif
 
 import Foreign
