@@ -93,7 +93,12 @@ recvAncillary(int  sock,
   msg.msg_control = cmsg;
   msg.msg_controllen = CMSG_LEN(*pLen);
 #else
-  msg.msg_accrights    = pData;
+  *pData = (void*)malloc(*pLen);
+  if (*pData) {
+      msg.msg_accrights    = *pData;
+  } else {
+      return -1;
+  }
   msg.msg_accrightslen = *pLen;
 #endif
 
