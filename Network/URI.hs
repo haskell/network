@@ -92,7 +92,7 @@ module Network.URI
     , isReserved, isUnreserved          -- :: Char -> Bool
     , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
     , escapeChar                -- :: (Char->Bool) -> Char -> String
-    , escapeString              -- :: String -> (Char->Bool) -> String
+    , escapeString              -- :: (Char->Bool) -> String -> String
     , unEscapeString            -- :: String -> String
     -- * URI Normalization functions
     , normalizeCase             -- :: String -> String
