@@ -27,12 +27,7 @@ extra-libs:	"wsock32"
 extra-libs:
 #endif
 
-#ifdef INSTALLING
-include-dirs:
-#else
-include-dirs: "$libdir/libraries/network/include"
-#endif
-
+include-dirs: 	INCLUDE_DIR
 includes:	"HsNet.h"
 depends:	base, parsec
 extra-hugs-opts:
@@ -40,6 +35,5 @@ extra-cc-opts:
 extra-ld-opts:
 framework-dirs:
 extra-frameworks:
-haddock-interfaces:
-haddock-html:
-
+haddock-interfaces:	HADDOCK_IFACE
+haddock-html:		HTML_DIR
