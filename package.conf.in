@@ -1,35 +1,45 @@
 #include "ghcconfig.h"
 
-Package {
-        name           = "network",
-	auto		= True,
-#ifdef INSTALLING
-	import_dirs    = [ "$libdir/imports" ],
-#else
-	import_dirs    = [ "$libdir/libraries/network" ],
-#endif
-        source_dirs    = [],
-#ifdef INSTALLING
-        library_dirs   = [ "$libdir" ],
-#else
-        library_dirs   = [ "$libdir/libraries/network" ],
-#endif
-        hs_libraries      = [ "HSnetwork" ],
+name:		PACKAGE
+version:	VERSION
+license:	BSD3
+maintainer:	libraries@haskell.org
+exposed:	True
+
+exposed-modules:
+	Network.BSD,
+	Network.CGI,
+	Network.Socket,
+	Network.URI,
+	Network
+
+hidden-modules:
+
+import-dirs:	IMPORT_DIR
+library-dirs:	LIB_DIR
+hs-libraries:   "HSnetwork"
+
 #ifdef solaris2_TARGET_OS
-	extra_libraries   = [ "nsl",  "socket" ],
+extra-libs:	"nsl",  "socket"
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-        extra_libraries   = [ "wsock32" ],
+extra-libs:	"wsock32"
 #else
-	extra_libraries   = [ ],
+extra-libs:
 #endif
+
 #ifdef INSTALLING
-        include_dirs   = [],
+include-dirs:
 #else
-        include_dirs   = [ "$libdir/libraries/network/include" ],
+include-dirs: "$libdir/libraries/network/include"
 #endif
-        c_includes     = [ "HsNet.h" ],
-        package_deps   = [ "base", "parsec" ],
-        extra_ghc_opts = [],
-        extra_cc_opts  = [],
-        extra_ld_opts  = []
-}
+
+includes:	"HsNet.h"
+depends:	base, parsec
+extra-hugs-opts:
+extra-cc-opts:
+extra-ld-opts:
+framework-dirs:
+extra-frameworks:
+haddock-interfaces:
+haddock-html:
+
