@@ -51,6 +51,8 @@ module Network.Socket (
     ShutdownCmd(..),
     ProtocolNumber,
     PortNumber(..),
+	-- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
+	-- this use and make the type abstract.
 
     -- * Socket Operations
     socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
