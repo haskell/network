@@ -1,0 +1,32 @@
+#include "config.h"
+
+Package {
+        name           = "net",
+#ifdef INSTALLING
+	import_dirs    = [ "$libdir/imports" ],
+#else
+	import_dirs    = [ "$libdir/libraries/net" ],
+#endif
+        source_dirs    = [],
+#ifdef INSTALLING
+        library_dirs   = [ "$libdir" ],
+#else
+        library_dirs   = [ "$libdir/libraries/net" ],
+#endif
+        hs_libraries      = [ "HSnet" ],
+#ifdef solaris2_TARGET_OS
+	extra_libraries   = [ "nsl",  "socket" ],
+#else
+	extra_libraries   = [ ],
+#endif
+#ifdef INSTALLING
+        include_dirs   = [],
+#else
+        include_dirs   = [ "$libdir/libraries/net/cbits" ],
+#endif
+        c_includes     = [ "HsNet.h" ],
+        package_deps   = [ "core" ],
+        extra_ghc_opts = [],
+        extra_cc_opts  = [],
+        extra_ld_opts  = []
+}
