@@ -4,7 +4,7 @@
 
 #include "HsNet.h"
 
-#if defined(HAVE_MSGHDR_MSG_CONTROL) || defined(HAVE_MSGHDR_MSG_ACCRIGHTS) /* until end */
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS /* until end */
 
 /* 
  *  Support for transmitting file descriptors.
@@ -39,7 +39,7 @@ sendFd(int sock,
   struct msghdr msg = {0};
   struct iovec iov[1];
   char  buf[2];
-#if defined(HAVE_MSGHDR_MSG_ACCRIGHTS)
+#if HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
   msg.msg_accrights = (void*)&outfd;
   msg.msg_accrightslen = sizeof(int);
 #else
@@ -81,7 +81,7 @@ sendAncillary(int sock,
   struct msghdr msg = {0};
   struct iovec iov[1];
   char  buf[2];
-#if defined(HAVE_MSGHDR_MSG_ACCRIGHTS)
+#if HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
   /* Contains the older BSD msghdr fields only, so no room
      for 'type' or 'level' data.
   */
@@ -122,7 +122,7 @@ recvFd(int sock)
   int rc;
   int len = sizeof(int);
   struct iovec iov[1];
-#if defined(HAVE_MSGHDR_MSG_CONTROL)
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   struct cmsghdr *cmsg = NULL;
   struct cmsghdr *cptr;
 #else
@@ -134,7 +134,7 @@ recvFd(int sock)
   msg.msg_iov = iov;
   msg.msg_iovlen = 1;
 
-#if defined(HAVE_MSGHDR_MSG_CONTROL)
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(len));
   if (cmsg==NULL) {
     return -1;
@@ -156,7 +156,7 @@ recvFd(int sock)
     return rc;
   }
   
-#if defined(HAVE_MSGHDR_MSG_CONTROL)
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   cptr = (struct cmsghdr*)CMSG_FIRSTHDR(&msg);
   return *(int*)CMSG_DATA(cptr);
 #else
@@ -177,7 +177,7 @@ recvAncillary(int  sock,
   char  duffBuf[10];
   int rc;
   struct iovec iov[1];
-#if defined(HAVE_MSGHDR_MSG_CONTROL)
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   struct cmsghdr *cmsg = NULL;
   struct cmsghdr *cptr;
 #endif
@@ -187,7 +187,7 @@ recvAncillary(int  sock,
   msg.msg_iov = iov;
   msg.msg_iovlen = 1;
 
-#if defined(HAVE_MSGHDR_MSG_CONTROL)
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(*pLen));
   if (cmsg==NULL) {
     return -1;
@@ -209,7 +209,7 @@ recvAncillary(int  sock,
     return rc;
   }
   
-#if defined(HAVE_MSGHDR_MSG_CONTROL)
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   cptr = (struct cmsghdr*)CMSG_FIRSTHDR(&msg);
 
   *pLevel = cptr->cmsg_level;
