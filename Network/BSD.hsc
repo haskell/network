@@ -20,7 +20,7 @@
 --
 -----------------------------------------------------------------------------
 
-#include "config.h"
+#include "HsNet.h"
 
 module Network.BSD (
        
@@ -95,8 +95,6 @@ module Network.BSD (
 #endif
 
     ) where
-
-#include "HsNet.h"
 
 #ifdef __HUGS__
 import Hugs.Prelude

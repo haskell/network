@@ -19,7 +19,6 @@
 --
 -----------------------------------------------------------------------------
 
-#include "config.h"
 #include "HsNet.h"
 
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)

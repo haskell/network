@@ -2,7 +2,6 @@
  *  Copyright(c), 2002 The GHC Team.
  */
 
-#include "config.h"
 #include "HsNet.h"
 
 #if defined(HAVE_MSGHDR_MSG_CONTROL) || defined(HAVE_MSGHDR_MSG_ACCRIGHTS) /* until end */

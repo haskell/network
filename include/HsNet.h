@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.17 2003/07/16 17:47:32 sof Exp $
+ * $Id: HsNet.h,v 1.18 2003/07/25 13:46:04 ross Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -7,6 +7,8 @@
 
 #ifndef HSNET_H
 #define HSNET_H
+
+#include "config.h"
 
 #ifndef INLINE
 #ifdef _MSC_VER

@@ -2,9 +2,8 @@
  * (c) sof, 2003.
  */
 
-#include "config.h"
-#include "HsFFI.h"
 #include "HsNet.h"
+#include "HsFFI.h"
 
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__) && !defined(__HUGS__)
 /* all the way to the end */
