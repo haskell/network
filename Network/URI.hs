@@ -8,34 +8,37 @@
 -- Stability   :  provisional
 -- Portability :  non-portable (needs Text.Regex)
 --
--- Implementation of RFC 2396  
---	"Uniform Resource Identifiers (URI): Generic Syntax"
+-- The "URI" library provides utilities for
+-- parsing and manipulating Uniform Resource Identifiers (a more
+-- general form of Uniform Resource Locators, or URLs). URIs are
+-- described in RFC 2396 <http://www.faqs.org/rfcs/rfc2396.html>.
 --
 -----------------------------------------------------------------------------
 
 module Network.URI (
-  URI(
-      scheme,				-- :: String,
-      authority,			-- :: String,
-      path,				-- :: String,
-      query,				-- :: String,
-      fragment				-- :: String
-     ), 
-  -- instance Show URI
 
+  -- * The @URI@ type
+  URI(..),
+
+  -- * Parsing a @URI@
   parseURI,				-- :: String -> Maybe URI
 	
+  -- * Computing relative @URI@s
   relativeTo,				-- :: URI -> URI -> Maybe URI
 
-  -- support for putting strings into URI-friendly
+  -- * Operations on @URI@ strings
+
+  -- | support for putting strings into URI-friendly
   -- escaped format and getting them back again.
-  -- Can't be done transparently, because certain characters
+  -- This can't be done transparently, because certain characters
   -- have different meanings in different kinds of URI.
+
   reserved, unreserved, isAllowedInURI,	-- :: Char -> Bool
   escapeString,				-- :: String -> (Char->Bool) -> String
   unEscapeString			-- :: String -> String
 
   ) where
+
 
 import Numeric
 import Data.Char
@@ -44,20 +47,26 @@ import Text.Regex
 -----------------------------------------------------------------------------
 -- The URI datatype
 
+-- | The decomposition of a general universal resource identifier.
+-- For example, for the URI
+--
+-- >   http://www.haskell.org/ghc?query#frag
+--
+-- the components are ...
 data URI = URI
-	{ 
-	    scheme	:: String,
-	    authority	:: String,
-	    path	:: String,
-	    query	:: String,
-	    fragment	:: String
+	{ scheme	:: String	-- ^ @http@
+	, authority	:: String	-- ^ @www.haskell.org@
+	, path		:: String	-- ^ @\/ghc@
+	, query		:: String	-- ^ @query@
+	, fragment	:: String	-- ^ @frag@
 	}
 
 instance Show URI where
   showsPrec _ uri = uriToString uri
 
 -----------------------------------------------------------------------------
--- parseURI turns a string into a URI.  It returns Nothing if the
+
+-- | Turns a string into a @URI@.  It returns @Nothing@ if the
 -- string isn't a valid URI.
 
 parseURI :: String -> Maybe URI
@@ -109,17 +118,27 @@ uriRegex = mkRegex "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?"
 -----------------------------------------------------------------------------
 -- character classes
 
+-- | Returns 'True' if the character is a \"reserved\" character in a
+-- URI.  To include a literal instance of one of these characters in a
+-- component of a URI, it must be escaped.
 reserved :: Char -> Bool
 reserved c = c `elem` ";/?:@&=+$,"
 
--- can't use isAlphaNum etc. because these deal with ISO 8859 (and
--- possibly Unicode!) chars.
+-- | Returns 'True' if the character is an \"unreserved\" character in
+-- a URI.  These characters do not need to be escaped in a URI.  The
+-- only characters allowed in a URI are either 'reserved',
+-- 'unreserved', or an escape sequence (@%@ followed by two hex digits).
+-- 
 unreserved :: Char -> Bool
 unreserved c = (c >= 'A' && c <= 'Z') 
 	    || (c >= 'a' && c <= 'z')
 	    || (c >= '0' && c <= '9')
 	    || (c `elem` "-_.!~*'()")
+-- can't use isAlphaNum etc. because these deal with ISO 8859 (and
+-- possibly Unicode!) chars.
 
+-- | Returns 'True' if the character is allowed in a URI.
+--
 isAllowedInURI :: Char -> Bool
 isAllowedInURI c = reserved c || unreserved c || c == '%' -- escape char
 
@@ -127,7 +146,13 @@ escapeChar :: Char -> (Char->Bool) -> String
 escapeChar c p | p c = [c]
 	       | otherwise    = '%' : myShowHex (ord c) ""
 
-escapeString :: String -> (Char->Bool) -> String
+-- | Can be used to make a string valid for use in a URI.
+--
+escapeString
+    :: String		-- ^ the string to process
+    -> (Char->Bool)	-- ^ a predicate which returns 'False' if the character
+			-- should be escaped
+    -> String		-- the processed string
 escapeString s p = foldr (\c cs -> escapeChar c p ++ cs) "" s
 
 myShowHex :: Int -> ShowS
@@ -142,6 +167,8 @@ myShowHex n r
     | d < 10    = chr (ord '0'   + fromIntegral d)
     | otherwise = chr (ord 'A' + fromIntegral (d - 10))
 
+-- | Turns all instances of escaped characters in the string back into
+-- literal characters.
 unEscapeString :: String -> String
 unEscapeString [] = ""
 unEscapeString ('%':x1:x2:s) | isHexDigit x1 && isHexDigit x2 
@@ -157,6 +184,11 @@ hexDigit c | c >= 'A' && c <= 'F' = ord c - ord 'A' + 10
 
 -- algorithm from sec 5.2, RFC 2396
 
+-- | Returns a new @URI@ which represents the value of the first @URI@
+-- relative to the second @URI@.  For example
+--
+-- >  "foo" `relativeTo` "http://bar.org/" = "http://bar.org/foo"
+--
 relativeTo :: URI -> URI -> Maybe URI
 ref `relativeTo` base =
   -- ref has a scheme name, use it in its entirety.  Otherwise inherit
