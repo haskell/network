@@ -79,7 +79,7 @@ module Network.Socket (
     sendBufTo,          -- :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
 
     recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
-    recvBufFrom,        -- :: Socket -> Int -> Ptr a -> IO (Int, SockAddr)
+    recvBufFrom,        -- :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
     
     send,		-- :: Socket -> String -> IO Int
     recv,		-- :: Socket -> Int    -> IO String
@@ -654,12 +654,12 @@ sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
 recvFrom sock nbytes =
   allocaBytes nbytes $ \ptr -> do
-    (len, sockaddr) <- recvBufFrom sock nbytes ptr
+    (len, sockaddr) <- recvBufFrom sock ptr nbytes
     str <- peekCStringLen (ptr, len)
     return (str, len, sockaddr)
 
-recvBufFrom :: Socket -> Int -> Ptr a -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s _family _stype _protocol status) nbytes ptr
+recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
+recvBufFrom sock@(MkSocket s _family _stype _protocol status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   = 
     withNewSockAddr AF_INET $ \ptr_addr sz -> do
