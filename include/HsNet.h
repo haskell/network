@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.6 2002/06/27 08:11:26 ken Exp $
+ * $Id: HsNet.h,v 1.7 2002/08/28 17:21:28 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -52,7 +52,14 @@ extern StgInt initWinSock ();
 #include <netdb.h>
 #endif
 
-extern StgInt
+extern int
+sendFd(int sock, int outfd);
+
+extern int
+recvFd(int sock);
+
+/* The next two are scheduled for deletion */
+extern int
 sendAncillary(int sock,
 	      int level,
 	      int type,
@@ -60,7 +67,8 @@ sendAncillary(int sock,
 	      void* data,
 	      int len);
 
-extern StgInt
+
+extern int
 recvAncillary(int  sock,
 	      int* pLevel,
 	      int* pType,

@@ -90,10 +90,15 @@ module Network.Socket (
     getSocketOption,     -- :: Socket -> SocketOption -> IO Int
     setSocketOption,     -- :: Socket -> SocketOption -> Int -> IO ()
 
-    -- * Ancilliary data
+    -- * File descriptor transmission
 #ifdef DOMAIN_SOCKET_SUPPORT
+    sendFd,              -- :: Socket -> CInt -> IO ()
+    recvFd,              -- :: Socket -> IO CInt
+
+      -- Note: these two will disappear shortly
     sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
     recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
+
 #endif
 
     -- * Special Constants
@@ -390,13 +395,14 @@ socketPair family stype protocol = do
 			     (packSocketType stype)
 			     protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr 
-    GHC.Posix.setNonBlockingFD fd1
-    GHC.Posix.setNonBlockingFD fd2
-    socket_status1 <- newMVar Connected
-    socket_status2 <- newMVar Connected
-    return ( MkSocket fd1 family stype protocol socket_status1
-    	   , MkSocket fd2 family stype protocol socket_status2
-	   )
+    s1 <- mkSocket fd1
+    s2 <- mkSocket fd2
+    return (s1,s2)
+  where
+    mkSocket fd = do
+       GHC.Posix.setNonBlockingFD fd
+       stat <- newMVar Connected
+       return (MkSocket fd family stype protocol stat)
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
@@ -841,6 +847,27 @@ getPeerCred sock = do
 #if defined(DOMAIN_SOCKET_SUPPORT)
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
+sendFd :: Socket -> CInt -> IO ()
+sendFd sock outfd = do
+  let fd = fdSocket sock
+  throwErrnoIfMinus1Retry_repeatOnBlock "sendFd"
+     (threadWaitWrite (fromIntegral fd)) $
+     c_sendFd fd outfd
+   -- Note: If Winsock supported FD-passing, thi would have been 
+   -- incorrect (since socket FDs need to be closed via closesocket().)
+  c_close outfd
+  return ()
+  
+recvFd :: Socket -> IO CInt
+recvFd sock = do
+  let fd = fdSocket sock
+  theFd <- 
+    throwErrnoIfMinus1Retry_repeatOnBlock "recvFd" 
+        (threadWaitRead (fromIntegral fd)) $
+         c_recvFd fd
+  return theFd
+
+
 sendAncillary :: Socket
 	      -> Int
 	      -> Int
@@ -880,6 +907,9 @@ foreign import ccall unsafe "sendAncillary"
 
 foreign import ccall unsafe "recvAncillary"
   c_recvAncillary :: CInt -> Ptr CInt -> Ptr CInt -> CInt -> Ptr (Ptr a) -> Ptr CInt -> IO CInt
+
+foreign import ccall unsafe "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
+foreign import ccall unsafe "recvFd" c_recvFd :: CInt -> IO CInt
 
 #endif
 

@@ -7,6 +7,13 @@
 
 #if defined(HAVE_MSGHDR_MSG_CONTROL) || defined(HAVE_MSGHDR_MSG_ACCRIGHTS) /* until end */
 
+/* 
+ *  Support for transmitting file descriptors.
+ *
+ *  
+ */
+ 
+
 /*
  * sendmsg() and recvmsg() wrappers for transmitting
  * ancillary socket data.
@@ -16,9 +23,55 @@
  *  - no support for scattered read/writes.
  *  - only possible to send one ancillary chunk of data at a time.
  *
+ *
+ * NOTE: recv/sendAncillary() is being phased out in preference
+ *       of the more specific send/recvFd(), as the latter is
+ *       really the only application of recv/sendAncillary() and
+ *       stand the chance of being supported on platforms that
+ *       don't have send/recvmsg() (but do have ioctl() support
+ *       for this kind of thing, for instance.)
+ *
  */
 
-StgInt
+int
+sendFd(int sock,
+       int outfd)
+{
+  struct msghdr msg = {0};
+  struct iovec iov[1];
+  char  buf[2];
+#if defined(HAVE_MSGHDR_MSG_ACCRIGHTS)
+  msg.msg_accrights = (void*)&outfd;
+  msg.msg_accrights = sizeof(int);
+#else
+  struct cmsghdr *cmsg;
+  char ancBuffer[CMSG_SPACE(sizeof(int))];
+  char* dPtr;
+  
+  msg.msg_control = ancBuffer;
+  msg.msg_controllen = sizeof(ancBuffer);
+
+  cmsg = CMSG_FIRSTHDR(&msg);
+  cmsg->cmsg_level = SOL_SOCKET;
+  cmsg->cmsg_type = SCM_RIGHTS;
+  cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+  dPtr = (char*)CMSG_DATA(cmsg);
+  
+  *(int*)dPtr = outfd;
+  msg.msg_controllen = cmsg->cmsg_len;
+#endif
+
+  buf[0] = 0; buf[1] = '\0';
+  iov[0].iov_base = buf;
+  iov[0].iov_len  = 2;
+
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+  
+  return sendmsg(sock,&msg,0);
+}
+
+int
 sendAncillary(int sock,
 	      int level,
 	      int type,
@@ -52,7 +105,7 @@ sendAncillary(int sock,
   memcpy(dPtr, data, len);
   msg.msg_controllen = cmsg->cmsg_len;
 #endif
-  buf[0] = 'X'; buf[1] = '\0';
+  buf[0] = 0; buf[1] = '\0';
   iov[0].iov_base = buf;
   iov[0].iov_len  = 2;
 
@@ -62,7 +115,58 @@ sendAncillary(int sock,
   return sendmsg(sock,&msg,flags);
 }
 
-StgInt
+int
+recvFd(int sock)
+{
+  struct msghdr msg = {0};
+  char  duffBuf[10];
+  int rc;
+  int len = sizeof(int);
+  struct iovec iov[1];
+#if defined(HAVE_MSGHDR_MSG_CONTROL)
+  struct cmsghdr *cmsg = NULL;
+  struct cmsghdr *cptr;
+#else
+  int* fdBuffer;
+#endif
+
+  iov[0].iov_base = duffBuf;
+  iov[0].iov_len  = sizeof(duffBuf);
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+
+#if defined(HAVE_MSGHDR_MSG_CONTROL)
+  cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(len));
+  if (cmsg==NULL) {
+    return -1;
+  }
+  
+  msg.msg_control = cmsg;
+  msg.msg_controllen = CMSG_LEN(len);
+#else
+  fdBuffer = (int*)malloc(len);
+  if (fdBuffer) {
+    msg.msg_accrights    = fdBuffer;
+  } else {
+    return -1;
+  }
+  msg.msg_accrightslen = len;
+#endif
+
+  if ((rc = recvmsg(sock,&msg,0)) < 0) {
+    return rc;
+  }
+  
+#if defined(HAVE_MSGHDR_MSG_CONTROL)
+  cptr = (struct cmsghdr*)CMSG_FIRSTHDR(&msg);
+  return *(int*)CMSG_DATA(cptr);
+#else
+  return *(int*)fdBuffer;
+#endif
+}
+
+
+int
 recvAncillary(int  sock,
 	      int* pLevel,
 	      int* pType,
