@@ -28,7 +28,7 @@ Package {
         include_dirs   = [ "$libdir/libraries/network/include" ],
 #endif
         c_includes     = [ "HsNet.h" ],
-        package_deps   = [ "base" ],
+        package_deps   = [ "base", "parsec" ],
         extra_ghc_opts = [],
         extra_cc_opts  = [],
         extra_ld_opts  = []
