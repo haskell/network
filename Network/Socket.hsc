@@ -21,6 +21,9 @@
 
 #include "HsNet.h"
 
+-- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
+##include "../../base/include/Typeable.h"
+
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
 #define WITH_WINSOCK  1
 #endif
@@ -171,6 +174,7 @@ import Data.Ratio ( (%) )
 
 import qualified Control.Exception
 import Control.Concurrent.MVar
+import Data.Typeable
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
@@ -210,6 +214,8 @@ data SocketStatus
   | Connected		-- connect/accept
     deriving (Eq, Show)
 
+INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
+
 data Socket
   = MkSocket
 	    CInt	         -- File Descriptor
@@ -217,6 +223,8 @@ data Socket
 	    SocketType				  
 	    ProtocolNumber	 -- Protocol Number
 	    (MVar SocketStatus)  -- Status Flag
+
+INSTANCE_TYPEABLE0(Socket,socketTc,"Socket")
 
 mkSocket :: CInt
 	 -> Family
@@ -254,6 +262,8 @@ type HostAddress = Word32
 -- network-byte-order first.
 --
 newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
+
+INSTANCE_TYPEABLE0(PortNumber,portNumberTc,"PortNumber")
 
 instance Show PortNumber where
   showsPrec p pn = showsPrec p (portNumberToInt pn)
@@ -326,6 +336,8 @@ data SockAddr		-- C Names
         String          -- sun_path
 #endif
   deriving (Eq)
+
+INSTANCE_TYPEABLE0(SockAddr,sockAddrTc,"SockAddr")
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)
@@ -859,6 +871,8 @@ data SocketOption
 #ifdef SO_USELOOPBACK
     | UseLoopBack   {- SO_USELOOPBACK -}
 #endif
+
+INSTANCE_TYPEABLE0(SocketOption,socketOptionTc,"SocketOption")
 
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so = 
@@ -1597,6 +1611,8 @@ data SocketType
 #endif
 	deriving (Eq, Ord, Read, Show)
 	
+INSTANCE_TYPEABLE0(SocketType,socketTypeTc,"SocketType")
+
 packSocketType stype = case stype of
 	NoSocketType -> 0
 #ifdef SOCK_STREAM
@@ -1644,6 +1660,8 @@ data ShutdownCmd
  = ShutdownReceive
  | ShutdownSend
  | ShutdownBoth
+
+INSTANCE_TYPEABLE0(ShutdownCmd,shutdownCmdTc,"ShutdownCmd")
 
 sdownCmdToInt :: ShutdownCmd -> CInt
 sdownCmdToInt ShutdownReceive = 0
