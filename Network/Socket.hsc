@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.4 2002/02/13 12:02:24 simonmar Exp $
+-- $Id: Socket.hsc,v 1.5 2002/02/14 14:10:21 simonmar Exp $
 --
 -- Low-level socket bindings
 --
@@ -100,7 +100,6 @@ import Control.Monad ( liftM )
 import Data.Ratio ( (%) )
 
 #ifdef __GLASGOW_HASKELL__
-import Data.Bits
 import Control.Concurrent.MVar
 
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
@@ -180,7 +179,7 @@ portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
 foreign import ccall unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import ccall unsafe "htons" htons :: Word16 -> Word16
-foreign import ccall unsafe "ntohl" ntohl :: Word32 -> Word32
+--foreign import ccall unsafe "ntohl" ntohl :: Word32 -> Word32
 foreign import ccall unsafe "htonl" htonl :: Word32 -> Word32
 
 instance Enum PortNumber where
