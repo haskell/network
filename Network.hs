@@ -9,28 +9,46 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Basic network interface
+-- The "Network" interface is a \"higher-level\" interface to
+-- networking facilities, and it is recommended unless you need the
+-- lower-level interface in "Network.Socket".
 --
 -----------------------------------------------------------------------------
 
 module Network (
+
+	-- * Basic data types
 	Socket,
         PortID(..),
 	HostName,
+	PortNumber,	-- instance (Eq, Enum, Num, Real, Integral)
 
-	connectTo,	-- :: HostName -> PortID -> IO Handle
-	listenOn,	-- :: PortID -> IO Socket
+	-- * Initialisation
+	withSocketsDo,  -- :: IO a   -> IO a
 	
+	-- * Server-side connections
+	listenOn,	-- :: PortID -> IO Socket
 	accept,		-- :: Socket -> IO (Handle, HostName, PortNumber)
 
+	-- * Client-side connections
+	connectTo,	-- :: HostName -> PortID -> IO Handle
+
+	-- * Simple sending and receiving
 	sendTo,		-- :: HostName -> PortID -> String -> IO ()
 	recvFrom,	-- :: HostName -> PortID -> IO String
 
+	-- * Miscellaneous
 	socketPort,	-- :: Socket -> IO PortID
-	
-	withSocketsDo,  -- :: IO a   -> IO a
-	
-	PortNumber,	-- instance (Eq, Enum, Num, Real, Integral)
+
+	-- * Networking Issues
+	-- ** Buffering
+	{-$buffering-}
+
+	-- ** Improving I\/O Performance over sockets
+	{-$performance-}
+
+	-- ** @SIGPIPE@
+	{-$sigpipe-}
 
        ) where
 
@@ -43,11 +61,6 @@ import System.IO
 
 -- ---------------------------------------------------------------------------
 -- High Level ``Setup'' functions
-
--- Calling @connectTo@ creates a client side socket which is
--- connected to the given host and port.  The Protocol and socket type is
--- derived from the given port identifier.  If a port number is given
--- then the result is always an internet family @Stream@ socket. 
 
 -- If the @PortID@ specifies a unix family socket and the @Hostname@
 -- differs from that returned by @getHostname@ then an error is
@@ -64,6 +77,11 @@ data PortID =
 type Hostname = String
 -- Maybe consider this alternative.
 -- data Hostname = Name String | IP Int Int Int Int
+
+-- | Calling 'connectTo' creates a client side socket which is
+-- connected to the given host and port.  The Protocol and socket type is
+-- derived from the given port identifier.  If a port number is given
+-- then the result is always an internet family 'Stream' socket. 
 
 connectTo :: HostName		-- Hostname
 	  -> PortID 		-- Port Identifier
@@ -91,13 +109,17 @@ connectTo _ (UnixSocket path) = do
     socketToHandle sock ReadWriteMode
 #endif
 
--- The dual to the @connectTo@ call. This creates the server side
--- socket which has been bound to the specified port.
--- NOTE: To avoid the "Address already in use" problems popped up
--- several times in GHC-Users we set ReuseAddr to 1.
+-- | Creates the server side socket which has been bound to the
+-- specified port.  
+--
+-- NOTE: To avoid the \"Address already in use\"
+-- problems popped up several times on the GHC-Users mailing list we
+-- set the 'ReuseAddr' socket option on the listening socket.  If you
+-- don't want this behaviour, please use the lower level
+-- 'Network.Socket.listen' instead.
 
-listenOn :: PortID 	-- Port Identifier
-	 -> IO Socket	-- Connected Socket
+listenOn :: PortID 	-- ^ Port Identifier
+	 -> IO Socket	-- ^ Connected Socket
 
 listenOn (Service serv) = do
     proto   <- getProtocolNumber "tcp"
@@ -127,10 +149,17 @@ listenOn (UnixSocket path) = do
 -- -----------------------------------------------------------------------------
 -- accept
 
-accept :: Socket 		-- Listening Socket
-       -> IO (Handle, 		-- StdIO Handle for read/write
-	      HostName, 	-- HostName of Peer socket
-	      PortNumber)	-- Portnumber of remote connection
+-- | Accept a connection on a socket created by 'listenOn'.  Normal
+-- I\/O opertaions (see "System.IO") can be used on the 'Handle'
+-- returned to communicate with the client.
+--
+accept :: Socket 		-- ^ Listening Socket
+       -> IO (Handle,
+	      HostName,
+	      PortNumber)	-- ^ Triple of: read\/write 'Handle' for 
+				-- communicating with the client,
+			 	-- the 'HostName' of the peer socket, and
+				-- the 'PortNumber' of the remote connection.
 accept sock = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
  (HostEntry peer _ _ _)           <- getHostByAddr AF_INET haddr
@@ -179,6 +208,7 @@ recvFrom host port = do
 -- ---------------------------------------------------------------------------
 -- Access function returning the port type/id of socket.
 
+-- | Returns the 'PortID' associated with a given socket.
 socketPort :: Socket -> IO PortID
 socketPort s = do
     sockaddr <- getSocketName s
@@ -190,3 +220,38 @@ socketPort s = do
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
      SockAddrUnix path	    -> UnixSocket path
 #endif
+
+-----------------------------------------------------------------------------
+-- Extra documentation
+
+{-$buffering
+
+The 'Handle' returned by 'connectTo' and 'accept' is block-buffered by
+default.  For an interactive application you may want to set the
+buffering mode on the 'Handle' to
+'LineBuffering' or 'NoBuffering', like so:
+
+> h <- connectTo host port
+> hSetBuffering h LineBuffering
+-}
+
+{-$performance
+
+For really fast I\/O, it might be worth looking at the 'hGetBuf' and
+'hPutBuf' family of functions in "System.IO".
+-}
+
+{-$sigpipe
+
+On Unix, when reading from a socket and the writing end is
+closed by the remote client, the program is normally sent a
+@SIGPIPE@ signal by the operating system.  The
+default behaviour when a @SIGPIPE@ is received is
+to terminate the program silently, which can be somewhat confusing
+if you haven't encountered this before.  The solution is to
+specify that @SIGPIPE@ is to be ignored, using
+the POSIX library:
+
+>  import Posix
+>  main = do installHandler sigPIPE Ignore Nothing; ...
+-}

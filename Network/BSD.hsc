@@ -7,15 +7,16 @@
 -- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
--- Portability :  portable
+-- Portability :  non-portable
 --
--- Misc BSD bindings
---
--- The BSD module defines Haskell bindings to functionality
+-- The "Network.BSD" module defines Haskell bindings to functionality
 -- provided by BSD Unix derivatives. Currently this covers
 -- network programming functionality and symbolic links.
--- (OK, so the latter is pretty much supported by most *nixes
--- today, but it was BSD that introduced them.)
+-- (OK, so the latter is pretty much supported by most Unixes
+-- today, but it was BSD that introduced them.)  
+--
+-- The symlink stuff is really in the wrong place, at some point it will move
+-- to a generic Unix library somewhere else in the module tree.
 --
 -----------------------------------------------------------------------------
 
@@ -23,9 +24,23 @@
 
 module Network.BSD (
        
+    -- * Host names
     HostName,
     getHostName,	    -- :: IO HostName
 
+    HostEntry(..),
+    getHostByName,	    -- :: HostName -> IO HostEntry
+    getHostByAddr,	    -- :: HostAddress -> Family -> IO HostEntry
+    hostAddress,	    -- :: HostEntry -> HostAddress
+
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+    setHostEntry,	    -- :: Bool -> IO ()
+    getHostEntry,	    -- :: IO HostEntry
+    endHostEntry,	    -- :: IO ()
+    getHostEntries,	    -- :: Bool -> IO [HostEntry]
+#endif
+
+    -- * Service names
     ServiceEntry(..),
     ServiceName,
     getServiceByName,	    -- :: ServiceName -> ProtocolName -> IO ServiceEntry
@@ -39,6 +54,7 @@ module Network.BSD (
     getServiceEntries,	    -- :: Bool -> IO [ServiceEntry]
 #endif
 
+    -- * Protocol names
     ProtocolName,
     ProtocolNumber,
     ProtocolEntry(..),
@@ -53,20 +69,10 @@ module Network.BSD (
     getProtocolEntries,	    -- :: Bool -> IO [ProtocolEntry]
 #endif
 
+    -- * Port numbers
     PortNumber,
 
-    HostEntry(..),
-    getHostByName,	    -- :: HostName -> IO HostEntry
-    getHostByAddr,	    -- :: HostAddress -> Family -> IO HostEntry
-    hostAddress,	    -- :: HostEntry -> HostAddress
-
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
-    setHostEntry,	    -- :: Bool -> IO ()
-    getHostEntry,	    -- :: IO HostEntry
-    endHostEntry,	    -- :: IO ()
-    getHostEntries,	    -- :: Bool -> IO [HostEntry]
-#endif
-
+    -- * Network names
     NetworkName,
     NetworkAddr,
     NetworkEntry(..),
@@ -80,6 +86,7 @@ module Network.BSD (
     getNetworkEntries,      -- :: Bool -> IO [NetworkEntry]
 #endif
 
+    -- * Symbolic links
 #ifdef HAVE_SYMLINK
     , symlink		    -- :: String -> String -> IO ()
 #endif

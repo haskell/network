@@ -9,10 +9,13 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Low-level socket bindings
+-- The "Network.Socket" module is for when you want full control over
+-- sockets.  Essentially the entire C socket API is exposed through
+-- this module; in general the operations follow the behaviour of the C
+-- functions of the same name (consult your favourite Unix networking book).
 --
--- The Socket module is for when you want full control over the
--- sockets, exposing the C socket API.
+-- A higher level interface to networking operations is provided
+-- through the module "Network".
 --
 -----------------------------------------------------------------------------
 
@@ -29,6 +32,7 @@
 
 module Network.Socket (
 
+    -- * Types
     Socket,		-- instance Eq, Show
     Family(..),		
     SocketType(..),
@@ -37,7 +41,9 @@ module Network.Socket (
     HostAddress,
     ShutdownCmd(..),
     ProtocolNumber,
+    PortNumber(..),
 
+    -- * Socket Operations
     socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
 #if defined(DOMAIN_SOCKET_SUPPORT)
     socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
@@ -48,6 +54,11 @@ module Network.Socket (
     accept,		-- :: Socket -> IO (Socket, SockAddr)
     getPeerName,	-- :: Socket -> IO SockAddr
     getSocketName,	-- :: Socket -> IO SockAddr
+
+#ifdef SO_PEERCRED
+	-- get the credentials of our domain socket peer.
+    getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
+#endif
 
     socketPort,		-- :: Socket -> IO PortNumber
 
@@ -62,33 +73,28 @@ module Network.Socket (
     inet_addr,		-- :: String -> IO HostAddress
     inet_ntoa,		-- :: HostAddress -> IO String
 
+    shutdown,		-- :: Socket -> ShutdownCmd -> IO ()
+    sClose,		-- :: Socket -> IO ()
+
+    -- ** Predicates on sockets
     sIsConnected,	-- :: Socket -> IO Bool
     sIsBound,		-- :: Socket -> IO Bool
     sIsListening,	-- :: Socket -> IO Bool 
     sIsReadable,	-- :: Socket -> IO Bool
     sIsWritable,	-- :: Socket -> IO Bool
-    shutdown,		-- :: Socket -> ShutdownCmd -> IO ()
-    sClose,		-- :: Socket -> IO ()
 
-    -- socket opts
+    -- * Socket options
     SocketOption(..),
     getSocketOption,     -- :: Socket -> SocketOption -> IO Int
     setSocketOption,     -- :: Socket -> SocketOption -> Int -> IO ()
 
-#ifdef SO_PEERCRED
-	-- get the credentials of our domain socket peer.
-    getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
-#endif
-
+    -- * Ancilliary data
 #ifdef DOMAIN_SOCKET_SUPPORT
     sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
     recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
 #endif
 
-    PortNumber(..),	 -- instance (Eq, Ord, Enum, Num, Real, 
-			 --		Integral, Storable)
-
-    -- Special Constants
+    -- * Special Constants
     aNY_PORT,		-- :: PortNumber
     iNADDR_ANY,		-- :: HostAddress
     sOMAXCONN,		-- :: Int
@@ -98,8 +104,10 @@ module Network.Socket (
 #endif
     maxListenQueue,	-- :: Int
 
+    -- * Initialisation
     withSocketsDo,	-- :: IO a -> IO a
     
+    -- * Very low level operations
      -- in case you ever want to get at the underlying file descriptor..
     fdSocket,           -- :: Socket -> CInt
     mkSocket,           -- :: CInt   -> Family 
@@ -108,7 +116,9 @@ module Network.Socket (
 			-- -> SocketStatus
 			-- -> IO Socket
 
-    -- The following are exported ONLY for use in the BSD module and
+    -- * Internal
+
+    -- | The following are exported ONLY for use in the BSD module and
     -- should not be used anywhere else.
 
     packFamily, unpackFamily,
@@ -798,6 +808,9 @@ getSocketOption (MkSocket s _ _ _ _) so = do
 
 
 #ifdef SO_PEERCRED
+-- | Returns the processID, userID and groupID of the socket's peer.
+--
+-- Only available on platforms that support SO_PEERCRED on domain sockets.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
   let fd = fdSocket sock
@@ -899,6 +912,10 @@ packFamily	:: Family -> CInt
 
 packSocketType	:: SocketType -> CInt
 
+-- | Address Families.
+--
+-- This data type might have different constructors depending on what is
+-- supported by the operating system.
 data Family
 	= AF_UNSPEC	-- unspecified
 #ifdef AF_UNIX
@@ -1365,6 +1382,10 @@ unpackFamily f = case f of
 
 -- Socket Types.
 
+-- | Socket Types.
+--
+-- This data type might have different constructors depending on what is
+-- supported by the operating system.
 data SocketType
 	= NoSocketType
 #ifdef SOCK_STREAM
@@ -1517,11 +1538,16 @@ socketToHandle (MkSocket s family stype protocol status) m =
 -- ---------------------------------------------------------------------------
 -- WinSock support
 
--- If you're using WinSock, the programmer has to call a startup
--- routine before starting to use the goods. So, if you want to
--- stay portable across all ghc-supported platforms, you have to
--- use @withSocketsDo@...:
+{-| On Windows operating systems, the networking subsystem has to be
+initialised using 'withSocketsDo' before any networking operations can
+be used.  eg.
 
+> main = withSocketsDo $ do {...}
+
+Although this is only strictly necessary on Windows platforms, it is
+harmless on other platforms, so for portability it is good practice to
+use it all the time.
+-}
 withSocketsDo :: IO a -> IO a
 #if !defined(WITH_WINSOCK)
 withSocketsDo x = x
