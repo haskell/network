@@ -26,8 +26,16 @@
 #define WITH_WINSOCK  1
 #endif
 
-#if !defined(mingw32_TARGET_OS)
+#if !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 #define DOMAIN_SOCKET_SUPPORT 1
+#endif
+
+#if !defined(CALLCONV)
+#ifdef WITH_WINSOCK
+#define CALLCONV stdcall
+#else
+#define CALLCONV ccall
+#endif
 #endif
 
 -- In order to process this file, you need to have CALLCONV defined.
@@ -64,7 +72,9 @@ module Network.Socket (
 
     socketPort,		-- :: Socket -> IO PortNumber
 
+#if defined(__GLASGOW_HASKELL__)
     socketToHandle,	-- :: Socket -> IOMode -> IO Handle
+#endif
 
     sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
     recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
@@ -133,6 +143,10 @@ module Network.Socket (
 
 ) where
 
+#ifdef __HUGS__
+import Hugs.Prelude
+#endif
+
 import Foreign
 import Foreign.C
 import Foreign.Marshal.Array ( peekArray )
@@ -142,10 +156,9 @@ import Control.Monad ( liftM )
 import Data.Ratio ( (%) )
 
 import qualified Control.Exception
-
-#ifdef __GLASGOW_HASKELL__
 import Control.Concurrent.MVar
 
+#ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 import GHC.Handle
 import GHC.IOBase
@@ -375,7 +388,9 @@ socket :: Family 	 -- Family Name (usually AF_INET)
 socket family stype protocol = do
     fd <- throwErrnoIfMinus1Retry "socket" $
 		c_socket (packFamily family) (packSocketType stype) protocol
+#if !defined(__HUGS__)
     GHC.Posix.setNonBlockingFD fd
+#endif
     socket_status <- newMVar NotConnected
     return (MkSocket fd family stype protocol socket_status)
 
@@ -400,7 +415,9 @@ socketPair family stype protocol = do
     return (s1,s2)
   where
     mkSocket fd = do
+#if !defined(__HUGS__)
        GHC.Posix.setNonBlockingFD fd
+#endif
        stat <- newMVar Connected
        return (MkSocket fd family stype protocol stat)
 
@@ -480,7 +497,9 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
        	       else return r
 
 	connectBlocked = do 
+#if !defined(__HUGS__)
 	   threadWaitWrite (fromIntegral s)
+#endif
 	   err <- getSocketOption sock SoError
 	   if (err == 0)
 	   	then return 0
@@ -542,10 +561,15 @@ accept sock@(MkSocket s family stype protocol status) = do
      let sz = sizeOfSockAddr_Family family
      allocaBytes sz $ \ sockaddr -> do
      withObject (fromIntegral sz) $ \ ptr_len -> do
-     new_sock <- throwErrnoIfMinus1Retry_repeatOnBlock "accept" 
+     new_sock <- 
+#if !defined(__HUGS__)
+                 throwErrnoIfMinus1Retry_repeatOnBlock "accept" 
 			(threadWaitRead (fromIntegral s))
+#endif
 			(c_accept s sockaddr ptr_len)
+#if !defined(__HUGS__)
      GHC.Posix.setNonBlockingFD new_sock
+#endif
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
@@ -562,8 +586,10 @@ sendTo (MkSocket s _family _stype _protocol status) xs addr = do
  withSockAddr addr $ \p_addr sz -> do
  withCString xs $ \str -> do
    liftM fromIntegral $
+#if !defined(__HUGS__)
      throwErrnoIfMinus1Retry_repeatOnBlock "sendTo"
 	(threadWaitWrite (fromIntegral s)) $
+#endif
 	c_sendto s str (fromIntegral $ length xs) 0{-flags-} 
 			p_addr (fromIntegral sz)
 
@@ -575,8 +601,11 @@ recvFrom sock@(MkSocket s _family _stype _protocol status) nbytes
     withNewSockAddr AF_INET $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
       	poke ptr_len (fromIntegral sz)
-        len <- throwErrnoIfMinus1Retry_repeatOnBlock "recvFrom" 
+        len <- 
+#if !defined(__HUGS__)
+	       throwErrnoIfMinus1Retry_repeatOnBlock "recvFrom" 
         	   (threadWaitRead (fromIntegral s)) $
+#endif
         	   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
 				ptr_addr ptr_len
         let len' = fromIntegral len
@@ -604,8 +633,10 @@ send :: Socket	-- Bound/Connected Socket
 send (MkSocket s _family _stype _protocol status) xs = do
  withCString xs $ \str -> do
    liftM fromIntegral $
+#if !defined(__HUGS__)
      throwErrnoIfMinus1Retry_repeatOnBlock "send"
 	(threadWaitWrite (fromIntegral s)) $
+#endif
 	c_send s str (fromIntegral $ length xs) 0{-flags-} 
 
 recv :: Socket -> Int -> IO String
@@ -613,8 +644,11 @@ recv sock@(MkSocket s _family _stype _protocol status) nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
-        len <- throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
+        len <- 
+#if !defined(__HUGS__)
+	       throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
         	   (threadWaitRead (fromIntegral s)) $
+#endif
         	   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
         let len' = fromIntegral len
 	if len' == 0
@@ -850,9 +884,13 @@ getPeerCred sock = do
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
   let fd = fdSocket sock
+#if !defined(__HUGS__)
   throwErrnoIfMinus1Retry_repeatOnBlock "sendFd"
      (threadWaitWrite (fromIntegral fd)) $
      c_sendFd fd outfd
+#else
+  c_sendFd fd outfd
+#endif
    -- Note: If Winsock supported FD-passing, thi would have been 
    -- incorrect (since socket FDs need to be closed via closesocket().)
   c_close outfd
@@ -862,8 +900,10 @@ recvFd :: Socket -> IO CInt
 recvFd sock = do
   let fd = fdSocket sock
   theFd <- 
+#if !defined(__HUGS__)
     throwErrnoIfMinus1Retry_repeatOnBlock "recvFd" 
         (threadWaitRead (fromIntegral fd)) $
+#endif
          c_recvFd fd
   return theFd
 
@@ -877,8 +917,11 @@ sendAncillary :: Socket
 	      -> IO ()
 sendAncillary sock level ty flags datum len = do
   let fd = fdSocket sock
+  _ <-
+#if !defined(__HUGS__)
   throwErrnoIfMinus1Retry_repeatOnBlock "sendAncillary"
      (threadWaitWrite (fromIntegral fd)) $
+#endif
      c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
      			(fromIntegral flags) datum (fromIntegral len)
   return ()
@@ -894,9 +937,12 @@ recvAncillary sock flags len = do
     alloca      $ \ ptr_ty    ->
      alloca      $ \ ptr_pData -> do
       poke ptr_len (fromIntegral len)
-      throwErrnoIfMinus1Retry_repeatOnBlock "recvAncillary" 
-           (threadWaitRead (fromIntegral fd)) $
-	   c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
+      _ <- 
+#if !defined(__HUGS__)
+        throwErrnoIfMinus1Retry_repeatOnBlock "recvAncillary" 
+            (threadWaitRead (fromIntegral fd)) $
+#endif
+	    c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
       len <- fromIntegral `liftM` peek ptr_len
       lev <- fromIntegral `liftM` peek ptr_lev
       ty  <- fromIntegral `liftM` peek ptr_ty
@@ -1568,17 +1614,25 @@ inet_ntoa haddr = do
 -- socketHandle turns a Socket into a Haskell IO Handle. By default, the new
 -- handle is unbuffered. Use hSetBuffering to alter this.
 
-#ifndef __PARALLEL_HASKELL__
+#ifdef __GLASGOW_HASKELL__
+# ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ _) mode = do
     openFd (fromIntegral fd) (Just GHC.Posix.Stream) (show s) mode True{-bin-} False{-no truncate-}
-#else
+# else
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"
+# endif
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
-mkInvalidRecvArgError loc = IOError Nothing InvalidArgument loc "non-positive length" Nothing
+mkInvalidRecvArgError loc = IOError Nothing 
+#ifdef __GLASGOW_HASKELL__
+				    InvalidArgument
+#else
+				    IllegalOperation
+#endif
+				    loc "non-positive length" Nothing
 
 mkEOFError :: String -> IOError
 mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing

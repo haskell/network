@@ -33,7 +33,7 @@ module Network.BSD (
     getHostByAddr,	    -- :: HostAddress -> Family -> IO HostEntry
     hostAddress,	    -- :: HostEntry -> HostAddress
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
     setHostEntry,	    -- :: Bool -> IO ()
     getHostEntry,	    -- :: IO HostEntry
     endHostEntry,	    -- :: IO ()
@@ -47,7 +47,7 @@ module Network.BSD (
     getServiceByPort,       -- :: PortNumber  -> ProtocolName -> IO ServiceEntry
     getServicePortNumber,   -- :: ServiceName -> IO PortNumber
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
     getServiceEntry,	    -- :: IO ServiceEntry
     setServiceEntry,	    -- :: Bool -> IO ()
     endServiceEntry,	    -- :: IO ()
@@ -62,7 +62,7 @@ module Network.BSD (
     getProtocolByNumber,    -- :: ProtocolNumber -> IO ProtcolEntry
     getProtocolNumber,	    -- :: ProtocolName   -> ProtocolNumber
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
     setProtocolEntry,	    -- :: Bool -> IO ()
     getProtocolEntry,	    -- :: IO ProtocolEntry
     endProtocolEntry,	    -- :: IO ()
@@ -77,7 +77,7 @@ module Network.BSD (
     NetworkAddr,
     NetworkEntry(..)
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
     , getNetworkByName	    -- :: NetworkName -> IO NetworkEntry
     , getNetworkByAddr      -- :: NetworkAddr -> Family -> IO NetworkEntry
     , setNetworkEntry	    -- :: Bool -> IO ()
@@ -98,6 +98,9 @@ module Network.BSD (
 
 #include "HsNet.h"
 
+#ifdef __HUGS__
+import Hugs.Prelude
+#endif
 import Network.Socket
 
 import Foreign.C
@@ -167,7 +170,7 @@ getServiceByName name proto = do
  withCString proto $ \ cstr_proto -> do
  ptr <- c_getservbyname cstr_name cstr_proto
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getServiceByName" "no such service entry" Nothing)
     else peek ptr
 
@@ -179,7 +182,7 @@ getServiceByPort (PortNum port) proto = do
  withCString proto $ \ cstr_proto -> do
  ptr <- c_getservbyport (fromIntegral port) cstr_proto
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	  "getServiceByPort" "no such service entry" Nothing)
     else peek ptr
 
@@ -191,12 +194,12 @@ getServicePortNumber name = do
     (ServiceEntry _ _ port _) <- getServiceByName name "tcp"
     return port
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getServiceEntry	:: IO ServiceEntry
 getServiceEntry = do
     ptr <- c_getservent
     if ptr == nullPtr
-       then ioException (IOError Nothing NoSuchThing
+       then ioError (IOError Nothing NoSuchThing
 	   "getServiceEntry" "no such service entry" Nothing)
        else peek ptr
 
@@ -260,7 +263,7 @@ getProtocolByName name = do
  withCString name $ \ name_cstr -> do
  ptr <- c_getprotobyname name_cstr
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getProtocolByName" "no such protocol entry" Nothing)
     else peek ptr
 
@@ -272,7 +275,7 @@ getProtocolByNumber :: ProtocolNumber -> IO ProtocolEntry
 getProtocolByNumber num = do
  ptr <- c_getprotobynumber (fromIntegral num)
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getProtocolByNumber" "no such protocol entry" Nothing)
     else peek ptr
 
@@ -285,12 +288,12 @@ getProtocolNumber proto = do
  (ProtocolEntry _ _ num) <- getProtocolByName proto
  return num
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB
 getProtocolEntry = do
  ptr <- c_getprotoent
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getProtocolEntry" "no such protocol entry" Nothing)
     else peek ptr
 
@@ -359,7 +362,7 @@ getHostByName name = do
   withCString name $ \ name_cstr -> do
   ptr <- c_gethostbyname name_cstr
   if ptr == nullPtr
-     then ioException (IOError Nothing NoSuchThing
+     then ioError (IOError Nothing NoSuchThing
 	   "getHostByName" "no such host entry" Nothing)
      else peek ptr
 
@@ -371,19 +374,19 @@ getHostByAddr family addr = do
  withObject addr $ \ ptr_addr -> do
  ptr <- c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getHostByAddr" "no such host entry" Nothing)
     else peek ptr
 
 foreign import ccall unsafe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getHostEntry :: IO HostEntry
 getHostEntry = do
  ptr <- c_gethostent
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getHostEntry" "unable to retrieve host entry" Nothing)
     else peek ptr
 
@@ -446,13 +449,13 @@ instance Storable NetworkEntry where
    poke p = error "Storable.poke(BSD.NetEntry) not implemented"
 
 
-#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
+#if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS) && !defined(_WIN32)
 getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = do
  withCString name $ \ name_cstr -> do
  ptr <- c_getnetbyname name_cstr
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getNetworkByName" "no such network entry" Nothing)
     else peek ptr
 
@@ -463,7 +466,7 @@ getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
 getNetworkByAddr addr family = do
  ptr <- c_getnetbyaddr addr (packFamily family)
  if ptr == nullPtr
-    then ioException (IOError Nothing NoSuchThing
+    then ioError (IOError Nothing NoSuchThing
 	"getNetworkByAddr" "no such network entry" Nothing)
     else peek ptr
 
@@ -474,7 +477,7 @@ getNetworkEntry :: IO NetworkEntry
 getNetworkEntry = do
  ptr <- c_getnetent
  if ptr == nullPtr
-   then ioException (IOError Nothing NoSuchThing
+   then ioError (IOError Nothing NoSuchThing
 	"getNetworkEntry" "no more network entries" Nothing)
    else peek ptr
 
