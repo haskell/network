@@ -1,6 +1,7 @@
 name:		network
 version:	1.0
 license:	BSD3
+license-file:	LICENSE
 maintainer:	libraries@haskell.org
 synopsis:	Networking-related facilities
 build-depends:	base, parsec
