@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.16 2002/05/15 17:08:45 sof Exp $
+-- $Id: Socket.hsc,v 1.17 2002/05/31 14:18:39 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -18,7 +18,10 @@
 --
 -----------------------------------------------------------------------------
 
-#ifdef mingw32_TARGET_OS
+#include "config.h"
+#include "HsNet.h"
+
+#if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
 #define WITH_WINSOCK  1
 #endif
 
@@ -79,7 +82,7 @@ module Network.Socket (
     getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
 #endif
 
-#ifndef WITH_WINSOCK
+#ifdef DOMAIN_SOCKET_SUPPORT
     sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
     recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
 #endif
@@ -114,9 +117,6 @@ module Network.Socket (
     packSocketType,
 
 ) where
-
-#include "config.h"
-#include "HsNet.h"
 
 import Foreign
 import Foreign.C
