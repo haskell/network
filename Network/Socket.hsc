@@ -1795,8 +1795,8 @@ throwErrnoIfMinus1Retry_repeatOnBlock name on_block act = do
 
 throwSocketErrorIfMinus1Retry name act = throwErrnoIfMinus1Retry name act
 
-throwSocketErrorIfMinus1_ name act 
-  = throwErrnoIfMinus1_ name act
+throwSocketErrorIfMinus1_ :: Num a => String -> IO a -> IO ()
+throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
 #else
 
 throwErrnoIfMinus1Retry_mayBlock name _ act
@@ -1805,8 +1805,8 @@ throwErrnoIfMinus1Retry_mayBlock name _ act
 throwErrnoIfMinus1Retry_repeatOnBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
 
-throwSocketErrorIfMinus1_ name act 
-  = throwSocketErrorIfMinus1Retry name act
+throwSocketErrorIfMinus1_ :: Num a => String -> IO a -> IO ()
+throwSocketErrorIfMinus1_ = throwSocketErrorIfMinus1Retry
 
 # if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
 throwSocketErrorIfMinus1Retry name act = do
