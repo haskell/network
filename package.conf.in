@@ -19,7 +19,7 @@ import-dirs:	IMPORT_DIR
 library-dirs:	LIB_DIR
 hs-libraries:   "HSnetwork"
 
-#ifdef solaris2_TARGET_OS
+#ifdef solaris2_HOST_OS
 extra-libs:	"nsl",  "socket"
 #elif defined(_MSC_VER) || defined(__MINGW32__)
 extra-libs:	"wsock32"

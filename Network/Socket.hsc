@@ -21,11 +21,11 @@
 
 #include "HsNet.h"
 
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
 #define WITH_WINSOCK  1
 #endif
 
-#if !defined(mingw32_TARGET_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
 #define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
@@ -174,7 +174,7 @@ import Control.Concurrent.MVar
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
-# if defined(mingw32_TARGET_OS)
+# if defined(mingw32_HOST_OS)
 import GHC.Conc         (asyncDoProc, asyncRead, asyncWrite)
 import Foreign( FunPtr )
 # endif
@@ -327,9 +327,9 @@ data SockAddr		-- C Names
 #endif
   deriving (Eq)
 
-#if defined(WITH_WINSOCK) || defined(cygwin32_TARGET_OS)
+#if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)
-#elif defined(darwin_TARGET_OS)
+#elif defined(darwin_HOST_OS)
 type CSaFamily = (#type u_char)
 #else
 type CSaFamily = (#type sa_family_t)
@@ -516,7 +516,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
        	   r <- c_connect s p_addr (fromIntegral sz)
        	   if r == -1
        	       then do 
-#if !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS))
+#if !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
 	       	       err <- getErrno
 		       case () of
 			 _ | err == eINTR       -> connectLoop
@@ -600,7 +600,7 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddr_Family family
      allocaBytes sz $ \ sockaddr -> do
-#if defined(mingw32_TARGET_OS) && !defined(__HUGS__)
+#if defined(mingw32_HOST_OS) && !defined(__HUGS__)
      paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
      rc        <- asyncDoProc c_acceptDoProc paramData
      new_sock  <- c_acceptNewSock    paramData
@@ -623,7 +623,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
 
-#if defined(mingw32_TARGET_OS) && !defined(__HUGS__)
+#if defined(mingw32_HOST_OS) && !defined(__HUGS__)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"
@@ -707,7 +707,7 @@ send (MkSocket s _family _stype _protocol status) xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_TARGET_OS)
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
       do 
        (l, rc) <- asyncWrite (fromIntegral s) 1{-socket-} (fromIntegral len) str
        if l == (-1)
@@ -731,7 +731,7 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
         len <- 
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_TARGET_OS)
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
           do
 	   (l,rc) <- asyncRead (fromIntegral s) 1{-is socket-} (fromIntegral nbytes) ptr
 	   if (l == -1)
@@ -1824,7 +1824,7 @@ foreign import CALLCONV unsafe "setsockopt"
 -----------------------------------------------------------------------------
 -- Support for thread-safe blocking operations in GHC.
 
-#if defined(__GLASGOW_HASKELL__) && !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS))
+#if defined(__GLASGOW_HASKELL__) && !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
 
 
 {-# SPECIALISE 
@@ -1865,7 +1865,7 @@ throwSocketErrorIfMinus1_ name act = do
   throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_TARGET_OS)
+# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1) 

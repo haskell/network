@@ -74,7 +74,7 @@ import Control.Exception as Exception
 data PortID = 
 	  Service String		-- Service Name eg "ftp"
 	| PortNumber PortNumber		-- User defined Port Number
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 	| UnixSocket String		-- Unix family socket in file system
 #endif
 
@@ -110,7 +110,7 @@ connectTo hostname (PortNumber port) = do
       	  socketToHandle sock ReadWriteMode
 	)
 
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 connectTo _ (UnixSocket path) = do
     bracketOnError
 	(socket AF_UNIX Stream 0)
@@ -158,7 +158,7 @@ listenOn (PortNumber port) = do
 	    return sock
 	)
 
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 listenOn (UnixSocket path) =
     bracketOnError
     	(socket AF_UNIX Stream 0)
@@ -200,7 +200,7 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
 		-- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  ~(sock', (SockAddrUnix path)) <- Socket.accept sock
  handle <- socketToHandle sock' ReadWriteMode
@@ -265,7 +265,7 @@ socketPort s = do
    portID sa =
     case sa of
      SockAddrInet port _    -> PortNumber port
-#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
      SockAddrUnix path	    -> UnixSocket path
 #endif
 
