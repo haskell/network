@@ -1582,7 +1582,7 @@ foreign import CALLCONV unsafe "inet_addr"
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt 
 
-#if defined(WITH_WINSOCK)
+#if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
   c_close :: CInt -> IO CInt
 #else
