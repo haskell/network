@@ -8,7 +8,7 @@
 -- Stability   :  provisional
 -- Portability :  non-portable (needs Text.Regex)
 --
--- The "URI" library provides utilities for
+-- This library provides utilities for
 -- parsing and manipulating Uniform Resource Identifiers (a more
 -- general form of Uniform Resource Locators, or URLs). URIs are
 -- described in RFC 2396 <http://www.faqs.org/rfcs/rfc2396.html>.

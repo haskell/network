@@ -10,9 +10,9 @@
 --
 -- Haskell binding for CGI
 --
--- Original Version by Erik Meijer <erik@cs.ruu.nl>
--- Further hacked on by Sven Panne <Sven_Panne@BetaResearch.de>
--- Further hacking by Andy Gill <andy@galconn.com>
+-- Original Version by Erik Meijer <mailto:erik@cs.ruu.nl>
+-- Further hacked on by Sven Panne <mailto:Sven_Panne@BetaResearch.de>
+-- Further hacking by Andy Gill <mailto:andy@galconn.com>
 --
 -----------------------------------------------------------------------------
 
