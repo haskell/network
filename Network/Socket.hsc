@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.7 2002/03/26 10:54:28 simonmar Exp $
+-- $Id: Socket.hsc,v 1.8 2002/03/26 21:01:18 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -240,7 +240,7 @@ data SockAddr		-- C Names
 #endif
   deriving (Eq)
 
-#ifdef mingw32_TARGET_OS
+#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_TARGET_OS)
 type CSaFamily = (#type u_char)
