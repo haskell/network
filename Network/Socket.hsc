@@ -333,6 +333,13 @@ type CSaFamily = (#type u_char)
 type CSaFamily = (#type sa_family_t)
 #endif
 
+instance Show SockAddr where
+  showsPrec _ (SockAddrUnix str) = showString str
+  showsPrec _ (SockAddrInet port ha)
+   = showString (unsafePerformIO (inet_ntoa ha)) 
+   . showString ":"
+   . shows port
+
 -- we can't write an instance of Storable for SockAddr, because the Storable
 -- class can't easily handle alternatives.
 
