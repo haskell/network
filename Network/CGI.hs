@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- 
+-- |
 -- Module      :  Network.CGI
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/core/LICENSE)
@@ -7,8 +7,6 @@
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  non-portable (uses Control.Exception)
---
--- $Id: CGI.hs,v 1.1 2001/08/01 14:48:30 simonmar Exp $
 --
 -- Haskell binding for CGI
 --

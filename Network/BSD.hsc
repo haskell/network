@@ -1,6 +1,6 @@
 {-# OPTIONS -fglasgow-exts #-}
 -----------------------------------------------------------------------------
--- 
+-- |
 -- Module      :  Prelude
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/net/LICENSE)
@@ -8,8 +8,6 @@
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  portable
---
--- $Id: BSD.hsc,v 1.3 2002/02/13 12:02:10 simonmar Exp $
 --
 -- Misc BSD bindings
 --
@@ -166,7 +164,7 @@ getServiceByName name proto = do
 	"getServiceByName" "no such service entry" Nothing)
     else peek ptr
 
-foreign import "getservbyname" 
+foreign import ccall unsafe "getservbyname" 
   c_getservbyname :: CString -> CString -> IO (Ptr ServiceEntry)
 
 getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
@@ -178,7 +176,7 @@ getServiceByPort (PortNum port) proto = do
 	  "getServiceByPort" "no such service entry" Nothing)
     else peek ptr
 
-foreign import "getservbyport" 
+foreign import ccall unsafe "getservbyport" 
   c_getservbyport :: CInt -> CString -> IO (Ptr ServiceEntry)
 
 getServicePortNumber :: ServiceName -> IO PortNumber
@@ -195,17 +193,17 @@ getServiceEntry = do
 	   "getServiceEntry" "no such service entry" Nothing)
        else peek ptr
 
-foreign import "getservent" c_getservent :: IO (Ptr ServiceEntry)
+foreign import ccall unsafe "getservent" c_getservent :: IO (Ptr ServiceEntry)
 
 setServiceEntry	:: Bool -> IO ()
 setServiceEntry flg = c_setservent (fromBool flg)
 
-foreign import "setservent" c_setservent :: CInt -> IO ()
+foreign import ccall unsafe  "setservent" c_setservent :: CInt -> IO ()
 
 endServiceEntry	:: IO ()
 endServiceEntry = c_endservent
 
-foreign import "endservent" c_endservent :: IO ()
+foreign import ccall unsafe  "endservent" c_endservent :: IO ()
 
 getServiceEntries :: Bool -> IO [ServiceEntry]
 getServiceEntries stayOpen = do
@@ -222,7 +220,7 @@ getServiceEntries stayOpen = do
 
 -- As for setServiceEntry above, calling setProtocolEntry.
 -- determines whether or not the protocol database file, usually
--- /etc/protocols, is to be kept open between calls of
+-- @/etc/protocols@, is to be kept open between calls of
 -- getProtocolEntry. Similarly, 
 
 data ProtocolEntry = 
@@ -259,7 +257,7 @@ getProtocolByName name = do
 	"getProtocolByName" "no such protocol entry" Nothing)
     else peek ptr
 
-foreign import "getprotobyname" 
+foreign import  ccall unsafe  "getprotobyname" 
    c_getprotobyname :: CString -> IO (Ptr ProtocolEntry)
 
 
@@ -271,7 +269,7 @@ getProtocolByNumber num = do
 	"getProtocolByNumber" "no such protocol entry" Nothing)
     else peek ptr
 
-foreign import "getprotobynumber"
+foreign import ccall unsafe  "getprotobynumber"
    c_getprotobynumber :: CInt -> IO (Ptr ProtocolEntry)
 
 
@@ -289,17 +287,17 @@ getProtocolEntry = do
 	"getProtocolEntry" "no such protocol entry" Nothing)
     else peek ptr
 
-foreign import "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
+foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
 setProtocolEntry :: Bool -> IO ()	-- Keep DB Open ?
 setProtocolEntry flg = c_setprotoent (fromBool flg)
 
-foreign import "setprotoent" c_setprotoent :: CInt -> IO ()
+foreign import ccall unsafe "setprotoent" c_setprotoent :: CInt -> IO ()
 
 endProtocolEntry :: IO ()
 endProtocolEntry = c_endprotoent
 
-foreign import "endprotoent" c_endprotoent :: IO ()
+foreign import ccall unsafe "endprotoent" c_endprotoent :: IO ()
 
 getProtocolEntries :: Bool -> IO [ProtocolEntry]
 getProtocolEntries stayOpen = do
@@ -358,7 +356,7 @@ getHostByName name = do
 	   "getHostByName" "no such host entry" Nothing)
      else peek ptr
 
-foreign import "gethostbyname" 
+foreign import ccall unsafe "gethostbyname" 
    c_gethostbyname :: CString -> IO (Ptr HostEntry)
 
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
@@ -370,7 +368,7 @@ getHostByAddr family addr = do
 	"getHostByAddr" "no such host entry" Nothing)
     else peek ptr
 
-foreign import "gethostbyaddr"
+foreign import ccall unsafe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
@@ -382,17 +380,17 @@ getHostEntry = do
 	"getHostEntry" "unable to retrieve host entry" Nothing)
     else peek ptr
 
-foreign import "gethostent" c_gethostent :: IO (Ptr HostEntry)
+foreign import ccall unsafe "gethostent" c_gethostent :: IO (Ptr HostEntry)
 
 setHostEntry :: Bool -> IO ()
 setHostEntry flg = c_sethostent (fromBool flg)
 
-foreign import "sethostent" c_sethostent :: CInt -> IO ()
+foreign import ccall unsafe "sethostent" c_sethostent :: CInt -> IO ()
 
 endHostEntry :: IO ()
 endHostEntry = c_endhostent
 
-foreign import "endhostent" c_endhostent :: IO ()
+foreign import ccall unsafe "endhostent" c_endhostent :: IO ()
 
 getHostEntries :: Bool -> IO [HostEntry]
 getHostEntries stayOpen = do
@@ -451,7 +449,7 @@ getNetworkByName name = do
 	"getNetworkByName" "no such network entry" Nothing)
     else peek ptr
 
-foreign import "getnetbyname" 
+foreign import ccall unsafe "getnetbyname" 
    c_getnetbyname  :: CString -> IO (Ptr NetworkEntry)
 
 getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
@@ -462,7 +460,7 @@ getNetworkByAddr addr family = do
 	"getNetworkByAddr" "no such network entry" Nothing)
     else peek ptr
 
-foreign import "getnetbyaddr" 
+foreign import ccall unsafe "getnetbyaddr" 
    c_getnetbyaddr  :: NetworkAddr -> CInt -> IO (Ptr NetworkEntry)
 
 getNetworkEntry :: IO NetworkEntry
@@ -473,17 +471,17 @@ getNetworkEntry = do
 	"getNetworkEntry" "no more network entries" Nothing)
    else peek ptr
 
-foreign import "getnetent" c_getnetent :: IO (Ptr NetworkEntry)
+foreign import ccall unsafe "getnetent" c_getnetent :: IO (Ptr NetworkEntry)
 
 setNetworkEntry :: Bool -> IO ()
 setNetworkEntry flg = c_setnetent (fromBool flg)
 
-foreign import "setnetent" c_setnetent :: CInt -> IO ()
+foreign import ccall unsafe "setnetent" c_setnetent :: CInt -> IO ()
 
 endNetworkEntry :: IO ()
 endNetworkEntry = c_endnetent
 
-foreign import "endnetent" c_endnetent :: IO ()
+foreign import ccall unsafe "endnetent" c_endnetent :: IO ()
 
 getNetworkEntries :: Bool -> IO [NetworkEntry]
 getNetworkEntries stayOpen = do
@@ -504,7 +502,7 @@ getHostName = do
     throwErrnoIfMinus1_ "getHostName" $ c_gethostname cstr (fromIntegral size)
     peekCString cstr
 
-foreign import "gethostname" 
+foreign import ccall unsafe "gethostname" 
    c_gethostname :: CString -> CSize -> IO CInt
 
 -- Helper function used by the exported functions that provides a
@@ -530,7 +528,7 @@ symlink actual_path sym_path = do
    withCString sym_path $ \ sym_path_cstr -> do
    throwErrnoIfMinus1_ "symlink" $ c_symlink actual_path_cstr sym_path_cstr
 
-foreign import "symlink" 
+foreign import ccall unsafe "symlink" 
    c_symlink :: CString -> CString -> IO CInt
 #endif
 
@@ -543,6 +541,6 @@ readlink sym = do
 	    c_readlink sym_cstr buf (#const PATH_MAX)
    peekCStringLen (buf, fromIntegral rc)
 
-foreign import "readlink"
+foreign import ccall unsafe "readlink"
    c_readlink :: CString -> Ptr CChar -> CSize -> IO CInt
 #endif

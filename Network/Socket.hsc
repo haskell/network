@@ -1,6 +1,6 @@
 {-# OPTIONS -fglasgow-exts #-}
 -----------------------------------------------------------------------------
--- 
+-- |
 -- Module      :  Network.Socket
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/core/LICENSE)
@@ -8,8 +8,6 @@
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
---
--- $Id: Socket.hsc,v 1.20 2002/06/18 12:34:12 simonmar Exp $
 --
 -- Low-level socket bindings
 --

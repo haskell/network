@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
--- 
+-- |
 -- Module      :  Network.URI
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/core/LICENSE)
@@ -7,8 +7,6 @@
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  non-portable (needs Text.Regex)
---
--- $Id: URI.hs,v 1.1 2001/08/02 11:21:51 simonmar Exp $
 --
 -- Implementation of RFC 2396  
 --	"Uniform Resource Identifiers (URI): Generic Syntax"
