@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.8 2002/10/18 15:26:29 simonmar Exp $
+ * $Id: HsNet.h,v 1.9 2002/10/19 10:42:24 stolz Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -50,6 +50,10 @@ extern StgInt initWinSock ();
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif
+
+#ifndef HAVE_IN_ADDR_T
+typedef	u_int32_t	in_addr_t;
 #endif
 
 extern int
