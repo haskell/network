@@ -3,7 +3,7 @@
 Package {
         name           = "network",
 #ifdef INSTALLING
-	import_dirs    = [ "$libdir/imports" ],
+	import_dirs    = [ "$libdir/imports/network" ],
 #else
 	import_dirs    = [ "$libdir/libraries/network" ],
 #endif
