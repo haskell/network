@@ -29,6 +29,7 @@ module Network (
 	-- * Server-side connections
 	listenOn,	-- :: PortID -> IO Socket
 	accept,		-- :: Socket -> IO (Handle, HostName, PortNumber)
+        sClose,		-- :: Socket -> IO ()
 
 	-- * Client-side connections
 	connectTo,	-- :: HostName -> PortID -> IO Handle
