@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.4 2002/05/01 22:18:48 sof Exp $
+ * $Id: HsNet.h,v 1.5 2002/05/01 23:20:21 ken Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -15,6 +15,9 @@ extern void   shutdownWinSock();
 extern StgInt initWinSock ();
 #else
 
+#ifdef osf3_TARGET_OS
+# define _SOCKADDR_LEN
+#endif
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
 #endif
