@@ -198,10 +198,12 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
 		-- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
+#if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
 accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  ~(sock', (SockAddrUnix path)) <- Socket.accept sock
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, path, -1)
+#endif
 accept sock@(MkSocket _ family _ _ _) =
   error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
 
