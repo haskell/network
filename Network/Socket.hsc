@@ -162,7 +162,7 @@ import Control.Concurrent.MVar
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 import GHC.Handle
 import GHC.IOBase
-import qualified GHC.Posix
+import qualified System.Posix.Internals
 #endif
 
 -----------------------------------------------------------------------------
@@ -389,7 +389,7 @@ socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "socket" $
 		c_socket (packFamily family) (packSocketType stype) protocol
 #if !defined(__HUGS__)
-    GHC.Posix.setNonBlockingFD fd
+    System.Posix.Internals.setNonBlockingFD fd
 #endif
     socket_status <- newMVar NotConnected
     return (MkSocket fd family stype protocol socket_status)
@@ -416,7 +416,7 @@ socketPair family stype protocol = do
   where
     mkSocket fd = do
 #if !defined(__HUGS__)
-       GHC.Posix.setNonBlockingFD fd
+       System.Posix.Internals.setNonBlockingFD fd
 #endif
        stat <- newMVar Connected
        return (MkSocket fd family stype protocol stat)
@@ -581,7 +581,7 @@ accept sock@(MkSocket s family stype protocol status) = do
 #endif
 			(c_accept s sockaddr ptr_len)
 #if !defined(__HUGS__)
-     GHC.Posix.setNonBlockingFD new_sock
+     System.Posix.Internals.setNonBlockingFD new_sock
 #endif
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
@@ -1636,7 +1636,7 @@ inet_ntoa haddr = do
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ _) mode = do
 # ifdef __GLASGOW_HASKELL__
-    openFd (fromIntegral fd) (Just GHC.Posix.Stream) (show s) mode True{-bin-} False{-no truncate-}
+    openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) (show s) mode True{-bin-} False{-no truncate-}
 # endif
 # ifdef __HUGS__
     openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
