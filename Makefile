@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.11 2002/06/21 13:56:19 simonmar Exp $
+# $Id: Makefile,v 1.12 2002/06/24 14:40:03 simonmar Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -8,6 +8,7 @@ SUBDIRS		= include
 
 ALL_DIRS	= Network
 PACKAGE		= network
+PACKAGE_DEPS	= base
 
 SRC_HC_OPTS	+= -Iinclude
 SRC_CC_OPTS     += -Iinclude -I. -I$(GHC_INCLUDE_DIR)
