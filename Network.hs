@@ -1,6 +1,6 @@
 {-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
--- 
+-- |
 -- Module      :  Network
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/core/LICENSE)
@@ -8,8 +8,6 @@
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
---
--- $Id: Network.hs,v 1.3 2002/02/13 12:03:12 simonmar Exp $
 --
 -- Basic network interface
 --
