@@ -176,7 +176,7 @@ unEscapeString ('%':x1:x2:s) | isHexDigit x1 && isHexDigit x2
 unEscapeString (c:s) = c : unEscapeString s
 
 hexDigit c | c >= 'A' && c <= 'F' = ord c - ord 'A' + 10
-	   | c >= 'a' && c <= 'F' = ord c - ord 'a' + 10
+	   | c >= 'a' && c <= 'f' = ord c - ord 'a' + 10
 	   | otherwise = ord c - ord '0'
 
 -----------------------------------------------------------------------------
