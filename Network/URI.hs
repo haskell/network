@@ -1,3 +1,4 @@
+{-# OPTIONS -fglasgow-exts -cpp #-}
 --------------------------------------------------------------------------------
 -- |
 --  Module      :  Network.URI
@@ -124,6 +125,9 @@ import Data.Maybe( isJust )
 
 import Control.Monad( MonadPlus(..) )
 
+import Data.Typeable	( Typeable )
+import Data.Generics	( Data )
+
 ------------------------------------------------------------
 --  The URI datatype
 ------------------------------------------------------------
@@ -143,14 +147,22 @@ data URI = URI
     , uriPath       :: String           -- ^ @\/ghc@
     , uriQuery      :: String           -- ^ @?query@
     , uriFragment   :: String           -- ^ @#frag@
-    } deriving Eq
+    } deriving (Eq
+#ifdef __GLASGOW_HASKELL__
+	, Typeable, Data
+#endif
+	)
 
 -- |Type for authority value within a URI
 data URIAuth = URIAuth
     { uriUserInfo   :: String           -- ^ @anonymous\@@
     , uriRegName    :: String           -- ^ @www.haskell.org@
     , uriPort       :: String           -- ^ @:42@
-    } deriving Eq
+    } deriving (Eq
+#ifdef __GLASGOW_HASKELL__
+	, Typeable, Data
+#endif
+	)
 
 -- |Blank URI
 nullURI :: URI
