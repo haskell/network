@@ -2,7 +2,7 @@ name:		network
 version:	1.0
 license:	BSD3
 maintainer:	libraries@haskell.org
-description:	Networking-related facilities.
+synopsis:	Networking-related facilities
 build-depends:	base, parsec
 exposed-modules:
 	Network.BSD,
