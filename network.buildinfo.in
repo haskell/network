@@ -1,0 +1,3 @@
+cc-options: -DCALLCONV=@CALLCONV@
+c-sources: @EXTRA_SRCS@
+extra-libs: @EXTRA_LIBS@

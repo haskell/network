@@ -47,4 +47,24 @@ AC_EGREP_HEADER(sendfile, sys/socket.h,
 
 AC_CHECK_FUNCS(gethostent)
 
+case "$target" in
+*-mingw32)
+	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
+	EXTRA_LIBS=wsock32
+	CALLCONV=stdcall ;;
+*-solaris2)
+	EXTRA_SRCS="cbits/ancilData.c"
+	EXTRA_LIBS="nsl, socket"
+	CALLCONV=ccall ;;
+*)
+	EXTRA_SRCS="cbits/ancilData.c"
+	EXTRA_LIBS=
+	CALLCONV=ccall ;;
+esac
+AC_SUBST([CALLCONV])
+AC_SUBST([EXTRA_LIBS])
+AC_SUBST([EXTRA_SRCS])
+
+AC_CONFIG_FILES([network.buildinfo])
+
 AC_OUTPUT

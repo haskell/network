@@ -1,0 +1,15 @@
+name:		network
+version:	1.0
+license:	BSD3
+maintainer:	libraries@haskell.org
+description:	Networking-related facilities.
+build-depends:	base, parsec
+exposed-modules:
+	Network.BSD,
+	Network.CGI,
+	Network.Socket,
+	Network.URI,
+	Network
+include-dirs: 	include, ../../ghc/includes
+includes:	"HsNet.h"
+c-sources:	cbits/HsNet.c
