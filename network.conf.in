@@ -2,6 +2,7 @@
 
 Package {
         name           = "network",
+	auto		= True,
 #ifdef INSTALLING
 	import_dirs    = [ "$libdir/imports/network" ],
 #else
