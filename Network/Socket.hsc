@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.10 2002/03/30 17:14:58 sebc Exp $
+-- $Id: Socket.hsc,v 1.11 2002/04/23 18:58:04 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -29,6 +29,7 @@ module Network.Socket (
     ProtocolNumber,
 
     socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
+    socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
     connect,		-- :: Socket -> SockAddr -> IO ()
     bindSocket,		-- :: Socket -> SockAddr -> IO ()
     listen,		-- :: Socket -> Int -> IO ()
@@ -94,6 +95,7 @@ module Network.Socket (
 
 import Foreign
 import Foreign.C
+import Foreign.Marshal.Array ( peekArray )
 
 import System.IO
 import Control.Monad ( liftM )
@@ -324,6 +326,30 @@ socket family stype protocol = do
     GHC.Posix.setNonBlockingFD fd
     socket_status <- newMVar NotConnected
     return (MkSocket fd family stype protocol socket_status)
+
+-- Create an unnamed pair of connected sockets, given family, type and
+-- protocol. Differs from a normal pipe in being a bi-directional channel
+-- of communication.
+
+socketPair :: Family 	          -- Family Name (usually AF_INET)
+           -> SocketType 	  -- Socket Type (usually Stream)
+           -> ProtocolNumber      -- Protocol Number
+           -> IO (Socket, Socket) -- unnamed and connected.
+socketPair family stype protocol = do
+    allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
+    rc <- throwErrnoIfMinus1Retry "socketpair" $
+		c_socketpair (packFamily family)
+			     (packSocketType stype)
+			     protocol fdArr
+    [fd1,fd2] <- peekArray 2 fdArr 
+    GHC.Posix.setNonBlockingFD fd1
+    GHC.Posix.setNonBlockingFD fd2
+    socket_status1 <- newMVar Connected
+    socket_status2 <- newMVar Connected
+    return ( MkSocket fd1 family stype protocol socket_status1
+    	   , MkSocket fd2 family stype protocol socket_status2
+	   )
+
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -1431,6 +1457,8 @@ foreign import ccall unsafe "close"
 
 foreign import ccall unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
+foreign import ccall unsafe "socketpair"
+  c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
 foreign import ccall unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import ccall unsafe "connect"
