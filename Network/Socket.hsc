@@ -154,7 +154,7 @@ import Foreign.C
 import Foreign.Marshal.Array ( peekArray )
 
 import System.IO
-import Control.Monad ( liftM )
+import Control.Monad ( liftM, when )
 import Data.Ratio ( (%) )
 
 import qualified Control.Exception
@@ -162,6 +162,9 @@ import Control.Concurrent.MVar
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
+# if defined(mingw32_TARGET_OS)
+import GHC.Conc         (asyncDoProc)
+# endif
 import GHC.Handle
 import GHC.IOBase
 import qualified System.Posix.Internals
@@ -575,19 +578,43 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddr_Family family
      allocaBytes sz $ \ sockaddr -> do
+#if defined(mingw32_TARGET_OS) && !defined(__HUGS__)
+     paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
+     asyncDoProc c_acceptDoProc paramData
+     rc        <- c_acceptReturnCode paramData
+     new_sock  <- c_acceptNewSock    paramData
+     c_free paramData
+     when (rc /= 0)
+          (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
+#else 
      withObject (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
-#if !defined(__HUGS__)
+# if !defined(__HUGS__)
                  throwErrnoIfMinus1Retry_repeatOnBlock "accept" 
 			(threadWaitRead (fromIntegral s))
-#endif
+# endif
 			(c_accept s sockaddr ptr_len)
-#if !defined(__HUGS__)
+# if !defined(__HUGS__)
      System.Posix.Internals.setNonBlockingFD new_sock
+# endif
 #endif
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
+
+#if defined(mingw32_TARGET_OS) && !defined(__HUGS__)
+foreign import ccall unsafe "HsNet.h acceptReturnCode"
+  c_acceptReturnCode:: Ptr () -> IO CInt
+foreign import ccall unsafe "HsNet.h acceptNewSock"
+  c_acceptNewSock :: Ptr () -> IO CInt
+foreign import ccall unsafe "HsNet.h newAcceptParams"
+  c_newAcceptParams :: CInt -> CInt -> Ptr a -> IO (Ptr ())
+foreign import ccall unsafe "HsNet.h &acceptDoProc"
+  c_acceptDoProc :: FunPtr (Ptr () -> IO ())
+	
+foreign import ccall unsafe "free"
+  c_free:: Ptr a -> IO ()
+#endif
 
 -----------------------------------------------------------------------------
 -- sendTo & recvFrom
