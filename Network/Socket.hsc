@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.14 2002/05/03 00:27:21 sof Exp $
+-- $Id: Socket.hsc,v 1.15 2002/05/06 23:17:03 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -32,6 +32,7 @@ module Network.Socket (
     Family(..),		
     SocketType(..),
     SockAddr(..),
+    SocketStatus(..),
     HostAddress,
     ShutdownCmd(..),
     ProtocolNumber,
@@ -100,6 +101,11 @@ module Network.Socket (
     
      -- in case you ever want to get at the underlying file descriptor..
     fdSocket,           -- :: Socket -> CInt
+    mkSocket,           -- :: CInt   -> Family 
+    			-- -> SocketType
+			-- -> ProtocolNumber
+			-- -> SocketStatus
+			-- -> IO Socket
 
     -- The following are exported ONLY for use in the BSD module and
     -- should not be used anywhere else.
@@ -161,6 +167,16 @@ data Socket
 	    SocketType				  
 	    ProtocolNumber	 -- Protocol Number
 	    (MVar SocketStatus)  -- Status Flag
+
+mkSocket :: CInt
+	 -> Family
+	 -> SocketType
+	 -> ProtocolNumber
+	 -> SocketStatus
+	 -> IO Socket
+mkSocket fd fam sType pNum stat = do
+   mStat <- newMVar stat
+   return (MkSocket fd fam sType pNum mStat)
 
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
