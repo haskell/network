@@ -75,15 +75,15 @@ module Network.BSD (
     -- * Network names
     NetworkName,
     NetworkAddr,
-    NetworkEntry(..),
+    NetworkEntry(..)
 
 #if !defined(cygwin32_TARGET_OS) && !defined(mingw32_TARGET_OS)
-    getNetworkByName,	    -- :: NetworkName -> IO NetworkEntry
-    getNetworkByAddr,       -- :: NetworkAddr -> Family -> IO NetworkEntry
-    setNetworkEntry,	    -- :: Bool -> IO ()
-    getNetworkEntry,	    -- :: IO NetworkEntry
-    endNetworkEntry,	    -- :: IO ()
-    getNetworkEntries,      -- :: Bool -> IO [NetworkEntry]
+    , getNetworkByName	    -- :: NetworkName -> IO NetworkEntry
+    , getNetworkByAddr      -- :: NetworkAddr -> Family -> IO NetworkEntry
+    , setNetworkEntry	    -- :: Bool -> IO ()
+    , getNetworkEntry	    -- :: IO NetworkEntry
+    , endNetworkEntry	    -- :: IO ()
+    , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
 #endif
 
     -- * Symbolic links
