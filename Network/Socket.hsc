@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# OPTIONS -fglasgow-exts -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
