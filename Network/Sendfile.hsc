@@ -31,12 +31,15 @@ import Foreign
 import Foreign.C
 import Network.Socket
 import System.IO
-import System.Posix.IO
-import System.Posix.Types	( Fd, COff )
+import System.Posix.Types	( Fd, Fd(..), COff )
 import Control.Exception	( bracket )
 import Control.Monad		( unless)
 import Data.Array.MArray
 import Data.Array.IO
+#ifdef __GLASGOW_HASKELL__
+import GHC.Handle
+import GHC.IOBase
+#endif
 
 -- |'sendfile' transmits the contents of an open file to a stream socket
 -- opened for writing with as little overhead as possible.
@@ -131,3 +134,20 @@ squirt inH outH startpos count = do
   hFlush outH
 
 bufsize = 4 * 1024 :: Int
+
+-- Stolen from System.Posix.IO:
+
+#ifdef __GLASGOW_HASKELL__
+handleToFd :: Handle -> IO Fd
+handleToFd h = withHandle "handleToFd" h $ \ h_ -> do
+  -- converting a Handle into an Fd effectively means
+  -- letting go of the Handle; it is put into a closed
+  -- state as a result.
+  let fd = haFD h_  
+  flushWriteBufferOnly h_
+  unlockFile (fromIntegral fd)
+    -- setting the Handle's fd to (-1) as well as its 'type'
+    -- to closed, is enough to disable the finalizer that
+    -- eventually is run on the Handle.
+  return (h_{haFD= (-1),haType=ClosedHandle}, Fd (fromIntegral fd))
+#endif
