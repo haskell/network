@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.21 2004/11/26 16:22:11 simonmar Exp $
+# $Id: Makefile,v 1.22 2005/03/02 14:46:15 simonmar Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -29,6 +29,9 @@ Network/Socket_HC_OPTS += -DCALLCONV=ccall
 endif
 
 SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (network package)"
+
+DIST_CLEAN_FILES += HsNetworkConfig.h network.buildinfo config.cache config.status 
+LATE_DIST_CLEAN_FILES += config.mk
 
 include $(TOP)/mk/target.mk
 
