@@ -58,6 +58,8 @@ import Network.BSD
 import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
 import qualified Network.Socket as Socket ( accept, socketPort )
 import System.IO
+import Prelude
+import Control.Exception as Exception ( catch, block, unblock, throw )
 
 -- ---------------------------------------------------------------------------
 -- High Level ``Setup'' functions
@@ -74,10 +76,6 @@ data PortID =
 	| UnixSocket String		-- Unix family socket in file system
 #endif
 
-type Hostname = String
--- Maybe consider this alternative.
--- data Hostname = Name String | IP Int Int Int Int
-
 -- | Calling 'connectTo' creates a client side socket which is
 -- connected to the given host and port.  The Protocol and socket type is
 -- derived from the given port identifier.  If a port number is given
@@ -88,25 +86,37 @@ connectTo :: HostName		-- Hostname
 	  -> IO Handle		-- Connected Socket
 
 connectTo hostname (Service serv) = do
-    proto	<- getProtocolNumber "tcp"
-    sock	<- socket AF_INET Stream proto
-    port	<- getServicePortNumber serv
-    he		<- getHostByName hostname
-    connect sock (SockAddrInet port (hostAddress he))
-    socketToHandle sock	ReadWriteMode
+    proto <- getProtocolNumber "tcp"
+    bracketOnError
+	(socket AF_INET Stream proto)
+	(sClose)  -- only done if there's an error
+	(\sock -> do
+          port	<- getServicePortNumber serv
+          he	<- getHostByName hostname
+          connect sock (SockAddrInet port (hostAddress he))
+          socketToHandle sock ReadWriteMode
+ 	)
 
 connectTo hostname (PortNumber port) = do
-    proto	<- getProtocolNumber "tcp"
-    sock        <- socket AF_INET Stream proto
-    he		<- getHostByName hostname
-    connect sock (SockAddrInet port (hostAddress he))
-    socketToHandle sock ReadWriteMode
+    proto <- getProtocolNumber "tcp"
+    bracketOnError
+	(socket AF_INET Stream proto)
+	(sClose)  -- only done if there's an error
+        (\sock -> do
+      	  he <- getHostByName hostname
+      	  connect sock (SockAddrInet port (hostAddress he))
+      	  socketToHandle sock ReadWriteMode
+	)
 
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
 connectTo _ (UnixSocket path) = do
-    sock    <- socket AF_UNIX Datagram 0
-    connect sock (SockAddrUnix path)
-    socketToHandle sock ReadWriteMode
+    bracketOnError
+	(socket AF_UNIX Datagram 0)
+	(sClose)
+	(\sock -> do
+          connect sock (SockAddrUnix path)
+          socketToHandle sock ReadWriteMode
+	)
 #endif
 
 -- | Creates the server side socket which has been bound to the
@@ -122,28 +132,40 @@ listenOn :: PortID 	-- ^ Port Identifier
 	 -> IO Socket	-- ^ Connected Socket
 
 listenOn (Service serv) = do
-    proto   <- getProtocolNumber "tcp"
-    sock    <- socket AF_INET Stream proto
-    port    <- getServicePortNumber serv
-    setSocketOption sock ReuseAddr 1
-    bindSocket sock (SockAddrInet port iNADDR_ANY)
-    listen sock maxListenQueue
-    return sock
+    proto <- getProtocolNumber "tcp"
+    bracketOnError
+        (socket AF_INET Stream proto)
+	(sClose)
+	(\sock -> do
+	    port    <- getServicePortNumber serv
+	    setSocketOption sock ReuseAddr 1
+	    bindSocket sock (SockAddrInet port iNADDR_ANY)
+	    listen sock maxListenQueue
+	    return sock
+	)
 
 listenOn (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
-    sock  <- socket AF_INET Stream proto
-    setSocketOption sock ReuseAddr 1
-    bindSocket sock (SockAddrInet port iNADDR_ANY)
-    listen sock maxListenQueue
-    return sock
+    bracketOnError
+    	(socket AF_INET Stream proto)
+	(sClose)
+	(\sock -> do
+	    setSocketOption sock ReuseAddr 1
+	    bindSocket sock (SockAddrInet port iNADDR_ANY)
+	    listen sock maxListenQueue
+	    return sock
+	)
 
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
-listenOn (UnixSocket path) = do
-    sock <- socket AF_UNIX Datagram 0
-    setSocketOption sock ReuseAddr 1
-    bindSocket sock (SockAddrUnix path)
-    return sock
+listenOn (UnixSocket path) =
+    bracketOnError
+    	(socket AF_UNIX Datagram 0)
+	(sClose)
+	(\sock -> do
+	    setSocketOption sock ReuseAddr 1
+	    bindSocket sock (SockAddrUnix path)
+	    return sock
+	)
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -220,6 +242,25 @@ socketPort s = do
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
      SockAddrUnix path	    -> UnixSocket path
 #endif
+
+-- ---------------------------------------------------------------------------
+-- Utils
+
+-- Like bracket, but only performs the final action if there was an 
+-- exception raised by the middle bit.
+bracketOnError
+	:: IO a		-- ^ computation to run first (\"acquire resource\")
+	-> (a -> IO b)  -- ^ computation to run last (\"release resource\")
+	-> (a -> IO c)	-- ^ computation to run in-between
+	-> IO c		-- returns the value from the in-between computation
+bracketOnError before after thing =
+  block (do
+    a <- before 
+    r <- Exception.catch 
+	   (unblock (thing a))
+	   (\e -> do { after a; throw e })
+    return r
+ )
 
 -----------------------------------------------------------------------------
 -- Extra documentation
