@@ -1,5 +1,4 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.21 2004/09/02 15:18:09 ross Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -9,7 +8,22 @@
 #define HSNET_H
 
 #include "ghcconfig.h"
+
+/* ultra-evil... */
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+
 #include "HsNetworkConfig.h"
+
+/* ultra-evil... */
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
 
 #ifndef INLINE
 #ifdef _MSC_VER
