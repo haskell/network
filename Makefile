@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.12 2002/06/24 14:40:03 simonmar Exp $
+# $Id: Makefile,v 1.13 2002/07/01 18:38:13 sof Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -14,11 +14,15 @@ SRC_HC_OPTS	+= -Iinclude
 SRC_CC_OPTS     += -Iinclude -I. -I$(GHC_INCLUDE_DIR)
 SRC_HSC2HS_OPTS += -Iinclude
 
+Network/Socket_HC_OPTS += -cpp
+
 # Only bother with cbits/initWinSock.c when it's really needed.
 ifeq "$(TARGETPLATFORM)" "i386-unknown-mingw32"
 EXTRA_SRCS=cbits/initWinSock.c
+Network/Socket_HC_OPTS += -DCALLCONV=stdcall
 else
 EXTRA_SRCS=cbits/ancilData.c
+Network/Socket_HC_OPTS += -DCALLCONV=ccall
 endif
 
 SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (network package)"

@@ -30,6 +30,8 @@
 #define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
+-- In order to process this file, you need to have CALLCONV defined.
+
 module Network.Socket (
 
     -- * Types
@@ -222,10 +224,10 @@ intToPortNumber v = PortNum (htons (fromIntegral v))
 portNumberToInt :: PortNumber -> Int
 portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
-foreign import ccall unsafe "ntohs" ntohs :: Word16 -> Word16
-foreign import ccall unsafe "htons" htons :: Word16 -> Word16
---foreign import ccall unsafe "ntohl" ntohl :: Word32 -> Word32
-foreign import ccall unsafe "htonl" htonl :: Word32 -> Word32
+foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
+foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
+--foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
+foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
 
 instance Enum PortNumber where
     toEnum   = intToPortNumber
@@ -1574,41 +1576,47 @@ foreign import ccall unsafe "my_inet_ntoa"
 #def inline char *my_inet_ntoa(addr) \
   { struct in_addr a; a.s_addr = addr; return inet_ntoa(a); }
 
-foreign import ccall unsafe "inet_addr"
+foreign import CALLCONV unsafe "inet_addr"
   c_inet_addr :: Ptr CChar -> IO HostAddress
 
-foreign import ccall unsafe "shutdown"
+foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt 
+
+#if defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
   c_close :: CInt -> IO CInt
+#else
+foreign import stdcall unsafe "closesocket"
+  c_close :: CInt -> IO CInt
+#endif
 
-foreign import ccall unsafe "socket"
+foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
-foreign import ccall unsafe "bind"
+foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import ccall unsafe "connect"
+foreign import CALLCONV unsafe "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import ccall unsafe "accept"
+foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
-foreign import ccall unsafe "listen"
+foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
-foreign import ccall unsafe "send"
+foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import ccall unsafe "sendto"
+foreign import CALLCONV unsafe "sendto"
   c_sendto :: CInt -> Ptr CChar -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
-foreign import ccall unsafe "recv"
+foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import ccall unsafe "recvfrom"
+foreign import CALLCONV unsafe "recvfrom"
   c_recvfrom :: CInt -> Ptr CChar -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
-foreign import ccall unsafe "getpeername"
+foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
-foreign import ccall unsafe "getsockname"
+foreign import CALLCONV unsafe "getsockname"
   c_getsockname :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 
-foreign import ccall unsafe "getsockopt"
+foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
-foreign import ccall unsafe "setsockopt"
+foreign import CALLCONV unsafe "setsockopt"
   c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
 
 -----------------------------------------------------------------------------
