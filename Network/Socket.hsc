@@ -830,6 +830,9 @@ packSocketOption so =
 #ifdef TCP_NODELAY
     NoDelay       -> #const TCP_NODELAY
 #endif
+#ifdef SO_LINGER
+    Linger	  -> #const SO_LINGER
+#endif
 #ifdef SO_REUSEPORT
     ReusePort     -> #const SO_REUSEPORT
 #endif
