@@ -336,7 +336,9 @@ type CSaFamily = (#type sa_family_t)
 #endif
 
 instance Show SockAddr where
+#if defined(DOMAIN_SOCKET_SUPPORT)
   showsPrec _ (SockAddrUnix str) = showString str
+#endif
   showsPrec _ (SockAddrInet port ha)
    = showString (unsafePerformIO (inet_ntoa ha)) 
    . showString ":"
