@@ -148,7 +148,7 @@ import Hugs.IO ( openFd )
 {-# CBITS HsNet.c initWinSock.c ancilData.c #-}
 #endif
 
-import Data.Word ( Word16, Word32 )
+import Data.Word ( Word8, Word16, Word32 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
 import Foreign.C.Error
