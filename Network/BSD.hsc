@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts #-}
+{-# OPTIONS -fglasgow-exts -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.BSD
@@ -21,6 +21,9 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
+
+-- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
+##include "../../base/include/Typeable.h"
 
 module Network.BSD (
        
@@ -108,6 +111,7 @@ import Foreign.Ptr ( Ptr, nullPtr )
 import Foreign.Storable ( Storable(..) )
 import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
 import Foreign.Marshal.Utils ( with, fromBool )
+import Data.Typeable
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.IOBase
@@ -143,6 +147,8 @@ data ServiceEntry  =
      servicePort     :: PortNumber,	-- Port Number  ( network byte order )
      serviceProtocol :: ProtocolName	-- Protocol
   } deriving (Show)
+
+INSTANCE_TYPEABLE0(ServiceEntry,serviceEntryTc,"ServiceEntry")
 
 instance Storable ServiceEntry where
    sizeOf    _ = #const sizeof(struct servent)
@@ -243,6 +249,8 @@ data ProtocolEntry =
      protoNumber  :: ProtocolNumber	-- Protocol Number
   } deriving (Read, Show)
 
+INSTANCE_TYPEABLE0(ProtocolEntry,protocolEntryTc,"ProtocolEntry")
+
 instance Storable ProtocolEntry where
    sizeOf    _ = #const sizeof(struct protoent)
    alignment _ = alignment (undefined :: CInt) -- ???
@@ -330,6 +338,8 @@ data HostEntry =
      hostFamily    :: Family,	        -- Host Type (currently AF_INET)
      hostAddresses :: [HostAddress]	-- Set of Network Addresses  (in network byte order)
   } deriving (Read, Show)
+
+INSTANCE_TYPEABLE0(HostEntry,hostEntryTc,"hostEntry")
 
 instance Storable HostEntry where
    sizeOf    _ = #const sizeof(struct hostent)
@@ -425,6 +435,8 @@ data NetworkEntry =
      networkFamily	:: Family,	   -- type
      networkAddress	:: NetworkAddr
    } deriving (Read, Show)
+
+INSTANCE_TYPEABLE0(NetworkEntry,networkEntryTc,"NetworkEntry")
 
 instance Storable NetworkEntry where
    sizeOf    _ = #const sizeof(struct hostent)
