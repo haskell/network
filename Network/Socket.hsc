@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- $Id: Socket.hsc,v 1.8 2002/03/26 21:01:18 sof Exp $
+-- $Id: Socket.hsc,v 1.9 2002/03/27 00:15:02 sof Exp $
 --
 -- Low-level socket bindings
 --
@@ -241,11 +241,11 @@ data SockAddr		-- C Names
   deriving (Eq)
 
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
-type CSaFamily = (#type unsigned short)
+type CSaFamily = (#type sa_family_t)
 #elif defined(darwin_TARGET_OS)
 type CSaFamily = (#type u_char)
 #else
-type CSaFamily = (#type sa_family_t)
+type CSaFamily = (#type unsigned short)
 #endif
 
 -- we can't write an instance of Storable for SockAddr, because the Storable
