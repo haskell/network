@@ -87,7 +87,7 @@ module Network.URI
       --   escaped format and getting them back again.
       --   This can't be done transparently in all cases, because certain
       --   characters have different meanings in different kinds of URI.
-      --   The URI spec [3], section 2.4, indicates that all URI compenents
+      --   The URI spec [3], section 2.4, indicates that all URI components
       --   should be escaped before they are assembled as a URI:
       --   \"Once produced, a URI is always in its percent-encoded form\"
     , uriToString               -- :: URI -> ShowS
@@ -126,10 +126,10 @@ import Data.Maybe( isJust )
 import Control.Monad( MonadPlus(..) )
 
 #ifdef __GLASGOW_HASKELL__
-import Data.Typeable	( Typeable )
-import Data.Generics	( Data )
+import Data.Typeable  ( Typeable )
+import Data.Generics  ( Data )
 #else
-import Data.Typeable	( Typeable(..), TyCon, mkTyCon, mkTyConApp )
+import Data.Typeable  ( Typeable(..), TyCon, mkTyCon, mkTyConApp )
 #endif
 
 ------------------------------------------------------------
@@ -153,9 +153,9 @@ data URI = URI
     , uriFragment   :: String           -- ^ @#frag@
     } deriving (Eq
 #ifdef __GLASGOW_HASKELL__
-	, Typeable, Data
+    , Typeable, Data
 #endif
-	)
+    )
 
 #ifndef __GLASGOW_HASKELL__
 uriTc :: TyCon
@@ -172,9 +172,9 @@ data URIAuth = URIAuth
     , uriPort       :: String           -- ^ @:42@
     } deriving (Eq
 #ifdef __GLASGOW_HASKELL__
-	, Typeable, Data
+    , Typeable, Data
 #endif
-	)
+    )
 
 #ifndef __GLASGOW_HASKELL__
 uriAuthTc :: TyCon
