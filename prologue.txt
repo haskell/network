@@ -1,0 +1,2 @@
+The @network@ package contains libraries which provide
+networking-related facilities.
