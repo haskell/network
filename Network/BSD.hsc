@@ -86,8 +86,8 @@ module Network.BSD (
     , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
 #endif
 
-    -- * Symbolic links
 #ifdef HAVE_SYMLINK
+    -- * Symbolic links
     , symlink		    -- :: String -> String -> IO ()
 #endif
 #ifdef HAVE_READLINK
