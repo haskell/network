@@ -5,6 +5,8 @@
 #include "Rts.h"
 #include "HsNet.h"
 
+#if defined(HAVE_MSGHDR_MSG_CONTROL) || defined(HAVE_MSGHDR_MSG_ACCRIGHTS) /* until end */
+
 /*
  * sendmsg() and recvmsg() wrappers for transmitting
  * ancillary socket data.
@@ -27,11 +29,9 @@ sendAncillary(int sock,
   struct msghdr msg = {0};
   struct iovec iov[1];
   char  buf[2];
-#if defined(cygwin32_TARGET_OS) || defined(solaris_TARGET_OS)
+#if defined(HAVE_MSGHDR_MSG_ACCRIGHTS)
   /* Contains the older BSD msghdr fields only, so no room
      for 'type' or 'level' data.
-
-     ToDo: write autoconf feature test for this.
   */
   msg.msg_accrights = data;
   msg.msg_accrightslen=len;
@@ -74,7 +74,7 @@ recvAncillary(int  sock,
   char  duffBuf[10];
   int rc;
   struct iovec iov[1];
-#if !defined(cygwin32_TARGET_OS) && !defined(solaris_TARGET_OS)
+#if defined(HAVE_MSGHDR_MSG_CONTROL)
   struct cmsghdr *cmsg = NULL;
   struct cmsghdr *cptr;
 #endif
@@ -84,7 +84,7 @@ recvAncillary(int  sock,
   msg.msg_iov = iov;
   msg.msg_iovlen = 1;
 
-#if !defined(cygwin32_TARGET_OS) && !defined(solaris_TARGET_OS)
+#if defined(HAVE_MSGHDR_MSG_CONTROL)
   cmsg = (struct cmsghdr*)malloc(CMSG_SPACE(*pLen));
   if (cmsg==NULL) {
     return -1;
@@ -101,7 +101,7 @@ recvAncillary(int  sock,
     return rc;
   }
   
-#if !defined(cygwin32_TARGET_OS) && !defined(solaris_TARGET_OS)
+#if defined(HAVE_MSGHDR_MSG_CONTROL)
   cptr = (struct cmsghdr*)CMSG_FIRSTHDR(&msg);
 
   *pLevel = cptr->cmsg_level;
@@ -117,3 +117,4 @@ recvAncillary(int  sock,
 
   return rc;
 }
+#endif
