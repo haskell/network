@@ -181,6 +181,8 @@ import Foreign( FunPtr )
 import GHC.Handle
 import GHC.IOBase
 import qualified System.Posix.Internals
+#else
+import System.IO.Unsafe	(unsafePerformIO)
 #endif
 
 -----------------------------------------------------------------------------
