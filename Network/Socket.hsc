@@ -148,9 +148,15 @@ import Hugs.IO ( openFd )
 {-# CBITS HsNet.c initWinSock.c ancilData.c #-}
 #endif
 
-import Foreign
-import Foreign.C
-import Foreign.Marshal.Array ( peekArray )
+import Data.Word ( Word16, Word32 )
+import Foreign.Ptr ( Ptr, castPtr, plusPtr )
+import Foreign.Storable ( Storable(..) )
+import Foreign.C.Error
+import Foreign.C.String ( withCString, peekCString, peekCStringLen, castCharToCChar )
+import Foreign.C.Types ( CInt, CUInt, CChar, CSize )
+import Foreign.Marshal.Alloc ( alloca, allocaBytes )
+import Foreign.Marshal.Array ( peekArray, pokeArray0 )
+import Foreign.Marshal.Utils ( with )
 
 import System.IO
 import Control.Monad ( liftM, when )
@@ -585,7 +591,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      when (rc /= 0)
           (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
 #else 
-     withObject (fromIntegral sz) $ \ ptr_len -> do
+     with (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
 # if !defined(__HUGS__)
                  throwErrnoIfMinus1Retry_repeatOnBlock "accept" 
@@ -720,7 +726,7 @@ socketPort (MkSocket _ family _ _ _) =
 getPeerName   :: Socket -> IO SockAddr
 getPeerName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
-   withObject (fromIntegral sz) $ \int_star -> do
+   with (fromIntegral sz) $ \int_star -> do
    throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
    sz <- peek int_star
    peekSockAddr ptr
@@ -728,7 +734,7 @@ getPeerName (MkSocket s family _ _ _) = do
 getSocketName :: Socket -> IO SockAddr
 getSocketName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
-   withObject (fromIntegral sz) $ \int_star -> do
+   with (fromIntegral sz) $ \int_star -> do
    throwSocketErrorIfMinus1Retry "getSocketName" $ c_getsockname s ptr int_star
    peekSockAddr ptr
 
@@ -881,7 +887,7 @@ setSocketOption :: Socket
 		-> Int		-- Option Value
 		-> IO ()
 setSocketOption (MkSocket s _ _ _ _) so v = do
-   withObject (fromIntegral v) $ \ptr_v -> do
+   with (fromIntegral v) $ \ptr_v -> do
    throwErrnoIfMinus1_ "setSocketOption" $
        c_setsockopt s (socketOptLevel so) (packSocketOption so) ptr_v 
 	  (fromIntegral (sizeOf v))
@@ -893,7 +899,7 @@ getSocketOption :: Socket
 		-> IO Int	 -- Option Value
 getSocketOption (MkSocket s _ _ _ _) so = do
    alloca $ \ptr_v ->
-     withObject (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
+     with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwErrnoIfMinus1 "getSocketOption" $
 	 c_getsockopt s (socketOptLevel so) (packSocketOption so) ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
@@ -907,7 +913,7 @@ getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
   let fd = fdSocket sock
   let sz = (fromIntegral (#const sizeof(struct ucred)))
-  withObject sz $ \ ptr_cr -> 
+  with sz $ \ ptr_cr -> 
    alloca       $ \ ptr_sz -> do
      poke ptr_sz sz
      throwErrnoIfMinus1 "getPeerCred" $

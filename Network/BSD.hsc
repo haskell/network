@@ -101,8 +101,13 @@ import Hugs.Prelude
 #endif
 import Network.Socket
 
-import Foreign.C
-import Foreign
+import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
+import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
+import Foreign.C.Types ( CInt, CULong, CChar, CSize )
+import Foreign.Ptr ( Ptr, nullPtr )
+import Foreign.Storable ( Storable(..) )
+import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
+import Foreign.Marshal.Utils ( with, fromBool )
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.IOBase
@@ -369,7 +374,7 @@ foreign import ccall unsafe "gethostbyname"
 
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
- withObject addr $ \ ptr_addr -> do
+ with addr $ \ ptr_addr -> do
  throwNoSuchThingIfNull 	"getHostByAddr" "no such host entry"
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
