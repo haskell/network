@@ -35,7 +35,7 @@
 module Network.Socket (
 
     -- * Types
-    Socket,		-- instance Eq, Show
+    Socket(..),		-- instance Eq, Show
     Family(..),		
     SocketType(..),
     SockAddr(..),
@@ -536,7 +536,7 @@ accept sock@(MkSocket s family stype protocol status) = do
  okay <- sIsAcceptable sock
  if not okay
    then
-     ioError (userError ("accept: can't peform accept on socket in status " ++
+     ioError (userError ("accept: can't perform accept on socket (" ++ (show (family,stype,protocol)) ++") in status " ++
 	 show currentStatus))
    else do
      let sz = sizeOfSockAddr_Family family

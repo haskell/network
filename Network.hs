@@ -111,7 +111,7 @@ connectTo hostname (PortNumber port) = do
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
 connectTo _ (UnixSocket path) = do
     bracketOnError
-	(socket AF_UNIX Datagram 0)
+	(socket AF_UNIX Stream 0)
 	(sClose)
 	(\sock -> do
           connect sock (SockAddrUnix path)
@@ -159,11 +159,12 @@ listenOn (PortNumber port) = do
 #if !defined(mingw32_TARGET_OS) && !defined(cygwin32_TARGET_OS)
 listenOn (UnixSocket path) =
     bracketOnError
-    	(socket AF_UNIX Datagram 0)
+    	(socket AF_UNIX Stream 0)
 	(sClose)
 	(\sock -> do
 	    setSocketOption sock ReuseAddr 1
 	    bindSocket sock (SockAddrUnix path)
+	    listen sock maxListenQueue
 	    return sock
 	)
 #endif
@@ -174,6 +175,10 @@ listenOn (UnixSocket path) =
 -- | Accept a connection on a socket created by 'listenOn'.  Normal
 -- I\/O opertaions (see "System.IO") can be used on the 'Handle'
 -- returned to communicate with the client.
+-- Notice that although you can pass any Socket to Network.accept, only
+-- sockets of either AF_UNIX or AF_INET will work (this shouldn't be a problem,
+-- though). When using AF_UNIX, HostName will be set to the path of the socket
+-- and PortNumber to -1.
 --
 accept :: Socket 		-- ^ Listening Socket
        -> IO (Handle,
@@ -182,7 +187,7 @@ accept :: Socket 		-- ^ Listening Socket
 				-- communicating with the client,
 			 	-- the 'HostName' of the peer socket, and
 				-- the 'PortNumber' of the remote connection.
-accept sock = do
+accept sock@(MkSocket _ AF_INET _ _ _) = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
  peer <- Exception.catchJust ioErrors
 	  (do 	
@@ -193,6 +198,12 @@ accept sock = do
 		-- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
+accept sock@(MkSocket _ AF_UNIX _ _ _) = do
+ ~(sock', (SockAddrUnix path)) <- Socket.accept sock
+ handle <- socketToHandle sock' ReadWriteMode
+ return (handle, path, -1)
+accept sock@(MkSocket _ family _ _ _) =
+  error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
 
 -- -----------------------------------------------------------------------------
 -- sendTo/recvFrom
