@@ -42,7 +42,7 @@ sendFd(int sock,
   char  buf[2];
 #if defined(HAVE_MSGHDR_MSG_ACCRIGHTS)
   msg.msg_accrights = (void*)&outfd;
-  msg.msg_accrights = sizeof(int);
+  msg.msg_accrightslen = sizeof(int);
 #else
   struct cmsghdr *cmsg;
   char ancBuffer[CMSG_SPACE(sizeof(int))];
@@ -146,7 +146,7 @@ recvFd(int sock)
 #else
   fdBuffer = (int*)malloc(len);
   if (fdBuffer) {
-    msg.msg_accrights    = fdBuffer;
+    msg.msg_accrights    = (void *)fdBuffer;
   } else {
     return -1;
   }
