@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# $Id: Makefile,v 1.18 2003/07/03 15:24:01 sof Exp $
+# $Id: Makefile,v 1.19 2003/11/11 11:50:53 simonmar Exp $
 
 TOP=..
 include $(TOP)/mk/boilerplate.mk
@@ -27,8 +27,7 @@ EXTRA_SRCS += cbits/ancilData.c
 Network/Socket_HC_OPTS += -DCALLCONV=ccall
 endif
 
-SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (network package)" \
-	-p prologue.txt
+SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (network package)"
 
 include $(TOP)/mk/target.mk
 
