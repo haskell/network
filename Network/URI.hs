@@ -65,8 +65,6 @@ module Network.URI
       URI(..)
     , URIAuth(..)
     , nullURI
-      -- ** Component functions for backwards compatibility
-    , scheme, authority, path, query, fragment
       -- * Parsing
     , parseURI                  -- :: String -> Maybe URI
     , parseURIReference         -- :: String -> Maybe URI
@@ -91,15 +89,17 @@ module Network.URI
     , uriToString                       -- :: URI -> ShowS
     , isReserved, isUnreserved          -- :: Char -> Bool
     , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
-    , escapeChar                -- :: (Char->Bool) -> Char -> String
-    , escapeString              -- :: (Char->Bool) -> String -> String
+    , escapeURIChar                -- :: (Char->Bool) -> Char -> String
+    , escapeURIString              -- :: (Char->Bool) -> String -> String
     , unEscapeString            -- :: String -> String
     -- * URI Normalization functions
     , normalizeCase             -- :: String -> String
     , normalizeEscape           -- :: String -> String
     , normalizePathSegments     -- :: String -> String
     -- * Deprecated functions
+    , escapeString              -- :: String -> (Char->Bool) -> String
     , reserved, unreserved      -- :: Char -> Bool
+    , scheme, authority, path, query, fragment
     )
 where
 
@@ -192,36 +192,6 @@ testDefaultUserInfoMap =
      , defaultUserInfoMap "user:pass"       == "user:********@"
      , defaultUserInfoMap "user:anonymous"  == "user:********@"
      ]
-
---  Additional component access functions for backward compatibility
-
-{-# DEPRECATED scheme "use uriScheme" #-}
-scheme :: URI -> String
-scheme = orNull init . uriScheme
-
-{-# DEPRECATED authority "use uriAuthority, and note changed functionality" #-}
-authority :: URI -> String
-authority = dropss . ($"") . uriAuthToString id . uriAuthority
-    where
-        -- Old-style authority component does not include leading '//'
-        dropss ('/':'/':s) = s
-        dropss s           = s
-
-{-# DEPRECATED path "use uriPath" #-}
-path :: URI -> String
-path = uriPath
-
-{-# DEPRECATED query "use uriQuery, and note changed functionality" #-}
-query :: URI -> String
-query = orNull tail . uriQuery
-
-{-# DEPRECATED fragment "use uriFragment, and note changed functionality" #-}
-fragment :: URI -> String
-fragment = orNull tail . uriFragment
-
-orNull :: ([a]->[a]) -> [a] -> [a]
-orNull _ [] = []
-orNull f as = f as
 
 ------------------------------------------------------------
 --  Parse a URI
@@ -893,8 +863,8 @@ isUnescapedInURI c = isReserved c || isUnreserved c
 -- |Escape character if supplied predicate is not satisfied,
 --  otherwise return character as singleton string.
 --
-escapeChar :: (Char->Bool) -> Char -> String
-escapeChar p c
+escapeURIChar :: (Char->Bool) -> Char -> String
+escapeURIChar p c
     | p c       = [c]
     | otherwise = '%' : myShowHex (ord c) ""
     where
@@ -909,12 +879,12 @@ escapeChar p c
 
 -- |Can be used to make a string valid for use in a URI.
 --
-escapeString
+escapeURIString
     :: (Char->Bool)     -- ^ a predicate which returns 'False'
                         --   if the character should be escaped
     -> String           -- ^ the string to process
     -> String           -- ^ the resulting URI string
-escapeString p s = concatMap (escapeChar p) s
+escapeURIString p s = concatMap (escapeURIChar p) s
 
 -- |Turns all instances of escaped characters in the string back
 --  into literal characters.
@@ -1283,6 +1253,10 @@ traceVal msg x y = trace (msg ++ show x) y
 --  Deprecated functions
 ------------------------------------------------------------
 
+{-# DEPRECATED escapeString "use escapeURIString, and note the flipped arguments" #-}
+escapeString :: String -> (Char->Bool) -> String
+escapeString = flip escapeURIString
+
 {-# DEPRECATED reserved "use isReserved" #-}
 reserved :: Char -> Bool
 reserved = isReserved
@@ -1290,6 +1264,36 @@ reserved = isReserved
 {-# DEPRECATED unreserved "use isUnreserved" #-}
 unreserved :: Char -> Bool
 unreserved = isUnreserved
+
+--  Additional component access functions for backward compatibility
+
+{-# DEPRECATED scheme "use uriScheme" #-}
+scheme :: URI -> String
+scheme = orNull init . uriScheme
+
+{-# DEPRECATED authority "use uriAuthority, and note changed functionality" #-}
+authority :: URI -> String
+authority = dropss . ($"") . uriAuthToString id . uriAuthority
+    where
+        -- Old-style authority component does not include leading '//'
+        dropss ('/':'/':s) = s
+        dropss s           = s
+
+{-# DEPRECATED path "use uriPath" #-}
+path :: URI -> String
+path = uriPath
+
+{-# DEPRECATED query "use uriQuery, and note changed functionality" #-}
+query :: URI -> String
+query = orNull tail . uriQuery
+
+{-# DEPRECATED fragment "use uriFragment, and note changed functionality" #-}
+fragment :: URI -> String
+fragment = orNull tail . uriFragment
+
+orNull :: ([a]->[a]) -> [a] -> [a]
+orNull _ [] = []
+orNull f as = f as
 
 --------------------------------------------------------------------------------
 --
