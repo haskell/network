@@ -140,7 +140,7 @@ recvFd(int sock)
     return -1;
   }
   
-  msg.msg_control = cmsg;
+  msg.msg_control = (void *)cmsg;
   msg.msg_controllen = CMSG_LEN(len);
 #else
   fdBuffer = (int*)malloc(len);
@@ -193,7 +193,7 @@ recvAncillary(int  sock,
     return -1;
   }
   
-  msg.msg_control = cmsg;
+  msg.msg_control = (void *)cmsg;
   msg.msg_controllen = CMSG_LEN(*pLen);
 #else
   *pData = (void*)malloc(*pLen);
