@@ -13,7 +13,7 @@ Package {
 #else
         library_dirs   = [ "$libdir/libraries/network" ],
 #endif
-        hs_libraries      = [ "HSnet" ],
+        hs_libraries      = [ "HSnetwork" ],
 #ifdef solaris2_TARGET_OS
 	extra_libraries   = [ "nsl",  "socket" ],
 #else
