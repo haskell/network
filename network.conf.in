@@ -5,13 +5,13 @@ Package {
 #ifdef INSTALLING
 	import_dirs    = [ "$libdir/imports" ],
 #else
-	import_dirs    = [ "$libdir/libraries/net" ],
+	import_dirs    = [ "$libdir/libraries/network" ],
 #endif
         source_dirs    = [],
 #ifdef INSTALLING
         library_dirs   = [ "$libdir" ],
 #else
-        library_dirs   = [ "$libdir/libraries/net" ],
+        library_dirs   = [ "$libdir/libraries/network" ],
 #endif
         hs_libraries      = [ "HSnet" ],
 #ifdef solaris2_TARGET_OS
@@ -22,7 +22,7 @@ Package {
 #ifdef INSTALLING
         include_dirs   = [],
 #else
-        include_dirs   = [ "$libdir/libraries/net/cbits" ],
+        include_dirs   = [ "$libdir/libraries/network/include" ],
 #endif
         c_includes     = [ "HsNet.h" ],
         package_deps   = [ "base" ],
