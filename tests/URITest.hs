@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.1 2004/10/14 16:11:30 gklyne Exp $
+--  $Id: URITest.hs,v 1.2 2004/10/27 13:06:55 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -28,17 +28,22 @@ module Main where
 
 import Network.URI
     ( URI(..), URIAuth(..)
-    , parseURI
-    , isUri, isUriReference, isRelativeUri, isAbsoluteUri
+    , nullURI
+    , parseURIReference
+    , isURI, isURIReference, isRelativeReference, isAbsoluteURI
     , isIPv6address, isIPv4address
-    , relativeTo
+    , relativeTo, nonStrictRelativeTo
     , relativeFrom
+    , uriToString
+    , isUnescapedInURI, escapeString, unEscapeString
     , normalizeCase, normalizeEscape, normalizePathSegments
     )
 
 import HUnit
 
 import IO ( Handle, openFile, IOMode(WriteMode), hClose, hPutStr, hPutStrLn )
+
+import Maybe ( fromJust )
 
 -- Test supplied string for valid URI reference syntax
 --   isValidURIRef :: String -> Bool
@@ -73,14 +78,14 @@ testEq lab a1 a2 = TestCase ( assertEqual lab a1 a2 )
 
 testURIRef :: URIType -> String -> Test
 testURIRef t u = TestList
-  [ testEq ("test_isURIReference:"++u) (isValidT t) (isUriReference u)
-  , testEq ("test_isRelativeURI:"++u)  (isRelRfT t) (isRelativeUri  u)
-  , testEq ("test_isAbsoluteURI:"++u)  (isAbsIdT t) (isAbsoluteUri  u)
+  [ testEq ("test_isURIReference:"++u) (isValidT t) (isURIReference u)
+  , testEq ("test_isRelativeReference:"++u)  (isRelRfT t) (isRelativeReference  u)
+  , testEq ("test_isAbsoluteURI:"++u)  (isAbsIdT t) (isAbsoluteURI  u)
   ]
 
 testURIRefComponents :: String -> (Maybe URI) -> String -> Test
 testURIRefComponents lab uv us =
-    testEq ("testURIRefComponents:"++us) uv (parseURI us)
+    testEq ("testURIRefComponents:"++us) uv (parseURIReference us)
 
 
 testURIRef001 = testURIRef AbsRf "http://example.org/aaa/bbb#ccc"
@@ -316,8 +321,8 @@ testRelSplit label base uabs urel =
         mkrel (Just u1) (Just u2) = show (u1 `relativeFrom` u2)
         mkrel Nothing   _         = "Invalid URI: "++urel
         mkrel _         Nothing   = "Invalid URI: "++uabs
-        puabs = parseURI uabs
-        pubas = parseURI base
+        puabs = parseURIReference uabs
+        pubas = parseURIReference base
 
 testRelJoin  :: String -> String -> String -> String -> Test
 testRelJoin label base urel uabs =
@@ -328,8 +333,8 @@ testRelJoin label base urel uabs =
         mkabs _         Nothing   = "Invalid URI: "++uabs
         shabs (Just u) = show u
         shabs Nothing  = "No result"
-        purel = parseURI urel
-        pubas = parseURI base
+        purel = parseURIReference urel
+        pubas = parseURIReference base
 
 testRelative :: String -> String -> String -> String -> Test
 testRelative label base uabs urel = TestList
@@ -772,6 +777,124 @@ testNormalizeSuite = TestList
   , testNormalize25, testNormalize26, testNormalize27, testNormalize28
   ]
 
+-- URI formatting (show) tests
+
+ts02URI = URI   { uriScheme    = "http:"
+                , uriAuthority = Just (URIAuth "user:pass@" "example.org" ":99")
+                , uriPath      = "/aaa/bbb"
+                , uriQuery     = "?ccc"
+                , uriFragment  = "#ddd/eee"
+                }
+
+ts04URI = URI   { uriScheme    = "http:"
+                , uriAuthority = Just (URIAuth "user:anonymous@" "example.org" ":99")
+                , uriPath      = "/aaa/bbb"
+                , uriQuery     = "?ccc"
+                , uriFragment  = "#ddd/eee"
+                }
+
+ts02str = "http://user:********@example.org:99/aaa/bbb?ccc#ddd/eee"
+ts03str = "http://user:pass@example.org:99/aaa/bbb?ccc#ddd/eee"
+ts04str = "http://user:anonymous@example.org:99/aaa/bbb?ccc#ddd/eee"
+
+testShowURI01 = testEq "testShowURI01" ""      (show nullURI)
+testShowURI02 = testEq "testShowURI02" ts02str (show ts02URI)
+testShowURI03 = testEq "testShowURI03" ts03str ((uriToString id ts02URI) "")
+testShowURI04 = testEq "testShowURI04" ts04str (show ts04URI)
+
+testShowURI = TestList
+  [ testShowURI01
+  , testShowURI02
+  , testShowURI03
+  , testShowURI04
+  ]
+
+
+-- URI escaping tests
+
+te01str = "http://example.org/az/09-_/.~:/?#[]@!$&'()*+,;="
+te02str = "http://example.org/a</b>/c%/d /e"
+te02esc = "http://example.org/a%3C/b%3E/c%25/d%20/e"
+
+testEscapeURIString01 = testEq "testEscapeURIString01"
+    te01str (escapeString isUnescapedInURI te01str)
+
+testEscapeURIString02 = testEq "testEscapeURIString02"
+    te02esc (escapeString isUnescapedInURI te02str)
+
+testEscapeURIString03 = testEq "testEscapeURIString03"
+    te01str (unEscapeString te01str)
+
+testEscapeURIString04 = testEq "testEscapeURIString04"
+    te02str (unEscapeString te02esc)
+
+
+testEscapeURIString = TestList
+  [ testEscapeURIString01
+  , testEscapeURIString02
+  , testEscapeURIString03
+  , testEscapeURIString04
+  ]
+
+-- URI string normalization tests
+
+tn01str = "eXAMPLE://a/b/%7bfoo%7d"
+tn01nrm = "example://a/b/%7Bfoo%7D"
+
+tn02str = "example://a/b/%63/"
+tn02nrm = "example://a/b/c/"
+
+tn03str = "example://a/./b/../b/c/foo"
+tn03nrm = "example://a/b/c/foo"
+
+tn04str = "eXAMPLE://a/b/%7bfoo%7d"     -- From RFC2396bis, 6.2.2
+tn04nrm = "example://a/b/%7Bfoo%7D"
+
+testNormalizeURIString01 = testEq "testNormalizeURIString01"
+    tn01nrm (normalizeCase tn01str)
+testNormalizeURIString02 = testEq "testNormalizeURIString02"
+    tn02nrm (normalizeEscape tn02str)
+testNormalizeURIString03 = testEq "testNormalizeURIString03"
+    tn03nrm (normalizePathSegments tn03str)
+testNormalizeURIString04 = testEq "testNormalizeURIString04"
+    tn04nrm ((normalizeCase . normalizeEscape . normalizePathSegments) tn04str)
+testNormalizeURIString05 = testEq "testNormalizeURIString05"
+    tn04nrm ((normalizePathSegments . normalizeEscape . normalizeCase) tn04str)
+
+testNormalizeURIString = TestList
+  [ testNormalizeURIString01
+  , testNormalizeURIString02
+  , testNormalizeURIString03
+  , testNormalizeURIString04
+  , testNormalizeURIString05
+  ]
+
+
+-- Test strict vs non-strict relativeTo logic
+
+trbase = fromJust $ parseURIReference "http://bar.org/"
+
+testRelativeTo01 = testEq "testRelativeTo01"
+    "http://bar.org/foo"
+    (show . fromJust $
+      (fromJust $ parseURIReference "foo") `relativeTo` trbase)
+
+testRelativeTo02 = testEq "testRelativeTo02"
+    "http:foo"
+    (show . fromJust $
+      (fromJust $ parseURIReference "http:foo") `relativeTo` trbase)
+
+testRelativeTo03 = testEq "testRelativeTo03"
+    "http://bar.org/foo"
+    (show . fromJust $
+      (fromJust $ parseURIReference "http:foo") `nonStrictRelativeTo` trbase)
+
+testRelativeTo = TestList
+  [ testRelativeTo01
+  , testRelativeTo02
+  , testRelativeTo03
+  ]
+
 -- Full test suite
 allTests = TestList
   [ testURIRefSuite
@@ -780,6 +903,10 @@ allTests = TestList
   , testRFC2396Suite
   , testOddballSuite
   , testNormalizeSuite
+  , testShowURI
+  , testEscapeURIString
+  , testNormalizeURIString
+  , testRelativeTo
   ]
 
 main = runTestTT allTests
@@ -791,6 +918,8 @@ runTestFile t = do
 tf = runTestFile
 tt = runTestTT
 
+-- Miscellaneous values for hand-testing/debugging in Hugs:
+
 uref = testURIRefSuite
 tr01 = testRelative01
 tr02 = testRelative02
@@ -800,9 +929,9 @@ rel  = testRelativeSuite
 rfc  = testRFC2396Suite
 oddb = testOddballSuite
 
-(Just bu02) = parseURI "http://example/x/y/z"
-(Just ou02) = parseURI "../abc"
-(Just ru02) = parseURI "http://example/x/abc"
+(Just bu02) = parseURIReference "http://example/x/y/z"
+(Just ou02) = parseURIReference "../abc"
+(Just ru02) = parseURIReference "http://example/x/abc"
 -- fileuri = testURIReference "file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/"
 
 cu02 = ou02 `relativeTo` bu02
@@ -842,8 +971,13 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.1 $
+-- $Revision: 1.2 $
 -- $Log: URITest.hs,v $
+-- Revision 1.2  2004/10/27 13:06:55  gklyne
+-- Updated URI module function names per:
+-- http://www.haskell.org//pipermail/cvs-libraries/2004-October/002916.html
+-- Added test cases to give better covereage of module functions.
+--
 -- Revision 1.1  2004/10/14 16:11:30  gklyne
 -- Add URI unit test to cvs.haskell.org repository
 --
