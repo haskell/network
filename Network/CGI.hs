@@ -11,7 +11,7 @@
 -- Haskell binding for CGI
 --
 -- Original Version by Erik Meijer <mailto:erik@cs.ruu.nl>
--- Further hacked on by Sven Panne <mailto:Sven_Panne@BetaResearch.de>
+-- Further hacked on by Sven Panne <mailto:sven_panne@yahoo.com>
 -- Further hacking by Andy Gill <mailto:andy@galconn.com>
 --
 -----------------------------------------------------------------------------
