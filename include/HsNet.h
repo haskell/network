@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.3 2002/05/01 05:49:18 sof Exp $
+ * $Id: HsNet.h,v 1.4 2002/05/01 22:18:48 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -29,6 +29,9 @@ extern StgInt initWinSock ();
 #endif
 #ifdef HAVE_FCNTL_H
 # include <fcntl.h>
+#endif
+#ifdef HAVE_SYS_UIO_H
+# include <sys/uio.h>
 #endif
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
