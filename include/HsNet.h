@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------------------------
- * $Id: HsNet.h,v 1.11 2002/10/25 02:34:31 mthomas Exp $
+ * $Id: HsNet.h,v 1.12 2002/12/04 20:13:52 sof Exp $
  *
  * Definitions for package `net' which are visible in Haskell land.
  *
@@ -8,14 +8,15 @@
 #ifndef HSNET_H
 #define HSNET_H
 
+#ifndef INLINE
+#define INLINE extern inline
+#endif
+
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+#include <winsock.h>
 
-# include "HsFFI.h"
-# include <StgTypes.h>
-# include <winsock.h>
-
-extern void   shutdownWinSock();
-extern HsInt initWinSock ();
+extern void  shutdownWinSock();
+extern int   initWinSock ();
 
 #else
 
@@ -75,7 +76,6 @@ sendAncillary(int sock,
 	      void* data,
 	      int len);
 
-
 extern int
 recvAncillary(int  sock,
 	      int* pLevel,
@@ -84,19 +84,20 @@ recvAncillary(int  sock,
 	      void** pData,
 	      int* pLen);
 
-
-#ifndef INLINE
-#define INLINE extern inline
-#endif
+#endif /* HAVE_WINSOCK_H && !__CYGWIN */
 
 INLINE char *
-my_inet_ntoa(in_addr_t addr)
+my_inet_ntoa(
+#if defined(HAVE_WINSOCK_H)
+             u_long addr
+#else
+             in_addr_t addr
+#endif
+	    )
 { 
     struct in_addr a;
     a.s_addr = addr;
     return inet_ntoa(a);
 }
-
-#endif /* HAVE_WINSOCK_H && !__CYGWIN */
 
 #endif
