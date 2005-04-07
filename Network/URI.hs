@@ -40,6 +40,12 @@
 --  Dan Connolly's Python module @uripath.py@ [5] also contains useful details
 --  and test cases.
 --
+--  Some of the code has been copied from the previous GHC implementation,
+--  but the parser is replaced with one that performs more complete
+--  syntax checking of the URI itself, according to RFC3986 [3].
+--
+--  References
+--
 --  (1) <http://www.ietf.org/rfc/rfc2396.txt>
 --
 --  (2) <http://www.ietf.org/rfc/rfc2732.txt>
@@ -49,10 +55,6 @@
 --  (4) <http://www.ietf.org/rfc/rfc1808.txt>
 --
 --  (5) <http://www.w3.org/2000/10/swap/uripath.py>
---
---  Some of the code has been copied from the previous GHC implementation,
---  but the parser is replaced with one that performs more complete
---  syntax checking of the URI itself, according to RFC3986 [3].
 --
 --------------------------------------------------------------------------------
 
@@ -1021,9 +1023,9 @@ splitLast path = (reverse revpath,reverse revname)
 -- Finding a URI relative to a base URI
 ------------------------------------------------------------
 
--- |Returns a new 'URI' which represents the ralative location of
+-- |Returns a new 'URI' which represents the relative location of
 --  the first 'URI' with respect to the second 'URI'.  Thus, the
---  values supplied are expected to be absolure URIs, and the result
+--  values supplied are expected to be absolute URIs, and the result
 --  returned may be a relative URI.
 --
 --  Example:
@@ -1033,13 +1035,13 @@ splitLast path = (reverse revpath,reverse revname)
 --  >   == "../sub2/name2#frag"
 --
 --  There is no single correct implementation of this function,
---  but any accesptable implementation must satisfy the following:
+--  but any acceptable implementation must satisfy the following:
 --
 --  > (uabs `relativeFrom` ubase) `relativeTo` ubase == uabs
 --
 --  For any valid absolute URI.
---  cf. <http://lists.w3.org/Archives/Public/uri/2003Jan/0008.html>
---      <http://lists.w3.org/Archives/Public/uri/2003Jan/0005.html>
+--  (cf. <http://lists.w3.org/Archives/Public/uri/2003Jan/0008.html>
+--       <http://lists.w3.org/Archives/Public/uri/2003Jan/0005.html>)
 --
 relativeFrom :: URI -> URI -> URI
 relativeFrom uabs base
