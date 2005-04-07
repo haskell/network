@@ -20,7 +20,7 @@
 --      'parseURI',
 --      'parseURIReference',
 --      'parseRelativeReference' and
---      'parseabsoluteURI'.
+--      'parseAbsoluteURI'.
 --
 --  Further, four methods are provided for classifying different
 --  kinds of URI string (as noted in RFC3986):
@@ -67,7 +67,7 @@ module Network.URI
     , parseURI                  -- :: String -> Maybe URI
     , parseURIReference         -- :: String -> Maybe URI
     , parseRelativeReference    -- :: String -> Maybe URI
-    , parseabsoluteURI          -- :: String -> Maybe URI
+    , parseAbsoluteURI          -- :: String -> Maybe URI
       -- * Test for strings containing various kinds of URI
     , isURI
     , isURIReference
@@ -98,6 +98,7 @@ module Network.URI
     , normalizeEscape           -- :: String -> String
     , normalizePathSegments     -- :: String -> String
     -- * Deprecated functions
+    , parseabsoluteURI          -- :: String -> Maybe URI
     , escapeString              -- :: String -> (Char->Bool) -> String
     , reserved, unreserved      -- :: Char -> Bool
     , scheme, authority, path, query, fragment
@@ -257,8 +258,8 @@ parseRelativeReference = parseURIAny relativeRef
 --  Returns 'Nothing' if the string is not a valid absolute URI.
 --  (an absolute URI without a fragment identifier).
 --
-parseabsoluteURI :: String -> Maybe URI
-parseabsoluteURI = parseURIAny absoluteURI
+parseAbsoluteURI :: String -> Maybe URI
+parseAbsoluteURI = parseURIAny absoluteURI
 
 -- |Test if string contains a valid URI
 --  (an absolute URI with optional fragment identifier).
@@ -1191,6 +1192,10 @@ traceVal msg x y = trace (msg ++ show x) y
 ------------------------------------------------------------
 --  Deprecated functions
 ------------------------------------------------------------
+
+{-# DEPRECATED parseabsoluteURI "use parseAbsoluteURI" #-}
+parseabsoluteURI :: String -> Maybe URI
+parseabsoluteURI = parseAbsoluteURI
 
 {-# DEPRECATED escapeString "use escapeURIString, and note the flipped arguments" #-}
 escapeString :: String -> (Char->Bool) -> String
