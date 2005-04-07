@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.4 2005/04/05 12:47:32 gklyne Exp $
+--  $Id: URITest.hs,v 1.5 2005/04/07 11:09:37 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -28,7 +28,8 @@ module URITest where
 import Network.URI
     ( URI(..), URIAuth(..)
     , nullURI
-    , parseURIReference
+    , parseURI, parseURIReference, parseRelativeReference, parseAbsoluteURI
+    , parseabsoluteURI
     , isURI, isURIReference, isRelativeReference, isAbsoluteURI
     , isIPv6address, isIPv4address
     , relativeTo, nonStrictRelativeTo
@@ -913,6 +914,50 @@ testRelativeTo = TestList
   , testRelativeTo03
   ]
 
+-- Test alternative parsing functions
+testAltFn01 = testEq "testAltFn01" "Just http://a.b/c#f"
+    (show . parseURI $ "http://a.b/c#f")
+testAltFn02 = testEq "testAltFn02" "Just http://a.b/c#f"
+    (show . parseURIReference $ "http://a.b/c#f")
+testAltFn03 = testEq "testAltFn03" "Just c/d#f"
+    (show . parseRelativeReference $ "c/d#f")
+testAltFn04 = testEq "testAltFn04" "Nothing"
+    (show . parseRelativeReference $ "http://a.b/c#f")
+testAltFn05 = testEq "testAltFn05" "Just http://a.b/c"
+    (show . parseAbsoluteURI $ "http://a.b/c")
+testAltFn06 = testEq "testAltFn06" "Nothing"
+    (show . parseAbsoluteURI $ "http://a.b/c#f")
+testAltFn07 = testEq "testAltFn07" "Nothing"
+    (show . parseAbsoluteURI $ "c/d")
+testAltFn08 = testEq "testAltFn08" "Just http://a.b/c"
+    (show . parseabsoluteURI $ "http://a.b/c")
+
+testAltFn11 = testEq "testAltFn11" True  (isURI "http://a.b/c#f")
+testAltFn12 = testEq "testAltFn12" True  (isURIReference "http://a.b/c#f")
+testAltFn13 = testEq "testAltFn13" True  (isRelativeReference "c/d#f")
+testAltFn14 = testEq "testAltFn14" False (isRelativeReference "http://a.b/c#f")
+testAltFn15 = testEq "testAltFn15" True  (isAbsoluteURI "http://a.b/c")
+testAltFn16 = testEq "testAltFn16" False (isAbsoluteURI "http://a.b/c#f")
+testAltFn17 = testEq "testAltFn17" False (isAbsoluteURI "c/d")
+
+testAltFn = TestList
+  [ testAltFn01
+  , testAltFn02
+  , testAltFn03
+  , testAltFn04
+  , testAltFn05
+  , testAltFn06
+  , testAltFn07
+  , testAltFn08
+  , testAltFn11
+  , testAltFn12
+  , testAltFn13
+  , testAltFn14
+  , testAltFn15
+  , testAltFn16
+  , testAltFn17
+  ]
+
 -- Full test suite
 allTests = TestList
   [ testURIRefSuite
@@ -925,6 +970,7 @@ allTests = TestList
   , testEscapeURIString
   , testNormalizeURIString
   , testRelativeTo
+  , testAltFn
   ]
 
 main = runTestTT allTests
@@ -989,8 +1035,11 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.4 $
+-- $Revision: 1.5 $
 -- $Log: URITest.hs,v $
+-- Revision 1.5  2005/04/07 11:09:37  gklyne
+-- Added test cases for alternate parsing functions (including deprecated 'parseabsoluteURI')
+--
 -- Revision 1.4  2005/04/05 12:47:32  gklyne
 -- Added test case.
 -- Changed module name, now requires GHC -main-is to compile.
