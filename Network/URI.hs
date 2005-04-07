@@ -9,34 +9,32 @@
 --  Stability   :  provisional
 --  Portability :  portable
 --
---  This module defines functions for handling URIs.  It presents the same
---  interface as the GHC Network.URI module, but is implemented using Parsec
---  rather than a Regex library that is not available with Hugs.  The internal
+--  This module defines functions for handling URIs.  It presents substantially the
+--  same interface as the older GHC Network.URI module, but is implemented using
+--  Parsec rather than a Regex library that is not available with Hugs.  The internal
 --  representation of URI has been changed so that URI strings are more
 --  completely preserved when round-tripping to a URI value and back.
 --
 --  In addition, four methods are provided for parsing different
---  kinds of URI string (as noted in RFC2396bis):
+--  kinds of URI string (as noted in RFC3986):
 --      'parseURI',
 --      'parseURIReference',
 --      'parseRelativeReference' and
 --      'parseabsoluteURI'.
 --
 --  Further, four methods are provided for classifying different
---  kinds of URI string (as noted in RFC2396bis):
+--  kinds of URI string (as noted in RFC3986):
 --      'isURI',
 --      'isURIReference',
 --      'isRelativeReference' and
 --      'isAbsoluteURI'.
 --
---  The current official reference for URI handling is RFC2396 [1],
---  as updated by RFC 2732 [2].
---
---  These are being merged into RFC2396bis [3], a work-in-progress copy of
---  which is available at the URI indicated.  This document has been used
+--  The long-standing official reference for URI handling was RFC2396 [1],
+--  as updated by RFC 2732 [2], but this was replaced by a new specification,
+--  RFC3986 [3] in January 2005.  This latter specification has been used
 --  as the primary reference for constructing the URI parser implemented
 --  here, and it is intended that there is a direct relationship between
---  the syntax definition in that document and the parser implementation.
+--  the syntax definition in that document and this parser implementation.
 --
 --  RFC 1808 [4] contains a number of test cases for relative URI handling.
 --  Dan Connolly's Python module @uripath.py@ [5] also contains useful details
@@ -46,18 +44,15 @@
 --
 --  (2) <http://www.ietf.org/rfc/rfc2732.txt>
 --
---  (3) <http://gbiv.com/protocols/uri/rev-2002/rfc2396bis.html>
---      (This implementation based on a version dated Sep-2003,
---      also available as CVS revision 1.64 from
---      <http://cvs.apache.org/viewcvs.cgi/ietf-uri/rev-2002/>)
+--  (3) <http://www.ietf.org/rfc/rfc3986.txt>
 --
 --  (4) <http://www.ietf.org/rfc/rfc1808.txt>
 --
 --  (5) <http://www.w3.org/2000/10/swap/uripath.py>
 --
---  Some of the code has been copied from the GHC implementation, but
---  the parser is replaced with one that performs more complete
---  syntax checking of the URI itself, according to RFC2396bis [3].
+--  Some of the code has been copied from the previous GHC implementation,
+--  but the parser is replaced with one that performs more complete
+--  syntax checking of the URI itself, according to RFC3986 [3].
 --
 --------------------------------------------------------------------------------
 
@@ -195,7 +190,7 @@ nullURI = URI
     }
 
 --  URI as instance of Show.  Note that for security reasons, the default
---  behaviour is to suppress any userinfo field (see RFC2396bis, section 7.5).
+--  behaviour is to suppress any userinfo field (see RFC3986, section 7.5).
 --  This can be overridden by using uriToString directly with first
 --  argument @id@ (noting that this returns a ShowS value rather than a string).
 --
@@ -213,7 +208,6 @@ defaultUserInfoMap uinf = user++newpass
         (user,pass) = break (==':') uinf
         newpass     = if null pass || (pass == "@")
                                    || (pass == ":@")
---                                 || (pass == ":anonymous@")
                         then pass
                         else ":...@"
 
@@ -222,7 +216,6 @@ testDefaultUserInfoMap =
      , defaultUserInfoMap "@"               == "@"
      , defaultUserInfoMap "user@"           == "user@"
      , defaultUserInfoMap "user:@"          == "user:@"
---   , defaultUserInfoMap "user:anonymous@" == "user:anonymous@"
      , defaultUserInfoMap "user:anonymous@" == "user:...@"
      , defaultUserInfoMap "user:pass@"      == "user:...@"
      , defaultUserInfoMap "user:pass"       == "user:...@"
@@ -233,22 +226,13 @@ testDefaultUserInfoMap =
 --  Parse a URI
 ------------------------------------------------------------
 
-{- Old compatibility code.
--- parseURI not does not allow relative URIs
--- Use parseURIReference fpr equivalent functionality
---
--- Parse a 'URI' (Defined for compatibility with old Network.URI module)
---
-parseURI :: String -> Maybe URI
-parseURI = parseURIReference
--}
-
 -- |Turn a string containing a URI into a 'URI'.
 --  Returns 'Nothing' if the string is not a valid URI;
 --  (an absolute URI with optional fragment identifier).
 --
---  NOTE: this is different from network.URI, whose @parseURI@
---  function works like 'parseURIReference' in this module.
+--  NOTE: this is different from the previous network.URI,
+--  whose @parseURI@ function works like 'parseURIReference'
+--  in this module.
 --
 parseURI :: String -> Maybe URI
 parseURI = parseURIAny uri
@@ -274,22 +258,26 @@ parseRelativeReference = parseURIAny relativeRef
 parseabsoluteURI :: String -> Maybe URI
 parseabsoluteURI = parseURIAny absoluteURI
 
--- |Test if string contains a valid URI;
+-- |Test if string contains a valid URI
+--  (an absolute URI with optional fragment identifier).
 --
 isURI :: String -> Bool
 isURI = isValidParse uri
 
 -- |Test if string contains a valid URI reference
+--  (an absolute or relative URI with optional fragment identifier).
 --
 isURIReference :: String -> Bool
 isURIReference = isValidParse uriReference
 
--- |Test if string contains a valid relative URI.
+-- |Test if string contains a valid relative URI
+--  (a relative URI with optional fragment identifier).
 --
 isRelativeReference :: String -> Bool
 isRelativeReference = isValidParse relativeRef
 
--- |Test if string contains a valid absolute URI.
+-- |Test if string contains a valid absolute URI
+--  (an absolute URI without a fragment identifier).
 --
 isAbsoluteURI :: String -> Bool
 isAbsoluteURI = isValidParse absoluteURI
@@ -341,7 +329,7 @@ parseAll parser filename uristr = parse newparser filename uristr
 --  Currently
 type URIParser a = GenParser Char () a
 
---  RFC2396bis, section 2.1
+--  RFC3986, section 2.1
 --
 --  Parse and return a 'pct-encoded' sequence
 --
@@ -353,7 +341,7 @@ escaped =
         ; return $ ['%',h1,h2]
         }
 
---  RFC2396bis, section 2.2
+--  RFC3986, section 2.2
 --
 -- |Returns 'True' if the character is a \"reserved\" character in a
 --  URI.  To include a literal instance of one of these characters in a
@@ -372,7 +360,7 @@ genDelims = do { c <- satisfy isGenDelims ; return [c] }
 subDelims :: URIParser String
 subDelims = do { c <- satisfy isSubDelims ; return [c] }
 
---  RFC2396bis, section 2.3
+--  RFC3986, section 2.3
 --
 -- |Returns 'True' if the character is an \"unreserved\" character in
 --  a URI.  These characters do not need to be escaped in a URI.  The
@@ -385,7 +373,7 @@ isUnreserved c = isAlphaNumChar c || (c `elem` "-_.~")
 unreservedChar :: URIParser String
 unreservedChar = do { c <- satisfy isUnreserved ; return [c] }
 
---  RFC2396bis, section 3
+--  RFC3986, section 3
 --
 --   URI         = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
 --
@@ -427,7 +415,7 @@ hierPart =
     <|> do  { return (Nothing,"")
             }
 
---  RFC2396bis, section 3.1
+--  RFC3986, section 3.1
 
 uscheme :: URIParser String
 uscheme =
@@ -436,7 +424,7 @@ uscheme =
         ; return $ s++":"
         }
 
---  RFC2396bis, section 3.2
+--  RFC3986, section 3.2
 
 uauthority :: URIParser (Maybe URIAuth)
 uauthority =
@@ -450,7 +438,7 @@ uauthority =
             }
         }
 
---  RFC2396bis, section 3.2.1
+--  RFC3986, section 3.2.1
 
 userinfo :: URIParser String
 userinfo =
@@ -459,7 +447,7 @@ userinfo =
         ; return (concat uu ++"@")
         }
 
---  RFC2396bis, section 3.2.2
+--  RFC3986, section 3.2.2
 
 host :: URIParser String
 host = ipLiteral <|> try ipv4address <|> regName
@@ -595,7 +583,7 @@ regName =
         }
     <?> "Registered name"
 
---  RFC2396bis, section 3.2.3
+--  RFC3986, section 3.2.3
 
 port :: URIParser String
 port =
@@ -605,7 +593,7 @@ port =
         }
 
 --
---  RFC2396bis, section 3.3
+--  RFC3986, section 3.3
 --
 --   path          = path-abempty    ; begins with "/" or is empty
 --                 / path-abs        ; begins with "/" but not "//"
@@ -624,14 +612,6 @@ port =
 --   segment-nzc   = 1*( unreserved / pct-encoded / sub-delims / "@" )
 --
 --   pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
-
-{-   Old path specification
-upath :: URIParser String
-upath =
-    do  { ss <- oneThenMany segment slashSegment
-        ; return $ concat ss
-        }
--}
 
 {-
 upath :: URIParser String
@@ -705,7 +685,7 @@ uchar extras =
     <|> subDelims
     <|> do { c <- oneOf extras ; return [c] }
 
---  RFC2396bis, section 3.4
+--  RFC3986, section 3.4
 
 uquery :: URIParser String
 uquery =
@@ -713,7 +693,7 @@ uquery =
         ; return $ '?':concat ss
         }
 
---  RFC2396bis, section 3.5
+--  RFC3986, section 3.5
 
 ufragment :: URIParser String
 ufragment =
@@ -723,12 +703,12 @@ ufragment =
 
 --  Reference, Relative and Absolute URI forms
 --
---  RFC2396bis, section 4.1
+--  RFC3986, section 4.1
 
 uriReference :: URIParser URI
 uriReference = uri <|> relativeRef
 
---  RFC2396bis, section 4.2
+--  RFC3986, section 4.2
 --
 --   relative-URI  = relative-part [ "?" query ] [ "#" fragment ]
 --
@@ -770,7 +750,7 @@ relativePart =
     <|> do  { return (Nothing,"")
             }
 
---  RFC2396bis, section 4.3
+--  RFC3986, section 4.3
 
 absoluteURI :: URIParser URI
 absoluteURI =
@@ -942,7 +922,7 @@ unEscapeString (c:s) = c : unEscapeString s
 --  > "foo" `relativeTo` "http://bar.org/" = "http://bar.org/foo"
 --  > "http:foo" `nonStrictRelativeTo` "http://bar.org/" = "http://bar.org/foo"
 --
---  Algorithm from RFC2396bis [3], section 5.2.2
+--  Algorithm from RFC3986 [3], section 5.2.2
 --
 
 nonStrictRelativeTo :: URI -> URI -> Maybe URI
@@ -1009,7 +989,6 @@ elimDots :: String -> [String] -> String
 -- elimDots ps rs | traceVal "\nps " ps $ traceVal "rs " rs $ False = error ""
 elimDots [] [] = ""
 elimDots [] rs = concat (reverse rs)
--- elimDots ('/':'.':'/':ps)  rs = elimDots ps rs
 elimDots (    '.':'/':ps)     rs = elimDots ps rs
 elimDots (    '.':[]    )     rs = elimDots [] rs
 elimDots (    '.':'.':'/':ps) rs = elimDots ps (dropHead rs)
@@ -1017,14 +996,6 @@ elimDots (    '.':'.':[]    ) rs = elimDots [] (dropHead rs)
 elimDots ps rs = elimDots ps1 (r:rs)
     where
         (r,ps1) = nextSegment ps
-{-
--- elimDots ('/':'.':'.':'/':ps) (r:rs) = elimDots ps rs
-elimDots (    '.':'.':'/':ps) (r:rs) | notSpecial r = elimDots ps rs
-elimDots (    '.':'.':[]    ) (r:rs) | notSpecial r = elimDots [] rs
-elimDots ps rs = elimDots ps1 (r:rs)
-    where
-        (r,ps1) = nextSegment ps
--}
 
 --  Return tail of non-null list, otherwise return null list
 dropHead :: [a] -> [a]
@@ -1045,14 +1016,6 @@ splitLast :: String -> (String,String)
 splitLast path = (reverse revpath,reverse revname)
     where
         (revname,revpath) = break (=='/') $ reverse path
-
-notSpecial :: String -> Bool
--- notSpecial "/"   = False
--- notSpecial "."   = False
--- notSpecial "./"  = False
-notSpecial ".."  = False
-notSpecial "../" = False
-notSpecial _     = True
 
 ------------------------------------------------------------
 -- Finding a URI relative to a base URI
@@ -1175,73 +1138,11 @@ difSegsFrom sabs base
 difSegsFrom sabs ""   = sabs
 difSegsFrom sabs base = difSegsFrom ("../"++sabs) (snd $ nextSegment base)
 
-
-{-  Original implementation or relativeTo:
-ref `relativeTo` base =
-  -- ref has a scheme name, use it in its entirety.  Otherwise inherit
-  -- the scheme name from base.
-  if ref_scheme    /= ""  then Just ref else
-
-  -- ref has an authority - we're done.  Otherwise inherit the authority.
-  if isJust ref_authority then Just ref{uriScheme = base_scheme} else
-
-  -- ref has an absolute path, we're done.
-  if not (null ref_path) && head ref_path == '/'
-        then Just ref{uriScheme    = base_scheme,
-                      uriAuthority = base_authority} else
-
-  -- relative path...
-  let new_path = munge (dropLastComponent base_path ++ ref_path) []
-  in if isErrorPath new_path
-        then Nothing
-        else Just ref{uriScheme    = base_scheme,
-                      uriAuthority = base_authority,
-                      uriPath      = new_path}
-  where
-        URI{
-          uriScheme    = ref_scheme,
-          uriAuthority = ref_authority,
-          uriPath      = ref_path,
-          uriQuery     = _ref_query,
-          uriFragment  = _ref_fragment
-         } = ref
-
-        URI{
-          uriScheme    = base_scheme,
-          uriAuthority = base_authority,
-          uriPath      = base_path,
-          uriQuery     = _base_query,
-          uriFragment  = _base_fragment
-         } = base
-
-        munge [] [] = ""
-        munge [] ps = concat (reverse ps)
-        munge ('.':'/':s)     ps     = munge s ps
-        munge ['.']           ps     = munge [] ps
-        munge ('.':'.':'/':s) (p:ps) | p /= "/" = munge s ps
-        munge ['.','.']       (p:ps) = munge [] ps
-        munge s               ps     = munge rest' (p':ps)
-                where (p,rest) = break (=='/') s
-                      (p',rest') = case rest of
-                                        '/':r -> (p++"/",r)
-                                        r     -> (p,r)
-
-        dropLastComponent = reverse . dropWhile (/= '/') . reverse
-
-        isErrorPath ('/':'.':'.':'/':_) = True
-        isErrorPath _ = False
-
-stripLeadingWS, stripTrailingWS, stripWS :: String -> String
-stripLeadingWS  = dropWhile isSpace
-stripTrailingWS = reverse . stripLeadingWS . reverse
-stripWS         = stripLeadingWS . stripTrailingWS
--}
-
 ------------------------------------------------------------
 --  Other normalization functions
 ------------------------------------------------------------
 
--- |Case normalization; cf. RFC2396bis section 6.2.2.1
+-- |Case normalization; cf. RFC3986 section 6.2.2.1
 --  NOTE:  authority case normalization is not performed
 --
 normalizeCase :: String -> String
@@ -1254,7 +1155,7 @@ normalizeCase uristr = ncScheme uristr
         ncEscape (c:cs)         = c:ncEscape cs
         ncEscape []             = []
 
--- |Encoding normalization; cf. RFC2396bis section 6.2.2.2
+-- |Encoding normalization; cf. RFC3986 section 6.2.2.2
 --
 normalizeEscape :: String -> String
 normalizeEscape ('%':h1:h2:cs)
@@ -1265,7 +1166,7 @@ normalizeEscape ('%':h1:h2:cs)
 normalizeEscape (c:cs)         = c:normalizeEscape cs
 normalizeEscape []             = []
 
--- |Path segment normalization; cf. RFC2396bis section 6.2.2.4
+-- |Path segment normalization; cf. RFC3986 section 6.2.2.4
 --
 normalizePathSegments :: String -> String
 normalizePathSegments uristr = normstr juri
