@@ -291,7 +291,7 @@ For really fast I\/O, it might be worth looking at the 'hGetBuf' and
 
 {-$sigpipe
 
-On Unix, when reading from a socket and the writing end is
+On Unix, when writing to a socket and the reading end is
 closed by the remote client, the program is normally sent a
 @SIGPIPE@ signal by the operating system.  The
 default behaviour when a @SIGPIPE@ is received is
