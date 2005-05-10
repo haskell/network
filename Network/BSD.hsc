@@ -25,6 +25,12 @@
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
 ##include "../../base/include/Typeable.h"
 
+#if defined(HAVE_READLINK) && !defined(PATH_MAX)
+-- PATH_MAX is not defined on systems with unlimited path length.
+-- Ugly.  Fix this.
+#define PATH_MAX 4096
+#endif
+
 module Network.BSD (
        
     -- * Host names
