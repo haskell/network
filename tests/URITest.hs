@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.5 2005/04/07 11:09:37 gklyne Exp $
+--  $Id: URITest.hs,v 1.6 2005/05/31 17:18:36 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -204,11 +204,14 @@ testURIRef105 = testURIRef InvRf "http://]/"
 testURIRef106 = testURIRef InvRf "http://example.org/[2010:836B:4179::836B:4179]"
 testURIRef107 = testURIRef InvRf "http://example.org/abc#[2010:836B:4179::836B:4179]"
 testURIRef108 = testURIRef InvRf "http://example.org/xxx/[qwerty]#a[b]"
--- Random other things that crop up (valid URIs)
+-- Random other things that crop up
 testURIRef111 = testURIRef AbsRf "http://example/Andr&#567;"
 testURIRef112 = testURIRef AbsId "file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/"
 testURIRef113 = testURIRef AbsId "http://46229EFFE16A9BD60B9F1BE88B2DB047ADDED785/demo.mp3"
 testURIRef114 = testURIRef InvRf "http://example.org/xxx/qwerty#a#b"
+testURIRef115 = testURIRef InvRf "dcp.tcp.pft://192.168.0.1:1002:3002?fec=1&crc=0"
+testURIRef116 = testURIRef AbsId "dcp.tcp.pft://192.168.0.1:1002?fec=1&crc=0"
+testURIRef117 = testURIRef AbsId "foo://"
 
 testURIRefSuite = TestLabel "Test URIrefs" testURIRefList
 testURIRefList = TestList
@@ -252,7 +255,8 @@ testURIRefList = TestList
     testURIRef101, testURIRef102, testURIRef103, testURIRef104,
     testURIRef105, testURIRef106, testURIRef107, testURIRef108,
     --
-    testURIRef111, testURIRef112, testURIRef113, testURIRef114
+    testURIRef111, testURIRef112, testURIRef113, testURIRef114,
+    testURIRef115, testURIRef116, testURIRef117
   ]
 
 -- test decomposition of URI into components
@@ -1035,8 +1039,11 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.5 $
+-- $Revision: 1.6 $
 -- $Log: URITest.hs,v $
+-- Revision 1.6  2005/05/31 17:18:36  gklyne
+-- Added some additional test cases triggered by URI-list discussions.
+--
 -- Revision 1.5  2005/04/07 11:09:37  gklyne
 -- Added test cases for alternate parsing functions (including deprecated 'parseabsoluteURI')
 --
