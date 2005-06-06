@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.6 2005/05/31 17:18:36 gklyne Exp $
+--  $Id: URITest.hs,v 1.7 2005/06/06 16:31:44 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -298,12 +298,33 @@ testComponent04 = testURIRefComponents "testComponent03"
             , uriFragment  = "#aaa/bbb"
             } )
         "http://user:pass@example.org:99#aaa/bbb"
+-- These test cases contributed by Robert Buck (mathworks.com)
+testComponent11 = testURIRefComponents "testComponent03"
+        ( Just $ URI
+            { uriScheme    = "about:"
+            , uriAuthority = Nothing
+            , uriPath      = ""
+            , uriQuery     = ""
+            , uriFragment  = ""
+            } )
+        "about:"
+testComponent12 = testURIRefComponents "testComponent03"
+        ( Just $ URI
+            { uriScheme    = "file:"
+            , uriAuthority = Just (URIAuth "" "windowsauth" "")
+            , uriPath      = "/d$"
+            , uriQuery     = ""
+            , uriFragment  = ""
+            } )
+        "file://windowsauth/d$"
 
 testComponentSuite = TestLabel "Test URIrefs" $ TestList
   [ testComponent01
   , testComponent02
   , testComponent03
   , testComponent04
+  , testComponent11
+  , testComponent12
   ]
 
 -- Get reference relative to given base
@@ -1039,8 +1060,11 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.6 $
+-- $Revision: 1.7 $
 -- $Log: URITest.hs,v $
+-- Revision 1.7  2005/06/06 16:31:44  gklyne
+-- Added two new test cases.
+--
 -- Revision 1.6  2005/05/31 17:18:36  gklyne
 -- Added some additional test cases triggered by URI-list discussions.
 --
