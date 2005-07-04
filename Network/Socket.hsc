@@ -151,7 +151,7 @@ module Network.Socket (
 ) where
 
 #ifdef __HUGS__
-import Hugs.Prelude
+import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 import Hugs.IO ( openFd )
 
 {-# CFILES cbits/HsNet.c #-}

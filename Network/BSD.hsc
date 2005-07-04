@@ -106,7 +106,7 @@ module Network.BSD (
     ) where
 
 #ifdef __HUGS__
-import Hugs.Prelude
+import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 #endif
 import Network.Socket
 
