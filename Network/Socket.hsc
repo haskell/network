@@ -1734,8 +1734,14 @@ inet_ntoa haddr = do
   pstr <- c_inet_ntoa haddr
   peekCString pstr
 
--- socketHandle turns a Socket into a Haskell IO Handle. By default, the new
--- handle is unbuffered. Use hSetBuffering to alter this.
+-- | turns a Socket into an 'Handle'. By default, the new handle is
+-- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
+--
+-- Note that since a 'Handle' is automatically closed by a finalizer
+-- when it is no longer referenced, you should avoid doing any more
+-- operations on the 'Socket' after calling 'socketToHandle'.  To
+-- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
+-- on the 'Handle'.
 
 #ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
