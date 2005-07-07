@@ -212,6 +212,7 @@ data SocketStatus
   | Bound		-- bindSocket
   | Listening		-- listen
   | Connected		-- connect/accept
+  | ConvertedToHandle   -- is now a Handle, don't touch
     deriving (Eq, Show)
 
 INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
@@ -1677,7 +1678,11 @@ shutdown (MkSocket s _ _ _ _) stype = do
 
 -- | Closes a socket
 sClose	 :: Socket -> IO ()
-sClose (MkSocket s _ _ _ _) = do c_close s; return ()
+sClose (MkSocket s _ _ _ socketStatus) = do 
+ withMVar socketStatus $ \ status ->
+   if status == ConvertedToHandle
+	then ioError (userError ("sClose: converted to a Handle, use hClose instead"))
+	else c_close s; return ()
 
 -- -----------------------------------------------------------------------------
 
@@ -1745,13 +1750,18 @@ inet_ntoa haddr = do
 
 #ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ _) mode = do
+socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
+ modifyMVar socketStatus $ \ status ->
+    if status == ConvertedToHandle
+	then ioError (userError ("socketToHandle: already a Handle"))
+	else do
 # ifdef __GLASGOW_HASKELL__
-    openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
+    h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
 # endif
 # ifdef __HUGS__
-    openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
+    h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
 # endif
+    return (ConvertedToHandle, h)
 #else
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"
