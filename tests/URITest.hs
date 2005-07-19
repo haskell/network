@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---  $Id: URITest.hs,v 1.7 2005/06/06 16:31:44 gklyne Exp $
+--  $Id: URITest.hs,v 1.8 2005/07/19 22:01:27 gklyne Exp $
 --
 --  Copyright (c) 2004, G. KLYNE.  All rights reserved.
 --  See end of this file for licence information.
@@ -548,35 +548,49 @@ testRelative76 = testRelative "testRelative76"
                     "foo:bar" "http://example/a/b?c/../d"  "http://example/a/b?c/../d"
 testRelative77 = testRelative "testRelative77"
                     "foo:bar" "http://example/a/b#c/../d"  "http://example/a/b#c/../d"
-
+{- These (78-81) are some awkward test cases thrown up by a question on the URI list:
+     http://lists.w3.org/Archives/Public/uri/2005Jul/0013
+   Mote that RFC 3986 discards path segents after the final '/' only when merging two
+   paths - otherwise the final segment in the base URI is mnaintained.  This leads to
+   difficulty in constructinmg a reversible relativeTo/relativeFrom pair of functions.
+-}
+testRelative78 = testRelative "testRelative78"
+                    "http://www.example.com/data/limit/.." "http://www.example.com/data/limit/test.xml"
+                    "test.xml"
+testRelative79 = testRelative "testRelative79"
+                    "file:/some/dir/foo" "file:/some/dir/#blort" "./#blort"
+testRelative80 = testRelative "testRelative80"
+                    "file:/some/dir/foo" "file:/some/dir/#" "./#"
+testRelative81 = testRelative "testRelative81"
+                    "file:/some/dir/.." "file:/some/dir/#blort" "./#blort"
 
 -- testRelative  base abs rel
 -- testRelSplit  base abs rel
 -- testRelJoin   base rel abs
-testRelative81 = testRelSplit "testRelative81"
+testRelative91 = testRelSplit "testRelative91"
                     "http://example.org/base/uri" "http:this"
                     "this"
-testRelative82 = testRelJoin "testRelative82"
+testRelative92 = testRelJoin "testRelative92"
                     "http://example.org/base/uri" "http:this"
                     "http:this"
-testRelative83 = testRelJoin "testRelative83"
+testRelative93 = testRelJoin "testRelative93"
                     "http:base" "http:this"
                     "http:this"
-testRelative84 = testRelJoin "testRelative84"
+testRelative94 = testRelJoin "testRelative94"
                     "f:/a" ".//g"
                     "f://g"
-testRelative85 = testRelJoin "testRelative85"
+testRelative95 = testRelJoin "testRelative95"
                     "f://example.org/base/a" "b/c//d/e"
                     "f://example.org/base/b/c//d/e"
-testRelative86 = testRelJoin "testRelative86"
+testRelative96 = testRelJoin "testRelative96"
                     "mid:m@example.ord/c@example.org" "m2@example.ord/c2@example.org"
                     "mid:m@example.ord/m2@example.ord/c2@example.org"
-testRelative87 = testRelJoin "testRelative87"
+testRelative97 = testRelJoin "testRelative97"
                     "file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/" "mini1.xml"
                     "file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/mini1.xml"
-testRelative88 = testRelative "testRelative88"
+testRelative98 = testRelative "testRelative98"
                     "foo:a/y/z" "foo:a/b/c" "../b/c"
-testRelative89 = testRelJoin "testRelative89"
+testRelative99 = testRelJoin "testRelative99"
                     "f:/a/" "..//g"
                     "f://g"
 
@@ -607,11 +621,13 @@ testRelativeList  = TestList
     --
   , testRelative70, testRelative71, testRelative72, testRelative73
   , testRelative74, testRelative75, testRelative76, testRelative77
+  -- Awkward cases:
+  , testRelative78, testRelative79, testRelative80, testRelative81
     --
-  -- , testRelative80
-  , testRelative81, testRelative82, testRelative83
-  , testRelative84, testRelative85, testRelative86
-  , testRelative87, testRelative88, testRelative89
+  -- , testRelative90
+  , testRelative91, testRelative92, testRelative93
+  , testRelative94, testRelative95, testRelative96
+  , testRelative97, testRelative98, testRelative99
   ]
 
 -- RFC2396 relative-to-absolute URI tests
@@ -1060,8 +1076,11 @@ cu02 = ou02 `relativeTo` bu02
 --------------------------------------------------------------------------------
 -- $Source: /srv/cvs/cvs.haskell.org/fptools/libraries/network/tests/URITest.hs,v $
 -- $Author: gklyne $
--- $Revision: 1.7 $
+-- $Revision: 1.8 $
 -- $Log: URITest.hs,v $
+-- Revision 1.8  2005/07/19 22:01:27  gklyne
+-- Added some additional test cases raised by discussion on URI@w3.org mailing list about 2005-07-19.  The test p[roposed by this discussion exposed a subtle bug in relativeFrom not being an exact inverse of relativeTo.
+--
 -- Revision 1.7  2005/06/06 16:31:44  gklyne
 -- Added two new test cases.
 --
