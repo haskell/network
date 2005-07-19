@@ -1051,8 +1051,8 @@ relativeFrom uabs base
     | diff uriPath      uabs base = uabs
         { uriScheme    = ""
         , uriAuthority = Nothing
-        , uriPath      = relPathFrom (removeDotSegments $ uriPath uabs)
-                                     (removeDotSegments $ uriPath base)
+        , uriPath      = relPathFrom (removeBodyDotSegments $ uriPath uabs)
+                                     (removeBodyDotSegments $ uriPath base)
         }
     | diff uriQuery     uabs base = uabs
         { uriScheme    = ""
@@ -1067,13 +1067,17 @@ relativeFrom uabs base
         }
     where
         diff sel u1 u2 = sel u1 /= sel u2
+        -- Remove dot segments except the final segment
+        removeBodyDotSegments p = removeDotSegments p1 ++ p2
+            where
+                (p1,p2) = splitLast p
 
 relPathFrom :: String -> String -> String
 relPathFrom []   base = "/"
 relPathFrom pabs []   = pabs
 relPathFrom pabs base =                 -- Construct a relative path segments
     if sa1 == sb1                       -- if the paths share a leading segment
-        then if (sa1 == "/")            -- other that a leading '/'
+        then if (sa1 == "/")            -- other than a leading '/'
             then if (sa2 == sb2)
                 then relPathFrom1 ra2 rb2
                 else pabs
