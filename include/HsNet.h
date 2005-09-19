@@ -19,13 +19,13 @@
 #undef PACKAGE_VERSION
 
 #ifndef INLINE
-#ifdef _MSC_VER
-#define INLINE __inline
-#elif defined(__HUGS__)
-#define INLINE INLINE_ONLY
-#else
-#define INLINE extern inline
-#endif
+# if defined(_MSC_VER)
+#  define INLINE extern __inline
+# elif defined(__GNUC__)
+#  define INLINE extern inline
+# else
+#  define INLINE inline
+# endif
 #endif
 
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
