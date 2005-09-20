@@ -22,7 +22,7 @@
 #include "HsNet.h"
 
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
-##include "../../base/include/Typeable.h"
+##include "Typeable.h"
 
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
 #define WITH_WINSOCK  1
@@ -155,7 +155,12 @@ import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 import Hugs.IO ( openFd )
 
 {-# CFILES cbits/HsNet.c #-}
-{-# CFILES cbits/initWinSock.c cbits/ancilData.c cbits/winSockErr.c #-}
+# if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
+{-# CFILES cbits/ancilData.c #-}
+# endif
+# if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+{-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
+# endif
 #endif
 
 import Data.Word ( Word8, Word16, Word32 )

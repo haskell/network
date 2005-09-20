@@ -54,8 +54,6 @@ module Network (
 
        ) where
 
-#include "ghcconfig.h"
-
 import Network.BSD
 import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
 import qualified Network.Socket as Socket ( accept )

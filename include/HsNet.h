@@ -7,8 +7,6 @@
 #ifndef HSNET_H
 #define HSNET_H
 
-#include "ghcconfig.h"
-
 #include "HsNetworkConfig.h"
 
 /* ultra-evil... */

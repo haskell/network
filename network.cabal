@@ -4,13 +4,20 @@ license:	BSD3
 license-file:	LICENSE
 maintainer:	libraries@haskell.org
 synopsis:	Networking-related facilities
-build-depends:	base, parsec
 exposed-modules:
-	Network.BSD,
-	Network.CGI,
-	Network.Socket,
-	Network.URI,
-	Network
-include-dirs: 	include, ../../ghc/includes
-includes:	"HsNet.h"
+		Network Network.BSD Network.CGI Network.Socket Network.URI
+extra-source-files:
+		configure.ac configure
+		network.buildinfo.in include/HsNetworkConfig.h.in
+		include/HsNet.h include/Typeable.h
+		-- C sources not used on all systems
+		cbits/ancilData.c
+		cbits/asyncAccept.c cbits/initWinSock.c cbits/winSockErr.c
+extra-tmp-files:
+		config.log config.status autom4te.cache
+		network.buildinfo include/HsNetworkConfig.h
+build-depends:	base, parsec
+extensions:	CPP
+include-dirs: 	include
+includes:	HsNet.h
 c-sources:	cbits/HsNet.c

@@ -23,7 +23,7 @@
 #include "HsNet.h"
 
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
-##include "../../base/include/Typeable.h"
+##include "Typeable.h"
 
 #if defined(HAVE_READLINK) && !defined(PATH_MAX)
 -- PATH_MAX is not defined on systems with unlimited path length.

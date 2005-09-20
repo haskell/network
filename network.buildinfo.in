@@ -1,3 +1,4 @@
+ghc-options: -DCALLCONV=@CALLCONV@
 cc-options: -DCALLCONV=@CALLCONV@
 c-sources: @EXTRA_SRCS@
 extra-libraries: @EXTRA_LIBS@
