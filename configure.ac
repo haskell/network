@@ -5,6 +5,8 @@ AC_CONFIG_SRCDIR([include/HsNet.h])
 
 AC_CONFIG_HEADERS([include/HsNetworkConfig.h])
 
+AC_CANONICAL_HOST
+
 AC_C_CONST
 
 dnl ** check for specific header (.h) files that we are interested in

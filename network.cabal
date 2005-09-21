@@ -7,6 +7,9 @@ synopsis:	Networking-related facilities
 exposed-modules:
 		Network Network.BSD Network.CGI Network.Socket Network.URI
 extra-source-files:
+		-- The first three files are not in this directory of
+		-- the CVS repository; copy them from ../..
+		config.guess config.sub install-sh
 		configure.ac configure
 		network.buildinfo.in include/HsNetworkConfig.h.in
 		include/HsNet.h include/Typeable.h
