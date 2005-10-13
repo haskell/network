@@ -80,10 +80,6 @@ extern int   acceptDoProc(void* param);
 #include <netdb.h>
 #endif
 
-#ifndef HAVE_IN_ADDR_T
-typedef	u_int32_t	in_addr_t;
-#endif
-
 #ifdef HAVE_BSD_SENDFILE
 #include <sys/uio.h>
 #endif
@@ -122,8 +118,12 @@ INLINE char *
 my_inet_ntoa(
 #if defined(HAVE_WINSOCK_H)
              u_long addr
-#else
+#elif defined(HAVE_IN_ADDR_T)
              in_addr_t addr
+#elif defined(HAVE_INTTYPES_H)
+             u_int32_t addr
+#else
+             unsigned long addr
 #endif
 	    )
 { 
