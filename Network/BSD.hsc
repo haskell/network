@@ -286,7 +286,7 @@ instance Storable ProtocolEntry where
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = do
  withCString name $ \ name_cstr -> do
- throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
+ throwNoSuchThingIfNull "getProtocolByName" ("no such protocol name: " ++ name)
    $ (trySysCall.c_getprotobyname) name_cstr
  >>= peek
 
@@ -296,7 +296,7 @@ foreign import  ccall unsafe  "getprotobyname"
 
 getProtocolByNumber :: ProtocolNumber -> IO ProtocolEntry
 getProtocolByNumber num = do
- throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
+ throwNoSuchThingIfNull "getProtocolByNumber" ("no such protocol number: " ++ show num)
    $ (trySysCall.c_getprotobynumber) (fromIntegral num)
  >>= peek
 
