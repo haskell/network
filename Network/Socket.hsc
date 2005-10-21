@@ -184,7 +184,7 @@ import Data.Typeable
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 # if defined(mingw32_HOST_OS)
-import GHC.Conc         (asyncDoProc, asyncRead, asyncWrite)
+import GHC.Conc		( asyncDoProc )
 import Foreign( FunPtr )
 # endif
 import GHC.Handle
@@ -621,12 +621,19 @@ accept sock@(MkSocket s family stype protocol status) = do
      let sz = sizeOfSockAddr_Family family
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS) && !defined(__HUGS__)
-     paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
-     rc        <- asyncDoProc c_acceptDoProc paramData
-     new_sock  <- c_acceptNewSock    paramData
-     c_free paramData
-     when (rc /= 0)
-          (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
+     new_sock <-
+	if threaded 
+	   then with (fromIntegral sz) $ \ ptr_len ->
+		  throwErrnoIfMinus1Retry "Network.Socket.accept" $
+		    c_accept_safe s sockaddr ptr_len
+	   else do
+     		paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
+     		rc        <- asyncDoProc c_acceptDoProc paramData
+     		new_sock  <- c_acceptNewSock    paramData
+     		c_free paramData
+     		when (rc /= 0)
+     		     (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
+		return new_sock
 #else 
      with (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
@@ -728,12 +735,8 @@ send (MkSocket s _family _stype _protocol status) xs = do
  withCString xs $ \str -> do
    liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-      do 
-       (l, rc) <- asyncWrite (fromIntegral s) 1{-socket-} (fromIntegral len) str
-       if l == (-1)
-        then ioError (errnoToIOError "Network.Socket.send"
-				     (Errno (fromIntegral rc)) Nothing Nothing)
-        else return (fromIntegral l)
+      writeRawBufferPtr "Network.Socket.send" (fromIntegral s) True str 0
+		(fromIntegral len)
 #else
 # if !defined(__HUGS__)
      throwErrnoIfMinus1Retry_repeatOnBlock "send"
@@ -752,12 +755,8 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
      allocaBytes nbytes $ \ptr -> do
         len <- 
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-          do
-	   (l,rc) <- asyncRead (fromIntegral s) 1{-is socket-} (fromIntegral nbytes) ptr
-	   if (l == -1)
-	    then ioError (errnoToIOError "Network.Socket.recvLen" 
-	    				 (Errno (fromIntegral rc)) Nothing Nothing)
-	    else return (fromIntegral l)
+	  readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
+		 (fromIntegral nbytes)
 #else
 # if !defined(__HUGS__)
 	       throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
@@ -1841,8 +1840,12 @@ foreign import CALLCONV unsafe "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+foreign import CALLCONV safe "accept"
+  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
+
+foreign import ccall "rtsSupportsBoundThreads" threaded :: Bool
 
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
