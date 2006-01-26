@@ -43,10 +43,11 @@ module Network.BSD (
     hostAddress,	    -- :: HostEntry -> HostAddress
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+    getHostEntries,	    -- :: Bool -> IO [HostEntry]
+    -- ** Low level functionality
     setHostEntry,	    -- :: Bool -> IO ()
     getHostEntry,	    -- :: IO HostEntry
     endHostEntry,	    -- :: IO ()
-    getHostEntries,	    -- :: Bool -> IO [HostEntry]
 #endif
 
     -- * Service names
@@ -57,10 +58,11 @@ module Network.BSD (
     getServicePortNumber,   -- :: ServiceName -> IO PortNumber
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+    getServiceEntries,	    -- :: Bool -> IO [ServiceEntry]
+    -- ** Low level functionality
     getServiceEntry,	    -- :: IO ServiceEntry
     setServiceEntry,	    -- :: Bool -> IO ()
     endServiceEntry,	    -- :: IO ()
-    getServiceEntries,	    -- :: Bool -> IO [ServiceEntry]
 #endif
 
     -- * Protocol names
@@ -70,12 +72,14 @@ module Network.BSD (
     getProtocolByName,	    -- :: ProtocolName   -> IO ProtocolEntry
     getProtocolByNumber,    -- :: ProtocolNumber -> IO ProtcolEntry
     getProtocolNumber,	    -- :: ProtocolName   -> ProtocolNumber
+    defaultProtocol,        -- :: ProtocolNumber
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+    getProtocolEntries,	    -- :: Bool -> IO [ProtocolEntry]
+    -- ** Low level functionality
     setProtocolEntry,	    -- :: Bool -> IO ()
     getProtocolEntry,	    -- :: IO ProtocolEntry
     endProtocolEntry,	    -- :: IO ()
-    getProtocolEntries,	    -- :: Bool -> IO [ProtocolEntry]
 #endif
 
     -- * Port numbers
@@ -89,10 +93,11 @@ module Network.BSD (
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
     , getNetworkByName	    -- :: NetworkName -> IO NetworkEntry
     , getNetworkByAddr      -- :: NetworkAddr -> Family -> IO NetworkEntry
+    , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
+    -- ** Low level functionality
     , setNetworkEntry	    -- :: Bool -> IO ()
     , getNetworkEntry	    -- :: IO NetworkEntry
     , endNetworkEntry	    -- :: IO ()
-    , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
 #endif
 
 #ifdef HAVE_SYMLINK
@@ -110,6 +115,7 @@ import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 #endif
 import Network.Socket
 
+import Control.Concurrent 	( newMVar, withMVar )
 import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
 import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
 import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
@@ -161,32 +167,33 @@ instance Storable ServiceEntry where
    alignment _ = alignment (undefined :: CInt) -- ???
 
    peek p = do
-	s_name    <- (#peek struct servent, s_name) p >>= peekCString
-	s_aliases <- (#peek struct servent, s_aliases) p
-			   >>= peekArray0 nullPtr
-			   >>= mapM peekCString
-	s_port    <- (#peek struct servent, s_port) p
-	s_proto   <- (#peek struct servent, s_proto) p >>= peekCString
-	return (ServiceEntry {
-			serviceName     = s_name,
-			serviceAliases  = s_aliases,
+        s_name    <- (#peek struct servent, s_name) p >>= peekCString
+        s_aliases <- (#peek struct servent, s_aliases) p
+                           >>= peekArray0 nullPtr
+                           >>= mapM peekCString
+        s_port    <- (#peek struct servent, s_port) p
+        s_proto   <- (#peek struct servent, s_proto) p >>= peekCString
+        return (ServiceEntry {
+                        serviceName     = s_name,
+                        serviceAliases  = s_aliases,
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
-			servicePort     = PortNum (fromIntegral (s_port :: CShort)),
+                        servicePort     = PortNum (fromIntegral (s_port :: CShort)),
 #else
-			   -- s_port is already in network byte order, but it
-			   -- might be the wrong size.
-			servicePort     = PortNum (fromIntegral (s_port :: CInt)),
+                           -- s_port is already in network byte order, but it
+                           -- might be the wrong size.
+                        servicePort     = PortNum (fromIntegral (s_port :: CInt)),
 #endif
-			serviceProtocol = s_proto
-		})
+                        serviceProtocol = s_proto
+                })
 
    poke p = error "Storable.poke(BSD.ServiceEntry) not implemented"
 
 
+-- | Get service by name.
 getServiceByName :: ServiceName 	-- Service Name
 		 -> ProtocolName 	-- Protocol Name
 		 -> IO ServiceEntry	-- Service Entry
-getServiceByName name proto = do
+getServiceByName name proto = withLock $ do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByName" "no such service entry"
@@ -196,8 +203,9 @@ getServiceByName name proto = do
 foreign import ccall unsafe "getservbyname" 
   c_getservbyname :: CString -> CString -> IO (Ptr ServiceEntry)
 
+-- | Get the service given a 'PortNumber' and 'ProtocolName'.
 getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
-getServiceByPort (PortNum port) proto = do
+getServiceByPort (PortNum port) proto = withLock $ do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
    $ (trySysCall (c_getservbyport (fromIntegral port) cstr_proto))
@@ -206,6 +214,7 @@ getServiceByPort (PortNum port) proto = do
 foreign import ccall unsafe "getservbyport" 
   c_getservbyport :: CInt -> CString -> IO (Ptr ServiceEntry)
 
+-- | Get the 'PortNumber' corresponding to the 'ServiceName'.
 getServicePortNumber :: ServiceName -> IO PortNumber
 getServicePortNumber name = do
     (ServiceEntry _ _ port _) <- getServiceByName name "tcp"
@@ -213,7 +222,7 @@ getServicePortNumber name = do
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getServiceEntry	:: IO ServiceEntry
-getServiceEntry = do
+getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
    $ trySysCall c_getservent
  >>= peek
@@ -221,12 +230,12 @@ getServiceEntry = do
 foreign import ccall unsafe "getservent" c_getservent :: IO (Ptr ServiceEntry)
 
 setServiceEntry	:: Bool -> IO ()
-setServiceEntry flg = trySysCall $ c_setservent (fromBool flg)
+setServiceEntry flg = withLock $ trySysCall $ c_setservent (fromBool flg)
 
 foreign import ccall unsafe  "setservent" c_setservent :: CInt -> IO ()
 
 endServiceEntry	:: IO ()
-endServiceEntry = trySysCall $ c_endservent
+endServiceEntry = withLock $ trySysCall $ c_endservent
 
 foreign import ccall unsafe  "endservent" c_endservent :: IO ()
 
@@ -262,29 +271,29 @@ instance Storable ProtocolEntry where
    alignment _ = alignment (undefined :: CInt) -- ???
 
    peek p = do
-	p_name    <- (#peek struct protoent, p_name) p >>= peekCString
-	p_aliases <- (#peek struct protoent, p_aliases) p
-			   >>= peekArray0 nullPtr
-			   >>= mapM peekCString
+        p_name    <- (#peek struct protoent, p_name) p >>= peekCString
+        p_aliases <- (#peek struct protoent, p_aliases) p
+                           >>= peekArray0 nullPtr
+                           >>= mapM peekCString
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
          -- With WinSock, the protocol number is only a short;
-	 -- hoist it in as such, but represent it on the Haskell side
-	 -- as a CInt.
-	p_proto_short  <- (#peek struct protoent, p_proto) p 
-	let p_proto = fromIntegral (p_proto_short :: CShort)
+         -- hoist it in as such, but represent it on the Haskell side
+         -- as a CInt.
+        p_proto_short  <- (#peek struct protoent, p_proto) p 
+        let p_proto = fromIntegral (p_proto_short :: CShort)
 #else
-	p_proto        <- (#peek struct protoent, p_proto) p 
+        p_proto        <- (#peek struct protoent, p_proto) p 
 #endif
-	return (ProtocolEntry { 
-			protoName    = p_name,
-			protoAliases = p_aliases,
-			protoNumber  = p_proto
-		})
+        return (ProtocolEntry { 
+                        protoName    = p_name,
+                        protoAliases = p_aliases,
+                        protoNumber  = p_proto
+                })
 
    poke p = error "Storable.poke(BSD.ProtocolEntry) not implemented"
 
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
-getProtocolByName name = do
+getProtocolByName name = withLock $ do
  withCString name $ \ name_cstr -> do
  throwNoSuchThingIfNull "getProtocolByName" ("no such protocol name: " ++ name)
    $ (trySysCall.c_getprotobyname) name_cstr
@@ -295,7 +304,7 @@ foreign import  ccall unsafe  "getprotobyname"
 
 
 getProtocolByNumber :: ProtocolNumber -> IO ProtocolEntry
-getProtocolByNumber num = do
+getProtocolByNumber num = withLock $ do
  throwNoSuchThingIfNull "getProtocolByNumber" ("no such protocol number: " ++ show num)
    $ (trySysCall.c_getprotobynumber) (fromIntegral num)
  >>= peek
@@ -309,9 +318,13 @@ getProtocolNumber proto = do
  (ProtocolEntry _ _ num) <- getProtocolByName proto
  return num
 
+-- | This is the default protocol for the given service.
+defaultProtocol :: ProtocolNumber
+defaultProtocol = 0
+
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB
-getProtocolEntry = do
+getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
    		$ trySysCall c_getprotoent
  peek ent
@@ -319,17 +332,17 @@ getProtocolEntry = do
 foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
 setProtocolEntry :: Bool -> IO ()	-- Keep DB Open ?
-setProtocolEntry flg = trySysCall $ c_setprotoent (fromBool flg)
+setProtocolEntry flg = withLock $ trySysCall $ c_setprotoent (fromBool flg)
 
 foreign import ccall unsafe "setprotoent" c_setprotoent :: CInt -> IO ()
 
 endProtocolEntry :: IO ()
-endProtocolEntry = trySysCall $ c_endprotoent
+endProtocolEntry = withLock $ trySysCall $ c_endprotoent
 
 foreign import ccall unsafe "endprotoent" c_endprotoent :: IO ()
 
 getProtocolEntries :: Bool -> IO [ProtocolEntry]
-getProtocolEntries stayOpen = do
+getProtocolEntries stayOpen = withLock $ do
   setProtocolEntry stayOpen
   getEntries (getProtocolEntry) (endProtocolEntry)
 #endif
@@ -352,21 +365,21 @@ instance Storable HostEntry where
    alignment _ = alignment (undefined :: CInt) -- ???
 
    peek p = do
-	h_name       <- (#peek struct hostent, h_name) p >>= peekCString
-	h_aliases    <- (#peek struct hostent, h_aliases) p
-				>>= peekArray0 nullPtr
-				>>= mapM peekCString
-	h_addrtype   <- (#peek struct hostent, h_addrtype) p
-	-- h_length       <- (#peek struct hostent, h_length) p
-	h_addr_list  <- (#peek struct hostent, h_addr_list) p
-				>>= peekArray0 nullPtr
-				>>= mapM peek
-	return (HostEntry {
-			hostName       = h_name,
-			hostAliases    = h_aliases,
-			hostFamily     = unpackFamily h_addrtype,
-			hostAddresses  = h_addr_list
-		})
+        h_name       <- (#peek struct hostent, h_name) p >>= peekCString
+        h_aliases    <- (#peek struct hostent, h_aliases) p
+                                >>= peekArray0 nullPtr
+                                >>= mapM peekCString
+        h_addrtype   <- (#peek struct hostent, h_addrtype) p
+        -- h_length       <- (#peek struct hostent, h_length) p
+        h_addr_list  <- (#peek struct hostent, h_addr_list) p
+                                >>= peekArray0 nullPtr
+                                >>= mapM peek
+        return (HostEntry {
+                        hostName       = h_name,
+                        hostAliases    = h_aliases,
+                        hostFamily     = unpackFamily h_addrtype,
+                        hostAddresses  = h_addr_list
+                })
 
    poke p = error "Storable.poke(BSD.ServiceEntry) not implemented"
 
@@ -378,8 +391,12 @@ hostAddress (HostEntry nm _ _ ls) =
    []    -> error ("BSD.hostAddress: empty network address list for " ++ nm)
    (x:_) -> x
 
+-- getHostByName must use the same lock as the *hostent functions
+-- may cause problems if called concurrently.
+
+-- | Resolve a 'HostName' to IPv4 address.
 getHostByName :: HostName -> IO HostEntry
-getHostByName name = do
+getHostByName name = withLock $ do
   withCString name $ \ name_cstr -> do
    ent <- throwNoSuchThingIfNull "getHostByName" "no such host entry"
     		$ trySysCall $ c_gethostbyname name_cstr
@@ -388,9 +405,13 @@ getHostByName name = do
 foreign import ccall safe "gethostbyname" 
    c_gethostbyname :: CString -> IO (Ptr HostEntry)
 
+
+-- The locking of gethostbyaddr is similar to gethostbyname.
+-- | Get a 'HostEntry' corresponding to the given address and family.
+-- Note that only IPv4 is currently supported.
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
- with addr $ \ ptr_addr -> do
+ with addr $ \ ptr_addr -> withLock $ do
  throwNoSuchThingIfNull 	"getHostByAddr" "no such host entry"
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
@@ -400,7 +421,7 @@ foreign import ccall safe "gethostbyaddr"
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getHostEntry :: IO HostEntry
-getHostEntry = do
+getHostEntry = withLock $ do
  throwNoSuchThingIfNull 	"getHostEntry" "unable to retrieve host entry"
    $ trySysCall $ c_gethostent
  >>= peek
@@ -408,12 +429,12 @@ getHostEntry = do
 foreign import ccall unsafe "gethostent" c_gethostent :: IO (Ptr HostEntry)
 
 setHostEntry :: Bool -> IO ()
-setHostEntry flg = trySysCall $ c_sethostent (fromBool flg)
+setHostEntry flg = withLock $ trySysCall $ c_sethostent (fromBool flg)
 
 foreign import ccall unsafe "sethostent" c_sethostent :: CInt -> IO ()
 
 endHostEntry :: IO ()
-endHostEntry = c_endhostent
+endHostEntry = withLock $ c_endhostent
 
 foreign import ccall unsafe "endhostent" c_endhostent :: IO ()
 
@@ -449,26 +470,26 @@ instance Storable NetworkEntry where
    alignment _ = alignment (undefined :: CInt) -- ???
 
    peek p = do
-	n_name         <- (#peek struct netent, n_name) p >>= peekCString
-	n_aliases      <- (#peek struct netent, n_aliases) p
-			 	>>= peekArray0 nullPtr
-			   	>>= mapM peekCString
-	n_addrtype     <- (#peek struct netent, n_addrtype) p
-	n_net          <- (#peek struct netent, n_net) p
-	return (NetworkEntry {
-			networkName      = n_name,
-			networkAliases   = n_aliases,
-			networkFamily    = unpackFamily (fromIntegral 
-					    (n_addrtype :: CInt)),
-			networkAddress   = n_net
-		})
+        n_name         <- (#peek struct netent, n_name) p >>= peekCString
+        n_aliases      <- (#peek struct netent, n_aliases) p
+                                >>= peekArray0 nullPtr
+                                >>= mapM peekCString
+        n_addrtype     <- (#peek struct netent, n_addrtype) p
+        n_net          <- (#peek struct netent, n_net) p
+        return (NetworkEntry {
+                        networkName      = n_name,
+                        networkAliases   = n_aliases,
+                        networkFamily    = unpackFamily (fromIntegral 
+                                                        (n_addrtype :: CInt)),
+                        networkAddress   = n_net
+                })
 
    poke p = error "Storable.poke(BSD.NetEntry) not implemented"
 
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getNetworkByName :: NetworkName -> IO NetworkEntry
-getNetworkByName name = do
+getNetworkByName name = withLock $ do
  withCString name $ \ name_cstr -> do
   throwNoSuchThingIfNull "getNetworkByName" "no such network entry"
     $ trySysCall $ c_getnetbyname name_cstr
@@ -478,7 +499,7 @@ foreign import ccall unsafe "getnetbyname"
    c_getnetbyname  :: CString -> IO (Ptr NetworkEntry)
 
 getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
-getNetworkByAddr addr family = do
+getNetworkByAddr addr family = withLock $ do
  throwNoSuchThingIfNull "getNetworkByAddr" "no such network entry"
    $ trySysCall $ c_getnetbyaddr addr (packFamily family)
  >>= peek
@@ -487,33 +508,47 @@ foreign import ccall unsafe "getnetbyaddr"
    c_getnetbyaddr  :: NetworkAddr -> CInt -> IO (Ptr NetworkEntry)
 
 getNetworkEntry :: IO NetworkEntry
-getNetworkEntry = do
+getNetworkEntry = withLock $ do
  throwNoSuchThingIfNull "getNetworkEntry" "no more network entries"
           $ trySysCall $ c_getnetent
  >>= peek
 
 foreign import ccall unsafe "getnetent" c_getnetent :: IO (Ptr NetworkEntry)
 
+-- | Open the network name database. The parameter specifies
+-- whether a connection is maintained open between various
+-- networkEntry calls
 setNetworkEntry :: Bool -> IO ()
-setNetworkEntry flg = trySysCall $ c_setnetent (fromBool flg)
+setNetworkEntry flg = withLock $ trySysCall $ c_setnetent (fromBool flg)
 
 foreign import ccall unsafe "setnetent" c_setnetent :: CInt -> IO ()
 
+-- | Close the connection to the network name database.
 endNetworkEntry :: IO ()
-endNetworkEntry = trySysCall $ c_endnetent
+endNetworkEntry = withLock $ trySysCall $ c_endnetent
 
 foreign import ccall unsafe "endnetent" c_endnetent :: IO ()
 
+-- | Get the list of network entries.
 getNetworkEntries :: Bool -> IO [NetworkEntry]
 getNetworkEntries stayOpen = do
   setNetworkEntry stayOpen
   getEntries (getNetworkEntry) (endNetworkEntry)
 #endif
 
+-- Mutex for name service lockdown
+
+{-# NOINLINE lock #-}
+lock :: MVar ()
+lock = unsafePerformIO $ newMVar ()
+
+withLock :: IO a -> IO a
+withLock act = withMVar lock (\_ -> act)
+
 -- ---------------------------------------------------------------------------
 -- Miscellaneous Functions
 
--- Calling getHostName returns the standard host name for the current
+-- | Calling getHostName returns the standard host name for the current
 -- processor, as set at boot time.
 
 getHostName :: IO HostName
@@ -589,6 +624,5 @@ throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
 throwNoSuchThingIfNull loc desc act = do
   ptr <- act
   if (ptr == nullPtr)
-   then ioError (IOError Nothing NoSuchThing
-	loc desc Nothing)
+   then ioError (IOError Nothing NoSuchThing loc desc Nothing)
    else return ptr
