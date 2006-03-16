@@ -2,6 +2,14 @@
  *  Copyright(c), 2002 The GHC Team.
  */
 
+#ifdef aix_HOST_OS
+#define _LINUX_SOURCE_COMPAT 
+// Required to get CMSG_SPACE/CMSG_LEN macros.  See #265.
+// Alternative is to #define COMPAT_43 and use the 
+// HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS code instead, but that means
+// fiddling with the configure script too.
+#endif
+
 #include "HsNet.h"
 
 #if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS /* until end */
