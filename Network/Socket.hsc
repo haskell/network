@@ -1289,6 +1289,48 @@ data Family
 #ifdef AF_RIF
         | AF_RIF	-- raw interface 
 #endif
+#ifdef AF_NETROM
+	| AF_NETROM			-- Amateur radio NetROM
+#endif
+#ifdef AF_BRIDGE
+	| AF_BRIDGE			-- multiprotocol bridge
+#endif
+#ifdef AF_ATMPVC
+	| AF_ATMPVC			-- ATM PVCs
+#endif
+#ifdef AF_ROSE
+	| AF_ROSE			-- Amateur Radio X.25 PLP
+#endif
+#ifdef AF_NETBEUI
+	| AF_NETBEUI			-- 802.2LLC
+#endif
+#ifdef AF_SECURITY
+	| AF_SECURITY			-- Security callback pseudo AF
+#endif
+#ifdef AF_PACKET
+	| AF_PACKET			-- Packet family
+#endif
+#ifdef AF_ASH
+	| AF_ASH			-- Ash
+#endif
+#ifdef AF_ECONET
+	| AF_ECONET			-- Acorn Econet
+#endif
+#ifdef AF_ATMSVC
+	| AF_ATMSVC			-- ATM SVCs
+#endif
+#ifdef AF_IRDA
+	| AF_IRDA			-- IRDA sockets
+#endif
+#ifdef AF_PPPOX
+	| AF_PPPOX			-- PPPoX sockets
+#endif
+#ifdef AF_WANPIPE
+	| AF_WANPIPE			-- Wanpipe API sockets
+#endif
+#ifdef AF_BLUETOOTH
+	| AF_BLUETOOTH			-- bluetooth sockets
+#endif
 	deriving (Eq, Ord, Read, Show)
 
 ------ ------
@@ -1444,6 +1486,48 @@ packFamily f = case f of
 #endif
 #ifdef AF_RIF
         AF_RIF -> #const AF_RIF
+#endif
+#ifdef AF_NETROM
+	AF_NETROM -> #const AF_NETROM
+#endif
+#ifdef AF_BRIDGE
+	AF_BRIDGE -> #const AF_BRIDGE
+#endif
+#ifdef AF_ATMPVC
+	AF_ATMPVC -> #const AF_ATMPVC
+#endif
+#ifdef AF_ROSE
+	AF_ROSE -> #const AF_ROSE
+#endif
+#ifdef AF_NETBEUI
+	AF_NETBEUI -> #const AF_NETBEUI
+#endif
+#ifdef AF_SECURITY
+	AF_SECURITY -> #const AF_SECURITY
+#endif
+#ifdef AF_PACKET
+	AF_PACKET -> #const AF_PACKET
+#endif
+#ifdef AF_ASH
+	AF_ASH -> #const AF_ASH
+#endif
+#ifdef AF_ECONET
+	AF_ECONET -> #const AF_ECONET
+#endif
+#ifdef AF_ATMSVC
+	AF_ATMSVC -> #const AF_ATMSVC
+#endif
+#ifdef AF_IRDA
+	AF_IRDA -> #const AF_IRDA
+#endif
+#ifdef AF_PPPOX
+	AF_PPPOX -> #const AF_PPPOX
+#endif
+#ifdef AF_WANPIPE
+	AF_WANPIPE -> #const AF_WANPIPE
+#endif
+#ifdef AF_BLUETOOTH
+	AF_BLUETOOTH -> #const AF_BLUETOOTH
 #endif
 
 --------- ----------
@@ -1601,6 +1685,48 @@ unpackFamily f = case f of
 #endif
 #ifdef AF_RIF
         (#const AF_RIF) -> AF_RIF
+#endif
+#ifdef AF_NETROM
+	(#const AF_NETROM) -> AF_NETROM
+#endif
+#ifdef AF_BRIDGE
+	(#const AF_BRIDGE) -> AF_BRIDGE
+#endif
+#ifdef AF_ATMPVC
+	(#const AF_ATMPVC) -> AF_ATMPVC
+#endif
+#ifdef AF_ROSE
+	(#const AF_ROSE) -> AF_ROSE
+#endif
+#ifdef AF_NETBEUI
+	(#const AF_NETBEUI) -> AF_NETBEUI
+#endif
+#ifdef AF_SECURITY
+	(#const AF_SECURITY) -> AF_SECURITY
+#endif
+#ifdef AF_PACKET
+	(#const AF_PACKET) -> AF_PACKET
+#endif
+#ifdef AF_ASH
+	(#const AF_ASH) -> AF_ASH
+#endif
+#ifdef AF_ECONET
+	(#const AF_ECONET) -> AF_ECONET
+#endif
+#ifdef AF_ATMSVC
+	(#const AF_ATMSVC) -> AF_ATMSVC
+#endif
+#ifdef AF_IRDA
+	(#const AF_IRDA) -> AF_IRDA
+#endif
+#ifdef AF_PPPOX
+	(#const AF_PPPOX) -> AF_PPPOX
+#endif
+#ifdef AF_WANPIPE
+	(#const AF_WANPIPE) -> AF_WANPIPE
+#endif
+#ifdef AF_BLUETOOTH
+	(#const AF_BLUETOOTH) -> AF_BLUETOOTH
 #endif
 
 -- Socket Types.
