@@ -115,7 +115,7 @@ import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 #endif
 import Network.Socket
 
-import Control.Concurrent 	( newMVar, withMVar )
+import Control.Concurrent 	( MVar, newMVar, withMVar )
 import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
 import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
 import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
