@@ -124,6 +124,7 @@ import Foreign.Storable ( Storable(..) )
 import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
 import Foreign.Marshal.Utils ( with, fromBool )
 import Data.Typeable
+import System.IO.Unsafe ( unsafePerformIO )
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.IOBase
