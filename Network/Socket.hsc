@@ -632,7 +632,7 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddr_Family family
      allocaBytes sz $ \ sockaddr -> do
-#if defined(mingw32_HOST_OS) && !defined(__HUGS__)
+#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
      new_sock <-
 	if threaded 
 	   then with (fromIntegral sz) $ \ ptr_len ->
@@ -1983,7 +1983,9 @@ foreign import CALLCONV safe "accept"
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
+#ifdef __GLASGOW_HASKELL__
 foreign import ccall "rtsSupportsBoundThreads" threaded :: Bool
+#endif
 
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
