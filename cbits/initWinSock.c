@@ -7,7 +7,7 @@ static int winsock_inited = 0;
 static int winsock_uninited = 0;
 
 /* Initialising WinSock... */
-HsInt
+int
 initWinSock ()
 {
   WORD wVersionRequested;
