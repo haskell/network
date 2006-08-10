@@ -29,7 +29,7 @@ extra-libraries:
 
 include-dirs: 	INCLUDE_DIR
 includes:	"HsNet.h"
-depends:	base, parsec
+depends:	base, parsec, html
 hugs-options:
 cc-options:
 ld-options:

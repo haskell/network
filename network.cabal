@@ -17,7 +17,7 @@ extra-source-files:
 extra-tmp-files:
 		config.log config.status autom4te.cache
 		network.buildinfo include/HsNetworkConfig.h
-build-depends:	base, parsec
+build-depends:	base, parsec, html
 extensions:	CPP
 include-dirs: 	include
 includes:	HsNet.h
