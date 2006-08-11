@@ -25,12 +25,6 @@
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
 ##include "Typeable.h"
 
-#if defined(HAVE_READLINK) && !defined(PATH_MAX)
--- PATH_MAX is not defined on systems with unlimited path length.
--- Ugly.  Fix this.
-#define PATH_MAX 4096
-#endif
-
 module Network.BSD (
        
     -- * Host names
@@ -99,15 +93,6 @@ module Network.BSD (
     , getNetworkEntry	    -- :: IO NetworkEntry
     , endNetworkEntry	    -- :: IO ()
 #endif
-
-#ifdef HAVE_SYMLINK
-    -- * Symbolic links
-    , symlink		    -- :: String -> String -> IO ()
-#endif
-#ifdef HAVE_READLINK
-    , readlink		    -- :: String -> IO String
-#endif
-
     ) where
 
 #ifdef __HUGS__
@@ -576,35 +561,6 @@ getEntries getOne atEnd = loop
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)
 
-
--- ---------------------------------------------------------------------------
--- Symbolic links
-
-#ifdef HAVE_SYMLINK
-{-# DEPRECATED symlink "use System.Posix.createSymbolicLink" #-}
-symlink :: String -> String -> IO ()
-symlink actual_path sym_path = do
-   withCString actual_path $ \ actual_path_cstr -> do
-   withCString sym_path $ \ sym_path_cstr -> do
-   throwErrnoIfMinus1_ "symlink" $ c_symlink actual_path_cstr sym_path_cstr
-
-foreign import ccall unsafe "symlink" 
-   c_symlink :: CString -> CString -> IO CInt
-#endif
-
-#ifdef HAVE_READLINK
-{-# DEPRECATED readlink "use System.Posix.readSymbolicLink" #-}
-readlink :: String -> IO String
-readlink sym = do
-   withCString sym $ \ sym_cstr -> do
-   allocaArray0 (#const PATH_MAX) $ \ buf -> do
-   rc <- throwErrnoIfMinus1 "readlink" $ 
-	    c_readlink sym_cstr buf (#const PATH_MAX)
-   peekCStringLen (buf, fromIntegral rc)
-
-foreign import ccall unsafe "readlink"
-   c_readlink :: CString -> Ptr CChar -> CSize -> IO CInt
-#endif
 
 -- ---------------------------------------------------------------------------
 -- Winsock only:
