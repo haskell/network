@@ -8,7 +8,7 @@ SUBDIRS		= include
 
 ALL_DIRS	= Network
 PACKAGE		= network
-VERSION		= 1.0
+VERSION		= 2.0
 PACKAGE_DEPS	= base parsec html
 
 SRC_HC_OPTS	+= -Iinclude -\#include HsNet.h
