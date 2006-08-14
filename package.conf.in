@@ -8,7 +8,6 @@ exposed:	True
 
 exposed-modules:
 	Network.BSD,
-	Network.CGI,
 	Network.Socket,
 	Network.URI,
 	Network

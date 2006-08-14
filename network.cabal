@@ -5,7 +5,7 @@ license-file:	LICENSE
 maintainer:	libraries@haskell.org
 synopsis:	Networking-related facilities
 exposed-modules:
-		Network Network.BSD Network.CGI Network.Socket Network.URI
+		Network Network.BSD Network.Socket Network.URI
 extra-source-files:
 		config.guess config.sub install-sh
 		configure.ac configure
@@ -17,7 +17,7 @@ extra-source-files:
 extra-tmp-files:
 		config.log config.status autom4te.cache
 		network.buildinfo include/HsNetworkConfig.h
-build-depends:	base, parsec, html
+build-depends:	base, parsec
 extensions:	CPP
 include-dirs: 	include
 includes:	HsNet.h
