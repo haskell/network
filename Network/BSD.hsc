@@ -9,14 +9,8 @@
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
--- The "Network.BSD" module defines Haskell bindings to functionality
--- provided by BSD Unix derivatives. Currently this covers
--- network programming functionality and symbolic links.
--- (OK, so the latter is pretty much supported by most Unixes
--- today, but it was BSD that introduced them.)  
---
--- The symlink stuff is really in the wrong place, at some point it will move
--- to a generic Unix library somewhere else in the module tree.
+-- The "Network.BSD" module defines Haskell bindings to network
+-- programming functionality provided by BSD Unix derivatives.
 --
 -----------------------------------------------------------------------------
 
