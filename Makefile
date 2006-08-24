@@ -19,6 +19,8 @@ Network/Socket_HC_OPTS += -cpp
 
 EXTRA_SRCS += cbits/HsNet.c
 
+EXCLUDED_SRCS += Setup.hs
+
 # Only bother with cbits/initWinSock.c when it's really needed.
 ifeq "$(TARGETPLATFORM)" "i386-unknown-mingw32"
 EXTRA_SRCS += cbits/initWinSock.c cbits/winSockErr.c cbits/asyncAccept.c
