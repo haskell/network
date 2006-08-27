@@ -30,7 +30,7 @@ EXTRA_SRCS += cbits/ancilData.c
 Network/Socket_HC_OPTS += -DCALLCONV=ccall
 endif
 
-SRC_HADDOCK_OPTS += -t "Haskell Core Libraries (network package)"
+SRC_HADDOCK_OPTS += -t "Haskell Hierarchical Libraries (network package)"
 
 DIST_CLEAN_FILES += network.buildinfo config.cache config.status 
 
