@@ -20,5 +20,6 @@ extra-tmp-files:
 build-depends:	base, parsec
 extensions:	CPP
 include-dirs: 	include
-includes:	HsNet.h
+install-includes:
+		HsNet.h HsNetworkConfig.h
 c-sources:	cbits/HsNet.c
