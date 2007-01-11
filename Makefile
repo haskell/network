@@ -9,7 +9,7 @@ SUBDIRS		= include
 ALL_DIRS	= Network
 PACKAGE		= network
 VERSION		= 2.0
-PACKAGE_DEPS	= base parsec html
+PACKAGE_DEPS	= base parsec
 
 SRC_HC_OPTS	+= -Iinclude -\#include HsNet.h
 SRC_CC_OPTS     += -Iinclude -I. -I$(GHC_INCLUDE_DIR)
