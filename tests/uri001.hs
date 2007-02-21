@@ -23,7 +23,7 @@
 --
 --------------------------------------------------------------------------------
 
-module URITest where
+module Main where
 
 import Network.URI
     ( URI(..), URIAuth(..)
@@ -39,7 +39,7 @@ import Network.URI
     , normalizeCase, normalizeEscape, normalizePathSegments
     )
 
-import HUnit
+import Test.HUnit
 
 import IO ( Handle, openFile, IOMode(WriteMode), hClose, hPutStr, hPutStrLn )
 
