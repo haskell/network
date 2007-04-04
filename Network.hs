@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS -cpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network
@@ -14,6 +14,13 @@
 -- lower-level interface in "Network.Socket".
 --
 -----------------------------------------------------------------------------
+
+#include "HsNetworkConfig.h"
+
+#ifdef HAVE_IN6_ADDR
+-- Use IPv6-capable function definitions if the OS supports it.
+#define IPV6_SOCKET_SUPPORT 1
+#endif
 
 module Network (
 
@@ -54,6 +61,7 @@ module Network (
 
        ) where
 
+import Control.Monad (liftM)
 import Network.BSD
 import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
 import qualified Network.Socket as Socket ( accept )
@@ -85,6 +93,15 @@ connectTo :: HostName		-- Hostname
 	  -> PortID 		-- Port Identifier
 	  -> IO Handle		-- Connected Socket
 
+#if defined(IPV6_SOCKET_SUPPORT)
+-- IPv6 and IPv4.
+
+connectTo hostname (Service serv) = connect' hostname serv
+
+connectTo hostname (PortNumber port) = connect' hostname (show port)
+#else
+-- IPv4 only.
+
 connectTo hostname (Service serv) = do
     proto <- getProtocolNumber "tcp"
     Exception.bracketOnError
@@ -107,6 +124,7 @@ connectTo hostname (PortNumber port) = do
       	  connect sock (SockAddrInet port (hostAddress he))
       	  socketToHandle sock ReadWriteMode
 	)
+#endif
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 connectTo _ (UnixSocket path) = do
@@ -117,6 +135,25 @@ connectTo _ (UnixSocket path) = do
           connect sock (SockAddrUnix path)
           socketToHandle sock ReadWriteMode
 	)
+#endif
+
+#if defined(IPV6_SOCKET_SUPPORT)
+connect' :: HostName -> ServiceName -> IO Handle
+
+connect' host serv = do
+    proto <- getProtocolNumber "tcp"
+    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG]
+                             , addrProtocol = proto
+                             , addrSocketType = Stream }
+    addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
+    let addr = head addrs
+    Exception.bracketOnError
+	(socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+	(sClose)  -- only done if there's an error
+	(\sock -> do
+          connect sock (addrAddress addr)
+          socketToHandle sock ReadWriteMode
+ 	)
 #endif
 
 -- | Creates the server side socket which has been bound to the
@@ -130,6 +167,15 @@ connectTo _ (UnixSocket path) = do
 
 listenOn :: PortID 	-- ^ Port Identifier
 	 -> IO Socket	-- ^ Connected Socket
+
+#if defined(IPV6_SOCKET_SUPPORT)
+-- IPv6 and IPv4.
+
+listenOn (Service serv) = listen' serv
+
+listenOn (PortNumber port) = listen' (show port)
+#else
+-- IPv4 only.
 
 listenOn (Service serv) = do
     proto <- getProtocolNumber "tcp"
@@ -155,6 +201,7 @@ listenOn (PortNumber port) = do
 	    listen sock maxListenQueue
 	    return sock
 	)
+#endif
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 listenOn (UnixSocket path) =
@@ -169,16 +216,36 @@ listenOn (UnixSocket path) =
 	)
 #endif
 
+#if defined(IPV6_SOCKET_SUPPORT)
+listen' :: ServiceName -> IO Socket
+
+listen' serv = do
+    proto <- getProtocolNumber "tcp"
+    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_PASSIVE]
+                             , addrProtocol = proto }
+    addrs <- getAddrInfo (Just hints) Nothing (Just serv)
+    let addr = head addrs
+    Exception.bracketOnError
+        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+	(sClose)
+	(\sock -> do
+	    setSocketOption sock ReuseAddr 1
+	    bindSocket sock (addrAddress addr)
+	    listen sock maxListenQueue
+	    return sock
+	)
+#endif
+
 -- -----------------------------------------------------------------------------
 -- accept
 
 -- | Accept a connection on a socket created by 'listenOn'.  Normal
 -- I\/O opertaions (see "System.IO") can be used on the 'Handle'
 -- returned to communicate with the client.
--- Notice that although you can pass any Socket to Network.accept, only
--- sockets of either AF_UNIX or AF_INET will work (this shouldn't be a problem,
--- though). When using AF_UNIX, HostName will be set to the path of the socket
--- and PortNumber to -1.
+-- Notice that although you can pass any Socket to Network.accept,
+-- only sockets of either AF_UNIX, AF_INET, or AF_INET6 will work
+-- (this shouldn't be a problem, though). When using AF_UNIX, HostName
+-- will be set to the path of the socket and PortNumber to -1.
 --
 accept :: Socket 		-- ^ Listening Socket
        -> IO (Handle,
@@ -198,6 +265,14 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
 		-- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
+#if defined(IPV6_SOCKET_SUPPORT)
+accept sock@(MkSocket _ AF_INET6 _ _ _) = do
+ (sock', addr) <- Socket.accept sock
+ (Just peer, _) <- getNameInfo [] True False addr
+ handle <- socketToHandle sock' ReadWriteMode
+ (PortNumber port) <- socketPort sock'
+ return (handle, peer, port)
+#endif
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  ~(sock', (SockAddrUnix path)) <- Socket.accept sock
@@ -231,6 +306,31 @@ sendTo h p msg = do
 recvFrom :: HostName 	-- Hostname
 	 -> PortID	-- Port Number
 	 -> IO String	-- Received Data
+
+#if defined(IPV6_SOCKET_SUPPORT)
+recvFrom host port = do
+    proto <- getProtocolNumber "tcp"
+    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG]
+                             , addrProtocol = proto
+                             , addrSocketType = Stream }
+    allowed <- map addrAddress `liftM` getAddrInfo (Just hints) (Just host)
+                                                   Nothing
+    s <- listenOn port
+    let waiting = do
+        (s', addr) <- Socket.accept s
+        if not (addr `oneOf` allowed)
+         then sClose s' >> waiting
+         else socketToHandle s' ReadMode >>= hGetContents
+    waiting
+  where
+    a@(SockAddrInet _ ha) `oneOf` ((SockAddrInet _ hb):bs)
+        | ha == hb = True
+        | otherwise = a `oneOf` bs
+    a@(SockAddrInet6 _ _ ha _) `oneOf` ((SockAddrInet6 _ _ hb _):bs)
+        | ha == hb = True
+        | otherwise = a `oneOf` bs
+    _ `oneOf` _ = False
+#else
 recvFrom host port = do
  ip  <- getHostByName host
  let ipHs = hostAddresses ip
@@ -250,6 +350,7 @@ recvFrom host port = do
 
  message <- waiting
  return message
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Access function returning the port type/id of socket.
@@ -262,9 +363,12 @@ socketPort s = do
   where
    portID sa =
     case sa of
-     SockAddrInet port _    -> PortNumber port
+     SockAddrInet port _      -> PortNumber port
+#if defined(IPV6_SOCKET_SUPPORT)
+     SockAddrInet6 port _ _ _ -> PortNumber port
+#endif
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-     SockAddrUnix path	    -> UnixSocket path
+     SockAddrUnix path	      -> UnixSocket path
 #endif
 
 -----------------------------------------------------------------------------
