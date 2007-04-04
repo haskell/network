@@ -51,11 +51,36 @@ module Network.Socket (
     SockAddr(..),
     SocketStatus(..),
     HostAddress,
+#if defined(IPV6_SOCKET_SUPPORT)
+    HostAddress6,
+    FlowInfo,
+    ScopeID,
+#endif
     ShutdownCmd(..),
     ProtocolNumber,
     PortNumber(..),
 	-- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
 	-- this use and make the type abstract.
+
+    -- * Address operations
+
+#if defined(IPV6_SOCKET_SUPPORT)
+    AddrInfo(..),
+
+    AddrInfoFlag(..),
+
+    HostName,
+    ServiceName,
+
+    defaultHints,           -- :: AddrInfo
+    defaultProtocol,        -- :: ProtocolNumber
+
+    getAddrInfo,            -- :: Maybe AddrInfo -> Maybe HostName -> Maybe ServiceName -> IO [AddrInfo]
+
+    NameInfoFlag(..),
+
+    getNameInfo,            -- :: [NameInfoFlag] -> Bool -> Bool -> SockAddr -> IO (Maybe HostName, Maybe ServiceName)
+#endif
 
     -- * Socket Operations
     socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
@@ -120,6 +145,9 @@ module Network.Socket (
     -- * Special Constants
     aNY_PORT,		-- :: PortNumber
     iNADDR_ANY,		-- :: HostAddress
+#if defined(IPV6_SOCKET_SUPPORT)
+    iN6ADDR_ANY,	-- :: HostAddress6
+#endif
     sOMAXCONN,		-- :: Int
     sOL_SOCKET,         -- :: Int
 #ifdef SCM_RIGHTS
@@ -163,15 +191,17 @@ import Hugs.IO ( openFd )
 # endif
 #endif
 
+import Data.Bits
+import Data.List (foldl')
 import Data.Word ( Word8, Word16, Word32 )
-import Foreign.Ptr ( Ptr, castPtr, plusPtr )
+import Foreign.Ptr ( Ptr, castPtr, nullPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
 import Foreign.C.Error
-import Foreign.C.String ( withCString, peekCString, peekCStringLen, castCharToCChar )
+import Foreign.C.String ( CString, withCString, peekCString, peekCStringLen, castCharToCChar )
 import Foreign.C.Types ( CInt, CUInt, CChar, CSize )
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray, pokeArray0 )
-import Foreign.Marshal.Utils ( with )
+import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO
 import Control.Monad ( liftM, when )
@@ -193,6 +223,9 @@ import qualified System.Posix.Internals
 #else
 import System.IO.Unsafe	(unsafePerformIO)
 #endif
+
+type HostName       = String
+type ServiceName    = String
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -255,10 +288,18 @@ fdSocket (MkSocket fd _ _ _ _) = fd
 
 type ProtocolNumber = CInt
 
+-- | This is the default protocol for a given service.
+defaultProtocol :: ProtocolNumber
+defaultProtocol = 0
+
 -- NOTE: HostAddresses are represented in network byte order.
 --       Functions that expect the address in machine byte order
 --       will have to perform the necessary translation.
 type HostAddress = Word32
+
+#if defined(IPV6_SOCKET_SUPPORT)
+type HostAddress6 = (Word32, Word32, Word32, Word32)
+#endif
 
 ----------------------------------------------------------------------------
 -- Port Numbers
@@ -330,13 +371,25 @@ instance Storable PortNumber where
 
 -- To represent these socket addresses in Haskell-land, we do what BSD
 -- didn't do, and use a union/algebraic type for the different
--- families. Currently only Unix domain sockets and the Internet family
--- are supported.
+-- families. Currently only Unix domain sockets and the Internet
+-- families are supported.
+
+#if defined(IPV6_SOCKET_SUPPORT)
+type FlowInfo = Word32
+type ScopeID = Word32
+#endif
 
 data SockAddr		-- C Names				
   = SockAddrInet
 	PortNumber	-- sin_port  (network byte order)
 	HostAddress	-- sin_addr  (ditto)
+#if defined(IPV6_SOCKET_SUPPORT)
+  | SockAddrInet6
+        PortNumber      -- sin6_port (network byte order)
+        FlowInfo        -- sin6_flowinfo (ditto)
+        HostAddress6    -- sin6_addr (ditto)
+        ScopeID         -- sin6_scope_id (ditto)
+#endif
 #if defined(DOMAIN_SOCKET_SUPPORT)
   | SockAddrUnix
         String          -- sun_path
@@ -361,6 +414,32 @@ instance Show SockAddr where
    = showString (unsafePerformIO (inet_ntoa ha)) 
    . showString ":"
    . shows port
+#if defined(IPV6_SOCKET_SUPPORT)
+  showsPrec _ addr@(SockAddrInet6 port _ _ _)
+   = showChar '['
+   . showString (unsafePerformIO $
+                 fst `liftM` getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 maybe (fail "showsPrec: impossible internal error") return)
+   . showString "]:"
+   . shows port
+
+instance Storable HostAddress6 where
+    sizeOf _    = (#const sizeof(struct in6_addr))
+    alignment _ = alignment (undefined :: CInt)
+
+    peek p = do
+        a <- (#peek struct in6_addr, s6_addr32[0]) p
+        b <- (#peek struct in6_addr, s6_addr32[1]) p
+        c <- (#peek struct in6_addr, s6_addr32[2]) p
+        d <- (#peek struct in6_addr, s6_addr32[3]) p
+        return (a, b, c, d)
+
+    poke p (a, b, c, d) = do
+        (#poke struct in6_addr, s6_addr32[0]) p a
+        (#poke struct in6_addr, s6_addr32[1]) p b
+        (#poke struct in6_addr, s6_addr32[2]) p c
+        (#poke struct in6_addr, s6_addr32[3]) p d
+#endif
 
 -- we can't write an instance of Storable for SockAddr, because the Storable
 -- class can't easily handle alternatives. Also note that on Darwin, the
@@ -382,6 +461,19 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 	(#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CSaFamily)
 	(#poke struct sockaddr_in, sin_port) p port
 	(#poke struct sockaddr_in, sin_addr) p addr	
+#if defined(IPV6_SOCKET_SUPPORT)
+pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
+#if defined(darwin_TARGET_OS)
+	zeroMemory p (#const sizeof(struct sockaddr_in6))
+#endif
+	(#poke struct sockaddr_in6, sin6_family) p ((#const AF_INET6) :: CSaFamily)
+	(#poke struct sockaddr_in6, sin6_port) p port
+	(#poke struct sockaddr_in6, sin6_flowinfo) p flow
+	(#poke struct sockaddr_in6, sin6_addr) p addr	
+	(#poke struct sockaddr_in6, sin6_scope_id) p scope
+#endif
+
+peekSockAddr :: Ptr SockAddr -> IO SockAddr
 
 peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
@@ -395,6 +487,14 @@ peekSockAddr p = do
 		addr <- (#peek struct sockaddr_in, sin_addr) p
 		port <- (#peek struct sockaddr_in, sin_port) p
 		return (SockAddrInet (PortNum port) addr)
+#if defined(IPV6_SOCKET_SUPPORT)
+	(#const AF_INET6) -> do
+		port <- (#peek struct sockaddr_in6, sin6_port) p
+		flow <- (#peek struct sockaddr_in6, sin6_flowinfo) p
+		addr <- (#peek struct sockaddr_in6, sin6_addr) p
+		scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
+		return (SockAddrInet6 (PortNum port) flow addr scope)
+#endif
 
 -- helper function used to zero a structure
 zeroMemory :: Ptr a -> CSize -> IO ()
@@ -405,6 +505,9 @@ foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sizeOfSockAddr_Family AF_UNIX = #const sizeof(struct sockaddr_un)
 #endif
+#if defined(IPV6_SOCKET_SUPPORT)
+sizeOfSockAddr_Family AF_INET6 = #const sizeof(struct sockaddr_in6)
+#endif
 sizeOfSockAddr_Family AF_INET = #const sizeof(struct sockaddr_in)
 
 -- size of struct sockaddr by SockAddr
@@ -412,6 +515,9 @@ sizeOfSockAddr_Family AF_INET = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr (SockAddrUnix _)   = #const sizeof(struct sockaddr_un)
 #endif
 sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
+#if defined(IPV6_SOCKET_SUPPORT)
+sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
+#endif
 
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withSockAddr addr f = do
@@ -458,7 +564,7 @@ socket family stype protocol = do
 -- of communication.
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
-socketPair :: Family 	          -- Family Name (usually AF_INET)
+socketPair :: Family 	          -- Family Name (usually AF_INET or AF_INET6)
            -> SocketType 	  -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
@@ -708,10 +814,10 @@ recvFrom sock nbytes =
     return (str, len, sockaddr)
 
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s _family _stype _protocol status) ptr nbytes
+recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   = 
-    withNewSockAddr AF_INET $ \ptr_addr sz -> do
+    withNewSockAddr family $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
       	poke ptr_len (fromIntegral sz)
         len <- 
@@ -795,6 +901,11 @@ socketPort :: Socket		-- Connected & Bound Socket
 socketPort sock@(MkSocket _ AF_INET _ _ _) = do
     (SockAddrInet port _) <- getSocketName sock
     return port
+#if defined(IPV6_SOCKET_SUPPORT)
+socketPort sock@(MkSocket _ AF_INET6 _ _ _) = do
+    (SockAddrInet6 port _ _ _) <- getSocketName sock
+    return port
+#endif
 socketPort (MkSocket _ family _ _ _) =
     ioError (userError ("socketPort: not supported for Family " ++ show family))
 
@@ -1132,6 +1243,7 @@ unpackFamily	:: CInt -> Family
 packFamily	:: Family -> CInt
 
 packSocketType	:: SocketType -> CInt
+unpackSocketType:: CInt -> SocketType
 
 -- | Address Families.
 --
@@ -1774,14 +1886,41 @@ packSocketType stype = case stype of
 	SeqPacket -> #const SOCK_SEQPACKET
 #endif
 
+unpackSocketType t = case t of
+	0 -> NoSocketType
+#ifdef SOCK_STREAM
+	(#const SOCK_STREAM) -> Stream
+#endif
+#ifdef SOCK_DGRAM
+	(#const SOCK_DGRAM) -> Datagram
+#endif
+#ifdef SOCK_RAW
+	(#const SOCK_RAW) -> Raw
+#endif
+#ifdef SOCK_RDM
+	(#const SOCK_RDM) -> RDM
+#endif
+#ifdef SOCK_SEQPACKET
+	(#const SOCK_SEQPACKET) -> SeqPacket
+#endif
+
 -- ---------------------------------------------------------------------------
 -- Utility Functions
 
 aNY_PORT :: PortNumber 
 aNY_PORT = 0
 
+-- | The IPv4 wild card address.
+
 iNADDR_ANY :: HostAddress
 iNADDR_ANY = htonl (#const INADDR_ANY)
+
+#if defined(IPV6_SOCKET_SUPPORT)
+-- | The IPv6 wild card address.
+
+iN6ADDR_ANY :: HostAddress6
+iN6ADDR_ANY = (0, 0, 0, 0)
+#endif
 
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
@@ -1907,6 +2046,319 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
 #else
 socketToHandle (MkSocket s family stype protocol status) m =
   error "socketToHandle not implemented in a parallel setup"
+#endif
+
+-- | Pack a list of values into a bitmask.  The possible mappings from
+-- value to bit-to-set are given as the first argument.  We assume
+-- that each value can cause exactly one bit to be set; unpackBits will
+-- break if this property is not true.
+
+packBits :: (Eq a, Bits b) => [(a, b)] -> [a] -> b
+
+packBits mapping xs = foldl' pack 0 mapping
+    where pack acc (k, v) | k `elem` xs = acc .|. v
+                          | otherwise   = acc
+
+-- | Unpack a bitmask into a list of values.
+
+unpackBits :: Bits b => [(a, b)] -> b -> [a]
+
+unpackBits [] 0    = []
+unpackBits [] r    = error ("unpackBits: unhandled bits set: " ++ show r)
+unpackBits ((k,v):xs) r
+    | r .&. v /= 0 = k : unpackBits xs (r .&. complement v)
+    | otherwise    = unpackBits xs r
+
+-----------------------------------------------------------------------------
+-- Address and service lookups
+
+#if defined(IPV6_SOCKET_SUPPORT)
+
+-- | Flags that control the querying behaviour of 'getAddrInfo'.
+data AddrInfoFlag
+    = AI_ADDRCONFIG
+    | AI_CANONNAME
+    | AI_NUMERICHOST
+    | AI_PASSIVE
+    deriving (Eq, Read, Show)
+
+INSTANCE_TYPEABLE0(AddrInfoFlag,addrInfoFlagTc,"AddrInfoFlag")
+
+aiFlagMapping :: [(AddrInfoFlag, CInt)]
+
+aiFlagMapping =
+    [(AI_ADDRCONFIG, #const AI_ADDRCONFIG),
+     (AI_CANONNAME, #const AI_CANONNAME),
+     (AI_NUMERICHOST, #const AI_NUMERICHOST),
+     (AI_PASSIVE, #const AI_PASSIVE)]
+
+data AddrInfo =
+    AddrInfo {
+        addrFlags :: [AddrInfoFlag],
+        addrFamily :: Family,
+        addrSocketType :: SocketType,
+        addrProtocol :: ProtocolNumber,
+        addrAddress :: SockAddr,
+        addrCanonName :: Maybe String
+        }
+    deriving (Eq, Show)
+
+INSTANCE_TYPEABLE0(AddrInfo,addrInfoTc,"AddrInfo")
+
+instance Storable AddrInfo where
+    sizeOf    _ = #const sizeof(struct addrinfo)
+    alignment _ = alignment (undefined :: CInt)
+
+    peek p = do
+	ai_flags <- (#peek struct addrinfo, ai_flags) p
+	ai_family <- (#peek struct addrinfo, ai_family) p
+	ai_socktype <- (#peek struct addrinfo, ai_socktype) p
+	ai_protocol <- (#peek struct addrinfo, ai_protocol) p
+        ai_addr <- (#peek struct addrinfo, ai_addr) p >>= peekSockAddr
+	ai_canonname_ptr <- (#peek struct addrinfo, ai_canonname) p
+
+        ai_canonname <- if ai_canonname_ptr == nullPtr
+                        then return Nothing
+                        else liftM Just $ peekCString ai_canonname_ptr
+                             
+        return (AddrInfo
+                {
+                 addrFlags = unpackBits aiFlagMapping ai_flags,
+                 addrFamily = unpackFamily ai_family,
+                 addrSocketType = unpackSocketType ai_socktype,
+                 addrProtocol = ai_protocol,
+                 addrAddress = ai_addr,
+                 addrCanonName = ai_canonname
+                })
+
+    poke p (AddrInfo flags family socketType protocol _ _) = do
+        (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
+        (#poke struct addrinfo, ai_family) p (packFamily family)
+        (#poke struct addrinfo, ai_socktype) p (packSocketType socketType)
+        (#poke struct addrinfo, ai_protocol) p protocol
+
+        -- stuff below is probably not needed, but let's zero it for safety
+
+        (#poke struct addrinfo, ai_addrlen) p (0::CSize)
+        (#poke struct addrinfo, ai_addr) p nullPtr
+        (#poke struct addrinfo, ai_canonname) p nullPtr
+        (#poke struct addrinfo, ai_next) p nullPtr
+
+data NameInfoFlag
+    = NI_DGRAM
+    | NI_NAMEREQD
+    | NI_NOFQDN
+    | NI_NUMERICHOST
+    | NI_NUMERICSERV
+    deriving (Eq, Read, Show)
+
+INSTANCE_TYPEABLE0(NameInfoFlag,nameInfoFlagTc,"NameInfoFlag")
+
+niFlagMapping :: [(NameInfoFlag, CInt)]
+
+niFlagMapping = [(NI_DGRAM, #const NI_DGRAM),
+                 (NI_NAMEREQD, #const NI_NAMEREQD),
+                 (NI_NOFQDN, #const NI_NOFQDN),
+                 (NI_NUMERICHOST, #const NI_NUMERICHOST),
+                 (NI_NUMERICSERV, #const NI_NUMERICSERV)]
+
+-- | Default hints for address lookup with 'getAddrInfo'.  The values
+-- of the 'addrAddress' and 'addrCanonName' fields are 'undefined',
+-- and are never inspected by 'getAddrInfo'.
+
+defaultHints :: AddrInfo
+
+defaultHints = AddrInfo {
+                         addrFlags = [],
+                         addrFamily = AF_UNSPEC,
+                         addrSocketType = NoSocketType,
+                         addrProtocol = defaultProtocol,
+                         addrAddress = undefined,
+                         addrCanonName = undefined
+                        }
+
+-- | Resolve a host or service name to one or more addresses.
+-- The 'AddrInfo' values that this function returns contain 'SockAddr'
+-- values that you can pass directly to 'connect' or
+-- 'bindSocket'.
+--
+-- This function is protocol independent.  It can return both IPv4 and
+-- IPv6 address information.
+--
+-- The 'AddrInfo' argument specifies the preferred query behaviour,
+-- socket options, or protocol.  You can override these conveniently
+-- using Haskell's record update syntax on 'defaultHints', for example
+-- as follows:
+--
+-- @
+--   myHints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_CANONNAME] }
+-- @
+--
+-- Values for 'addrFlags' control query behaviour.  The supported
+-- flags are as follows:
+--
+--   [@AI_PASSIVE@] If no 'HostName' value is provided, the network
+--     address in each 'SockAddr'
+--     will be left as a "wild card", i.e. as either 'iNADDR_ANY'
+--     or 'iN6ADDR_ANY'.  This is useful for server applications that
+--     will accept connections from any client.
+--
+--   [@AI_CANONNAME@] The 'addrCanonName' field of the first returned
+--     'AddrInfo' will contain the "canonical name" of the host.
+--
+--   [@AI_NUMERICHOST@] The 'HostName' argument /must/ be a numeric
+--     address in string form, and network name lookups will not be
+--      attempted.
+--
+--   [@AI_ADDRCONFIG@] The list of returned 'AddrInfo' values will only
+--     contain IPv4 addresses if the local system has at least one
+--     IPv4 interface configured, and likewise for IPv6.
+--
+-- You must provide a 'Just' value for at least one of the 'HostName'
+-- or 'ServiceName' arguments.  'HostName' can be either a numeric
+-- network address (dotted quad for IPv4, colon-separated hex for
+-- IPv6) or a hostname.  In the latter case, its addresses will be
+-- looked up unless 'AI_NUMERICHOST' is specified as a hint.  If you
+-- do not provide a 'HostName' value /and/ do not set 'AI_PASSIVE' as
+-- a hint, network addresses in the result will contain the address of
+-- the loopback interface.
+--
+-- If the query fails, this function throws an IO exception instead of
+-- returning an empty list.  Otherwise, it returns a non-empty list
+-- of 'AddrInfo' values.
+--
+-- There are several reasons why a query might result in several
+-- values.  For example, the queried-for host could be multihomed, or
+-- the service might be available via several protocols.
+--
+-- Note: the order of arguments is slightly different to that defined
+-- for @getaddrinfo@ in RFC 2553.  The 'AddrInfo' parameter comes first
+-- to make partial application easier.
+--
+-- Example:
+-- @
+--   let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_CANONNAME] }
+--   addrs <- getAddrInfo (Just hints) (Just "www.haskell.org") (Just "http")
+--   let addr = head addrs
+--   sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+--   connect sock (addrAddress addr)
+-- @
+
+getAddrInfo :: Maybe AddrInfo -- ^ preferred socket type or protocol
+            -> Maybe HostName -- ^ host name to look up
+            -> Maybe ServiceName -- ^ service name to look up
+            -> IO [AddrInfo] -- ^ resolved addresses, with "best" first
+
+getAddrInfo hints node service =
+  maybeWith withCString node $ \c_node ->
+    maybeWith withCString service $ \c_service ->
+      maybeWith with hints $ \c_hints ->
+        alloca $ \ptr_ptr_addrs -> do
+          ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
+          case ret of
+            0 -> do ptr_addrs <- peek ptr_ptr_addrs
+                    ais <- followAddrInfo ptr_addrs
+                    c_freeaddrinfo ptr_addrs
+                    return ais
+            _ -> do err <- gai_strerror ret
+                    ioError (IOError Nothing NoSuchThing "getAddrInfo" err
+                             Nothing)
+
+followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
+
+followAddrInfo ptr_ai | ptr_ai == nullPtr = return []
+                      | otherwise = do
+    a <- peek ptr_ai
+    as <- (#peek struct addrinfo, ai_next) ptr_ai >>= followAddrInfo
+    return (a:as)
+
+foreign import ccall safe "getaddrinfo"
+    c_getaddrinfo :: CString -> CString -> Ptr AddrInfo -> Ptr (Ptr AddrInfo)
+                  -> IO CInt
+
+foreign import ccall safe "freeaddrinfo"
+    c_freeaddrinfo :: Ptr AddrInfo -> IO ()
+
+gai_strerror :: CInt -> IO String
+
+gai_strerror n = c_gai_strerror n >>= peekCString
+
+foreign import ccall safe "gai_strerror"
+    c_gai_strerror :: CInt -> IO CString
+
+withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
+withCStringIf False _ f = f 0 nullPtr
+withCStringIf True n f = allocaBytes n (f (fromIntegral n))
+                    
+-- | Resolve an address to a host or service name.
+-- This function is protocol independent.
+--
+-- The list of 'NameInfoFlag' values controls query behaviour.  The
+-- supported flags are as follows:
+--
+--   [@NI_NOFQDN@] If a host is local, return only the
+--     hostname part of the FQDN.
+--
+--   [@NI_NUMERICHOST@] The name of the host is not
+--     looked up.  Instead, a numeric representation of the host's
+--     address is returned.  For an IPv4 address, this will be a
+--     dotted-quad string.  For IPv6, it will be colon-separated
+--     hexadecimal.
+--
+--   [@NI_NUMERICSERV@] The name of the service is not
+--     looked up.  Instead, a numeric representation of the
+--     service is returned.
+--
+--   [@NI_NAMEREQD@] If the hostname cannot be looked up, an IO error
+--     is thrown.
+--
+--   [@NI_DGRAM@] Resolve a datagram-based service name.  This is
+--     required only for the few protocols that have different port
+--     numbers for their datagram-based versions than for their
+--     stream-based versions.
+--
+-- Hostname and service name lookups can be expensive.  You can
+-- specify which lookups to perform via the two 'Bool' arguments.  If
+-- one of these is 'False', the corresponding value in the returned
+-- tuple will be 'Nothing', and no lookup will be performed.
+--
+-- If a host or service's name cannot be looked up, then the numeric
+-- form of the address or service will be returned.
+--
+-- If the query fails, this function throws an IO exception.
+--
+-- Example:
+-- @
+--   (hostName, _) <- getNameInfo [] True False myAddress
+-- @
+
+getNameInfo :: [NameInfoFlag] -- ^ flags to control lookup behaviour
+            -> Bool -- ^ whether to look up a hostname
+            -> Bool -- ^ whether to look up a service name
+            -> SockAddr -- ^ the address to look up
+            -> IO (Maybe HostName, Maybe ServiceName)
+
+getNameInfo flags doHost doService addr =
+  withCStringIf doHost (#const NI_MAXHOST) $ \c_hostlen c_host ->
+    withCStringIf doService (#const NI_MAXSERV) $ \c_servlen c_serv -> do
+      withSockAddr addr $ \ptr_addr sz -> do
+        ret <- c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
+                             c_serv c_servlen (packBits niFlagMapping flags)
+        case ret of
+          0 -> do
+            let peekIf doIf c_val = if doIf
+                                     then liftM Just $ peekCString c_val
+                                     else return Nothing
+            host <- peekIf doHost c_host
+            serv <- peekIf doService c_serv
+            return (host, serv)
+          _ -> do err <- gai_strerror ret
+                  ioError (IOError Nothing NoSuchThing "getNameInfo" err
+                           Nothing)
+
+foreign import ccall safe "getnameinfo"
+    c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
+                  -> CSize -> CInt -> IO CInt
 #endif
 
 mkInvalidRecvArgError :: String -> IOError

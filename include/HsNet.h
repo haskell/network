@@ -26,6 +26,12 @@
 # endif
 #endif
 
+#ifdef HAVE_IN6_ADDR
+# define IPV6_SOCKET_SUPPORT 1
+#else
+# undef IPV6_SOCKET_SUPPORT
+#endif
+
 #if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
 #include <winsock.h>
 

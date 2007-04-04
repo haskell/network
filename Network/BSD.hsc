@@ -114,9 +114,7 @@ import Control.Monad ( liftM )
 -- ---------------------------------------------------------------------------
 -- Basic Types
 
-type HostName     = String
 type ProtocolName = String
-type ServiceName  = String
 
 -- ---------------------------------------------------------------------------
 -- Service Database Access
@@ -297,10 +295,6 @@ getProtocolNumber :: ProtocolName -> IO ProtocolNumber
 getProtocolNumber proto = do
  (ProtocolEntry _ _ num) <- getProtocolByName proto
  return num
-
--- | This is the default protocol for the given service.
-defaultProtocol :: ProtocolNumber
-defaultProtocol = 0
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB

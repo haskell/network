@@ -40,6 +40,14 @@ AC_EGREP_HEADER(in_addr_t, netinet/in.h,
  AC_MSG_RESULT(no))
 
 dnl --------------------------------------------------
+dnl * test for in6_addr as proxy for IPv6 support
+dnl --------------------------------------------------
+AC_MSG_CHECKING(for in6_addr in netinet/in.h)
+AC_EGREP_HEADER(in6_addr, netinet/in.h,
+ [ AC_DEFINE([HAVE_IN6_ADDR], [1], [Define to 1 if in6_addr is available.]) AC_MSG_RESULT(yes) ],
+ AC_MSG_RESULT(no))
+
+dnl --------------------------------------------------
 dnl * test for Linux sendfile(2)
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for sendfile in sys/sendfile.h)
