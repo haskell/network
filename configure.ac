@@ -7,6 +7,17 @@ AC_CONFIG_HEADERS([include/HsNetworkConfig.h])
 
 AC_CANONICAL_HOST
 
+AC_ARG_WITH([cc],
+            [C compiler],
+            [OLDPATH=$PATH
+             PATH=`dirname $withval`:$PATH
+             AC_PROG_CC(`basename $withval`)
+             PATH=$OLDPATH
+             CC=$withval],
+            [AC_PROG_CC()])
+echo CC is $CC >&5
+echo CC is $CC >&6
+
 AC_C_CONST
 
 dnl ** check for specific header (.h) files that we are interested in
