@@ -7,7 +7,6 @@ import Distribution.PackageDescription
 import Distribution.Setup
 import Distribution.Simple.LocalBuildInfo
 import System.Environment
-import System.Exit
 
 main :: IO ()
 main = do args <- getArgs
@@ -46,17 +45,16 @@ removePrefix (x:xs) (y:ys)
  | otherwise = Nothing
 
 type PostConfHook = Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo
-                 -> IO ExitCode
+                 -> IO ()
 
 add_configure_options :: [String] -> PostConfHook -> PostConfHook
 add_configure_options args f as cfs pd lbi
  = f (as ++ args) cfs pd lbi
 
-type Hook a = PackageDescription -> LocalBuildInfo -> Maybe UserHooks -> a
-           -> IO ()
+type Hook a = PackageDescription -> LocalBuildInfo -> UserHooks -> a -> IO ()
 
 add_ghc_options :: [String] -> Hook a -> Hook a
-add_ghc_options args f pd lbi muhs x
+add_ghc_options args f pd lbi uhs x
  = do let lib' = case library pd of
                      Just lib ->
                          let bi = libBuildInfo lib
@@ -65,5 +63,5 @@ add_ghc_options args f pd lbi muhs x
                          in lib { libBuildInfo = bi' }
                      Nothing -> error "Expected a library"
           pd' = pd { library = Just lib' }
-      f pd' lbi muhs x
+      f pd' lbi uhs x
 
