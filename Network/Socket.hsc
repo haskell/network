@@ -64,13 +64,13 @@ module Network.Socket (
 
     -- * Address operations
 
+    HostName,
+    ServiceName,
+
 #if defined(IPV6_SOCKET_SUPPORT)
     AddrInfo(..),
 
     AddrInfoFlag(..),
-
-    HostName,
-    ServiceName,
 
     defaultHints,           -- :: AddrInfo
     defaultProtocol,        -- :: ProtocolNumber
