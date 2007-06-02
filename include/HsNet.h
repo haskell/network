@@ -26,7 +26,7 @@
 # endif
 #endif
 
-#ifdef HAVE_IN6_ADDR
+#ifdef HAVE_GETADDRINFO
 # define IPV6_SOCKET_SUPPORT 1
 #else
 # undef IPV6_SOCKET_SUPPORT
