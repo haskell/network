@@ -2087,7 +2087,12 @@ INSTANCE_TYPEABLE0(AddrInfoFlag,addrInfoFlagTc,"AddrInfoFlag")
 aiFlagMapping :: [(AddrInfoFlag, CInt)]
 
 aiFlagMapping =
-    [(AI_ADDRCONFIG, #const AI_ADDRCONFIG),
+    [
+#if defined(HAVE_AI_ADDRCONFIG)
+     (AI_ADDRCONFIG, #const AI_ADDRCONFIG),
+#else
+     (AI_ADDRCONFIG, 0),
+#endif
      (AI_CANONNAME, #const AI_CANONNAME),
      (AI_NUMERICHOST, #const AI_NUMERICHOST),
      (AI_PASSIVE, #const AI_PASSIVE)]

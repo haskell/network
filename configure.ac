@@ -48,6 +48,14 @@ AC_EGREP_HEADER(in6_addr, netinet/in.h,
  AC_MSG_RESULT(no))
 
 dnl --------------------------------------------------
+dnl * test for AI_ADDRCONFIG (Not all IPv6 implementations have it)
+dnl --------------------------------------------------
+AC_MSG_CHECKING(for AI_ADDRCONFIG in netdb.h)
+AC_EGREP_HEADER(AI_ADDRCONFIG, netdb.h,
+ [ AC_DEFINE([HAVE_AI_ADDRCONFIG], [1], [Define to 1 if AI_ADDRCONFIG is available.]) AC_MSG_RESULT(yes) ],
+ AC_MSG_RESULT(no))
+
+dnl --------------------------------------------------
 dnl * test for Linux sendfile(2)
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for sendfile in sys/sendfile.h)
