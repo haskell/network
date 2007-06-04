@@ -17,7 +17,7 @@
 
 #include "HsNetworkConfig.h"
 
-#ifdef HAVE_IN6_ADDR
+#ifdef HAVE_GETADDRINFO
 -- Use IPv6-capable function definitions if the OS supports it.
 #define IPV6_SOCKET_SUPPORT 1
 #endif

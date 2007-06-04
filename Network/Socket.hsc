@@ -58,6 +58,7 @@ module Network.Socket (
 #endif
     ShutdownCmd(..),
     ProtocolNumber,
+    defaultProtocol,        -- :: ProtocolNumber
     PortNumber(..),
 	-- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
 	-- this use and make the type abstract.
@@ -73,7 +74,6 @@ module Network.Socket (
     AddrInfoFlag(..),
 
     defaultHints,           -- :: AddrInfo
-    defaultProtocol,        -- :: ProtocolNumber
 
     getAddrInfo,            -- :: Maybe AddrInfo -> Maybe HostName -> Maybe ServiceName -> IO [AddrInfo]
 
