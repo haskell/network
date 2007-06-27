@@ -2121,25 +2121,25 @@ aiFlagMapping :: [(AddrInfoFlag, CInt)]
 
 aiFlagMapping =
     [
-#if defined(HAVE_DECL_AI_ADDRCONFIG)
+#if HAVE_DECL_AI_ADDRCONFIG
      (AI_ADDRCONFIG, #const AI_ADDRCONFIG),
 #else
      (AI_ADDRCONFIG, 0),
 #endif
-#if defined(HAVE_DECL_AI_ALL)
+#if HAVE_DECL_AI_ALL
      (AI_ALL, #const AI_ALL),
 #else
      (AI_ALL, 0),
 #endif
      (AI_CANONNAME, #const AI_CANONNAME),
      (AI_NUMERICHOST, #const AI_NUMERICHOST),
-#if defined(HAVE_DECL_AI_NUMERICSERV)
+#if HAVE_DECL_AI_NUMERICSERV
      (AI_NUMERICSERV, #const AI_NUMERICSERV),
 #else
      (AI_NUMERICSERV, 0),
 #endif
      (AI_PASSIVE, #const AI_PASSIVE),
-#if defined(HAVE_DECL_AI_V4MAPPED)
+#if HAVE_DECL_AI_V4MAPPED
      (AI_V4MAPPED, #const AI_V4MAPPED)
 #else
      (AI_V4MAPPED, 0)
