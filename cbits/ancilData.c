@@ -11,6 +11,7 @@
 #endif
 
 #include "HsNet.h"
+#include <string.h>
 
 #if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS /* until end */
 
