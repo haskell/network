@@ -72,6 +72,7 @@ module Network.Socket (
     AddrInfo(..),
 
     AddrInfoFlag(..),
+    addrInfoFlagImplemented,-- :: AddrInfoFlag -> Bool
 
     defaultHints,           -- :: AddrInfo
 
@@ -423,22 +424,51 @@ instance Show SockAddr where
    . showString "]:"
    . shows port
 
+-- The peek32 and poke32 functions work around the fact that the RFCs
+-- don't require 32-bit-wide address fields to be present.  We can
+-- only portably rely on an 8-bit field, s6_addr.
+
+s6_addr_offset = (#offset struct in6_addr, s6_addr)
+
+peek32 :: Ptr a -> Int -> IO Word32
+
+peek32 p i = do
+    let i' = i * 4
+        peekByte n = peekByteOff p (s6_addr_offset + i' + n) :: IO Word8
+        a `sl` i = fromIntegral a `shiftL` i
+    a0 <- peekByte 0
+    a1 <- peekByte 1
+    a2 <- peekByte 2
+    a3 <- peekByte 3
+    return ((a0 `sl` 24) .|. (a1 `sl` 16) .|. (a2 `sl` 8) .|. (a3 `sl` 0))
+
+poke32 :: Ptr a -> Int -> Word32 -> IO ()
+
+poke32 p i a = do
+    let i' = i * 4
+        pokeByte n = pokeByteOff p (s6_addr_offset + i' + n)
+        a `sr` i = fromIntegral (a `shiftR` i) :: Word8
+    pokeByte 0 (a `sr` 24)
+    pokeByte 1 (a `sr` 16)
+    pokeByte 2 (a `sr`  8)
+    pokeByte 3 (a `sr`  0)
+
 instance Storable HostAddress6 where
     sizeOf _    = (#const sizeof(struct in6_addr))
     alignment _ = alignment (undefined :: CInt)
 
     peek p = do
-        a <- (#peek struct in6_addr, s6_addr32[0]) p
-        b <- (#peek struct in6_addr, s6_addr32[1]) p
-        c <- (#peek struct in6_addr, s6_addr32[2]) p
-        d <- (#peek struct in6_addr, s6_addr32[3]) p
+        a <- peek32 p 0
+        b <- peek32 p 1
+        c <- peek32 p 2
+        d <- peek32 p 3
         return (a, b, c, d)
 
     poke p (a, b, c, d) = do
-        (#poke struct in6_addr, s6_addr32[0]) p a
-        (#poke struct in6_addr, s6_addr32[1]) p b
-        (#poke struct in6_addr, s6_addr32[2]) p c
-        (#poke struct in6_addr, s6_addr32[3]) p d
+        poke32 p 0 a
+        poke32 p 1 b
+        poke32 p 2 c
+        poke32 p 3 d
 #endif
 
 -- we can't write an instance of Storable for SockAddr, because the Storable
@@ -2077,9 +2107,12 @@ unpackBits ((k,v):xs) r
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
 data AddrInfoFlag
     = AI_ADDRCONFIG
+    | AI_ALL
     | AI_CANONNAME
     | AI_NUMERICHOST
+    | AI_NUMERICSERV
     | AI_PASSIVE
+    | AI_V4MAPPED
     deriving (Eq, Read, Show)
 
 INSTANCE_TYPEABLE0(AddrInfoFlag,addrInfoFlagTc,"AddrInfoFlag")
@@ -2088,14 +2121,35 @@ aiFlagMapping :: [(AddrInfoFlag, CInt)]
 
 aiFlagMapping =
     [
-#if defined(HAVE_AI_ADDRCONFIG)
+#if defined(HAVE_DECL_AI_ADDRCONFIG)
      (AI_ADDRCONFIG, #const AI_ADDRCONFIG),
 #else
      (AI_ADDRCONFIG, 0),
 #endif
+#if defined(HAVE_DECL_AI_ALL)
+     (AI_ALL, #const AI_ALL),
+#else
+     (AI_ALL, 0),
+#endif
      (AI_CANONNAME, #const AI_CANONNAME),
      (AI_NUMERICHOST, #const AI_NUMERICHOST),
-     (AI_PASSIVE, #const AI_PASSIVE)]
+#if defined(HAVE_DECL_AI_NUMERICSERV)
+     (AI_NUMERICSERV, #const AI_NUMERICSERV),
+#else
+     (AI_NUMERICSERV, 0),
+#endif
+     (AI_PASSIVE, #const AI_PASSIVE),
+#if defined(HAVE_DECL_AI_V4MAPPED)
+     (AI_V4MAPPED, #const AI_V4MAPPED)
+#else
+     (AI_V4MAPPED, 0)
+#endif
+    ]
+
+-- | Indicate whether the given 'AddrInfoFlag' will have any effect on
+-- this system.
+addrInfoFlagImplemented :: AddrInfoFlag -> Bool
+addrInfoFlagImplemented f = packBits aiFlagMapping [f] /= 0
 
 data AddrInfo =
     AddrInfo {
@@ -2213,12 +2267,28 @@ defaultHints = AddrInfo {
 --
 --   [@AI_NUMERICHOST@] The 'HostName' argument /must/ be a numeric
 --     address in string form, and network name lookups will not be
---      attempted.
+--     attempted.
+-- 
+-- /Note/: Although the following flags are required by RFC 3493, they
+-- may not have an effect on all platforms, because the underlying
+-- network stack may not support them.  To see whether a flag from the
+-- list below will have any effect, call 'addrInfoFlagImplemented'.
 --
---   [@AI_ADDRCONFIG@] The list of returned 'AddrInfo' values will only
---     contain IPv4 addresses if the local system has at least one
---     IPv4 interface configured, and likewise for IPv6.
+--   [@AI_NUMERICSERV@] The 'ServiceName' argument /must/ be a port
+--     number in string form, and service name lookups will not be
+--     attempted.
 --
+--   [@AI_ADDRCONFIG@] The list of returned 'AddrInfo' values will
+--     only contain IPv4 addresses if the local system has at least
+--     one IPv4 interface configured, and likewise for IPv6.
+--
+--   [@AI_V4MAPPED@] If an IPv6 lookup is performed, and no IPv6
+--     addresses are found, IPv6-mapped IPv4 addresses will be
+--     returned.
+--
+--   [@AI_ALL@] If 'AI_ALL' is specified, return all matching IPv6 and
+--     IPv4 addresses.  Otherwise, this flag has no effect.
+--     
 -- You must provide a 'Just' value for at least one of the 'HostName'
 -- or 'ServiceName' arguments.  'HostName' can be either a numeric
 -- network address (dotted quad for IPv4, colon-separated hex for

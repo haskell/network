@@ -44,13 +44,11 @@ dnl * test for getaddrinfo as proxy for IPv6 support
 dnl --------------------------------------------------
 AC_CHECK_FUNCS(getaddrinfo)
 
-dnl --------------------------------------------------
-dnl * test for AI_ADDRCONFIG (Not all IPv6 implementations have it)
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for AI_ADDRCONFIG in netdb.h)
-AC_EGREP_HEADER(AI_ADDRCONFIG, netdb.h,
- [ AC_DEFINE([HAVE_AI_ADDRCONFIG], [1], [Define to 1 if AI_ADDRCONFIG is available.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
+dnl -------------------------------------------------------
+dnl * test for AI_* flags that not all implementations have
+dnl -------------------------------------------------------
+AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED], , ,
+ [#include <netdb.h>])
 
 dnl --------------------------------------------------
 dnl * test for Linux sendfile(2)
