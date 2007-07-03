@@ -178,7 +178,7 @@ getServiceByName name proto = withLock $ do
    $ (trySysCall (c_getservbyname cstr_name cstr_proto))
  >>= peek
 
-foreign import ccall unsafe "getservbyname" 
+foreign import CALLCONV unsafe "getservbyname" 
   c_getservbyname :: CString -> CString -> IO (Ptr ServiceEntry)
 
 -- | Get the service given a 'PortNumber' and 'ProtocolName'.
@@ -189,7 +189,7 @@ getServiceByPort (PortNum port) proto = withLock $ do
    $ (trySysCall (c_getservbyport (fromIntegral port) cstr_proto))
  >>= peek
 
-foreign import ccall unsafe "getservbyport" 
+foreign import CALLCONV unsafe "getservbyport" 
   c_getservbyport :: CInt -> CString -> IO (Ptr ServiceEntry)
 
 -- | Get the 'PortNumber' corresponding to the 'ServiceName'.
@@ -277,7 +277,7 @@ getProtocolByName name = withLock $ do
    $ (trySysCall.c_getprotobyname) name_cstr
  >>= peek
 
-foreign import  ccall unsafe  "getprotobyname" 
+foreign import  CALLCONV unsafe  "getprotobyname" 
    c_getprotobyname :: CString -> IO (Ptr ProtocolEntry)
 
 
@@ -287,7 +287,7 @@ getProtocolByNumber num = withLock $ do
    $ (trySysCall.c_getprotobynumber) (fromIntegral num)
  >>= peek
 
-foreign import ccall unsafe  "getprotobynumber"
+foreign import CALLCONV unsafe  "getprotobynumber"
    c_getprotobynumber :: CInt -> IO (Ptr ProtocolEntry)
 
 
@@ -376,7 +376,7 @@ getHostByName name = withLock $ do
     		$ trySysCall $ c_gethostbyname name_cstr
    peek ent
 
-foreign import ccall safe "gethostbyname" 
+foreign import CALLCONV safe "gethostbyname" 
    c_gethostbyname :: CString -> IO (Ptr HostEntry)
 
 
@@ -390,7 +390,7 @@ getHostByAddr family addr = do
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 
-foreign import ccall safe "gethostbyaddr"
+foreign import CALLCONV safe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
@@ -532,7 +532,7 @@ getHostName = do
     throwSocketErrorIfMinus1_ "getHostName" $ c_gethostname cstr (fromIntegral size)
     peekCString cstr
 
-foreign import ccall unsafe "gethostname" 
+foreign import CALLCONV unsafe "gethostname" 
    c_gethostname :: CString -> CSize -> IO CInt
 
 -- Helper function used by the exported functions that provides a
