@@ -13,7 +13,7 @@ import System.IO
 
 main = {- withSocketsDo $ -} do
    forkIO server
-   yield
+   threadDelay 1000000
    h <- connectTo "localhost" (PortNumber 22222)
    l <- hGetLine h
    hClose h
