@@ -2067,7 +2067,7 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
 	then ioError (userError ("socketToHandle: already a Handle"))
 	else do
 # ifdef __GLASGOW_HASKELL__
-    h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
+    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
 # endif
 # ifdef __HUGS__
     h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
