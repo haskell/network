@@ -4,6 +4,7 @@ license:	BSD3
 license-file:	LICENSE
 maintainer:	libraries@haskell.org
 synopsis:	Networking-related facilities
+build-type:     Configure
 exposed-modules:
 		Network Network.BSD Network.Socket Network.URI
 extra-source-files:
