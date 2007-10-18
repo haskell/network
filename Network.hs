@@ -67,7 +67,7 @@ import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber 
 import qualified Network.Socket as Socket ( accept )
 import System.IO
 import Prelude
-import Control.Exception as Exception
+import qualified Control.Exception as Exception
 
 -- ---------------------------------------------------------------------------
 -- High Level ``Setup'' functions
@@ -104,7 +104,7 @@ connectTo hostname (PortNumber port) = connect' hostname (show port)
 
 connectTo hostname (Service serv) = do
     proto <- getProtocolNumber "tcp"
-    Exception.bracketOnError
+    bracketOnError
 	(socket AF_INET Stream proto)
 	(sClose)  -- only done if there's an error
 	(\sock -> do
@@ -116,7 +116,7 @@ connectTo hostname (Service serv) = do
 
 connectTo hostname (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
-    Exception.bracketOnError
+    bracketOnError
 	(socket AF_INET Stream proto)
 	(sClose)  -- only done if there's an error
         (\sock -> do
@@ -128,7 +128,7 @@ connectTo hostname (PortNumber port) = do
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 connectTo _ (UnixSocket path) = do
-    Exception.bracketOnError
+    bracketOnError
 	(socket AF_UNIX Stream 0)
 	(sClose)
 	(\sock -> do
@@ -147,7 +147,7 @@ connect' host serv = do
                              , addrSocketType = Stream }
     addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
     let addr = head addrs
-    Exception.bracketOnError
+    bracketOnError
 	(socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
 	(sClose)  -- only done if there's an error
 	(\sock -> do
@@ -179,7 +179,7 @@ listenOn (PortNumber port) = listen' (show port)
 
 listenOn (Service serv) = do
     proto <- getProtocolNumber "tcp"
-    Exception.bracketOnError
+    bracketOnError
         (socket AF_INET Stream proto)
 	(sClose)
 	(\sock -> do
@@ -192,7 +192,7 @@ listenOn (Service serv) = do
 
 listenOn (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
-    Exception.bracketOnError
+    bracketOnError
     	(socket AF_INET Stream proto)
 	(sClose)
 	(\sock -> do
@@ -205,7 +205,7 @@ listenOn (PortNumber port) = do
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 listenOn (UnixSocket path) =
-    Exception.bracketOnError
+    bracketOnError
     	(socket AF_UNIX Stream 0)
 	(sClose)
 	(\sock -> do
@@ -225,7 +225,7 @@ listen' serv = do
                              , addrProtocol = proto }
     addrs <- getAddrInfo (Just hints) Nothing (Just serv)
     let addr = head addrs
-    Exception.bracketOnError
+    bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
 	(sClose)
 	(\sock -> do
@@ -256,7 +256,7 @@ accept :: Socket 		-- ^ Listening Socket
 				-- the 'PortNumber' of the remote connection.
 accept sock@(MkSocket _ AF_INET _ _ _) = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
- peer <- Exception.catchJust ioErrors
+ peer <- Exception.catchJust Exception.ioErrors
 	  (do 	
 	     (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
 	     return peer
@@ -369,6 +369,29 @@ socketPort s = do
 #endif
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
      SockAddrUnix path	      -> UnixSocket path
+#endif
+
+-- ---------------------------------------------------------------------------
+-- Utils
+
+#if __GLASGOW_HASKELL__ < 606
+-- Like bracket, but only performs the final action if there was an 
+-- exception raised by the middle bit.
+bracketOnError
+        :: IO a         -- ^ computation to run first (\"acquire resource\")
+        -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
+        -> (a -> IO c)  -- ^ computation to run in-between
+        -> IO c         -- returns the value from the in-between computation
+bracketOnError before after thing =
+  Exception.block (do
+    a <- before
+    r <- Exception.catch
+           (Exception.unblock (thing a))
+           (\e -> do { after a; Exception.throw e })
+    return r
+ )
+#else
+bracketOnError = Exception.bracketOnError
 #endif
 
 -----------------------------------------------------------------------------
