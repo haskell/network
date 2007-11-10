@@ -73,7 +73,7 @@ case "$host" in
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
 	EXTRA_LIBS=wsock32
 	CALLCONV=stdcall ;;
-*-solaris2)
+*-solaris2*)
 	EXTRA_SRCS="cbits/ancilData.c"
 	EXTRA_LIBS="nsl, socket"
 	CALLCONV=ccall ;;
