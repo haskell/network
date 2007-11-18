@@ -428,6 +428,7 @@ instance Show SockAddr where
 -- don't require 32-bit-wide address fields to be present.  We can
 -- only portably rely on an 8-bit field, s6_addr.
 
+s6_addr_offset :: Int
 s6_addr_offset = (#offset struct in6_addr, s6_addr)
 
 peek32 :: Ptr a -> Int -> IO Word32
