@@ -501,6 +501,9 @@ pokeSockAddr p (SockAddrUnix path) = do
 #if defined(darwin_TARGET_OS)
 	zeroMemory p (#const sizeof(struct sockaddr_un))
 #endif
+#if defined(netbsd_TARGET_OS)
+	(#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
+#endif
 	(#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
 	let pathC = map castCharToCChar path
 	pokeArray0 0 ((#ptr struct sockaddr_un, sun_path) p) pathC
@@ -509,6 +512,9 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_TARGET_OS)
 	zeroMemory p (#const sizeof(struct sockaddr_in))
 #endif
+#if defined(netbsd_TARGET_OS)
+	(#poke struct sockaddr_in, sin_len) p ((#const sizeof(struct sockaddr_in)) :: Word8)
+#endif
 	(#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CSaFamily)
 	(#poke struct sockaddr_in, sin_port) p port
 	(#poke struct sockaddr_in, sin_addr) p addr	
@@ -516,6 +522,9 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
 #if defined(darwin_TARGET_OS)
 	zeroMemory p (#const sizeof(struct sockaddr_in6))
+#endif
+#if defined(netbsd_TARGET_OS)
+	(#poke struct sockaddr_in6, sin6_len) p ((#const sizeof(struct sockaddr_in6)) :: Word8)
 #endif
 	(#poke struct sockaddr_in6, sin6_family) p ((#const AF_INET6) :: CSaFamily)
 	(#poke struct sockaddr_in6, sin6_port) p port

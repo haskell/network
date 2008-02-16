@@ -222,6 +222,7 @@ listen' :: ServiceName -> IO Socket
 listen' serv = do
     proto <- getProtocolNumber "tcp"
     let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_PASSIVE]
+                             , addrSocketType = Stream
                              , addrProtocol = proto }
     addrs <- getAddrInfo (Just hints) Nothing (Just serv)
     let addr = head addrs
