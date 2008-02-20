@@ -1763,7 +1763,7 @@ unpackFamily f = case f of
 #ifdef AF_GOSSIP
 	(#const AF_GOSSIP) -> AF_GOSSIP
 #endif
-#ifdef AF_IPX
+#if defined(AF_IPX) && (!defined(AF_NS) || AF_NS != AF_IPX)
 	(#const AF_IPX) -> AF_IPX
 #endif
 #ifdef Pseudo_AF_XTP
