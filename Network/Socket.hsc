@@ -228,6 +228,26 @@ import System.IO.Unsafe	(unsafePerformIO)
 type HostName       = String
 type ServiceName    = String
 
+-- ----------------------------------------------------------------------------
+-- On Windows, our sockets are not put in non-blocking mode (non-blocking
+-- is not supported for regular file descriptors on Windows, and it would
+-- be a pain to support it only for sockets).  So there are two cases:
+--
+--  - the threaded RTS uses safe calls for socket operations to get
+--    non-blocking I/O, just like the rest of the I/O library
+--
+--  - with the non-threaded RTS, only some operations on sockets will be
+--    non-blocking.  Reads and writes go through the normal async I/O
+--    system.  accept() uses asyncDoProc so is non-blocking.  A handful
+--    of others (recvFrom, sendFd, recvFd) will block all threads - if this
+--    is a problem, -threaded is the workaround.
+--
+##if defined(mingw32_HOST_OS)
+##define SAFE_ON_WIN safe
+##else
+##define SAFE_ON_WIN unsafe
+##endif
+
 -----------------------------------------------------------------------------
 -- Socket types
 
@@ -813,6 +833,8 @@ foreign import ccall unsafe "free"
 -----------------------------------------------------------------------------
 -- sendTo & recvFrom
 
+-- | NOTE: blocking on Windows unless you compile with -threaded (see
+-- GHC ticket #1129)
 sendTo :: Socket	-- (possibly) bound/connected Socket
        -> String	-- Data to send
        -> SockAddr
@@ -837,6 +859,8 @@ sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
 	c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
 			p_addr (fromIntegral sz)
 
+-- | NOTE: blocking on Windows unless you compile with -threaded (see
+-- GHC ticket #1129)
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
 recvFrom sock nbytes =
   allocaBytes nbytes $ \ptr -> do
@@ -1223,14 +1247,14 @@ recvAncillary sock flags len = do
       ty  <- fromIntegral `liftM` peek ptr_ty
       pD  <- peek ptr_pData
       return (lev,ty,pD, len)
-foreign import ccall unsafe "sendAncillary"
+foreign import ccall SAFE_ON_WIN "sendAncillary"
   c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
 
-foreign import ccall unsafe "recvAncillary"
+foreign import ccall SAFE_ON_WIN "recvAncillary"
   c_recvAncillary :: CInt -> Ptr CInt -> Ptr CInt -> CInt -> Ptr (Ptr a) -> Ptr CInt -> IO CInt
 
-foreign import ccall unsafe "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
-foreign import ccall unsafe "recvFd" c_recvFd :: CInt -> IO CInt
+foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
+foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 
 #endif
 
@@ -2518,11 +2542,11 @@ foreign import ccall "rtsSupportsBoundThreads" threaded :: Bool
 
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV unsafe "sendto"
+foreign import CALLCONV SAFE_ON_WIN "sendto"
   c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import CALLCONV unsafe "recvfrom"
+foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
