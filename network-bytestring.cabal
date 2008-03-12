@@ -1,0 +1,27 @@
+name:               network-bytestring
+version:            0.1.1.2
+synopsis:           Fast and memory efficient low-level networking
+description:        Faster and more memory efficient low-level socket
+                    functions using 'Data.ByteString's instead of
+                    'String's.
+license:            BSD3
+license-file:       LICENSE
+author:             Johan Tibell
+maintainer:         johan.tibell@gmail.com
+category:           Network
+build-type:         Simple
+cabal-version:      >= 1.2
+
+flag split-base
+  description: Chooce the new smaller, split-up base package.
+
+library
+  exposed-modules:  Network.Socket.ByteString
+
+  if flag(split-base)
+    build-depends:  base >= 3, bytestring
+  else
+    build-depends:  base < 3
+  build-depends:    HUnit, network
+
+  extensions:       CPP, ForeignFunctionInterface

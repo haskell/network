@@ -1,0 +1,219 @@
+{-# OPTIONS_GHC -cpp #-}
+
+-- |
+-- Module      : Network.Socket.ByteString
+-- Copyright   : (c) Johan Tibell 2007
+-- License     : BSD-style
+--
+-- Maintainer  : johan.tibell@gmail.com
+-- Stability   : experimental
+-- Portability : portable
+--
+-- A module for efficiently transmitting data over sockets. For
+-- detailed documentation consult your favorite POSIX socket
+-- reference. All functions communicate failures by converting the
+-- error number to an 'System.IO.IOError'.
+--
+-- This module is intended to be imported together with 'Network.Socket' like so:
+--
+-- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
+-- > import Network.Socket.ByteString
+--
+module Network.Socket.ByteString
+    (
+     -- * Send a message on a socket
+     -- | Functions used to transmit a message to another socket.
+     send,
+     sendTo,
+
+     -- * Receive a message from a socket
+     -- | Functions used to receive messages from a socket, and may be
+     -- used to receive data on a socket whether or not it is
+     -- connection-oriented.
+     recv,
+     recvFrom
+    ) where
+
+import Control.Monad (liftM)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
+import Data.Word (Word8)
+import Data.ByteString.Internal (createAndTrim)
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Foreign.C.Error
+import Foreign.C.Types (CChar, CInt, CSize)
+import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Ptr (Ptr, castPtr)
+import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+
+#if defined(__GLASGOW_HASKELL__)
+import GHC.Conc (threadWaitRead, threadWaitWrite)
+import GHC.IOBase (IOErrorType(..), IOException(..))
+# if defined(mingw32_HOST_OS)
+import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
+# endif
+#else
+import System.IO.Unsafe (unsafePerformIO)
+#endif
+
+#ifndef CALLCONV
+# ifdef WITH_WINSOCK
+#  define CALLCONV stdcall
+# else
+#  define CALLCONV ccall
+# endif
+#endif
+foreign import CALLCONV unsafe "send"
+  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
+foreign import CALLCONV unsafe "recv"
+  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+
+-- -----------------------------------------------------------------------------
+-- Sending
+
+-- | Transmit a message to another socket. The socket must be in a
+-- connected state so that the intended recipient is known.
+send :: Socket      -- ^ Bound\/Connected socket.
+     -> ByteString  -- ^ Data to send.
+     -> IO Int      -- ^ Number of bytes sent.
+send (MkSocket s _family _stype _protocol status) xs = do
+  unsafeUseAsCStringLen xs $ \(str, len) -> do
+    liftM fromIntegral $
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+      writeRawBufferPtr "Network.Socket.ByteString.send" (fromIntegral s) True str 0
+                (fromIntegral len)
+#else
+# if !defined(__HUGS__)
+     throwErrnoIfMinus1Retry_repeatOnBlock "send"
+        (threadWaitWrite (fromIntegral s)) $
+# endif
+        c_send s str (fromIntegral len) 0{-flags-}
+#endif
+
+-- | Transmit a message to another socket. The recipient can be
+-- specified explicitly so the socket must not (but can be) in a
+-- connected state.
+sendTo :: Socket      -- ^ (Possibly) bound\/connected socket.
+       -> ByteString  -- ^ Data to send.
+       -> SockAddr    -- ^ Recipient address.
+       -> IO Int      -- ^ Number of bytes sent.
+sendTo sock xs addr = unsafeUseAsCStringLen xs $
+                      \(str, len) -> sendBufTo sock str len addr
+
+-- -----------------------------------------------------------------------------
+-- Receiving
+
+-- | Receive a message from another socket. The socket must be in a
+-- connected state so that the intended recipient is known. Note that
+-- the length of the received data can be smaller than specified
+-- maximum length. If the message is longer than the specified length
+-- it may be discarded depending on the type of socket. May block
+-- until a message arrives.
+recv :: Socket          -- ^ Bound\/connected socket.
+     -> Int             -- Maximum number of bytes to receive.
+     -> IO ByteString   -- Data received.
+recv sock@(MkSocket s _ _ _ _) nbytes
+    | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
+    | otherwise   = do
+      createAndTrim nbytes $ recvInner s nbytes
+
+-- | This is a helper function which allows up to loop in the case of EINTR
+recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
+recvInner s nbytes ptr = do
+    len <-
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+        readRawBufferPtr "Network.Socket.ByteString.recvLen" (fromIntegral s) True
+                         (castPtr ptr) 0 (fromIntegral nbytes)
+#else
+# if !defined(__HUGS__)
+         throwErrnoIfMinus1Retry_repeatOnBlock "recv"
+                (threadWaitRead (fromIntegral s)) $
+# endif
+                        c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+#endif
+    case fromIntegral len of
+         0 -> ioError (mkEOFError "Network.Socket.ByteString.recv")
+         (-1) -> do errno <- getErrno
+                    if errno == eINTR
+                       then recvInner s nbytes ptr
+                       else throwErrno "Network.Socket.ByteString.recv"
+         n -> return n
+
+-- | Similar to 'recv' but can be used to receive data on a socket
+-- that is not connection-oriented.
+recvFrom :: Socket                     -- ^ (Possibly) bound\/connected socket.
+         -> Int                        -- ^ Maximum number of bytes to receive.
+         -> IO (ByteString, SockAddr)  -- ^ Data received and sender address.
+recvFrom sock nbytes =
+    allocaBytes nbytes $ \ptr -> do
+      (len, sockaddr) <- recvBufFrom sock ptr nbytes
+      str <- B.packCStringLen (ptr, len)
+      return (str, sockaddr)
+
+mkInvalidRecvArgError :: String -> IOError
+mkInvalidRecvArgError loc = IOError Nothing
+#ifdef __GLASGOW_HASKELL__
+                                    InvalidArgument
+#else
+                                    IllegalOperation
+#endif
+                                    loc "non-positive length" Nothing
+
+mkEOFError :: String -> IOError
+mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
+
+-----------------------------------------------------------------------------
+-- Support for thread-safe blocking operations in GHC.
+
+#if defined(__GLASGOW_HASKELL__) && !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
+{-# SPECIALISE
+    throwErrnoIfMinus1Retry_mayBlock
+         :: String -> IO CInt -> IO CInt -> IO CInt #-}
+throwErrnoIfMinus1Retry_mayBlock :: Num a => String -> IO a -> IO a -> IO a
+throwErrnoIfMinus1Retry_mayBlock name on_block act = do
+    res <- act
+    if res == -1
+        then do
+            err <- getErrno
+            if err == eINTR
+                then throwErrnoIfMinus1Retry_mayBlock name on_block act
+                else if err == eWOULDBLOCK || err == eAGAIN
+                        then on_block
+                        else throwErrno name
+        else return res
+
+throwErrnoIfMinus1Retry_repeatOnBlock :: Num a => String -> IO b -> IO a -> IO a
+throwErrnoIfMinus1Retry_repeatOnBlock name on_block act = do
+  throwErrnoIfMinus1Retry_mayBlock name (on_block >> repeat) act
+  where repeat = throwErrnoIfMinus1Retry_repeatOnBlock name on_block act
+
+#else
+throwErrnoIfMinus1Retry_mayBlock name _ act
+  = throwSocketErrorIfMinus1Retry name act
+
+throwErrnoIfMinus1Retry_repeatOnBlock name _ act
+  = throwSocketErrorIfMinus1Retry name act
+
+# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+throwSocketErrorIfMinus1Retry name act = do
+  r <- act
+  if (r == -1)
+   then do
+    rc   <- c_getLastError
+    case rc of
+      10093 -> do -- WSANOTINITIALISED
+        withSocketsDo (return ())
+        r <- act
+        if (r == -1)
+         then (c_getLastError >>= throwSocketError name)
+         else return r
+      _ -> throwSocketError name rc
+   else return r
+
+foreign import CALLCONV unsafe "WSAGetLastError"
+  c_getLastError :: IO CInt
+
+# else
+throwSocketErrorIfMinus1Retry name act = throwErrnoIfMinus1Retry name act
+# endif
+#endif /* __GLASGOW_HASKELL */
