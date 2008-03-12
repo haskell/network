@@ -22,6 +22,6 @@ library
     build-depends:  base >= 3, bytestring
   else
     build-depends:  base < 3
-  build-depends:    HUnit, network
+  build-depends:    network >= 2.1 && < 2.2
 
   extensions:       CPP, ForeignFunctionInterface
