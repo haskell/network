@@ -241,7 +241,7 @@ listen' serv = do
 -- accept
 
 -- | Accept a connection on a socket created by 'listenOn'.  Normal
--- I\/O opertaions (see "System.IO") can be used on the 'Handle'
+-- I\/O operations (see "System.IO") can be used on the 'Handle'
 -- returned to communicate with the client.
 -- Notice that although you can pass any Socket to Network.accept,
 -- only sockets of either AF_UNIX, AF_INET, or AF_INET6 will work
