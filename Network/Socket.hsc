@@ -201,7 +201,7 @@ import Foreign.C.Error
 import Foreign.C.String ( CString, withCString, peekCString, peekCStringLen, castCharToCChar )
 import Foreign.C.Types ( CInt, CUInt, CChar, CSize )
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
-import Foreign.Marshal.Array ( peekArray, pokeArray0 )
+import Foreign.Marshal.Array ( peekArray, pokeArray, pokeArray0 )
 import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO
@@ -506,7 +506,8 @@ pokeSockAddr p (SockAddrUnix path) = do
 #endif
 	(#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
 	let pathC = map castCharToCChar path
-	pokeArray0 0 ((#ptr struct sockaddr_un, sun_path) p) pathC
+            poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
+	poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_TARGET_OS)
@@ -572,7 +573,10 @@ sizeOfSockAddr_Family AF_INET = #const sizeof(struct sockaddr_in)
 
 -- size of struct sockaddr by SockAddr
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddr (SockAddrUnix _)   = #const sizeof(struct sockaddr_un)
+sizeOfSockAddr (SockAddrUnix path) =
+    case path of
+        '\0':_ -> (#const sizeof(sa_family_t)) + length path
+        _      -> #const sizeof(struct sockaddr_un)
 #endif
 sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
