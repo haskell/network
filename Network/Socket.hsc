@@ -95,7 +95,7 @@ module Network.Socket (
     getPeerName,	-- :: Socket -> IO SockAddr
     getSocketName,	-- :: Socket -> IO SockAddr
 
-#ifdef SO_PEERCRED
+#ifdef HAVE_STRUCT_UCRED
 	-- get the credentials of our domain socket peer.
     getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
 #endif
@@ -1171,7 +1171,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
        fromIntegral `liftM` peek ptr_v
 
 
-#ifdef SO_PEERCRED
+#ifdef HAVE_STRUCT_UCRED
 -- | Returns the processID, userID and groupID of the socket's peer.
 --
 -- Only available on platforms that support SO_PEERCRED on domain sockets.

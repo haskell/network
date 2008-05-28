@@ -40,6 +40,39 @@ AC_EGREP_HEADER(in_addr_t, netinet/in.h,
  AC_MSG_RESULT(no))
 
 dnl --------------------------------------------------
+dnl * test for SO_PEERCRED and struct ucred
+dnl --------------------------------------------------
+AC_MSG_CHECKING(for SO_PEERCRED and struct ucred in sys/socket.h)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
+#include <sys/socket.h>
+#ifndef SO_PEERCRED
+# error no SO_PEERCRED
+#endif
+struct ucred u;]])],ac_cv_ucred=yes,ac_cv_ucred=no)
+if test "x$ac_cv_ucred" = xno; then
+    old_CFLAGS="$CFLAGS"
+    CFLAGS="-D_GNU_SOURCE $CFLAGS"
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
+#include <sys/socket.h>
+#ifndef SO_PEERCRED
+# error no SO_PEERCRED
+#endif
+struct ucred u;]])],ac_cv_ucred=yes,ac_cv_ucred=no)
+    if test "x$ac_cv_ucred" = xyes; then
+        EXTRA_CPPFLAGS=-D_GNU_SOURCE
+    fi
+else
+    old_CFLAGS="$CFLAGS"
+fi
+if test "x$ac_cv_ucred" = xno; then
+    CFLAGS="$old_CFLAGS"
+    AC_MSG_RESULT(no)
+else
+    AC_DEFINE([HAVE_STRUCT_UCRED], [1], [Define to 1 if you have both SO_PEERCRED and struct ucred.])
+    AC_MSG_RESULT(yes)
+fi
+
+dnl --------------------------------------------------
 dnl * test for getaddrinfo as proxy for IPv6 support
 dnl --------------------------------------------------
 AC_CHECK_FUNCS(getaddrinfo)
@@ -83,6 +116,7 @@ case "$host" in
 	CALLCONV=ccall ;;
 esac
 AC_SUBST([CALLCONV])
+AC_SUBST([EXTRA_CPPFLAGS])
 AC_SUBST([EXTRA_LIBS])
 AC_SUBST([EXTRA_SRCS])
 
