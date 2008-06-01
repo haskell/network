@@ -31,6 +31,14 @@ AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [
 # include <sys/uio.h>
 #endif])
 
+dnl ** check if struct sockaddr contains sa_len
+AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
+#if HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif])
+
 dnl --------------------------------------------------
 dnl * test for in_addr_t
 dnl --------------------------------------------------
