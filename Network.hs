@@ -257,7 +257,7 @@ accept :: Socket 		-- ^ Listening Socket
 				-- the 'PortNumber' of the remote connection.
 accept sock@(MkSocket _ AF_INET _ _ _) = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
- peer <- Exception.catchJust Exception.ioErrors
+ peer <- catchIO
 	  (do 	
 	     (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
 	     return peer
@@ -429,3 +429,7 @@ the POSIX library:
 >  import Posix
 >  main = do installHandler sigPIPE Ignore Nothing; ...
 -}
+
+catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
+catchIO = Exception.catch
+
