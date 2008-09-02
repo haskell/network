@@ -1,28 +1,39 @@
-name:		network
-version:	2.2.0.0
-license:	BSD3
-license-file:	LICENSE
-maintainer:	libraries@haskell.org
-synopsis:	Networking-related facilities
+name:           network
+version:        2.2.0.0
+license:        BSD3
+license-file:   LICENSE
+maintainer:     libraries@haskell.org
+synopsis:       Networking-related facilities
 category:       System
 build-type:     Configure
-exposed-modules:
-		Network Network.BSD Network.Socket Network.URI
-extra-source-files:
-		config.guess config.sub install-sh
-		configure.ac configure
-		network.buildinfo.in include/HsNetworkConfig.h.in
-		include/HsNet.h include/Typeable.h
-		-- C sources only used on some systems
-		cbits/ancilData.c
-		cbits/asyncAccept.c cbits/initWinSock.c cbits/winSockErr.c
+cabal-version:  >=1.2
 extra-tmp-files:
-		config.log config.status autom4te.cache
-		network.buildinfo include/HsNetworkConfig.h
-build-depends:	base, parsec
-extensions:	CPP
-include-dirs: 	include
-includes:       HsNet.h
-install-includes:
-		HsNet.h HsNetworkConfig.h
-c-sources:	cbits/HsNet.c
+                config.log config.status autom4te.cache
+                network.buildinfo include/HsNetworkConfig.h
+extra-source-files:
+                config.guess config.sub install-sh
+                configure.ac configure
+                network.buildinfo.in include/HsNetworkConfig.h.in
+                include/HsNet.h include/Typeable.h
+                -- C sources only used on some systems
+                cbits/ancilData.c
+                cbits/asyncAccept.c cbits/initWinSock.c cbits/winSockErr.c
+
+flag base4
+
+library
+  exposed-modules:
+                Network Network.BSD Network.Socket Network.URI
+  build-depends: parsec
+
+  if flag(base4)
+      build-depends:    base>=4, concurrent, syb
+  else
+      build-depends:    base<4
+
+  extensions:   CPP
+  include-dirs:         include
+  includes:       HsNet.h
+  install-includes:
+                HsNet.h HsNetworkConfig.h
+  c-sources:    cbits/HsNet.c
