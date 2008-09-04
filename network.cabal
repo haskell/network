@@ -27,7 +27,7 @@ library
   build-depends: parsec
 
   if flag(base4)
-      build-depends:    base>=4, concurrent, syb
+      build-depends:    base>=4, syb
   else
       build-depends:    base<4
 
