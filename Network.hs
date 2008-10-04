@@ -375,7 +375,7 @@ socketPort s = do
 -- ---------------------------------------------------------------------------
 -- Utils
 
-#if __GLASGOW_HASKELL__ < 606
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 -- Like bracket, but only performs the final action if there was an 
 -- exception raised by the middle bit.
 bracketOnError
