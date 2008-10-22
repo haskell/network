@@ -28,6 +28,7 @@ library
 
   if flag(base4)
       build-depends:    base>=4, syb
+      cpp-options:      -DBASE4
   else
       build-depends:    base<4
 
