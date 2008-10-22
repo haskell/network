@@ -24,7 +24,7 @@ flag base4
 library
   exposed-modules:
                 Network Network.BSD Network.Socket Network.URI
-  build-depends: parsec
+  build-depends: base < 5, parsec
 
   if flag(base4)
       build-depends:    base>=4
