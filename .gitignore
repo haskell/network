@@ -1,0 +1,8 @@
+*~
+dist/*
+*.hi
+*.o
+Setup.exe*
+Setup
+TAGS
+config.mk
