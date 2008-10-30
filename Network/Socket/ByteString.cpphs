@@ -105,7 +105,7 @@ sendTo sock xs addr = unsafeUseAsCStringLen xs $
 
 -- | Receive a message from another socket. The socket must be in a
 -- connected state so that the intended recipient is known. Note that
--- the length of the received data can be smaller than specified
+-- the length of the received data can be smaller than the specified
 -- maximum length. If the message is longer than the specified length
 -- it may be discarded depending on the type of socket. May block
 -- until a message arrives.
@@ -117,7 +117,7 @@ recv sock@(MkSocket s _ _ _ _) nbytes
     | otherwise   = do
       createAndTrim nbytes $ recvInner s nbytes
 
--- | This is a helper function which allows up to loop in the case of EINTR
+-- | This is a helper function which allows us to loop in the case of EINTR
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr = do
     len <-
