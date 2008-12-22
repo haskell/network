@@ -11,6 +11,7 @@ maintainer:         johan.tibell@gmail.com
 category:           Network
 build-type:         Simple
 cabal-version:      >= 1.2
+homepage:           http://github.com/tibbe/network-bytestring
 
 flag split-base
   description: Chooce the new smaller, split-up base package.
