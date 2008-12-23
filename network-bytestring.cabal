@@ -17,6 +17,8 @@ flag split-base
 
 library
   exposed-modules:  Network.Socket.ByteString
+                    Network.Socket.ByteString.Lazy
+  other-modules:    Network.Socket.ByteString.Internal
 
   if flag(split-base)
     build-depends:  base >= 3 && < 3.1, bytestring
