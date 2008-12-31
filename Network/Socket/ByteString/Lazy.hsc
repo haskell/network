@@ -61,15 +61,16 @@ send (MkSocket fd _ _ _ _) s = do
                 loop ss (q `plusPtr` sizeOf iov)
             loop _ _ = f
 
-foreign import ccall unsafe "send"
+foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
 
-getContents :: Socket -> IO ByteString    
-getContents sock = do
-  s <- N.recv sock defaultChunkSize
-  if S.null s
-    then return Empty
-    else Chunk s `liftM` unsafeInterleaveIO (getContents sock)
+getContents :: Socket -> IO ByteString
+getContents sock@(MkSocket fd _ _ _ _) = loop
+  where loop = unsafeInterleaveIO $ do
+          s <- N.recv_ sock defaultChunkSize
+          if S.null s
+            then return Empty
+            else Chunk s `liftM` loop
 
 recv :: Socket -> Int64 -> IO ByteString
 recv sock nbytes = chunk `liftM` N.recv sock (fromIntegral nbytes)

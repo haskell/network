@@ -30,6 +30,7 @@ module Network.Socket.ByteString
      -- | Functions used to receive messages from a socket, and may be
      -- used to receive data on a socket whether or not it is
      -- connection-oriented.
+     recv_,
      recv,
      recvFrom
     ) where
@@ -109,13 +110,26 @@ sendTo sock xs addr = unsafeUseAsCStringLen xs $
 -- maximum length. If the message is longer than the specified length
 -- it may be discarded depending on the type of socket. May block
 -- until a message arrives.
-recv :: Socket          -- ^ Bound\/connected socket.
-     -> Int             -- Maximum number of bytes to receive.
-     -> IO ByteString   -- Data received.
-recv sock@(MkSocket s _ _ _ _) nbytes
+--
+-- When the end of the input stream is reached, returns an empty
+-- ByteString.
+recv_ :: Socket          -- ^ Bound\/connected socket.
+      -> Int             -- ^ Maximum number of bytes to receive.
+      -> IO ByteString   -- ^ Data received.
+recv_ sock@(MkSocket s _ _ _ _) nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise   = do
-      createAndTrim nbytes $ recvInner s nbytes
+    | otherwise   = createAndTrim nbytes $ recvInner s nbytes
+
+-- | Receive a message from another socket. Similar to 'recv_', but
+-- throws an EOF exception at end of input.
+recv :: Socket                  -- ^ Bound\/connected socket.
+     -> Int                     -- ^ Maximum number of bytes to receive.
+     -> IO ByteString           -- ^ Data received.
+recv sock nbytes = do
+  ret <- recv_ sock nbytes
+  if B.null ret
+    then ioError (mkEOFError "Network.Socket.ByteString.recv")
+    else return ret
 
 -- | This is a helper function which allows up to loop in the case of EINTR
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
@@ -132,7 +146,6 @@ recvInner s nbytes ptr = do
                         c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
     case fromIntegral len of
-         0 -> ioError (mkEOFError "Network.Socket.ByteString.recv")
          (-1) -> do errno <- getErrno
                     if errno == eINTR
                        then recvInner s nbytes ptr
