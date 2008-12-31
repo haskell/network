@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns, CPP, ForeignFunctionInterface #-}
 
 #include <sys/uio.h>
 
@@ -6,7 +6,9 @@ module Network.Socket.ByteString.Lazy
     (
       getContents
     , send
+    , sendAll
     , recv
+    , recv_
     ) where
 
 import Control.Monad (liftM)
@@ -48,21 +50,32 @@ send (MkSocket fd _ _ _ _) s = do
     let cs = L.toChunks s
         len = length cs
     liftM fromIntegral . allocaArray len $ \ptr ->
-      withPokes cs ptr $
+      withPokes cs ptr $ \niovs ->
         throwErrnoIfMinus1Retry_repeatOnBlock "writev"
           (threadWaitWrite (fromIntegral fd)) $
-          c_writev (fromIntegral fd) ptr (fromIntegral len)
+          c_writev (fromIntegral fd) ptr niovs
   where
-    withPokes ss p f = loop ss p
-      where loop (s:ss) q =
-              unsafeUseAsCStringLen s $ \(ptr,len) -> do
-                let iov = IOVec ptr (fromIntegral len)
-                poke q iov
-                loop ss (q `plusPtr` sizeOf iov)
-            loop _ _ = f
+    withPokes ss p f = loop ss p 0 0
+      where loop (s:ss) q k !niovs
+                | k < sendLimit =
+                    unsafeUseAsCStringLen s $ \(ptr,len) -> do
+                      let iov = IOVec ptr (fromIntegral len)
+                      poke q iov
+                      loop ss (q `plusPtr` sizeOf iov)
+                              (k + fromIntegral len) (niovs + 1)
+                | otherwise = f niovs
+            loop _ _ _ niovs = f niovs
+    sendLimit = 4194304
 
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
+
+sendAll :: Socket -> ByteString -> IO ()
+sendAll sock bs = do
+  sent <- send sock bs
+  if sent < L.length bs
+    then sendAll sock (L.drop sent bs)
+    else return ()
 
 getContents :: Socket -> IO ByteString
 getContents sock@(MkSocket fd _ _ _ _) = loop
@@ -71,6 +84,11 @@ getContents sock@(MkSocket fd _ _ _ _) = loop
           if S.null s
             then return Empty
             else Chunk s `liftM` loop
+
+recv_ :: Socket -> Int64 -> IO ByteString
+recv_ sock nbytes = chunk `liftM` N.recv_ sock (fromIntegral nbytes)
+    where chunk k | S.null k  = Empty
+                  | otherwise = Chunk k Empty
 
 recv :: Socket -> Int64 -> IO ByteString
 recv sock nbytes = chunk `liftM` N.recv sock (fromIntegral nbytes)

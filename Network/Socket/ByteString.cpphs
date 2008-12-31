@@ -24,6 +24,7 @@ module Network.Socket.ByteString
      -- * Send a message on a socket
      -- | Functions used to transmit a message to another socket.
      send,
+     sendAll,
      sendTo,
 
      -- * Receive a message from a socket
@@ -90,6 +91,13 @@ send (MkSocket s _family _stype _protocol status) xs = do
 # endif
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
+
+sendAll :: Socket -> ByteString -> IO ()
+sendAll sock bs = do
+  sent <- send sock bs
+  if sent < B.length bs
+    then sendAll sock (B.drop sent bs)
+    else return ()
 
 -- | Transmit a message to another socket. The recipient can be
 -- specified explicitly so the socket must not (but can be) in a
