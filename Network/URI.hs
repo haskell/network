@@ -1037,7 +1037,7 @@ splitLast path = (reverse revpath,reverse revname)
 --
 --  > "http://example.com/Root/sub1/name2#frag"
 --  >   `relativeFrom` "http://example.com/Root/sub2/name2#frag"
---  >   == "../sub2/name2#frag"
+--  >   == "../sub1/name2#frag"
 --
 --  There is no single correct implementation of this function,
 --  but any acceptable implementation must satisfy the following:
