@@ -220,6 +220,7 @@ import Foreign( FunPtr )
 # endif
 import GHC.Handle
 import GHC.IOBase
+import System.IO.Error
 import qualified System.Posix.Internals
 #else
 import System.IO.Unsafe	(unsafePerformIO)
@@ -2375,8 +2376,9 @@ getAddrInfo hints node service =
                     c_freeaddrinfo ptr_addrs
                     return ais
             _ -> do err <- gai_strerror ret
-                    ioError (IOError Nothing NoSuchThing "getAddrInfo" err
-                             Nothing)
+                    ioError (ioeSetErrorString
+                             (mkIOError NoSuchThing "getAddrInfo" Nothing
+                              Nothing) err)
 
 followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
 
@@ -2467,8 +2469,9 @@ getNameInfo flags doHost doService addr =
             serv <- peekIf doService c_serv
             return (host, serv)
           _ -> do err <- gai_strerror ret
-                  ioError (IOError Nothing NoSuchThing "getNameInfo" err
-                           Nothing)
+                  ioError (ioeSetErrorString
+                           (mkIOError NoSuchThing "getNameInfo" Nothing 
+                            Nothing) err)
 
 foreign import ccall safe "getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
@@ -2476,16 +2479,16 @@ foreign import ccall safe "getnameinfo"
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
-mkInvalidRecvArgError loc = IOError Nothing 
+mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 #ifdef __GLASGOW_HASKELL__
 				    InvalidArgument
 #else
 				    IllegalOperation
 #endif
-				    loc "non-positive length" Nothing
+                                    loc Nothing Nothing) "non-positive length"
 
 mkEOFError :: String -> IOError
-mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
+mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
 -- ---------------------------------------------------------------------------
 -- WinSock support
@@ -2635,7 +2638,7 @@ throwSocketError name rc = do
     pstr <- c_getWSError rc
     str  <- peekCString pstr
 #  if __GLASGOW_HASKELL__
-    ioError (IOError Nothing OtherError name str Nothing)
+    ioError (ioeSetErrorString (mkIOError OtherError name Nothing Nothing) str)
 #  else    
     ioError (userError (name ++ ": socket error - " ++ str))
 #  endif

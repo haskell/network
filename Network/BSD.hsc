@@ -107,6 +107,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.IOBase
+import System.IO.Error
 #endif
 
 import Control.Monad ( liftM )
@@ -569,5 +570,5 @@ throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
 throwNoSuchThingIfNull loc desc act = do
   ptr <- act
   if (ptr == nullPtr)
-   then ioError (IOError Nothing NoSuchThing loc desc Nothing)
+   then ioError (ioeSetErrorString (mkIOError NoSuchThing loc Nothing Nothing) desc)
    else return ptr
