@@ -23,8 +23,8 @@ module Network.Socket.ByteString
     (
      -- * Send a message on a socket
      -- | Functions used to transmit a message to another socket.
-     send,
      sendAll,
+     send,
      sendTo,
 
      -- * Receive a message from a socket
