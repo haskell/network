@@ -28,3 +28,4 @@ library
   build-depends:    network >= 2.1 && < 2.3
 
   extensions:       CPP, ForeignFunctionInterface
+  ghc-options:      -Wall

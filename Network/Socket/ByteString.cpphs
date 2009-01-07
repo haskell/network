@@ -42,7 +42,7 @@ import qualified Data.ByteString as B
 import Data.Word (Word8)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Foreign.C.Error (eAGAIN, eINTR, eWOULDBLOCK, getErrno, throwErrno)
+import Foreign.C.Error (eINTR, getErrno, throwErrno)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr)
@@ -78,7 +78,7 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Bound\/Connected socket.
      -> ByteString  -- ^ Data to send.
      -> IO Int      -- ^ Number of bytes sent.
-send (MkSocket s _family _stype _protocol status) xs = do
+send (MkSocket s _family _stype _protocol _status) xs = do
   unsafeUseAsCStringLen xs $ \(str, len) -> do
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
@@ -124,7 +124,7 @@ sendTo sock xs addr = unsafeUseAsCStringLen xs $
 recv_ :: Socket          -- ^ Bound\/connected socket.
       -> Int             -- ^ Maximum number of bytes to receive.
       -> IO ByteString   -- ^ Data received.
-recv_ sock@(MkSocket s _ _ _ _) nbytes
+recv_ (MkSocket s _ _ _ _) nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise   = createAndTrim nbytes $ recvInner s nbytes
 
