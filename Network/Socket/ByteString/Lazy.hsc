@@ -45,7 +45,7 @@ import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
 import Data.Int (Int64)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Array (allocaArray)
-import Foreign.Ptr (Ptr, castPtr, plusPtr)
+import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.Storable (Storable(..))
 import qualified Network.Socket.ByteString as N
 import Network.Socket.ByteString.Internal
@@ -53,7 +53,7 @@ import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Prelude hiding (getContents)
 import System.Posix.Types (CSsize)
-import GHC.Conc (threadWaitRead, threadWaitWrite)
+import GHC.Conc (threadWaitWrite)
 
 -- | Needed to support the POSIX writev system call.
 data IOVec = IOVec { iovBase :: Ptr CChar
@@ -90,18 +90,18 @@ send (MkSocket fd _ _ _ _) s = do
           c_writev (fromIntegral fd) ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
-      where loop (s:ss) q k !niovs
+      where loop (c:cs) q k !niovs
                 | k < sendLimit =
-                    unsafeUseAsCStringLen s $ \(ptr,len) -> do
+                    unsafeUseAsCStringLen c $ \(ptr,len) -> do
                       let iov = IOVec ptr (fromIntegral len)
                       poke q iov
-                      loop ss (q `plusPtr` sizeOf iov)
+                      loop cs (q `plusPtr` sizeOf iov)
                               (k + fromIntegral len) (niovs + 1)
                 | otherwise = f niovs
             loop _ _ _ niovs = f niovs
     -- Limit the amount of data that we'll try to transmit with a
     -- single system call.
-    sendLimit = 4194304
+    sendLimit = 4194304 :: Int
 
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
@@ -119,11 +119,11 @@ sendAll sock bs = do
 -- on demand; each chunk will be sized to reflect the amount of data
 -- received by individual 'recv_' calls.
 --
--- All remaining data from the socket data is consumed. The receiving
--- side of the socket is shut down when there is no more data to be
--- received.  This does not occur if an exception is thrown.
+-- All remaining data from the socket is consumed. The receiving side
+-- of the socket is shut down when there is no more data to be
+-- received.  The socket is not shut down if an exception is thrown.
 getContents :: Socket -> IO ByteString
-getContents sock@(MkSocket fd _ _ _ _) = loop
+getContents sock = loop
   where loop = unsafeInterleaveIO $ do
           s <- N.recv_ sock defaultChunkSize
           if S.null s
