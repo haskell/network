@@ -23,6 +23,7 @@ module Network.Socket.ByteString
     (
      -- * Send a message on a socket
      -- | Functions used to transmit a message to another socket.
+     sendAll,
      send,
      sendTo,
 
@@ -30,6 +31,7 @@ module Network.Socket.ByteString
      -- | Functions used to receive messages from a socket, and may be
      -- used to receive data on a socket whether or not it is
      -- connection-oriented.
+     recv_,
      recv,
      recvFrom
     ) where
@@ -40,15 +42,15 @@ import qualified Data.ByteString as B
 import Data.Word (Word8)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Foreign.C.Error (eAGAIN, eINTR, eWOULDBLOCK, getErrno, throwErrno)
+import Foreign.C.Error (eINTR, getErrno, throwErrno)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr)
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+import Network.Socket.ByteString.Internal
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-import GHC.IOBase (IOErrorType(..), IOException(..))
 # if defined(mingw32_HOST_OS)
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 # endif
@@ -76,7 +78,7 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Bound\/Connected socket.
      -> ByteString  -- ^ Data to send.
      -> IO Int      -- ^ Number of bytes sent.
-send (MkSocket s _family _stype _protocol status) xs = do
+send (MkSocket s _family _stype _protocol _status) xs = do
   unsafeUseAsCStringLen xs $ \(str, len) -> do
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
@@ -89,6 +91,13 @@ send (MkSocket s _family _stype _protocol status) xs = do
 # endif
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
+
+sendAll :: Socket -> ByteString -> IO ()
+sendAll sock bs = do
+  sent <- send sock bs
+  if sent < B.length bs
+    then sendAll sock (B.drop sent bs)
+    else return ()
 
 -- | Transmit a message to another socket. The recipient can be
 -- specified explicitly so the socket must not (but can be) in a
@@ -109,13 +118,26 @@ sendTo sock xs addr = unsafeUseAsCStringLen xs $
 -- maximum length. If the message is longer than the specified length
 -- it may be discarded depending on the type of socket. May block
 -- until a message arrives.
-recv :: Socket          -- ^ Bound\/connected socket.
-     -> Int             -- Maximum number of bytes to receive.
-     -> IO ByteString   -- Data received.
-recv sock@(MkSocket s _ _ _ _) nbytes
+--
+-- When the end of the input stream is reached, returns an empty
+-- ByteString.
+recv_ :: Socket          -- ^ Bound\/connected socket.
+      -> Int             -- ^ Maximum number of bytes to receive.
+      -> IO ByteString   -- ^ Data received.
+recv_ (MkSocket s _ _ _ _) nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise   = do
-      createAndTrim nbytes $ recvInner s nbytes
+    | otherwise   = createAndTrim nbytes $ recvInner s nbytes
+
+-- | Receive a message from another socket. Similar to 'recv_', but
+-- throws an EOF exception at end of input.
+recv :: Socket                  -- ^ Bound\/connected socket.
+     -> Int                     -- ^ Maximum number of bytes to receive.
+     -> IO ByteString           -- ^ Data received.
+recv sock nbytes = do
+  ret <- recv_ sock nbytes
+  if B.null ret
+    then ioError (mkEOFError "Network.Socket.ByteString.recv")
+    else return ret
 
 -- | This is a helper function which allows us to loop in the case of EINTR
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
@@ -132,7 +154,6 @@ recvInner s nbytes ptr = do
                         c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
     case fromIntegral len of
-         0 -> ioError (mkEOFError "Network.Socket.ByteString.recv")
          (-1) -> do errno <- getErrno
                     if errno == eINTR
                        then recvInner s nbytes ptr
@@ -149,71 +170,3 @@ recvFrom sock nbytes =
       (len, sockaddr) <- recvBufFrom sock ptr nbytes
       str <- B.packCStringLen (ptr, len)
       return (str, sockaddr)
-
-mkInvalidRecvArgError :: String -> IOError
-mkInvalidRecvArgError loc = IOError Nothing
-#ifdef __GLASGOW_HASKELL__
-                                    InvalidArgument
-#else
-                                    IllegalOperation
-#endif
-                                    loc "non-positive length" Nothing
-
-mkEOFError :: String -> IOError
-mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
-
------------------------------------------------------------------------------
--- Support for thread-safe blocking operations in GHC.
-
-#if defined(__GLASGOW_HASKELL__) && !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
-{-# SPECIALISE
-    throwErrnoIfMinus1Retry_mayBlock
-         :: String -> IO CInt -> IO CInt -> IO CInt #-}
-throwErrnoIfMinus1Retry_mayBlock :: Num a => String -> IO a -> IO a -> IO a
-throwErrnoIfMinus1Retry_mayBlock name on_block act = do
-    res <- act
-    if res == -1
-        then do
-            err <- getErrno
-            if err == eINTR
-                then throwErrnoIfMinus1Retry_mayBlock name on_block act
-                else if err == eWOULDBLOCK || err == eAGAIN
-                        then on_block
-                        else throwErrno name
-        else return res
-
-throwErrnoIfMinus1Retry_repeatOnBlock :: Num a => String -> IO b -> IO a -> IO a
-throwErrnoIfMinus1Retry_repeatOnBlock name on_block act = do
-  throwErrnoIfMinus1Retry_mayBlock name (on_block >> repeat) act
-  where repeat = throwErrnoIfMinus1Retry_repeatOnBlock name on_block act
-
-#else
-throwErrnoIfMinus1Retry_mayBlock name _ act
-  = throwSocketErrorIfMinus1Retry name act
-
-throwErrnoIfMinus1Retry_repeatOnBlock name _ act
-  = throwSocketErrorIfMinus1Retry name act
-
-# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
-throwSocketErrorIfMinus1Retry name act = do
-  r <- act
-  if (r == -1)
-   then do
-    rc   <- c_getLastError
-    case rc of
-      10093 -> do -- WSANOTINITIALISED
-        withSocketsDo (return ())
-        r <- act
-        if (r == -1)
-         then (c_getLastError >>= throwSocketError name)
-         else return r
-      _ -> throwSocketError name rc
-   else return r
-
-foreign import CALLCONV unsafe "WSAGetLastError"
-  c_getLastError :: IO CInt
-
-# else
-throwSocketErrorIfMinus1Retry name act = throwErrnoIfMinus1Retry name act
-# endif
-#endif /* __GLASGOW_HASKELL */
