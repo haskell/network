@@ -1,7 +1,5 @@
 {-# LANGUAGE BangPatterns, CPP, ForeignFunctionInterface #-}
 
-#include <sys/uio.h>
-
 -- |
 -- Module      : Network.Socket.ByteString.Lazy
 -- Copyright   : (c) Bryan O'Sullivan 2009
@@ -43,34 +41,16 @@ import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
 import Data.Int (Int64)
-import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Array (allocaArray)
-import Foreign.Ptr (Ptr, plusPtr)
-import Foreign.Storable (Storable(..))
 import qualified Network.Socket.ByteString as N
 import Network.Socket.ByteString.Internal
+import Network.Socket.ByteString.IOVec
 import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
 import System.IO.Unsafe (unsafeInterleaveIO)
 import Prelude hiding (getContents)
-import System.Posix.Types (CSsize)
 import GHC.Conc (threadWaitWrite)
-
--- | Needed to support the POSIX writev system call.
-data IOVec = IOVec { iovBase :: Ptr CChar
-                   , iovLen ::  CSize }
-
-instance Storable IOVec where
-    sizeOf _    = (#const sizeof(struct iovec))
-    alignment _ = alignment (undefined :: CInt)
-
-    peek p = do
-      base <- (#peek struct iovec, iov_base) p
-      len <- (#peek struct iovec, iov_len) p
-      return (IOVec base len)
-
-    poke p iov = do
-      (#poke struct iovec, iov_base) p (iovBase iov)
-      (#poke struct iovec, iov_len) p (iovLen iov)
+import Foreign.Storable (Storable(..))
+import Foreign.Ptr (plusPtr)
 
 -- | Send a 'ByteString' using a single system call.
 --
@@ -102,9 +82,6 @@ send (MkSocket fd _ _ _ _) s = do
     -- Limit the amount of data that we'll try to transmit with a
     -- single system call.
     sendLimit = 4194304 :: Int
-
-foreign import ccall unsafe "writev"
-  c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
 
 -- | Send the entire contents of a string, possibly using multiple
 -- 'send' system calls to do so.

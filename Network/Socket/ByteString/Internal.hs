@@ -6,11 +6,16 @@ module Network.Socket.ByteString.Internal
     , mkEOFError
     , throwErrnoIfMinus1Retry_mayBlock
     , throwErrnoIfMinus1Retry_repeatOnBlock
+    , c_writev
     ) where
 
 import Foreign.C.Error (eAGAIN, eINTR, eWOULDBLOCK, getErrno, throwErrno)
-import Foreign.C.Types (CChar, CInt, CSize)
+import Foreign.C.Types (CInt)
+import Foreign.Ptr (Ptr)
 import GHC.IOBase (IOErrorType(..), IOException(..))
+import Network.Socket.ByteString.IOVec (IOVec)
+import Prelude hiding (repeat)
+import System.Posix.Types (CSsize)
 
 -----------------------------------------------------------------------------
 -- Support for thread-safe blocking operations in GHC.
@@ -87,3 +92,6 @@ mkInvalidRecvArgError loc = IOError Nothing
 
 mkEOFError :: String -> IOError
 mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
+
+foreign import ccall unsafe "writev"
+  c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize

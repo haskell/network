@@ -24,6 +24,7 @@ module Network.Socket.ByteString
      -- * Send a message on a socket
      -- | Functions used to transmit a message to another socket.
      sendAll,
+     sendMany,
      send,
      sendTo,
 
@@ -36,18 +37,22 @@ module Network.Socket.ByteString
      recvFrom
     ) where
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, when, zipWithM_)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Word (Word8)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Data.List (iterate)
 import Foreign.C.Error (eINTR, getErrno, throwErrno)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (Ptr, castPtr)
+import Foreign.Marshal.Array (allocaArray)
+import Foreign.Ptr (Ptr, castPtr, plusPtr)
+import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
 import Network.Socket.ByteString.Internal
+import Network.Socket.ByteString.IOVec
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
@@ -65,6 +70,7 @@ import System.IO.Unsafe (unsafePerformIO)
 #  define CALLCONV ccall
 # endif
 #endif
+
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
@@ -75,11 +81,11 @@ foreign import CALLCONV unsafe "recv"
 
 -- | Transmit a message to another socket. The socket must be in a
 -- connected state so that the intended recipient is known.
-send :: Socket      -- ^ Bound\/Connected socket.
+send :: Socket      -- ^ Bound\/connected socket.
      -> ByteString  -- ^ Data to send.
      -> IO Int      -- ^ Number of bytes sent.
-send (MkSocket s _family _stype _protocol _status) xs = do
-  unsafeUseAsCStringLen xs $ \(str, len) -> do
+send (MkSocket s _family _stype _protocol _status) xs =
+  unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
       writeRawBufferPtr "Network.Socket.ByteString.send" (fromIntegral s) True str 0
@@ -95,9 +101,28 @@ send (MkSocket s _family _stype _protocol _status) xs = do
 sendAll :: Socket -> ByteString -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
-  if sent < B.length bs
-    then sendAll sock (B.drop sent bs)
-    else return ()
+  when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
+
+-- | Send a multi-part message. The given socket must be connected. The data is
+-- sent as if the given strings have been concatenated.
+sendMany :: Socket        -- ^ Bound\/connected socket.
+         -> [ByteString]  -- ^ Data to send.
+         -> IO Int        -- ^ Number of bytes sent.
+sendMany (MkSocket fd _ _ _ _) ss =
+  liftM fromIntegral . allocaArray ssLen $ \aPtr -> do
+    pokeIovs aPtr ss
+    throwErrnoIfMinus1Retry_repeatOnBlock "writev"
+      (threadWaitWrite (fromIntegral fd)) $
+      c_writev (fromIntegral fd) aPtr (fromIntegral ssLen)
+  where
+    pokeIovs :: Ptr IOVec -> [ByteString] -> IO ()
+    pokeIovs aPtr = zipWithM_ f ptrs where
+      f ptr s =
+        unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
+          poke ptr $ IOVec sPtr (fromIntegral sLen)
+      ptrs = iterate (flip plusPtr sizeOfIOVec) aPtr
+
+    ssLen = length ss
 
 -- | Transmit a message to another socket. The recipient can be
 -- specified explicitly so the socket must not (but can be) in a
