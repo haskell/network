@@ -211,6 +211,7 @@ import Data.Ratio ( (%) )
 import qualified Control.Exception
 import Control.Concurrent.MVar
 import Data.Typeable
+import System.IO.Error
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
@@ -220,7 +221,6 @@ import Foreign( FunPtr )
 # endif
 import GHC.Handle
 import GHC.IOBase
-import System.IO.Error
 import qualified System.Posix.Internals
 #else
 import System.IO.Unsafe	(unsafePerformIO)
