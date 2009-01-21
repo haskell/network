@@ -25,6 +25,7 @@ module Network.Socket.ByteString
      -- | Functions used to transmit a message to another socket.
      sendAll,
      sendMany,
+     sendManyAll,
      send,
      sendTo,
 
@@ -123,6 +124,25 @@ sendMany (MkSocket fd _ _ _ _) ss =
       ptrs = iterate (flip plusPtr sizeOfIOVec) aPtr
 
     ssLen = length ss
+
+-- | Send a multi-part message, ensuring that all the data is sent. The given
+-- socket must be connected. The data is sent as if the given strings have been
+-- concatenated.
+sendManyAll :: Socket        -- ^ Bound\/connected socket.
+            -> [ByteString]  -- ^ Data to send.
+            -> IO ()
+sendManyAll sock ss = do
+  n <- sendMany sock ss
+  when (n < tlen) $ sendManyAll sock (remaining n ss)
+  where
+    tlen = sum $ map B.length ss
+
+    remaining _ [] = []
+    remaining i (x:xs)
+      | i < len   = B.drop i x : xs
+      | otherwise = remaining (i - len) xs
+      where
+        len = B.length x
 
 -- | Transmit a message to another socket. The recipient can be
 -- specified explicitly so the socket must not (but can be) in a
