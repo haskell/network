@@ -23,18 +23,18 @@ module Network.Socket.ByteString
     (
      -- * Send a message on a socket
      -- | Functions used to transmit a message to another socket.
+     send,
      sendAll,
      sendMany,
      sendManyAll,
-     send,
      sendTo,
 
      -- * Receive a message from a socket
      -- | Functions used to receive messages from a socket, and may be
      -- used to receive data on a socket whether or not it is
      -- connection-oriented.
-     recv_,
      recv,
+     recv_,
      recvFrom
     ) where
 
@@ -80,8 +80,11 @@ foreign import CALLCONV unsafe "recv"
 -- -----------------------------------------------------------------------------
 -- Sending
 
--- | Transmit a message to another socket. The socket must be in a
--- connected state so that the intended recipient is known.
+-- | Send data to the socket.  The socket must be connected to a
+-- remote socket.  Returns the number of bytes sent.  Applications are
+-- responsible for checking that all data has been sent; if only some
+-- of the data was transmitted, the application needs to attempt
+-- delivery of the remaining data.
 send :: Socket      -- ^ Bound\/connected socket.
      -> ByteString  -- ^ Data to send.
      -> IO Int      -- ^ Number of bytes sent.
@@ -99,7 +102,14 @@ send (MkSocket s _family _stype _protocol _status) xs =
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
-sendAll :: Socket -> ByteString -> IO ()
+-- | Send data to the socket. The socket must be connected to a remote
+-- socket.  Unlike 'send', this method continues to send data until
+-- either all data has been sent or an error occurs. On error, an
+-- exception is raised, and there is no way to determine how much
+-- data, if any, was successfully sent.
+sendAll :: Socket      -- ^ Bound\/connected socket.
+        -> ByteString  -- ^ Data to send.
+        -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
   when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
