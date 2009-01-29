@@ -7,6 +7,7 @@ module Network.Socket.ByteString.Internal
     , throwErrnoIfMinus1Retry_mayBlock
     , throwErrnoIfMinus1Retry_repeatOnBlock
     , c_writev
+    , c_sendmsg
     ) where
 
 import Foreign.C.Error (eAGAIN, eINTR, eWOULDBLOCK, getErrno, throwErrno)
@@ -14,6 +15,7 @@ import Foreign.C.Types (CInt)
 import Foreign.Ptr (Ptr)
 import GHC.IOBase (IOErrorType(..), IOException(..))
 import Network.Socket.ByteString.IOVec (IOVec)
+import Network.Socket.ByteString.MsgHdr (MsgHdr)
 import Prelude hiding (repeat)
 import System.Posix.Types (CSsize)
 
@@ -95,3 +97,6 @@ mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
 
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
+
+foreign import ccall unsafe "sendmsg"
+  c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize

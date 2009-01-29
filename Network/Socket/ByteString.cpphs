@@ -29,6 +29,7 @@ module Network.Socket.ByteString
      sendManyAll,
      sendTo,
      sendAllTo,
+     sendManyTo,
 
      -- * Receive data from a socket
      -- | Functions used to receive messages from a socket, and may be
@@ -50,11 +51,14 @@ import Foreign.C.Error (eINTR, getErrno, throwErrno)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Array (allocaArray)
-import Foreign.Ptr (Ptr, castPtr, plusPtr)
+import Foreign.Marshal.Utils (with)
+import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
 import Network.Socket.ByteString.Internal
 import Network.Socket.ByteString.IOVec
+import Network.Socket.ByteString.MsgHdr
+import Network.Socket.ByteString.SockAddr (pokeSockAddr, sizeOfSockAddr)
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
@@ -120,21 +124,11 @@ sendAll sock bs = do
 sendMany :: Socket        -- ^ Connected socket.
          -> [ByteString]  -- ^ Data to send.
          -> IO Int        -- ^ Number of bytes sent.
-sendMany (MkSocket fd _ _ _ _) ss =
-  liftM fromIntegral . allocaArray ssLen $ \aPtr -> do
-    pokeIovs aPtr ss
+sendMany (MkSocket fd _ _ _ _) cs =
+  liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
     throwErrnoIfMinus1Retry_repeatOnBlock "writev"
       (threadWaitWrite (fromIntegral fd)) $
-      c_writev (fromIntegral fd) aPtr (fromIntegral ssLen)
-  where
-    pokeIovs :: Ptr IOVec -> [ByteString] -> IO ()
-    pokeIovs aPtr = zipWithM_ f ptrs where
-      f ptr s =
-        unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
-          poke ptr $ IOVec sPtr (fromIntegral sLen)
-      ptrs = iterate (flip plusPtr sizeOfIOVec) aPtr
-
-    ssLen = length ss
+      c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
 
 -- | Send a multi-part message, ensuring that all the data is sent. The given
 -- socket must be connected. The data is sent as if the given strings have been
@@ -142,18 +136,9 @@ sendMany (MkSocket fd _ _ _ _) ss =
 sendManyAll :: Socket        -- ^ Connected socket.
             -> [ByteString]  -- ^ Data to send.
             -> IO ()
-sendManyAll sock ss = do
-  n <- sendMany sock ss
-  when (n < tlen) $ sendManyAll sock (remaining n ss)
-  where
-    tlen = sum $ map B.length ss
-
-    remaining _ [] = []
-    remaining i (x:xs)
-      | i < len   = B.drop i x : xs
-      | otherwise = remaining (i - len) xs
-      where
-        len = B.length x
+sendManyAll sock cs = do
+  sent <- sendMany sock cs
+  when (sent < totalLength cs) $ sendManyAll sock (remainingChunks sent cs)
 
 -- | Send data to the socket. The recipient can be specified
 -- explicitly, so the socket does not have to be (but can be) in a
@@ -163,8 +148,8 @@ sendTo :: Socket      -- ^ (Possibly) connected socket.
        -> SockAddr    -- ^ Recipient address.
        -> IO Int      -- ^ Number of bytes sent.
 sendTo sock xs addr =
-  unsafeUseAsCStringLen xs $
-    \(str, len) -> sendBufTo sock str len addr
+  unsafeUseAsCStringLen xs $ \(str, len) ->
+    sendBufTo sock str len addr
 
 -- | Send data to the socket. The recipient is specified explicitly,
 -- so the socket does not have to be (but can be) in a connected
@@ -179,6 +164,26 @@ sendAllTo :: Socket      -- ^ (Possibly) connected socket
 sendAllTo sock xs addr = do
   sent <- sendTo sock xs addr
   when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
+
+-- | Send a multi-part message on a socket. The recipient can be specified
+-- explicitly, so the socket does not have to be (but can be) in a connected
+-- state. Continues to send data until either all data has been sent or an
+-- error occurs. The data is sent as if the parts have been concatenated.
+sendManyTo :: Socket        -- ^ (Possibly) connected socket
+           -> [ByteString]  -- ^ Data to send
+           -> SockAddr      -- ^ Recipient address
+           -> IO ()
+sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
+  sent <- liftM fromIntegral sendManyToInner
+  when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
+  where
+    sendManyToInner =
+      withSockAddr addr                                                   $ \addrPtr            ->
+      withIOVec cs                                                        $ \(iovsPtr, iovsLen) ->
+      with (MsgHdr addrPtr 16 iovsPtr (fromIntegral iovsLen) nullPtr 0 0) $ \msgHdrPtr          ->
+        throwErrnoIfMinus1Retry_repeatOnBlock "sendmsg"
+          (threadWaitWrite (fromIntegral fd)) $
+          c_sendmsg (fromIntegral fd) msgHdrPtr 0
 
 -- -----------------------------------------------------------------------------
 -- Receiving
@@ -248,3 +253,46 @@ recvFrom sock nbytes =
       (len, sockaddr) <- recvBufFrom sock ptr nbytes
       str <- B.packCStringLen (ptr, len)
       return (str, sockaddr)
+
+-- -----------------------------------------------------------------------------
+-- Not exported
+
+-- | Suppose we try to transmit a list of chunks @cs@ via a gathering write
+-- operation and find that @n@ bytes were sent. Then @remainingChunks n cs@ is
+-- list of chunks remaining to be sent.
+remainingChunks :: Int -> [ByteString] -> [ByteString]
+remainingChunks _ [] = []
+remainingChunks i (x:xs) =
+  if i < len
+    then B.drop i x : xs
+    else remainingChunks (i - len) xs
+  where
+    len = B.length x
+
+-- | @totalLength cs@ is the sum of the lengths of the chunks in the list @cs@.
+totalLength :: [ByteString] -> Int
+totalLength = sum . map B.length
+
+-- | @withIOVec cs f@ executes the computation @f@, passing as argument a pair
+-- consisting of a pointer to a temporarily allocated array of pointers to
+-- 'IOVec' made from @cs@ and the number of pointers (@length cs@).
+withIOVec :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
+withIOVec cs f =
+  allocaArray csLen $ \aPtr -> do
+    zipWithM_ pokeIov (ptrs aPtr) cs
+    f (aPtr, csLen)
+  where
+    csLen = length cs
+    ptrs = iterate (flip plusPtr sizeOfIOVec)
+    pokeIov ptr s =
+      unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
+        poke ptr $ IOVec sPtr (fromIntegral sLen)
+
+-- | @withSockAddr addr f@ executes the computation @f@, passing as argument a
+-- pointer to a temporarily allocated block of memory into which @addr@ has
+-- been marshalled.
+withSockAddr :: SockAddr -> (Ptr SockAddr -> IO a) -> IO a
+withSockAddr addr f =
+  allocaBytes sizeOfSockAddr $ \addrPtr -> do
+    pokeSockAddr addrPtr addr
+    f addrPtr

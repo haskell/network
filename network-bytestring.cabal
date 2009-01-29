@@ -21,6 +21,8 @@ library
                     Network.Socket.ByteString.Lazy
   other-modules:    Network.Socket.ByteString.Internal
                     Network.Socket.ByteString.IOVec
+                    Network.Socket.ByteString.MsgHdr
+                    Network.Socket.ByteString.SockAddr
 
   if flag(split-base)
     build-depends:  base >= 3 && < 4.1, bytestring
