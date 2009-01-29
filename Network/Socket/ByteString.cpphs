@@ -28,6 +28,7 @@ module Network.Socket.ByteString
      sendMany,
      sendManyAll,
      sendTo,
+     sendAllTo,
 
      -- * Receive data from a socket
      -- | Functions used to receive messages from a socket, and may be
@@ -154,15 +155,30 @@ sendManyAll sock ss = do
       where
         len = B.length x
 
--- | Send data to the socket. The socket should not be connected to a
--- remote socket, since the destination socket is specified
--- separately.  Returns the number of bytes sent.
-sendTo :: Socket      -- ^ (Possibly) bound\/connected socket.
+-- | Send data to the socket. The recipient can be specified
+-- explicitly, so the socket does not have to be (but can be) in a
+-- connected state.  Returns the number of bytes sent.
+sendTo :: Socket      -- ^ (Possibly) connected socket.
        -> ByteString  -- ^ Data to send.
        -> SockAddr    -- ^ Recipient address.
        -> IO Int      -- ^ Number of bytes sent.
-sendTo sock xs addr = unsafeUseAsCStringLen xs $
-                      \(str, len) -> sendBufTo sock str len addr
+sendTo sock xs addr =
+  unsafeUseAsCStringLen xs $
+    \(str, len) -> sendBufTo sock str len addr
+
+-- | Send data to the socket. The recipient is specified explicitly,
+-- so the socket does not have to be (but can be) in a connected
+-- state.  Unlike 'sendTo', this method continues to send data until
+-- either all data has been sent or an error occurs. On error, an
+-- exception is raised, and there is no way to determine how much
+-- data, if any, was successfully sent.
+sendAllTo :: Socket      -- ^ (Possibly) connected socket
+          -> ByteString  -- ^ Data to send
+          -> SockAddr    -- ^ Recipient address
+          -> IO ()
+sendAllTo sock xs addr = do
+  sent <- sendTo sock xs addr
+  when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
 
 -- -----------------------------------------------------------------------------
 -- Receiving
