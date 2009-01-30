@@ -21,7 +21,7 @@
 --
 module Network.Socket.ByteString
     (
-     -- * Send a message on a socket
+     -- * Send data to a socket
      -- | Functions used to transmit a message to another socket.
      send,
      sendAll,
@@ -29,7 +29,7 @@ module Network.Socket.ByteString
      sendManyAll,
      sendTo,
 
-     -- * Receive a message from a socket
+     -- * Receive data from a socket
      -- | Functions used to receive messages from a socket, and may be
      -- used to receive data on a socket whether or not it is
      -- connection-oriented.
@@ -85,7 +85,7 @@ foreign import CALLCONV unsafe "recv"
 -- responsible for checking that all data has been sent; if only some
 -- of the data was transmitted, the application needs to attempt
 -- delivery of the remaining data.
-send :: Socket      -- ^ Bound\/connected socket.
+send :: Socket      -- ^ Connected socket.
      -> ByteString  -- ^ Data to send.
      -> IO Int      -- ^ Number of bytes sent.
 send (MkSocket s _family _stype _protocol _status) xs =
@@ -107,7 +107,7 @@ send (MkSocket s _family _stype _protocol _status) xs =
 -- either all data has been sent or an error occurs. On error, an
 -- exception is raised, and there is no way to determine how much
 -- data, if any, was successfully sent.
-sendAll :: Socket      -- ^ Bound\/connected socket.
+sendAll :: Socket      -- ^ Connected socket.
         -> ByteString  -- ^ Data to send.
         -> IO ()
 sendAll sock bs = do
@@ -116,7 +116,7 @@ sendAll sock bs = do
 
 -- | Send a multi-part message. The given socket must be connected. The data is
 -- sent as if the given strings have been concatenated.
-sendMany :: Socket        -- ^ Bound\/connected socket.
+sendMany :: Socket        -- ^ Connected socket.
          -> [ByteString]  -- ^ Data to send.
          -> IO Int        -- ^ Number of bytes sent.
 sendMany (MkSocket fd _ _ _ _) ss =
@@ -138,7 +138,7 @@ sendMany (MkSocket fd _ _ _ _) ss =
 -- | Send a multi-part message, ensuring that all the data is sent. The given
 -- socket must be connected. The data is sent as if the given strings have been
 -- concatenated.
-sendManyAll :: Socket        -- ^ Bound\/connected socket.
+sendManyAll :: Socket        -- ^ Connected socket.
             -> [ByteString]  -- ^ Data to send.
             -> IO ()
 sendManyAll sock ss = do
@@ -154,9 +154,9 @@ sendManyAll sock ss = do
       where
         len = B.length x
 
--- | Transmit a message to another socket. The recipient can be
--- specified explicitly so the socket must not (but can be) in a
--- connected state.
+-- | Send data to the socket. The socket should not be connected to a
+-- remote socket, since the destination socket is specified
+-- separately.  Returns the number of bytes sent.
 sendTo :: Socket      -- ^ (Possibly) bound\/connected socket.
        -> ByteString  -- ^ Data to send.
        -> SockAddr    -- ^ Recipient address.
@@ -176,16 +176,21 @@ sendTo sock xs addr = unsafeUseAsCStringLen xs $
 --
 -- When the end of the input stream is reached, returns an empty
 -- ByteString.
-recv_ :: Socket          -- ^ Bound\/connected socket.
+recv_ :: Socket          -- ^ Connected socket.
       -> Int             -- ^ Maximum number of bytes to receive.
       -> IO ByteString   -- ^ Data received.
 recv_ (MkSocket s _ _ _ _) nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise   = createAndTrim nbytes $ recvInner s nbytes
 
--- | Receive a message from another socket. Similar to 'recv_', but
--- throws an EOF exception at end of input.
-recv :: Socket                  -- ^ Bound\/connected socket.
+-- | Receive data from the socket. The return value is a 'ByteString'
+-- representing the data received.  The maximum amount of data to be
+-- received at once is specified by separately.
+--
+-- Note: For best match with hardware and network realities, the
+-- maximum number of bytes to receive should be a relatively small
+-- power of 2, for example, 4096.
+recv :: Socket                  -- ^ Connected socket.
      -> Int                     -- ^ Maximum number of bytes to receive.
      -> IO ByteString           -- ^ Data received.
 recv sock nbytes = do
@@ -215,8 +220,10 @@ recvInner s nbytes ptr = do
                        else throwErrno "Network.Socket.ByteString.recv"
          n -> return n
 
--- | Similar to 'recv' but can be used to receive data on a socket
--- that is not connection-oriented.
+-- | Receive data from the socket. The return value is a pair @(bytes,
+-- address)@ where @bytes@ is a 'ByteString' representing the data
+-- received and @address@ is the 'SockAddr' of the socket sending the
+-- data.
 recvFrom :: Socket                     -- ^ (Possibly) bound\/connected socket.
          -> Int                        -- ^ Maximum number of bytes to receive.
          -> IO (ByteString, SockAddr)  -- ^ Data received and sender address.
