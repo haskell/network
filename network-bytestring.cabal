@@ -12,8 +12,6 @@ build-type:     Simple
 cabal-version:  >= 1.2
 homepage:       http://github.com/tibbe/network-bytestring
 
-flag split-base
-
 library
   exposed-modules:
     Network.Socket.ByteString
@@ -24,15 +22,10 @@ library
     Network.Socket.ByteString.MsgHdr
     Network.Socket.ByteString.SockAddr
 
-  if flag(split-base)
-    build-depends:
-      base >= 3 && < 4.1,
-      bytestring < 1.0
-  else
-    build-depends:
-      base < 3
   build-depends:
-    network >= 2.1 && < 2.3
+    base       < 4.1,
+    bytestring < 1.0,
+    network    >= 2.1 && < 2.3
 
   extensions: CPP, ForeignFunctionInterface
   ghc-options: -Wall
