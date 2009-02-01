@@ -1,32 +1,40 @@
-name:               network-bytestring
-version:            0.1.2
-synopsis:           Fast, memory-efficient, low-level networking
-description:        Fast, memory-efficient, low-level socket functions that use
-                    'Data.ByteString's instead of 'String's.
-license:            BSD3
-license-file:       LICENSE
-author:             Johan Tibell
-maintainer:         johan.tibell@gmail.com
-category:           Network
-build-type:         Simple
-cabal-version:      >= 1.2
-homepage:           http://github.com/tibbe/network-bytestring
+name:           network-bytestring
+version:        0.1.2
+synopsis:       Fast, memory-efficient, low-level networking
+description:    Fast, memory-efficient, low-level socket functions that use
+                'Data.ByteString's instead of 'String's.
+license:        BSD3
+license-file:   LICENSE
+author:         Johan Tibell <johan.tibell@gmail.com>
+maintainer:     Johan Tibell <johan.tibell@gmail.com>
+category:       Network
+build-type:     Simple
+cabal-version:  >= 1.2
+homepage:       http://github.com/tibbe/network-bytestring
 
 flag split-base
 
 library
-  exposed-modules:  Network.Socket.ByteString
-                    Network.Socket.ByteString.Lazy
-  other-modules:    Network.Socket.ByteString.Internal
-                    Network.Socket.ByteString.IOVec
-                    Network.Socket.ByteString.MsgHdr
-                    Network.Socket.ByteString.SockAddr
+  exposed-modules:
+    Network.Socket.ByteString
+    Network.Socket.ByteString.Lazy
+  other-modules:
+    Network.Socket.ByteString.Internal
+    Network.Socket.ByteString.IOVec
+    Network.Socket.ByteString.MsgHdr
+    Network.Socket.ByteString.SockAddr
 
   if flag(split-base)
-    build-depends:  base >= 3 && < 4.1, bytestring
+    build-depends:
+      base >= 3 && < 4.1,
+      bytestring < 1.0
   else
-    build-depends:  base < 3
-  build-depends:    network >= 2.1 && < 2.3
+    build-depends:
+      base < 3
+  build-depends:
+    network >= 2.1 && < 2.3
 
-  extensions:       CPP, ForeignFunctionInterface
-  ghc-options:      -Wall -fwarn-tabs
+  extensions: CPP, ForeignFunctionInterface
+  ghc-options: -Wall
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
