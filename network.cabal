@@ -1,5 +1,5 @@
 name:           network
-version:        2.2.0.1
+version:        2.2.1
 license:        BSD3
 license-file:   LICENSE
 maintainer:     libraries@haskell.org
@@ -23,7 +23,8 @@ flag base4
 
 library
   exposed-modules:
-                Network Network.BSD Network.Socket Network.URI
+                Network Network.BSD Network.Socket.Internal Network.Socket
+                Network.URI
   build-depends: base < 5, parsec
 
   if flag(base4)
