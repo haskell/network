@@ -9,31 +9,28 @@
 -- Stability   : experimental
 -- Portability : POSIX, GHC
 --
--- A module for efficiently transmitting data over sockets. For
--- detailed documentation consult your favorite POSIX socket
--- reference. All functions communicate failures by converting the
--- error number to an 'System.IO.IOError'.
+-- A module for efficiently transmitting data over sockets. For detailed
+-- documentation, consult your favorite POSIX socket reference. All functions
+-- communicate failures by converting the error number to 'System.IO.IOError'.
 --
--- This module is intended to be imported together with
--- 'Network.Socket' like so:
+-- This module is made to be imported with 'Network.Socket' like so:
 --
 -- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
 -- > import Network.Socket.ByteString.Lazy
 -- > import Prelude hiding (getContents)
 --
--- Alternatively, you can import it qualified.
---
--- > import qualified Network.Socket.ByteString.Lazy as S
 module Network.Socket.ByteString.Lazy
-    (
-    -- * Send data on a socket
-      sendAll
-    , send
-    -- * Receive data on a socket
-    , recv
-    , recv_
-    , getContents
-    ) where
+  ( -- * Send messages on sockets
+    -- | Functions for sending messages on sockets
+    send
+  , sendAll
+
+    -- * Receive messages from sockets
+    -- | Functions for receiving messages from sockets
+  , getContents
+  , recv_
+  , recv
+  ) where
 
 import Control.Monad (liftM, when)
 import qualified Data.ByteString as S
@@ -52,14 +49,21 @@ import Network.Socket.ByteString.Internal
 import Prelude hiding (getContents)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
--- | Send a 'ByteString' using a single system call.
+-- -----------------------------------------------------------------------------
+-- Sending
+
+-- | Send a message on a socket. The socket must be in a connected state.
+-- Returns the number of bytes sent. Applications are responsible for ensuring
+-- that all data has been sent.
 --
--- Because a lazily generated 'ByteString' may be arbitrarily long,
--- this function caps the amount it will attempt to send at 4MB.  This
--- number is large (so it should not penalize performance on fast
--- networks), but not outrageously so (to avoid demanding lazily
--- computed data unnecessarily early).
-send :: Socket -> ByteString -> IO Int64
+-- Because a lazily generated 'ByteString' may be arbitrarily long, this
+-- function caps the amount it will attempt to send at 4MB. This number is
+-- large (so it should not penalize performance on fast networks), but not
+-- outrageously so (to avoid demanding lazily computed data unnecessarily
+-- early).
+send :: Socket      -- ^ Connected socket
+     -> ByteString  -- ^ Data to send
+     -> IO Int64    -- ^ Number of bytes sent
 send (MkSocket fd _ _ _ _) s = do
     let cs = L.toChunks s
         len = length cs
@@ -78,25 +82,32 @@ send (MkSocket fd _ _ _ _) s = do
                               (k + fromIntegral len) (niovs + 1)
                 | otherwise = f niovs
             loop _ _ _ niovs = f niovs
-    -- Limit the amount of data that we'll try to transmit with a
-    -- single system call.
+    -- maximum number of bytes to transmit in one system call
     sendLimit = 4194304 :: Int
 
--- | Send the entire contents of a string, possibly using multiple
--- 'send' system calls to do so.
-sendAll :: Socket -> ByteString -> IO ()
+-- | Send a message on a socket. The socket must be in a connected state. This
+-- function continues to send data until either all data has been sent or an
+-- error occurs. If there is an error, an exception is raised, and there is
+-- no way to determine how much data was sent.
+sendAll :: Socket      -- ^ Connected socket
+        -> ByteString  -- ^ Data to send
+        -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
   when (sent < L.length bs) $ sendAll sock (L.drop sent bs)
 
--- | Lazily receive 'ByteString' data, in chunks. Chunks are received
--- on demand; each chunk will be sized to reflect the amount of data
--- received by individual 'recv_' calls.
+-- -----------------------------------------------------------------------------
+-- Receiving
+
+-- | Receive a message from a socket. The socket must be in a connected state.
+-- Data is received on demand, in chunks; each chunk will be sized to reflect
+-- the amount of data received by individual 'recv_' calls.
 --
--- All remaining data from the socket is consumed. The receiving side
--- of the socket is shut down when there is no more data to be
--- received.  The socket is not shut down if an exception is thrown.
-getContents :: Socket -> IO ByteString
+-- All remaining data from the socket is consumed. When there is no more data
+-- to be received, the receiving side of the socket is shut down. If there is
+-- an error and an exception is thrown, the socket is not shut down.
+getContents :: Socket         -- ^ Connected socket
+            -> IO ByteString  -- ^ Data received
 getContents sock = loop
   where loop = unsafeInterleaveIO $ do
           s <- N.recv_ sock defaultChunkSize
@@ -104,21 +115,27 @@ getContents sock = loop
             then shutdown sock ShutdownReceive >> return Empty
             else Chunk s `liftM` loop
 
--- | Receive a message. The socket must be in a connected state so
--- that the intended recipient is known. Note that the length of the
--- received data can be smaller than specified maximum length. If the
--- message is longer than the specified length it may be discarded
--- depending on the type of socket. May block until a message arrives.
+-- | Receive a message from a socket. The socket must be in a connected state.
+-- This function may return fewer bytes than specified. If the message is
+-- longer than the specified length, it may be discarded depending on the type
+-- of socket. This function may block until a message arrives.
 --
--- When the end of the input stream is reached, returns an empty
--- 'ByteString'.
-recv_ :: Socket -> Int64 -> IO ByteString
+-- If there is no more data to be received, returns an empty 'ByteString'.
+recv_ :: Socket         -- ^ Connected socket
+      -> Int64          -- ^ Maximum number of bytes to receive
+      -> IO ByteString  -- ^ Data received
 recv_ sock nbytes = chunk `liftM` N.recv_ sock (fromIntegral nbytes)
     where chunk k | S.null k  = Empty
                   | otherwise = Chunk k Empty
 
--- | Receive a message from another socket. Similar to 'recv_', but
--- throws an EOF exception at end of input.
-recv :: Socket -> Int64 -> IO ByteString
+-- | Receive a message from a socket. The socket must be in a connected state.
+-- This function may return fewer bytes than specified. If the message is
+-- longer than the specified length, it may be discarded depending on the type
+-- of socket. This function may block until a message arrives.
+--
+-- If there is no more data to be received, throws an EOF exception.
+recv :: Socket         -- ^ Connected socket
+     -> Int64          -- ^ Maximum number of bytes to receive
+     -> IO ByteString  -- ^ Data received
 recv sock nbytes = chunk `liftM` N.recv sock (fromIntegral nbytes)
     where chunk k = Chunk k Empty

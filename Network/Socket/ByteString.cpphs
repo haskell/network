@@ -9,36 +9,31 @@
 -- Stability   : experimental
 -- Portability : portable
 --
--- A module for efficiently transmitting data over sockets. For
--- detailed documentation consult your favorite POSIX socket
--- reference. All functions communicate failures by converting the
--- error number to an 'System.IO.IOError'.
+-- A module for efficiently transmitting data over sockets. For detailed
+-- documentation, consult your favorite POSIX socket reference. All functions
+-- communicate failures by converting the error number to 'System.IO.IOError'.
 --
--- This module is intended to be imported together with 'Network.Socket' like so:
+-- This module is made to be imported with 'Network.Socket' like so:
 --
 -- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
 -- > import Network.Socket.ByteString
 --
 module Network.Socket.ByteString
-    (
-     -- * Send data to a socket
-     -- | Functions used to transmit a message to another socket.
-     send,
-     sendAll,
-     sendMany,
-     sendManyAll,
-     sendTo,
-     sendAllTo,
-     sendManyTo,
+  ( -- * Send messages on sockets
+    -- | Functions for sending messages on sockets
+    send
+  , sendAll
+  , sendMany
+  , sendTo
+  , sendAllTo
+  , sendManyTo
 
-     -- * Receive data from a socket
-     -- | Functions used to receive messages from a socket, and may be
-     -- used to receive data on a socket whether or not it is
-     -- connection-oriented.
-     recv,
-     recv_,
-     recvFrom
-    ) where
+    -- * Receive messages from sockets
+    -- | Functions for receiving messages from sockets
+  , recv
+  , recv_
+  , recvFrom
+  ) where
 
 import Control.Monad (liftM, when, zipWithM_)
 import qualified Data.ByteString as B
@@ -85,14 +80,12 @@ foreign import CALLCONV unsafe "recv"
 -- -----------------------------------------------------------------------------
 -- Sending
 
--- | Send data to the socket.  The socket must be connected to a
--- remote socket.  Returns the number of bytes sent.  Applications are
--- responsible for checking that all data has been sent; if only some
--- of the data was transmitted, the application needs to attempt
--- delivery of the remaining data.
-send :: Socket      -- ^ Connected socket.
-     -> ByteString  -- ^ Data to send.
-     -> IO Int      -- ^ Number of bytes sent.
+-- | Send a message on a socket. The socket must be in a connected state.
+-- Returns the number of bytes sent. Applications are responsible for ensuring
+-- that all data has been sent.
+send :: Socket      -- ^ Connected socket
+     -> ByteString  -- ^ Data to send
+     -> IO Int      -- ^ Number of bytes sent
 send (MkSocket s _family _stype _protocol _status) xs =
   unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
@@ -107,57 +100,52 @@ send (MkSocket s _family _stype _protocol _status) xs =
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
--- | Send data to the socket. The socket must be connected to a remote
--- socket.  Unlike 'send', this method continues to send data until
--- either all data has been sent or an error occurs. On error, an
--- exception is raised, and there is no way to determine how much
--- data, if any, was successfully sent.
-sendAll :: Socket      -- ^ Connected socket.
-        -> ByteString  -- ^ Data to send.
+-- | Send a message on a socket. The socket must be in a connected state. This
+-- function continues to send data until either all data has been sent or an
+-- error occurs. If there is an error, an exception is raised, and there is no
+-- way to determine how much data was sent.
+sendAll :: Socket      -- ^ Connected socket
+        -> ByteString  -- ^ Data to send
         -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
   when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
 
--- | Send a multi-part message. The given socket must be connected. The data is
--- sent as if the given strings have been concatenated.
-sendMany :: Socket        -- ^ Connected socket.
-         -> [ByteString]  -- ^ Data to send.
-         -> IO Int        -- ^ Number of bytes sent.
-sendMany (MkSocket fd _ _ _ _) cs =
-  liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-    throwErrnoIfMinus1Retry_repeatOnBlock "writev"
-      (threadWaitWrite (fromIntegral fd)) $
-      c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
+-- | Send a multi-part message on a socket. The socket must be in a connected
+-- state. The data is sent as if the parts have been concatenated. This
+-- function continues to send data until either all data has been sent or an
+-- error occurs. If there is an error, an exception is raised, and there is no
+-- way to determine how much data was sent.
+sendMany :: Socket        -- ^ Connected socket
+         -> [ByteString]  -- ^ Data to send
+         -> IO ()
+sendMany sock@(MkSocket fd _ _ _ _) cs = do
+  sent <- sendManyInner
+  when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
+  where
+    sendManyInner =
+      liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
+        throwErrnoIfMinus1Retry_repeatOnBlock "writev"
+          (threadWaitWrite (fromIntegral fd)) $
+          c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
 
--- | Send a multi-part message, ensuring that all the data is sent. The given
--- socket must be connected. The data is sent as if the given strings have been
--- concatenated.
-sendManyAll :: Socket        -- ^ Connected socket.
-            -> [ByteString]  -- ^ Data to send.
-            -> IO ()
-sendManyAll sock cs = do
-  sent <- sendMany sock cs
-  when (sent < totalLength cs) $ sendManyAll sock (remainingChunks sent cs)
-
--- | Send data to the socket. The recipient can be specified
--- explicitly, so the socket does not have to be (but can be) in a
--- connected state.  Returns the number of bytes sent.
-sendTo :: Socket      -- ^ (Possibly) connected socket.
-       -> ByteString  -- ^ Data to send.
-       -> SockAddr    -- ^ Recipient address.
-       -> IO Int      -- ^ Number of bytes sent.
+-- | Send a message on a socket. The recipient can be specified explicitly, so
+-- the socket need not be in a connected state. Returns the number of bytes
+-- sent. Applications are responsible for ensuring that all data has been sent.
+sendTo :: Socket      -- ^ Socket
+       -> ByteString  -- ^ Data to send
+       -> SockAddr    -- ^ Recipient address
+       -> IO Int      -- ^ Number of bytes sent
 sendTo sock xs addr =
   unsafeUseAsCStringLen xs $ \(str, len) ->
     sendBufTo sock str len addr
 
--- | Send data to the socket. The recipient is specified explicitly,
--- so the socket does not have to be (but can be) in a connected
--- state.  Unlike 'sendTo', this method continues to send data until
--- either all data has been sent or an error occurs. On error, an
--- exception is raised, and there is no way to determine how much
--- data, if any, was successfully sent.
-sendAllTo :: Socket      -- ^ (Possibly) connected socket
+-- | Send a message on a socket. The recipient can be specified explicitly, so
+-- the socket need not be in a connected state. This function continues to send
+-- data until either all data has been sent or an error occurs. If there is an
+-- error, an exception is raised, and there is no way to determine how much
+-- data was sent.
+sendAllTo :: Socket      -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> SockAddr    -- ^ Recipient address
           -> IO ()
@@ -166,10 +154,12 @@ sendAllTo sock xs addr = do
   when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
 
 -- | Send a multi-part message on a socket. The recipient can be specified
--- explicitly, so the socket does not have to be (but can be) in a connected
--- state. Continues to send data until either all data has been sent or an
--- error occurs. The data is sent as if the parts have been concatenated.
-sendManyTo :: Socket        -- ^ (Possibly) connected socket
+-- explicitly, so the socket need not be in a connected state. The data is sent
+-- as if the parts have been concatenated. This function continues to send data
+-- until either all data has been sent or an error occurs. If there is an
+-- error, an exception is raised, and there is no way to determine how much
+-- data was sent.
+sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
            -> IO ()
@@ -188,39 +178,41 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
 -- -----------------------------------------------------------------------------
 -- Receiving
 
--- | Receive a message from another socket. The socket must be in a
--- connected state so that the intended recipient is known. Note that
--- the length of the received data can be smaller than the specified
--- maximum length. If the message is longer than the specified length
--- it may be discarded depending on the type of socket. May block
--- until a message arrives.
+-- | Receive a message from a socket. The socket must be in a connected state.
+-- This function may return fewer bytes than specified. If the message is
+-- longer than the specified length, it may be discarded depending on the type
+-- of socket. This function may block until a message arrives.
 --
--- When the end of the input stream is reached, returns an empty
--- ByteString.
-recv_ :: Socket          -- ^ Connected socket.
-      -> Int             -- ^ Maximum number of bytes to receive.
-      -> IO ByteString   -- ^ Data received.
+-- Considering hardware and network realities, the maximum number of bytes to
+-- receive should be a small power of 2, e.g., 4096.
+--
+-- If there is no more data to be received, returns an empty 'ByteString'.
+recv_ :: Socket         -- ^ Connected socket
+      -> Int            -- ^ Maximum number of bytes to receive
+      -> IO ByteString  -- ^ Data received
 recv_ (MkSocket s _ _ _ _) nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise   = createAndTrim nbytes $ recvInner s nbytes
 
--- | Receive data from the socket. The return value is a 'ByteString'
--- representing the data received.  The maximum amount of data to be
--- received at once is specified by separately.
+-- | Receive a message from a socket. The socket must be in a connected state.
+-- This function may return fewer bytes than specified. If the message is
+-- longer than the specified length, it may be discarded depending on the type
+-- of socket. This function may block until a message arrives.
 --
--- Note: For best match with hardware and network realities, the
--- maximum number of bytes to receive should be a relatively small
--- power of 2, for example, 4096.
-recv :: Socket                  -- ^ Connected socket.
-     -> Int                     -- ^ Maximum number of bytes to receive.
-     -> IO ByteString           -- ^ Data received.
+-- Considering hardware and network realities, the maximum number of bytes to
+-- receive should be a small power of 2, e.g., 4096.
+--
+-- If there is no more data to be received, throws an EOF exception.
+recv :: Socket         -- ^ Connected socket
+     -> Int            -- ^ Maximum number of bytes to receive
+     -> IO ByteString  -- ^ Data received
 recv sock nbytes = do
   ret <- recv_ sock nbytes
   if B.null ret
     then ioError (mkEOFError "Network.Socket.ByteString.recv")
     else return ret
 
--- | This is a helper function which allows us to loop in the case of EINTR
+-- | A helper function that loops in the case of EINTR.
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr = do
     len <- liftM fromIntegral $
@@ -242,13 +234,13 @@ recvInner s nbytes ptr = do
            else throwErrno "Network.Socket.ByteString.recv"
       else return len
 
--- | Receive data from the socket. The return value is a pair @(bytes,
--- address)@ where @bytes@ is a 'ByteString' representing the data
--- received and @address@ is the 'SockAddr' of the socket sending the
--- data.
-recvFrom :: Socket                     -- ^ (Possibly) bound\/connected socket.
-         -> Int                        -- ^ Maximum number of bytes to receive.
-         -> IO (ByteString, SockAddr)  -- ^ Data received and sender address.
+-- | Receive a message from a socket. The socket need not be in a connected
+-- state. Returns @(bytes, address)@ where @bytes@ is a 'ByteString'
+-- representing the data received and @address@ is a 'SockAddr' representing
+-- the address of the sending socket.
+recvFrom :: Socket                     -- ^ Socket
+         -> Int                        -- ^ Maximum number of bytes to receive
+         -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
 recvFrom sock nbytes =
     allocaBytes nbytes $ \ptr -> do
       (len, sockaddr) <- recvBufFrom sock ptr nbytes

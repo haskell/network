@@ -1,14 +1,13 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 
 module Network.Socket.ByteString.Internal
-    (
-      mkInvalidRecvArgError
-    , mkEOFError
-    , throwErrnoIfMinus1Retry_mayBlock
-    , throwErrnoIfMinus1Retry_repeatOnBlock
-    , c_writev
-    , c_sendmsg
-    ) where
+  ( throwErrnoIfMinus1Retry_mayBlock
+  , throwErrnoIfMinus1Retry_repeatOnBlock
+  , mkInvalidRecvArgError
+  , mkEOFError
+  , c_writev
+  , c_sendmsg
+  ) where
 
 import Foreign.C.Error (eAGAIN, eINTR, eWOULDBLOCK, getErrno, throwErrno)
 import Foreign.C.Types (CInt)
