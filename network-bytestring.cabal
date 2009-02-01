@@ -1,9 +1,8 @@
 name:               network-bytestring
 version:            0.1.2
-synopsis:           Fast and memory efficient low-level networking
-description:        Faster and more memory efficient low-level socket
-                    functions using 'Data.ByteString's instead of
-                    'String's.
+synopsis:           Fast, memory-efficient, low-level networking
+description:        Fast, memory-efficient, low-level socket functions that use
+                    'Data.ByteString's instead of 'String's.
 license:            BSD3
 license-file:       LICENSE
 author:             Johan Tibell
@@ -14,7 +13,6 @@ cabal-version:      >= 1.2
 homepage:           http://github.com/tibbe/network-bytestring
 
 flag split-base
-  description: Chooce the new smaller, split-up base package.
 
 library
   exposed-modules:  Network.Socket.ByteString
