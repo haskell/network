@@ -1,10 +1,12 @@
 {-# LANGUAGE CPP #-}
 
+-- | Support module for the POSIX 'sendmsg' system call.
+module Network.Socket.ByteString.MsgHdr
+  ( MsgHdr(..)
+  ) where
+
 #include <sys/types.h>
 #include <sys/socket.h>
-
--- | Support module for the POSIX 'sendmsg' system call.
-module Network.Socket.ByteString.MsgHdr where
 
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Ptr (Ptr)
