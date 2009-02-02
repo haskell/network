@@ -31,10 +31,10 @@ throwErrnoIfMinus1Retry_mayBlock name on_block act = do
     res <- act
     if res == -1
         then do
-            err <- getErrno
-            if err == eINTR
+            errno <- getErrno
+            if errno == eINTR
                 then throwErrnoIfMinus1Retry_mayBlock name on_block act
-                else if err == eWOULDBLOCK || err == eAGAIN
+                else if errno == eWOULDBLOCK || errno == eAGAIN
                         then on_block
                         else throwErrno name
         else return res
