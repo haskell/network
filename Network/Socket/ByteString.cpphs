@@ -41,12 +41,12 @@ module Network.Socket.ByteString
     ) where
 
 import Control.Monad (liftM, when, zipWithM_)
-import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Word (Word8)
+import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.List (iterate)
+import Data.Word (Word8)
 import Foreign.C.Error (eINTR, getErrno, throwErrno)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Alloc (allocaBytes)
@@ -55,8 +55,8 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
-import Network.Socket.ByteString.Internal
 import Network.Socket.ByteString.IOVec
+import Network.Socket.ByteString.Internal
 import Network.Socket.ByteString.MsgHdr
 import Network.Socket.ByteString.SockAddr (pokeSockAddr, sizeOfSockAddr)
 
@@ -223,7 +223,7 @@ recv sock nbytes = do
 -- | This is a helper function which allows us to loop in the case of EINTR
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr = do
-    len <-
+    len <- liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
         readRawBufferPtr "Network.Socket.ByteString.recvLen" (fromIntegral s) True
                          (castPtr ptr) 0 (fromIntegral nbytes)
@@ -234,12 +234,13 @@ recvInner s nbytes ptr = do
 # endif
                         c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
-    case fromIntegral len of
-         (-1) -> do errno <- getErrno
-                    if errno == eINTR
-                       then recvInner s nbytes ptr
-                       else throwErrno "Network.Socket.ByteString.recv"
-         n -> return n
+    if len == -1
+      then do
+         errno <- getErrno
+         if errno == eINTR
+           then recvInner s nbytes ptr
+           else throwErrno "Network.Socket.ByteString.recv"
+      else return len
 
 -- | Receive data from the socket. The return value is a pair @(bytes,
 -- address)@ where @bytes@ is a 'ByteString' representing the data
