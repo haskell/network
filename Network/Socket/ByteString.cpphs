@@ -57,19 +57,19 @@ import Network.Socket.ByteString.SockAddr (pokeSockAddr, sizeOfSockAddr)
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-# if defined(mingw32_HOST_OS)
+#  if defined(mingw32_HOST_OS)
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
-# endif
+#  endif
 #else
 import System.IO.Unsafe (unsafePerformIO)
 #endif
 
 #ifndef CALLCONV
-# ifdef WITH_WINSOCK
-#  define CALLCONV stdcall
-# else
-#  define CALLCONV ccall
-# endif
+#  ifdef WITH_WINSOCK
+#    define CALLCONV stdcall
+#  else
+#    define CALLCONV ccall
+#  endif
 #endif
 
 foreign import CALLCONV unsafe "send"
@@ -90,13 +90,18 @@ send (MkSocket s _family _stype _protocol _status) xs =
   unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-      writeRawBufferPtr "Network.Socket.ByteString.send" (fromIntegral s) True str 0
-                (fromIntegral len)
+      writeRawBufferPtr
+        "Network.Socket.ByteString.send"
+        (fromIntegral s)
+        True
+        str
+        0
+        (fromIntegral len)
 #else
-# if !defined(__HUGS__)
-     throwErrnoIfMinus1Retry_repeatOnBlock "send"
+#  if !defined(__HUGS__)
+      throwErrnoIfMinus1Retry_repeatOnBlock "send"
         (threadWaitWrite (fromIntegral s)) $
-# endif
+#  endif
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
@@ -168,12 +173,17 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
   when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
     sendManyToInner =
-      withSockAddr addr                                                   $ \addrPtr            ->
-      withIOVec cs                                                        $ \(iovsPtr, iovsLen) ->
-      with (MsgHdr addrPtr 16 iovsPtr (fromIntegral iovsLen) nullPtr 0 0) $ \msgHdrPtr          ->
-        throwErrnoIfMinus1Retry_repeatOnBlock "sendmsg"
-          (threadWaitWrite (fromIntegral fd)) $
-          c_sendmsg (fromIntegral fd) msgHdrPtr 0
+      withSockAddr addr $ \addrPtr ->
+        withIOVec cs $ \(iovsPtr, iovsLen) -> do
+          let msgHdr = MsgHdr
+                addrPtr (fromIntegral sizeOfSockAddr)
+                iovsPtr (fromIntegral iovsLen)
+                nullPtr 0
+                0
+          with msgHdr $ \msgHdrPtr ->
+            throwErrnoIfMinus1Retry_repeatOnBlock "sendmsg"
+              (threadWaitWrite (fromIntegral fd)) $
+              c_sendmsg (fromIntegral fd) msgHdrPtr 0
 
 -- -----------------------------------------------------------------------------
 -- Receiving
@@ -191,8 +201,8 @@ recv_ :: Socket         -- ^ Connected socket
       -> Int            -- ^ Maximum number of bytes to receive
       -> IO ByteString  -- ^ Data received
 recv_ (MkSocket s _ _ _ _) nbytes
-    | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise   = createAndTrim nbytes $ recvInner s nbytes
+  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
+  | otherwise   = createAndTrim nbytes $ recvInner s nbytes
 
 -- | Receive a message from a socket. The socket must be in a connected state.
 -- This function may return fewer bytes than specified. If the message is
@@ -217,14 +227,19 @@ recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr = do
     len <- liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-        readRawBufferPtr "Network.Socket.ByteString.recvLen" (fromIntegral s) True
-                         (castPtr ptr) 0 (fromIntegral nbytes)
+           readRawBufferPtr
+             "Network.Socket.ByteString.recvLen"
+             (fromIntegral s)
+             True
+             (castPtr ptr)
+             0
+             (fromIntegral nbytes)
 #else
-# if !defined(__HUGS__)
-         throwErrnoIfMinus1Retry_repeatOnBlock "recv"
-                (threadWaitRead (fromIntegral s)) $
-# endif
-                        c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+#  if !defined(__HUGS__)
+           throwErrnoIfMinus1Retry_repeatOnBlock "recv"
+             (threadWaitRead (fromIntegral s)) $
+#  endif
+             c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
     if len == -1
       then do
@@ -242,10 +257,10 @@ recvFrom :: Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
          -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
 recvFrom sock nbytes =
-    allocaBytes nbytes $ \ptr -> do
-      (len, sockaddr) <- recvBufFrom sock ptr nbytes
-      str <- B.packCStringLen (ptr, len)
-      return (str, sockaddr)
+  allocaBytes nbytes $ \ptr -> do
+    (len, sockaddr) <- recvBufFrom sock ptr nbytes
+    str <- B.packCStringLen (ptr, len)
+    return (str, sockaddr)
 
 -- -----------------------------------------------------------------------------
 -- Not exported
