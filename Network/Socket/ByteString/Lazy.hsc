@@ -35,22 +35,22 @@ module Network.Socket.ByteString.Lazy
     , getContents
     ) where
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
-import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Int (Int64)
 import Foreign.Marshal.Array (allocaArray)
-import qualified Network.Socket.ByteString as N
-import Network.Socket.ByteString.Internal
-import Network.Socket.ByteString.IOVec
-import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
-import System.IO.Unsafe (unsafeInterleaveIO)
-import Prelude hiding (getContents)
-import GHC.Conc (threadWaitWrite)
-import Foreign.Storable (Storable(..))
 import Foreign.Ptr (plusPtr)
+import Foreign.Storable (Storable(..))
+import GHC.Conc (threadWaitWrite)
+import qualified Network.Socket.ByteString as N
+import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
+import Network.Socket.ByteString.IOVec
+import Network.Socket.ByteString.Internal
+import Prelude hiding (getContents)
+import System.IO.Unsafe (unsafeInterleaveIO)
 
 -- | Send a 'ByteString' using a single system call.
 --
@@ -88,9 +88,7 @@ send (MkSocket fd _ _ _ _) s = do
 sendAll :: Socket -> ByteString -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
-  if sent < L.length bs
-    then sendAll sock (L.drop sent bs)
-    else return ()
+  when (sent < L.length bs) $ sendAll sock (L.drop sent bs)
 
 -- | Lazily receive 'ByteString' data, in chunks. Chunks are received
 -- on demand; each chunk will be sized to reflect the amount of data
