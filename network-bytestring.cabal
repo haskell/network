@@ -8,7 +8,7 @@ license-file:   LICENSE
 author:         Johan Tibell <johan.tibell@gmail.com>
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
 category:       Network
-build-type:     Simple
+build-type:     Custom
 cabal-version:  >= 1.2
 homepage:       http://github.com/tibbe/network-bytestring
 
