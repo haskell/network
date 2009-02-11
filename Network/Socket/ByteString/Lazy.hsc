@@ -73,9 +73,8 @@ send (MkSocket fd _ _ _ _) s = do
       where loop (c:cs) q k !niovs
                 | k < sendLimit =
                     unsafeUseAsCStringLen c $ \(ptr,len) -> do
-                      let iov = IOVec ptr (fromIntegral len)
-                      poke q iov
-                      loop cs (q `plusPtr` sizeOf iov)
+                      poke q $ IOVec ptr (fromIntegral len)
+                      loop cs (q `plusPtr` sizeOf (undefined :: IOVec))
                               (k + fromIntegral len) (niovs + 1)
                 | otherwise = f niovs
             loop _ _ _ niovs = f niovs

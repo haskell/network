@@ -284,7 +284,7 @@ withIOVec cs f =
     f (aPtr, csLen)
   where
     csLen = length cs
-    ptrs = iterate (flip plusPtr sizeOfIOVec)
+    ptrs = iterate (`plusPtr` sizeOf (undefined :: IOVec))
     pokeIov ptr s =
       unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)

@@ -1,7 +1,6 @@
 -- | Support module for the POSIX writev system call.
 module Network.Socket.ByteString.IOVec
   ( IOVec(..)
-  , sizeOfIOVec
   ) where
 
 import Foreign.C.Types (CChar, CInt, CSize)
@@ -15,11 +14,8 @@ data IOVec = IOVec
     , iovLen  :: CSize
     }
 
-sizeOfIOVec :: Int
-sizeOfIOVec = (#const sizeof(struct iovec))
-
 instance Storable IOVec where
-  sizeOf _    = sizeOfIOVec
+  sizeOf _    = (#const sizeof(struct iovec))
   alignment _ = alignment (undefined :: CInt)
 
   peek p = do
