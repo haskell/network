@@ -3,8 +3,10 @@ module Main where
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Exception (bracket)
+import Control.Monad (when)
 import Network.Socket hiding (recv)
-import Test.HUnit (Test(..), (@=?), runTestTT)
+import System.Exit (exitFailure)
+import Test.HUnit (Counts(..), Test(..), (@=?), runTestTT)
 
 import qualified Data.ByteString.Char8 as C
 
@@ -64,5 +66,6 @@ mytest clientAct serverAct = do
 
 main :: IO ()
 main = withSocketsDo $ do
-  runTestTT $ TestList [TestLabel "testSendAll" testSendAll]
-  return ()
+  counts <- runTestTT $ TestList [TestLabel "testSendAll" testSendAll]
+  when (errors counts + failures counts > 0) exitFailure
+
