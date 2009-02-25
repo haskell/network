@@ -8,9 +8,7 @@ in the `network` library.
 Contributing
 ------------
 
-Make sure you read the Haskell style guide at:
-
-http://github.com/tibbe/haskell-style-guide
+Make sure you read the [Haskell Style Guide] [1].
 
 The existing code doesn't follow the style guide fully but you should
 follow it for all new code.
@@ -21,7 +19,7 @@ and `send-email`.  Step by step instructions:
 
 Clone the repository:
 
-    git clone github.com/tibbe/network-bytestring,
+    git clone http://github.com/tibbe/network-bytestring,
 
 Make your changes:
 
@@ -54,3 +52,5 @@ The maintainer is specified in the Cabal file.  The maintainer will
 review your changes and may ask you to make changes to them.  Make the
 changes to your local repository and use `git rebase` to massage them
 into nice, logical commits and resend the patches.
+
+[1]: http://github.com/tibbe/haskell-style-guide
