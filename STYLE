@@ -1,9 +1,0 @@
-* Comment every top level function (particularly exported functions),
-  and provide a type signature; use Haddock syntax in the comments.
-
-* Follow the coding style of the other modules.
-
-* Code should be compilable with -Wall -Werror. There should be no
-  warnings.
-
-* Tabs are illegal. Use spaces for indenting.
