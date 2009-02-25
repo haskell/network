@@ -1,16 +1,17 @@
-name:           network-bytestring
-version:        0.1.2
-synopsis:       Fast, memory-efficient, low-level networking
-description:    Fast, memory-efficient, low-level socket functions that use
-                'Data.ByteString's instead of 'String's.
-license:        BSD3
-license-file:   LICENSE
-author:         Johan Tibell <johan.tibell@gmail.com>
-maintainer:     Johan Tibell <johan.tibell@gmail.com>
-category:       Network
-build-type:     Custom
-cabal-version:  >= 1.2
-homepage:       http://github.com/tibbe/network-bytestring
+name:                network-bytestring
+version:             0.1.2
+synopsis:            Fast, memory-efficient, low-level networking
+description:         Fast, memory-efficient, low-level socket functions
+                     that use 'Data.ByteString's instead of 'String's.
+license:             BSD3
+license-file:        LICENSE
+author:              Johan Tibell <johan.tibell@gmail.com>
+maintainer:          Johan Tibell <johan.tibell@gmail.com>
+category:            Network
+build-type:          Custom
+cabal-version:       >= 1.2
+homepage:            http://github.com/tibbe/network-bytestring
+extra-source-files:  README
 
 library
   exposed-modules:
