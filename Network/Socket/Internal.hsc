@@ -4,7 +4,7 @@
 -- Module      :  Network.Socket.Internal
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/network/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
@@ -143,10 +143,10 @@ type FlowInfo = Word32
 type ScopeID = Word32
 #endif
 
-data SockAddr		-- C Names
+data SockAddr       -- C Names
   = SockAddrInet
-	PortNumber	-- sin_port  (network byte order)
-	HostAddress	-- sin_addr  (ditto)
+    PortNumber  -- sin_port  (network byte order)
+    HostAddress -- sin_addr  (ditto)
 #if defined(IPV6_SOCKET_SUPPORT)
   | SockAddrInet6
         PortNumber      -- sin6_port (network byte order)
@@ -183,13 +183,13 @@ sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withSockAddr addr f = do
- let sz = sizeOfSockAddr addr
- allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
+    let sz = sizeOfSockAddr addr
+    allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
 
 withNewSockAddr :: Family -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withNewSockAddr family f = do
- let sz = sizeOfSockAddrByFamily family
- allocaBytes sz $ \ptr -> f ptr sz
+    let sz = sizeOfSockAddrByFamily family
+    allocaBytes sz $ \ptr -> f ptr sz
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
@@ -201,39 +201,39 @@ pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrUnix path) = do
 #if defined(darwin_TARGET_OS)
-	zeroMemory p (#const sizeof(struct sockaddr_un))
+    zeroMemory p (#const sizeof(struct sockaddr_un))
 #endif
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
-	(#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
+    (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
 #endif
-	(#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
-	let pathC = map castCharToCChar path
-            poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
-	poker ((#ptr struct sockaddr_un, sun_path) p) pathC
+    (#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
+    let pathC = map castCharToCChar path
+        poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
+    poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_TARGET_OS)
-	zeroMemory p (#const sizeof(struct sockaddr_in))
+    zeroMemory p (#const sizeof(struct sockaddr_in))
 #endif
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
-	(#poke struct sockaddr_in, sin_len) p ((#const sizeof(struct sockaddr_in)) :: Word8)
+    (#poke struct sockaddr_in, sin_len) p ((#const sizeof(struct sockaddr_in)) :: Word8)
 #endif
-	(#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CSaFamily)
-	(#poke struct sockaddr_in, sin_port) p port
-	(#poke struct sockaddr_in, sin_addr) p addr
+    (#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CSaFamily)
+    (#poke struct sockaddr_in, sin_port) p port
+    (#poke struct sockaddr_in, sin_addr) p addr
 #if defined(IPV6_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
 #if defined(darwin_TARGET_OS)
-	zeroMemory p (#const sizeof(struct sockaddr_in6))
+    zeroMemory p (#const sizeof(struct sockaddr_in6))
 #endif
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
-	(#poke struct sockaddr_in6, sin6_len) p ((#const sizeof(struct sockaddr_in6)) :: Word8)
+    (#poke struct sockaddr_in6, sin6_len) p ((#const sizeof(struct sockaddr_in6)) :: Word8)
 #endif
-	(#poke struct sockaddr_in6, sin6_family) p ((#const AF_INET6) :: CSaFamily)
-	(#poke struct sockaddr_in6, sin6_port) p port
-	(#poke struct sockaddr_in6, sin6_flowinfo) p flow
-	(#poke struct sockaddr_in6, sin6_addr) p addr
-	(#poke struct sockaddr_in6, sin6_scope_id) p scope
+    (#poke struct sockaddr_in6, sin6_family) p ((#const AF_INET6) :: CSaFamily)
+    (#poke struct sockaddr_in6, sin6_port) p port
+    (#poke struct sockaddr_in6, sin6_flowinfo) p flow
+    (#poke struct sockaddr_in6, sin6_addr) p addr
+    (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
 
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
@@ -241,21 +241,21 @@ peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
   case family :: CSaFamily of
 #if defined(DOMAIN_SOCKET_SUPPORT)
-	(#const AF_UNIX) -> do
-		str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
-		return (SockAddrUnix str)
+    (#const AF_UNIX) -> do
+        str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
+        return (SockAddrUnix str)
 #endif
-	(#const AF_INET) -> do
-		addr <- (#peek struct sockaddr_in, sin_addr) p
-		port <- (#peek struct sockaddr_in, sin_port) p
-		return (SockAddrInet (PortNum port) addr)
+    (#const AF_INET) -> do
+        addr <- (#peek struct sockaddr_in, sin_addr) p
+        port <- (#peek struct sockaddr_in, sin_port) p
+        return (SockAddrInet (PortNum port) addr)
 #if defined(IPV6_SOCKET_SUPPORT)
-	(#const AF_INET6) -> do
-		port <- (#peek struct sockaddr_in6, sin6_port) p
-		flow <- (#peek struct sockaddr_in6, sin6_flowinfo) p
-		addr <- (#peek struct sockaddr_in6, sin6_addr) p
-		scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
-		return (SockAddrInet6 (PortNum port) flow addr scope)
+    (#const AF_INET6) -> do
+        port <- (#peek struct sockaddr_in6, sin6_port) p
+        flow <- (#peek struct sockaddr_in6, sin6_flowinfo) p
+        addr <- (#peek struct sockaddr_in6, sin6_addr) p
+        scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
+        return (SockAddrInet6 (PortNum port) flow addr scope)
 #endif
 
 -- helper function used to zero a structure
@@ -290,7 +290,7 @@ data Family
     | AF_CHAOS            -- mit CHAOS protocols
 #endif
 #ifdef AF_NS
-    | AF_NS               -- XEROX NS protocols 
+    | AF_NS               -- XEROX NS protocols
 #endif
 #ifdef AF_NBS
     | AF_NBS              -- nbs protocols
@@ -323,7 +323,7 @@ data Family
     | AF_APPLETALK        -- Apple Talk
 #endif
 #ifdef AF_ROUTE
-    | AF_ROUTE            -- Internal Routing Protocol 
+    | AF_ROUTE            -- Internal Routing Protocol
 #endif
 #ifdef AF_NETBIOS
     | AF_NETBIOS          -- NetBios-style addresses
@@ -341,7 +341,7 @@ data Family
     | AF_OSI              -- umbrella of all families used by OSI
 #endif
 #ifdef AF_NETMAN
-    | AF_NETMAN           -- DNA Network Management 
+    | AF_NETMAN           -- DNA Network Management
 #endif
 #ifdef AF_X25
     | AF_X25              -- CCITT X.25
@@ -359,25 +359,25 @@ data Family
     | AF_IPX              -- Novell Internet Protocol
 #endif
 #ifdef Pseudo_AF_XTP
-    | Pseudo_AF_XTP       -- eXpress Transfer Protocol (no AF) 
+    | Pseudo_AF_XTP       -- eXpress Transfer Protocol (no AF)
 #endif
 #ifdef AF_CTF
-    | AF_CTF              -- Common Trace Facility 
+    | AF_CTF              -- Common Trace Facility
 #endif
 #ifdef AF_WAN
-    | AF_WAN              -- Wide Area Network protocols 
+    | AF_WAN              -- Wide Area Network protocols
 #endif
 #ifdef AF_SDL
     | AF_SDL              -- SGI Data Link for DLPI
 #endif
 #ifdef AF_NETWARE
-    | AF_NETWARE    
+    | AF_NETWARE
 #endif
 #ifdef AF_NDD
-    | AF_NDD        
+    | AF_NDD
 #endif
 #ifdef AF_INTF
-    | AF_INTF             -- Debugging use only 
+    | AF_INTF             -- Debugging use only
 #endif
 #ifdef AF_COIP
     | AF_COIP             -- connection-oriented IP, aka ST II
@@ -410,16 +410,16 @@ data Family
     | Pseudo_AF_HDRCMPLT  -- Used by BPF to not rewrite hdrs in iface output
 #endif
 #ifdef AF_ENCAP
-    | AF_ENCAP 
+    | AF_ENCAP
 #endif
 #ifdef AF_LINK
-    | AF_LINK             -- Link layer interface 
+    | AF_LINK             -- Link layer interface
 #endif
 #ifdef AF_RAW
     | AF_RAW              -- Link layer interface
 #endif
 #ifdef AF_RIF
-    | AF_RIF              -- raw interface 
+    | AF_RIF              -- raw interface
 #endif
 #ifdef AF_NETROM
     | AF_NETROM           -- Amateur radio NetROM
