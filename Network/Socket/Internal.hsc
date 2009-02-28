@@ -27,7 +27,9 @@
 #endif
 
 module Network.Socket.Internal
-    ( HostAddress,
+    (
+      -- * Socket addresses
+      HostAddress,
 #if defined(IPV6_SOCKET_SUPPORT)
       HostAddress6,
       FlowInfo,
@@ -35,15 +37,16 @@ module Network.Socket.Internal
 #endif
       PortNumber(..),
       SockAddr(..),
-      Family(..),
 
-      -- * Marshalling
       peekSockAddr,
       pokeSockAddr,
       sizeOfSockAddr,
       sizeOfSockAddrByFamily,
       withSockAddr,
       withNewSockAddr,
+
+      -- * Protocol families
+      Family(..),
     ) where
 
 import Data.Bits ( (.|.), shiftL, shiftR )
@@ -119,7 +122,7 @@ instance Storable HostAddress6 where
 newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
 
 ------------------------------------------------------------------------
--- SockAddr
+-- Socket addresses
 
 -- The scheme used for addressing sockets is somewhat quirky. The
 -- calls in the BSD socket API that need to know the socket address
@@ -168,7 +171,9 @@ type CSaFamily = (#type u_char)
 type CSaFamily = (#type sa_family_t)
 #endif
 
--- size of struct sockaddr by SockAddr
+-- | Computes the storage requirements (in bytes) of the given
+-- 'SockAddr'.  This function differs from 'Foreign.Storable.sizeOf'
+-- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrUnix path) =
@@ -181,11 +186,26 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
 
+-- | Computes the storage requirements (in bytes) required for a
+-- 'SockAddr' with the given 'Family'.
+sizeOfSockAddrByFamily :: Family -> Int
+#if defined(DOMAIN_SOCKET_SUPPORT)
+sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
+#endif
+#if defined(IPV6_SOCKET_SUPPORT)
+sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
+#endif
+sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
+
+-- | Use a 'SockAddr' with a function requiring a pointer to a
+-- 'SockAddr' and the length of that 'SockAddr'.
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
 
+-- | Create a new 'SockAddr' for use with a function requiring a
+-- pointer to a 'SockAddr' and the length of that 'SockAddr'.
 withNewSockAddr :: Family -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withNewSockAddr family f = do
     let sz = sizeOfSockAddrByFamily family
@@ -197,6 +217,8 @@ withNewSockAddr family f = do
 
 -- Note that on Darwin, the sockaddr structure must be zeroed before
 -- use.
+
+-- | Write the given 'SockAddr' to the given memory location.
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrUnix path) = do
@@ -236,6 +258,7 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
 
+-- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
 peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
@@ -258,17 +281,11 @@ peekSockAddr p = do
         return (SockAddrInet6 (PortNum port) flow addr scope)
 #endif
 
--- helper function used to zero a structure
-zeroMemory :: Ptr a -> CSize -> IO ()
-zeroMemory dest nbytes = memset dest 0 (fromIntegral nbytes)
-foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
-
 ------------------------------------------------------------------------
+-- Protocol Families.
 
--- | Protocol Families.
---
--- This data type might have different constructors depending on what is
--- supported by the operating system.
+-- | This data type might have different constructors depending on
+-- what is supported by the operating system.
 data Family
     = AF_UNSPEC           -- unspecified
 #ifdef AF_UNIX
@@ -465,12 +482,11 @@ data Family
 #endif
       deriving (Eq, Ord, Read, Show)
 
--- | Size of 'SockAddr' by protocol family.
-sizeOfSockAddrByFamily :: Family -> Int
-#if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
-#endif
-#if defined(IPV6_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
-#endif
-sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
+------------------------------------------------------------------------
+-- Helper functions
+
+foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
+
+-- | Zero a structure.
+zeroMemory :: Ptr a -> CSize -> IO ()
+zeroMemory dest nbytes = memset dest 0 (fromIntegral nbytes)
