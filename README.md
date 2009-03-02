@@ -40,11 +40,11 @@ You might want to use `git rebase` to make sure your commits
 correspond to nice, logical commits.  Make sure whitespace only
 changes are kept in separate commits to ease reviewing.
 
-Prepare the patches for sending:
+Prepare the e.g. last five patches for sending:
 
-    git format-patch <revision>
+    git format-patch -5 -n
 
-Pick the revision number of the commit preceding your (first) commit.
+This will create one patch file per patch.
 
     git send-email --to <maintainer> <patch files>
 
