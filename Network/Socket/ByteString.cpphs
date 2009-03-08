@@ -31,7 +31,6 @@ module Network.Socket.ByteString
     -- * Receive messages from sockets
     -- | Functions for receiving messages from sockets
   , recv
-  , recv_
   , recvFrom
   ) where
 
@@ -196,31 +195,14 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
 -- Considering hardware and network realities, the maximum number of bytes to
 -- receive should be a small power of 2, e.g., 4096.
 --
--- If there is no more data to be received, returns an empty 'ByteString'.
-recv_ :: Socket         -- ^ Connected socket
-      -> Int            -- ^ Maximum number of bytes to receive
-      -> IO ByteString  -- ^ Data received
-recv_ (MkSocket s _ _ _ _) nbytes
-  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-  | otherwise   = createAndTrim nbytes $ recvInner s nbytes
-
--- | Receive a message from a socket. The socket must be in a connected state.
--- This function may return fewer bytes than specified. If the message is
--- longer than the specified length, it may be discarded depending on the type
--- of socket. This function may block until a message arrives.
---
--- Considering hardware and network realities, the maximum number of bytes to
--- receive should be a small power of 2, e.g., 4096.
---
--- If there is no more data to be received, throws an EOF exception.
+-- For TCP sockets, a zero length return value means the peer has
+-- closed its half side of the connection.
 recv :: Socket         -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
-recv sock nbytes = do
-  ret <- recv_ sock nbytes
-  if B.null ret
-    then ioError (mkEOFError "Network.Socket.ByteString.recv")
-    else return ret
+recv (MkSocket s _ _ _ _) nbytes
+    | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
+    | otherwise   = createAndTrim nbytes $ recvInner s nbytes
 
 -- | A helper function that loops in the case of EINTR.
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int

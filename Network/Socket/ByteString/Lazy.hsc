@@ -28,7 +28,6 @@ module Network.Socket.ByteString.Lazy
     -- * Receive messages from sockets
     -- | Functions for receiving messages from sockets
   , getContents
-  , recv_
   , recv
   ) where
 
@@ -110,7 +109,7 @@ getContents :: Socket         -- ^ Connected socket
             -> IO ByteString  -- ^ Data received
 getContents sock = loop where
   loop = unsafeInterleaveIO $ do
-    s <- N.recv_ sock defaultChunkSize
+    s <- N.recv sock defaultChunkSize
     if S.null s
       then shutdown sock ShutdownReceive >> return Empty
       else Chunk s `liftM` loop
@@ -121,22 +120,10 @@ getContents sock = loop where
 -- of socket. This function may block until a message arrives.
 --
 -- If there is no more data to be received, returns an empty 'ByteString'.
-recv_ :: Socket         -- ^ Connected socket
-      -> Int64          -- ^ Maximum number of bytes to receive
-      -> IO ByteString  -- ^ Data received
-recv_ sock nbytes = chunk `liftM` N.recv_ sock (fromIntegral nbytes) where
-  chunk k
-    | S.null k  = Empty
-    | otherwise = Chunk k Empty
-
--- | Receive a message from a socket. The socket must be in a connected state.
--- This function may return fewer bytes than specified. If the message is
--- longer than the specified length, it may be discarded depending on the type
--- of socket. This function may block until a message arrives.
---
--- If there is no more data to be received, throws an EOF exception.
 recv :: Socket         -- ^ Connected socket
      -> Int64          -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
 recv sock nbytes = chunk `liftM` N.recv sock (fromIntegral nbytes) where
-  chunk k = Chunk k Empty
+  chunk k
+    | S.null k  = Empty
+    | otherwise = Chunk k Empty
