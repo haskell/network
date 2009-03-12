@@ -12,11 +12,17 @@ module Network.Socket.ByteString.Internal
 import Foreign.C.Error (eAGAIN, eINTR, eWOULDBLOCK, getErrno, throwErrno)
 import Foreign.C.Types (CInt)
 import Foreign.Ptr (Ptr)
-import GHC.IOBase (IOErrorType(..), IOException(..))
 import Network.Socket.ByteString.IOVec (IOVec)
 import Network.Socket.ByteString.MsgHdr (MsgHdr)
 import Prelude hiding (repeat)
+import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.Posix.Types (CSsize)
+
+#ifdef __GLASGOW_HASKELL__
+import GHC.IOBase (IOErrorType(..))
+#elif __HUGS__
+import Hugs.Prelude (IOErrorType(..))
+#endif
 
 -----------------------------------------------------------------------------
 -- Support for thread-safe blocking operations in GHC.
@@ -84,16 +90,16 @@ throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
-mkInvalidRecvArgError loc = IOError Nothing
+mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 #ifdef __GLASGOW_HASKELL__
                                     InvalidArgument
 #else
                                     IllegalOperation
 #endif
-                                    loc "non-positive length" Nothing
+                                    loc Nothing Nothing) "non-positive length"
 
 mkEOFError :: String -> IOError
-mkEOFError loc = IOError Nothing EOF loc "end of file" Nothing
+mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize

@@ -21,12 +21,11 @@ library
     Network.Socket.ByteString.Internal
     Network.Socket.ByteString.IOVec
     Network.Socket.ByteString.MsgHdr
-    Network.Socket.ByteString.SockAddr
 
   build-depends:
     base       < 4.1,
     bytestring < 1.0,
-    network    >= 2.1 && < 2.3
+    network    >= 2.2.1 && < 2.3
 
   extensions: CPP, ForeignFunctionInterface
   ghc-options: -Wall

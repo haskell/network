@@ -8,10 +8,22 @@ in the `network` library.
 Contributing
 ------------
 
+### Prerequisites
+
+Install the latest version of the `network` package from the Darcs
+repository:
+
+    darcs get http://darcs.haskell.org/libraries/network
+    cd network
+    autoreconf
+    cabal install
+
 Make sure you read the [Haskell Style Guide] [1].
 
 The existing code doesn't follow the style guide fully but you should
 follow it for all new code.
+
+### Creating patches
 
 The preferred way of contributing changes to the project is to use Git
 and send the patches over email using the Git commands `format-patch`

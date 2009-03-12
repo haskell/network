@@ -49,10 +49,10 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+import Network.Socket.Internal (withSockAddr)
 import Network.Socket.ByteString.IOVec
 import Network.Socket.ByteString.Internal
 import Network.Socket.ByteString.MsgHdr
-import Network.Socket.ByteString.SockAddr (pokeSockAddr, sizeOfSockAddr)
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
@@ -172,10 +172,10 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
   when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
     sendManyToInner =
-      withSockAddr addr $ \addrPtr ->
+      withSockAddr addr $ \addrPtr addrSize ->
         withIOVec cs $ \(iovsPtr, iovsLen) -> do
           let msgHdr = MsgHdr
-                addrPtr (fromIntegral sizeOfSockAddr)
+                addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
                 nullPtr 0
                 0
@@ -277,12 +277,3 @@ withIOVec cs f =
     pokeIov ptr s =
       unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)
-
--- | @withSockAddr addr f@ executes the computation @f@, passing as argument a
--- pointer to a temporarily allocated block of memory into which @addr@ has
--- been marshalled.
-withSockAddr :: SockAddr -> (Ptr SockAddr -> IO a) -> IO a
-withSockAddr addr f =
-  allocaBytes sizeOfSockAddr $ \addrPtr -> do
-    pokeSockAddr addrPtr addr
-    f addrPtr
