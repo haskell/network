@@ -44,7 +44,6 @@ import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.List (iterate)
 import Data.Word (Word8)
-import Foreign.C.Error (eINTR, getErrno, throwErrno)
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Array (allocaArray)
@@ -208,27 +207,19 @@ recv (MkSocket s _ _ _ _) nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise   = createAndTrim nbytes $ recvInner s nbytes
 
--- | A helper function that loops in the case of EINTR.
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
-recvInner s nbytes ptr = do
-    len <- liftM fromIntegral $
+recvInner s nbytes ptr =
+    fmap fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-           readRawBufferPtr "Network.Socket.ByteString.recvLen" (fromIntegral s)
-               True (castPtr ptr) 0 (fromIntegral nbytes)
+        readRawBufferPtr "Network.Socket.ByteString.recv" (fromIntegral s)
+        True (castPtr ptr) 0 (fromIntegral nbytes)
 #else
 #  if !defined(__HUGS__)
-           throwErrnoIfMinus1Retry_repeatOnBlock "recv"
-               (threadWaitRead (fromIntegral s)) $
+        throwErrnoIfMinus1Retry_repeatOnBlock "recv"
+        (threadWaitRead (fromIntegral s)) $
 #  endif
-               c_recv s (castPtr ptr) (fromIntegral nbytes) 0
+        c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
-    if len == -1
-      then do
-         errno <- getErrno
-         if errno == eINTR
-           then recvInner s nbytes ptr
-           else throwErrno "Network.Socket.ByteString.recv"
-      else return len
 
 -- | Receive a message from a socket. The socket need not be in a connected
 -- state. Returns @(bytes, address)@ where @bytes@ is a 'ByteString'
