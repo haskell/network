@@ -112,8 +112,8 @@ sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
 sendAll sock bs = do
-  sent <- send sock bs
-  when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
+    sent <- send sock bs
+    when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
 
 -- | Send a multi-part message on a socket. The socket must be in a connected
 -- state. The data is sent as if the parts have been concatenated. This
@@ -124,14 +124,14 @@ sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 sendMany sock@(MkSocket fd _ _ _ _) cs = do
-  sent <- sendManyInner
-  when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
+    sent <- sendManyInner
+    when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
   where
     sendManyInner =
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-        throwErrnoIfMinus1Retry_repeatOnBlock "writev"
-          (threadWaitWrite (fromIntegral fd)) $
-          c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
+          throwErrnoIfMinus1Retry_repeatOnBlock "writev"
+              (threadWaitWrite (fromIntegral fd)) $
+              c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
 
 -- | Send a message on a socket. The recipient can be specified explicitly, so
 -- the socket need not be in a connected state. Returns the number of bytes
@@ -141,8 +141,7 @@ sendTo :: Socket      -- ^ Socket
        -> SockAddr    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
 sendTo sock xs addr =
-  unsafeUseAsCStringLen xs $ \(str, len) ->
-    sendBufTo sock str len addr
+    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo sock str len addr
 
 -- | Send a message on a socket. The recipient can be specified explicitly, so
 -- the socket need not be in a connected state. This function continues to send
@@ -154,8 +153,8 @@ sendAllTo :: Socket      -- ^ Socket
           -> SockAddr    -- ^ Recipient address
           -> IO ()
 sendAllTo sock xs addr = do
-  sent <- sendTo sock xs addr
-  when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
+    sent <- sendTo sock xs addr
+    when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
 
 -- | Send a multi-part message on a socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state. The data is sent
@@ -168,8 +167,8 @@ sendManyTo :: Socket        -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
-  sent <- liftM fromIntegral sendManyToInner
-  when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
+    sent <- liftM fromIntegral sendManyToInner
+    when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
@@ -209,19 +208,14 @@ recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr = do
     len <- liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-           readRawBufferPtr
-             "Network.Socket.ByteString.recvLen"
-             (fromIntegral s)
-             True
-             (castPtr ptr)
-             0
-             (fromIntegral nbytes)
+           readRawBufferPtr "Network.Socket.ByteString.recvLen" (fromIntegral s)
+               True (castPtr ptr) 0 (fromIntegral nbytes)
 #else
 #  if !defined(__HUGS__)
            throwErrnoIfMinus1Retry_repeatOnBlock "recv"
-             (threadWaitRead (fromIntegral s)) $
+               (threadWaitRead (fromIntegral s)) $
 #  endif
-             c_recv s (castPtr ptr) (fromIntegral nbytes) 0
+               c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
     if len == -1
       then do
@@ -239,10 +233,10 @@ recvFrom :: Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
          -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
 recvFrom sock nbytes =
-  allocaBytes nbytes $ \ptr -> do
-    (len, sockaddr) <- recvBufFrom sock ptr nbytes
-    str <- B.packCStringLen (ptr, len)
-    return (str, sockaddr)
+    allocaBytes nbytes $ \ptr -> do
+        (len, sockaddr) <- recvBufFrom sock ptr nbytes
+        str <- B.packCStringLen (ptr, len)
+        return (str, sockaddr)
 
 -- -----------------------------------------------------------------------------
 -- Not exported
@@ -267,12 +261,12 @@ totalLength = sum . map B.length
 -- 'IOVec' made from @cs@ and the number of pointers (@length cs@).
 withIOVec :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
 withIOVec cs f =
-  allocaArray csLen $ \aPtr -> do
-    zipWithM_ pokeIov (ptrs aPtr) cs
-    f (aPtr, csLen)
+    allocaArray csLen $ \aPtr -> do
+        zipWithM_ pokeIov (ptrs aPtr) cs
+        f (aPtr, csLen)
   where
     csLen = length cs
     ptrs = iterate (`plusPtr` sizeOf (undefined :: IOVec))
     pokeIov ptr s =
-      unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
+        unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)
