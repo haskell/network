@@ -85,7 +85,7 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send (MkSocket s _family _stype _protocol _status) xs =
+send (MkSocket s _ _ _ _) xs =
   unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
@@ -252,10 +252,9 @@ recvFrom sock nbytes =
 -- list of chunks remaining to be sent.
 remainingChunks :: Int -> [ByteString] -> [ByteString]
 remainingChunks _ [] = []
-remainingChunks i (x:xs) =
-  if i < len
-    then B.drop i x : xs
-    else remainingChunks (i - len) xs
+remainingChunks i (x:xs)
+    | i < len        = B.drop i x : xs
+    | otherwise      = let i' = i - len in i' `seq` remainingChunks i' xs
   where
     len = B.length x
 
