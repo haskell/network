@@ -59,8 +59,6 @@ import GHC.Conc (threadWaitRead, threadWaitWrite)
 #  if defined(mingw32_HOST_OS)
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 #  endif
-#else
-import System.IO.Unsafe (unsafePerformIO)
 #endif
 
 #ifndef CALLCONV
