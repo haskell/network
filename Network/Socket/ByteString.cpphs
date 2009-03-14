@@ -90,22 +90,17 @@ send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
 send (MkSocket s _ _ _ _) xs =
-  unsafeUseAsCStringLen xs $ \(str, len) ->
+    unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-      writeRawBufferPtr
-        "Network.Socket.ByteString.send"
-        (fromIntegral s)
-        True
-        str
-        0
-        (fromIntegral len)
+        writeRawBufferPtr "Network.Socket.ByteString.send"
+        (fromIntegral s) True str 0 (fromIntegral len)
 #else
 #  if !defined(__HUGS__)
-      throwErrnoIfMinus1Retry_repeatOnBlock "send"
+        throwErrnoIfMinus1Retry_repeatOnBlock "send"
         (threadWaitWrite (fromIntegral s)) $
 #  endif
-        c_send s str (fromIntegral len) 0{-flags-}
+        c_send s str (fromIntegral len) 0
 #endif
 
 -- | Send a message on a socket. The socket must be in a connected state. This
