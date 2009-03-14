@@ -11,7 +11,7 @@ category:            Network
 build-type:          Custom
 cabal-version:       >= 1.2
 homepage:            http://github.com/tibbe/network-bytestring
-extra-source-files:  README.md
+extra-source-files:  README.md, examples/*.hs
 
 library
   exposed-modules:
