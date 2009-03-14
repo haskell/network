@@ -4,7 +4,6 @@ module Network.Socket.ByteString.Internal
   ( throwErrnoIfMinus1Retry_mayBlock
   , throwErrnoIfMinus1Retry_repeatOnBlock
   , mkInvalidRecvArgError
-  , mkEOFError
   , c_writev
   , c_sendmsg
   ) where
@@ -97,9 +96,6 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     IllegalOperation
 #endif
                                     loc Nothing Nothing) "non-positive length"
-
-mkEOFError :: String -> IOError
-mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
