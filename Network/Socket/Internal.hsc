@@ -26,6 +26,14 @@
 #define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
+#if !defined(CALLCONV)
+#ifdef WITH_WINSOCK
+#define CALLCONV stdcall
+#else
+#define CALLCONV ccall
+#endif
+#endif
+
 module Network.Socket.Internal
     (
       -- * Socket addresses
@@ -47,16 +55,38 @@ module Network.Socket.Internal
 
       -- * Protocol families
       Family(..),
+
+      -- * Guards for socket operations that may fail
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+      throwSocketError,
+#endif
+      throwErrnoIfMinus1Retry_repeatOnBlock,
+      throwSocketErrorIfMinus1Retry,
+      throwSocketErrorIfMinus1_,
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+      c_getLastError,
+#endif
+
+      -- * Initialization
+      withSocketsDo,
     ) where
 
+import Control.Exception ( finally )
 import Data.Bits ( (.|.), shiftL, shiftR )
 import Data.Word ( Word8, Word16, Word32 )
+import Foreign.C.Error (throwErrnoIfMinus1Retry,
+                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
 import Foreign.C.String ( castCharToCChar, peekCString )
-import Foreign.C.Types ( CInt, CSize )
+import Foreign.C.Types ( CChar, CInt, CSize )
 import Foreign.Marshal.Alloc ( allocaBytes )
 import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
+import System.IO.Error ( ioeSetErrorString, mkIOError )
+
+#if __GLASGOW_HASKELL__
+import GHC.IOBase ( IOErrorType(..) )
+#endif
 
 ------------------------------------------------------------------------
 
@@ -481,6 +511,97 @@ data Family
     | AF_BLUETOOTH        -- bluetooth sockets
 #endif
       deriving (Eq, Ord, Read, Show)
+
+-- ---------------------------------------------------------------------
+-- Guards for socket operations that may fail
+
+throwErrnoIfMinus1Retry_repeatOnBlock :: Num a => String -> IO b -> IO a -> IO a
+throwSocketErrorIfMinus1Retry :: Num a => String -> IO a -> IO a
+throwSocketErrorIfMinus1_ :: Num a => String -> IO a -> IO ()
+
+#if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK_H) || defined(cygwin32_HOST_OS))
+
+throwErrnoIfMinus1Retry_repeatOnBlock name on_block act =
+    throwErrnoIfMinus1RetryMayBlock name act on_block
+
+throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+
+throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
+
+#else
+
+throwErrnoIfMinus1Retry_repeatOnBlock name _ act
+  = throwSocketErrorIfMinus1Retry name act
+
+throwSocketErrorIfMinus1_ name act = do
+  throwSocketErrorIfMinus1Retry name act
+  return ()
+
+# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+throwSocketErrorIfMinus1Retry name act = do
+  r <- act
+  if (r == -1)
+   then do
+    rc   <- c_getLastError
+    case rc of
+      10093 -> do -- WSANOTINITIALISED
+        withSocketsDo (return ())
+        r <- act
+        if (r == -1)
+           then (c_getLastError >>= throwSocketError name)
+           else return r
+      _ -> throwSocketError name rc
+   else return r
+
+throwSocketError :: String -> CInt -> IO a
+throwSocketError name rc = do
+    pstr <- c_getWSError rc
+    str  <- peekCString pstr
+#  if __GLASGOW_HASKELL__
+    ioError (ioeSetErrorString (mkIOError OtherError name Nothing Nothing) str)
+#  else
+    ioError (userError (name ++ ": socket error - " ++ str))
+#  endif
+
+foreign import CALLCONV unsafe "WSAGetLastError"
+  c_getLastError :: IO CInt
+
+foreign import ccall unsafe "getWSErrorDescr"
+  c_getWSError :: CInt -> IO (Ptr CChar)
+
+
+# else
+throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+# endif
+#endif /* __GLASGOW_HASKELL */
+
+-- ---------------------------------------------------------------------------
+-- WinSock support
+
+{-| On Windows operating systems, the networking subsystem has to be
+initialised using 'withSocketsDo' before any networking operations can
+be used.  eg.
+
+> main = withSocketsDo $ do {...}
+
+Although this is only strictly necessary on Windows platforms, it is
+harmless on other platforms, so for portability it is good practice to
+use it all the time.
+-}
+withSocketsDo :: IO a -> IO a
+#if !defined(WITH_WINSOCK)
+withSocketsDo x = x
+#else
+withSocketsDo act = do
+    x <- initWinSock
+    if x /= 0
+       then ioError (userError "Failed to initialise WinSock")
+       else act `finally` shutdownWinSock
+
+foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
+foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()
+
+#endif
 
 ------------------------------------------------------------------------
 -- Helper functions
