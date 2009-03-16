@@ -56,36 +56,39 @@ module Network.Socket.Internal
       -- * Protocol families
       Family(..),
 
-      -- * Guards for socket operations that may fail
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
-      throwSocketError,
-#endif
-      throwErrnoIfMinus1Retry_repeatOnBlock,
-      throwSocketErrorIfMinus1Retry,
-      throwSocketErrorIfMinus1_,
+      -- * Socket error functions
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
       c_getLastError,
 #endif
+      throwSocketError,
+
+      -- * Guards for socket operations that may fail
+      throwSocketErrorIfMinus1_,
+      throwSocketErrorIfMinus1Retry,
+      throwSocketErrorIfMinus1RetryMayBlock,
 
       -- * Initialization
       withSocketsDo,
     ) where
 
-import Control.Exception ( finally )
 import Data.Bits ( (.|.), shiftL, shiftR )
 import Data.Word ( Word8, Word16, Word32 )
-import Foreign.C.Error (throwErrnoIfMinus1Retry,
+import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
 import Foreign.C.String ( castCharToCChar, peekCString )
-import Foreign.C.Types ( CChar, CInt, CSize )
+import Foreign.C.Types ( CInt, CSize )
 import Foreign.Marshal.Alloc ( allocaBytes )
 import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
-import System.IO.Error ( ioeSetErrorString, mkIOError )
 
-#if __GLASGOW_HASKELL__
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+import Control.Exception ( finally )
+#  if __GLASGOW_HASKELL__
 import GHC.IOBase ( IOErrorType(..) )
+#  endif
+import Foreign.C.Types ( CChar )
+import System.IO.Error ( ioeSetErrorString, mkIOError )
 #endif
 
 ------------------------------------------------------------------------
@@ -515,22 +518,51 @@ data Family
 -- ---------------------------------------------------------------------
 -- Guards for socket operations that may fail
 
-throwErrnoIfMinus1Retry_repeatOnBlock :: Num a => String -> IO b -> IO a -> IO a
-throwSocketErrorIfMinus1Retry :: Num a => String -> IO a -> IO a
-throwSocketErrorIfMinus1_ :: Num a => String -> IO a -> IO ()
+-- | Throw an 'IOError' corresponding to the current socket error.
+throwSocketError :: String  -- ^ textual description of the error location
+                 -> IO a
+
+-- | Throw an 'IOError' corresponding to the current socket error if
+-- the IO action returns a result of @-1@.  Discards the result of the
+-- IO action after error handling.
+throwSocketErrorIfMinus1_
+    :: Num a => String  -- ^ textual description of the location
+    -> IO a             -- ^ the 'IO' operation to be executed
+    -> IO ()
+
+-- | Throw an 'IOError' corresponding to the current socket error if
+-- the IO action returns a result of @-1@, but retries in case of an
+-- interrupted operation.
+throwSocketErrorIfMinus1Retry
+    :: Num a => String  -- ^ textual description of the location
+    -> IO a             -- ^ the 'IO' operation to be executed
+    -> IO a
+
+-- | Throw an 'IOError' corresponding to the current socket error if
+-- the IO action returns a result of @-1@, but retries in case of an
+-- interrupted operation.  Checks for operations that would block and
+-- executes an alternative action before retrying in that case.
+throwSocketErrorIfMinus1RetryMayBlock
+    :: Num a => String  -- ^ textual description of the location
+    -> IO b             -- ^ action to execute before retrying if an
+                        --   immediate retry would block
+    -> IO a             -- ^ the 'IO' operation to be executed
+    -> IO a
 
 #if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK_H) || defined(cygwin32_HOST_OS))
 
-throwErrnoIfMinus1Retry_repeatOnBlock name on_block act =
+throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
 
 throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
 
 throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
 
+throwSocketError = throwErrno
+
 #else
 
-throwErrnoIfMinus1Retry_repeatOnBlock name _ act
+throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
 
 throwSocketErrorIfMinus1_ name act = do
@@ -548,13 +580,13 @@ throwSocketErrorIfMinus1Retry name act = do
         withSocketsDo (return ())
         r <- act
         if (r == -1)
-           then (c_getLastError >>= throwSocketError name)
+           then throwSocketError name
            else return r
-      _ -> throwSocketError name rc
+      _ -> throwSocketError name
    else return r
 
-throwSocketError :: String -> CInt -> IO a
-throwSocketError name rc = do
+throwSocketError name = do
+    rc <- c_getLastError
     pstr <- c_getWSError rc
     str  <- peekCString pstr
 #  if __GLASGOW_HASKELL__
@@ -572,6 +604,7 @@ foreign import ccall unsafe "getWSErrorDescr"
 
 # else
 throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+throwSocketError = throwErrno
 # endif
 #endif /* __GLASGOW_HASKELL */
 

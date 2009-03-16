@@ -517,7 +517,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 			 _ | err == eINTR       -> connectLoop
 			 _ | err == eINPROGRESS -> connectBlocked
 --			 _ | err == eAGAIN      -> connectBlocked
-			 otherwise              -> throwErrno "connect"
+			 otherwise              -> throwSocketError "connect"
 #else
 		       rc <- c_getLastError
 		       case rc of
@@ -525,9 +525,9 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 			   withSocketsDo (return ())
 	       	           r <- c_connect s p_addr (fromIntegral sz)
 	       	           if r == -1
-			    then (c_getLastError >>= throwSocketError "connect")
+			    then throwSocketError "connect"
 			    else return r
-			 _ -> throwSocketError "connect" rc
+			 _ -> throwSocketError "connect"
 #endif
        	       else return r
 
@@ -613,7 +613,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      with (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
 # if !defined(__HUGS__)
-                 throwErrnoIfMinus1Retry_repeatOnBlock "accept" 
+                 throwSocketErrorIfMinus1RetryMayBlock "accept"
 			(threadWaitRead (fromIntegral s))
 # endif
 			(c_accept s sockaddr ptr_len)
@@ -659,7 +659,7 @@ sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
 #if !defined(__HUGS__)
-     throwErrnoIfMinus1Retry_repeatOnBlock "sendTo"
+     throwSocketErrorIfMinus1RetryMayBlock "sendTo"
 	(threadWaitWrite (fromIntegral s)) $
 #endif
 	c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
@@ -683,7 +683,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
       	poke ptr_len (fromIntegral sz)
         len <- 
 #if !defined(__HUGS__)
-	       throwErrnoIfMinus1Retry_repeatOnBlock "recvFrom" 
+	       throwSocketErrorIfMinus1RetryMayBlock "recvFrom"
         	   (threadWaitRead (fromIntegral s)) $
 #endif
         	   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
@@ -718,7 +718,7 @@ send (MkSocket s _family _stype _protocol status) xs = do
 		(fromIntegral len)
 #else
 # if !defined(__HUGS__)
-     throwErrnoIfMinus1Retry_repeatOnBlock "send"
+     throwSocketErrorIfMinus1RetryMayBlock "send"
 	(threadWaitWrite (fromIntegral s)) $
 # endif
 	c_send s str (fromIntegral len) 0{-flags-} 
@@ -738,7 +738,7 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
 		 (fromIntegral nbytes)
 #else
 # if !defined(__HUGS__)
-	       throwErrnoIfMinus1Retry_repeatOnBlock "recv" 
+	       throwSocketErrorIfMinus1RetryMayBlock "recv"
         	   (threadWaitRead (fromIntegral s)) $
 # endif
         	   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
@@ -990,7 +990,7 @@ sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
   let fd = fdSocket sock
 #if !defined(__HUGS__)
-  throwErrnoIfMinus1Retry_repeatOnBlock "sendFd"
+  throwSocketErrorIfMinus1RetryMayBlock "sendFd"
      (threadWaitWrite (fromIntegral fd)) $
      c_sendFd fd outfd
 #else
@@ -1006,7 +1006,7 @@ recvFd sock = do
   let fd = fdSocket sock
   theFd <- 
 #if !defined(__HUGS__)
-    throwErrnoIfMinus1Retry_repeatOnBlock "recvFd" 
+    throwSocketErrorIfMinus1RetryMayBlock "recvFd" 
         (threadWaitRead (fromIntegral fd)) $
 #endif
          c_recvFd fd
@@ -1024,7 +1024,7 @@ sendAncillary sock level ty flags datum len = do
   let fd = fdSocket sock
   _ <-
 #if !defined(__HUGS__)
-   throwErrnoIfMinus1Retry_repeatOnBlock "sendAncillary"
+   throwSocketErrorIfMinus1RetryMayBlock "sendAncillary"
      (threadWaitWrite (fromIntegral fd)) $
 #endif
      c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
@@ -1044,7 +1044,7 @@ recvAncillary sock flags len = do
       poke ptr_len (fromIntegral len)
       _ <- 
 #if !defined(__HUGS__)
-        throwErrnoIfMinus1Retry_repeatOnBlock "recvAncillary" 
+        throwSocketErrorIfMinus1RetryMayBlock "recvAncillary" 
             (threadWaitRead (fromIntegral fd)) $
 #endif
 	    c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
