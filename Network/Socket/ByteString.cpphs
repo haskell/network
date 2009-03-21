@@ -51,7 +51,8 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
-import Network.Socket.Internal (withSockAddr)
+import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock,
+                                withSockAddr)
 import Network.Socket.ByteString.IOVec
 import Network.Socket.ByteString.Internal
 import Network.Socket.ByteString.MsgHdr
@@ -97,7 +98,7 @@ send (MkSocket s _ _ _ _) xs =
         (fromIntegral s) True str 0 (fromIntegral len)
 #else
 #  if !defined(__HUGS__)
-        throwErrnoIfMinus1Retry_repeatOnBlock "send"
+        throwSocketErrorIfMinus1RetryMayBlock "send"
         (threadWaitWrite (fromIntegral s)) $
 #  endif
         c_send s str (fromIntegral len) 0
@@ -128,7 +129,7 @@ sendMany sock@(MkSocket fd _ _ _ _) cs = do
   where
     sendManyInner =
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-          throwErrnoIfMinus1Retry_repeatOnBlock "writev"
+          throwSocketErrorIfMinus1RetryMayBlock "writev"
               (threadWaitWrite (fromIntegral fd)) $
               c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
 
@@ -178,7 +179,7 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
                 nullPtr 0
                 0
           with msgHdr $ \msgHdrPtr ->
-            throwErrnoIfMinus1Retry_repeatOnBlock "sendmsg"
+            throwSocketErrorIfMinus1RetryMayBlock "sendmsg"
               (threadWaitWrite (fromIntegral fd)) $
               c_sendmsg (fromIntegral fd) msgHdrPtr 0
 
@@ -210,7 +211,7 @@ recvInner s nbytes ptr =
         True (castPtr ptr) 0 (fromIntegral nbytes)
 #else
 #  if !defined(__HUGS__)
-        throwErrnoIfMinus1Retry_repeatOnBlock "recv"
+        throwSocketErrorIfMinus1RetryMayBlock "recv"
         (threadWaitRead (fromIntegral s)) $
 #  endif
         c_recv s (castPtr ptr) (fromIntegral nbytes) 0

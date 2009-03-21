@@ -43,6 +43,7 @@ import Foreign.Storable (Storable(..))
 import GHC.Conc (threadWaitWrite)
 import qualified Network.Socket.ByteString as N
 import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
+import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock)
 import Network.Socket.ByteString.IOVec
 import Network.Socket.ByteString.Internal
 import Prelude hiding (getContents)
@@ -68,7 +69,7 @@ send (MkSocket fd _ _ _ _) s = do
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
-      throwErrnoIfMinus1Retry_repeatOnBlock "writev"
+      throwSocketErrorIfMinus1RetryMayBlock "writev"
         (threadWaitWrite (fromIntegral fd)) $
         c_writev (fromIntegral fd) ptr niovs
   where
