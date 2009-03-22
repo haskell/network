@@ -31,7 +31,7 @@ and `send-email`.  Step by step instructions:
 
 Clone the repository:
 
-    git clone http://github.com/tibbe/network-bytestring,
+    git clone http://github.com/tibbe/network-bytestring
 
 Make your changes:
 
