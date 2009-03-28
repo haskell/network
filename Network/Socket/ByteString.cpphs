@@ -23,10 +23,14 @@ module Network.Socket.ByteString
     -- | Functions for sending messages on sockets
     send
   , sendAll
+#if !defined(mingw32_HOST_OS)
   , sendMany
+#endif
   , sendTo
   , sendAllTo
+#if !defined(mingw32_HOST_OS)
   , sendManyTo
+#endif
 
     -- * Receive messages from sockets
     -- | Functions for receiving messages from sockets
@@ -37,29 +41,36 @@ module Network.Socket.ByteString
     -- $example
   ) where
 
-import Control.Monad (liftM, when, zipWithM_)
+import Control.Monad (liftM, when)
 import qualified Data.ByteString as B
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Data.List (iterate)
 import Data.Word (Word8)
-import Foreign.C.Types (CChar, CInt, CSize)
+import Foreign.C.Types (CInt)
 import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Ptr (Ptr, castPtr)
+import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+import Network.Socket.ByteString.Internal
+
+#if !defined(mingw32_HOST_OS)
+import Control.Monad (zipWithM_)
+import Data.List (iterate)
+import Foreign.C.Types (CChar, CSize)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
+import Foreign.Ptr (nullPtr, plusPtr)
 import Foreign.Storable (Storable(..))
-import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+import Network.Socket.ByteString.IOVec
+import Network.Socket.ByteString.MsgHdr
 import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock,
                                 withSockAddr)
-import Network.Socket.ByteString.IOVec
-import Network.Socket.ByteString.Internal
-import Network.Socket.ByteString.MsgHdr
 
-#if defined(__GLASGOW_HASKELL__)
+#  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-#  if defined(mingw32_HOST_OS)
+#  endif
+#else
+#  if defined(__GLASGOW_HASKELL__)
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 #  endif
 #endif
@@ -76,10 +87,12 @@ import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 #  endif
 #endif
 
+#if !defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Sending
@@ -115,11 +128,12 @@ sendAll sock bs = do
     sent <- send sock bs
     when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
 
+#if !defined(mingw32_HOST_OS)
 -- | Send a multi-part message on a socket. The socket must be in a connected
 -- state. The data is sent as if the parts have been concatenated. This
 -- function continues to send data until either all data has been sent or an
 -- error occurs. If there is an error, an exception is raised, and there is no
--- way to determine how much data was sent.
+-- way to determine how much data was sent.  *Unix only*.
 sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
@@ -132,6 +146,7 @@ sendMany sock@(MkSocket fd _ _ _ _) cs = do
           throwSocketErrorIfMinus1RetryMayBlock "writev"
               (threadWaitWrite (fromIntegral fd)) $
               c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
+#endif
 
 -- | Send a message on a socket. The recipient can be specified explicitly, so
 -- the socket need not be in a connected state. Returns the number of bytes
@@ -156,12 +171,13 @@ sendAllTo sock xs addr = do
     sent <- sendTo sock xs addr
     when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
 
+#if !defined(mingw32_HOST_OS)
 -- | Send a multi-part message on a socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state. The data is sent
 -- as if the parts have been concatenated. This function continues to send data
 -- until either all data has been sent or an error occurs. If there is an
 -- error, an exception is raised, and there is no way to determine how much
--- data was sent.
+-- data was sent.  *Unix only*.
 sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
@@ -182,6 +198,7 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
             throwSocketErrorIfMinus1RetryMayBlock "sendmsg"
               (threadWaitWrite (fromIntegral fd)) $
               c_sendmsg (fromIntegral fd) msgHdrPtr 0
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Receiving
@@ -233,6 +250,7 @@ recvFrom sock nbytes =
 -- -----------------------------------------------------------------------------
 -- Not exported
 
+#if !defined(mingw32_HOST_OS)
 -- | Suppose we try to transmit a list of chunks @cs@ via a gathering write
 -- operation and find that @n@ bytes were sent. Then @remainingChunks n cs@ is
 -- list of chunks remaining to be sent.
@@ -251,6 +269,7 @@ totalLength = sum . map B.length
 -- | @withIOVec cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
 -- 'IOVec' made from @cs@ and the number of pointers (@length cs@).
+-- *Unix only*.
 withIOVec :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
 withIOVec cs f =
     allocaArray csLen $ \aPtr -> do
@@ -262,6 +281,7 @@ withIOVec cs f =
     pokeIov ptr s =
         unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)
+#endif
 
 -- ---------------------------------------------------------------------
 -- Example

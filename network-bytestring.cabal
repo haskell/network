@@ -19,8 +19,11 @@ library
     Network.Socket.ByteString.Lazy
   other-modules:
     Network.Socket.ByteString.Internal
-    Network.Socket.ByteString.IOVec
-    Network.Socket.ByteString.MsgHdr
+
+  if !os(windows)
+    other-modules:
+      Network.Socket.ByteString.IOVec
+      Network.Socket.ByteString.MsgHdr
 
   build-depends:
     base       < 4.1,

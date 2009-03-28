@@ -2,16 +2,22 @@
 
 module Network.Socket.ByteString.Internal
   ( mkInvalidRecvArgError
+#if !defined(mingw32_HOST_OS)
   , c_writev
   , c_sendmsg
+#endif
   ) where
 
+import System.IO.Error (ioeSetErrorString, mkIOError)
+
+#if !defined(mingw32_HOST_OS)
 import Foreign.C.Types (CInt)
 import Foreign.Ptr (Ptr)
+import System.Posix.Types (CSsize)
+
 import Network.Socket.ByteString.IOVec (IOVec)
 import Network.Socket.ByteString.MsgHdr (MsgHdr)
-import System.IO.Error (ioeSetErrorString, mkIOError)
-import System.Posix.Types (CSsize)
+#endif
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.IOBase (IOErrorType(..))
@@ -28,8 +34,10 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 #endif
                                     loc Nothing Nothing) "non-positive length"
 
+#if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
 
 foreign import ccall unsafe "sendmsg"
   c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize
+#endif

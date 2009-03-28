@@ -20,35 +20,46 @@
 -- > import Prelude hiding (getContents)
 --
 module Network.Socket.ByteString.Lazy
-  ( -- * Send messages on sockets
+  (
+#if !defined(mingw32_HOST_OS)
+    -- * Send messages on sockets
     -- | Functions for sending messages on sockets
-    send
-  , sendAll
+    send,
+    sendAll,
+#endif
 
     -- * Receive messages from sockets
     -- | Functions for receiving messages from sockets
-  , getContents
-  , recv
+    getContents,
+    recv
   ) where
 
-import Control.Monad (liftM, when)
+import Control.Monad (liftM)
 import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
-import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Int (Int64)
-import Foreign.Marshal.Array (allocaArray)
-import Foreign.Ptr (plusPtr)
-import Foreign.Storable (Storable(..))
-import GHC.Conc (threadWaitWrite)
 import qualified Network.Socket.ByteString as N
 import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
-import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock)
-import Network.Socket.ByteString.IOVec
-import Network.Socket.ByteString.Internal
 import Prelude hiding (getContents)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
+#if !defined(mingw32_HOST_OS)
+import Control.Monad (when)
+import qualified Data.ByteString.Lazy as L
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Foreign.Marshal.Array (allocaArray)
+import Foreign.Ptr (plusPtr)
+import Foreign.Storable (Storable(..))
+import Network.Socket.ByteString.IOVec
+import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock)
+import Network.Socket.ByteString.Internal
+
+#  if defined(__GLASGOW_HASKELL__)
+import GHC.Conc (threadWaitWrite)
+#  endif
+#endif
+
+#if !defined(mingw32_HOST_OS)
 -- -----------------------------------------------------------------------------
 -- Sending
 
@@ -69,8 +80,10 @@ send (MkSocket fd _ _ _ _) s = do
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
+#  if !defined(__HUGS__)
       throwSocketErrorIfMinus1RetryMayBlock "writev"
         (threadWaitWrite (fromIntegral fd)) $
+#  endif
         c_writev (fromIntegral fd) ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
@@ -95,6 +108,7 @@ sendAll :: Socket      -- ^ Connected socket
 sendAll sock bs = do
   sent <- send sock bs
   when (sent < L.length bs) $ sendAll sock (L.drop sent bs)
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Receiving
