@@ -71,7 +71,7 @@ import GHC.Conc (threadWaitWrite)
 -- function caps the amount it will attempt to send at 4MB. This number is
 -- large (so it should not penalize performance on fast networks), but not
 -- outrageously so (to avoid demanding lazily computed data unnecessarily
--- early).
+-- early).  /Unix only/.
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
@@ -101,7 +101,7 @@ send (MkSocket fd _ _ _ _) s = do
 -- | Send a message on a socket. The socket must be in a connected state. This
 -- function continues to send data until either all data has been sent or an
 -- error occurs. If there is an error, an exception is raised, and there is
--- no way to determine how much data was sent.
+-- no way to determine how much data was sent.  /Unix only/.
 sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()

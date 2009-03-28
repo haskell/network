@@ -133,7 +133,7 @@ sendAll sock bs = do
 -- state. The data is sent as if the parts have been concatenated. This
 -- function continues to send data until either all data has been sent or an
 -- error occurs. If there is an error, an exception is raised, and there is no
--- way to determine how much data was sent.  *Unix only*.
+-- way to determine how much data was sent.  /Unix only/.
 sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
@@ -177,7 +177,7 @@ sendAllTo sock xs addr = do
 -- as if the parts have been concatenated. This function continues to send data
 -- until either all data has been sent or an error occurs. If there is an
 -- error, an exception is raised, and there is no way to determine how much
--- data was sent.  *Unix only*.
+-- data was sent.  /Unix only/.
 sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
@@ -269,7 +269,7 @@ totalLength = sum . map B.length
 -- | @withIOVec cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
 -- 'IOVec' made from @cs@ and the number of pointers (@length cs@).
--- *Unix only*.
+-- /Unix only/.
 withIOVec :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
 withIOVec cs f =
     allocaArray csLen $ \aPtr -> do
