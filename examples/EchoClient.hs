@@ -6,7 +6,7 @@ import Network.Socket hiding (recv)
 import Network.Socket.ByteString
 
 main :: IO ()
-main =
+main = withSocketsDo $
     do addrinfos <- getAddrInfo Nothing (Just "") (Just "3000")
        let serveraddr = head addrinfos
        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
