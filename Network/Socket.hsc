@@ -275,6 +275,7 @@ data SocketStatus
   | Listening		-- listen
   | Connected		-- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
+  | Closed		-- sClose 
     deriving (Eq, Show)
 
 INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
@@ -1621,10 +1622,13 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Closes a socket
 sClose	 :: Socket -> IO ()
 sClose (MkSocket s _ _ _ socketStatus) = do 
- withMVar socketStatus $ \ status ->
-   if status == ConvertedToHandle
-	then ioError (userError ("sClose: converted to a Handle, use hClose instead"))
-	else c_close s; return ()
+ modifyMVar_ socketStatus $ \ status ->
+   case status of
+     ConvertedToHandle ->
+	 ioError (userError ("sClose: converted to a Handle, use hClose instead"))
+     Closed ->
+	 return status
+     _ -> c_close s >> return Closed
 
 -- -----------------------------------------------------------------------------
 
