@@ -9,7 +9,7 @@ author:              Johan Tibell <johan.tibell@gmail.com>
 maintainer:          Johan Tibell <johan.tibell@gmail.com>
 category:            Network
 build-type:          Custom
-cabal-version:       >= 1.2
+cabal-version:       >= 1.6
 homepage:            http://github.com/tibbe/network-bytestring
 extra-source-files:  README.md, examples/*.hs, tests/*.hs
 
