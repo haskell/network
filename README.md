@@ -10,14 +10,6 @@ Contributing
 
 ### Prerequisites
 
-Install the latest version of the `network` package from the Darcs
-repository:
-
-    darcs get http://darcs.haskell.org/libraries/network
-    cd network
-    autoreconf
-    cabal install
-
 Make sure you read the [Haskell Style Guide] [1].
 
 The existing code doesn't follow the style guide fully but you should
