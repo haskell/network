@@ -9,9 +9,11 @@
 -- Stability   : experimental
 -- Portability : POSIX, GHC
 --
--- A module for efficiently transmitting data over sockets. For detailed
--- documentation, consult your favorite POSIX socket reference. All functions
--- communicate failures by converting the error number to 'System.IO.IOError'.
+-- This module provides access to the BSD /socket/ interface.  This
+-- module is generally more efficient than the 'String' based network
+-- functions in 'Network.Socket'.  For detailed documentation, consult
+-- your favorite POSIX socket reference. All functions communicate
+-- failures by converting the error number to 'System.IO.IOError'.
 --
 -- This module is made to be imported with 'Network.Socket' like so:
 --
@@ -22,14 +24,12 @@
 module Network.Socket.ByteString.Lazy
   (
 #if !defined(mingw32_HOST_OS)
-    -- * Send messages on sockets
-    -- | Functions for sending messages on sockets
+    -- * Send data to a socket
     send,
     sendAll,
 #endif
 
-    -- * Receive messages from sockets
-    -- | Functions for receiving messages from sockets
+    -- * Receive data from a socket
     getContents,
     recv
   ) where
@@ -63,15 +63,15 @@ import GHC.Conc (threadWaitWrite)
 -- -----------------------------------------------------------------------------
 -- Sending
 
--- | Send a message on a socket. The socket must be in a connected state.
--- Returns the number of bytes sent. Applications are responsible for ensuring
--- that all data has been sent.
+-- | Send data to the socket. The socket must be in a connected state.
+-- Returns the number of bytes sent. Applications are responsible for
+-- ensuring that all data has been sent.
 --
--- Because a lazily generated 'ByteString' may be arbitrarily long, this
--- function caps the amount it will attempt to send at 4MB. This number is
--- large (so it should not penalize performance on fast networks), but not
--- outrageously so (to avoid demanding lazily computed data unnecessarily
--- early).  /Unix only/.
+-- Because a lazily generated 'ByteString' may be arbitrarily long,
+-- this function caps the amount it will attempt to send at 4MB.  This
+-- number is large (so it should not penalize performance on fast
+-- networks), but not outrageously so (to avoid demanding lazily
+-- computed data unnecessarily early).  /Unix only/.
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
@@ -98,10 +98,11 @@ send (MkSocket fd _ _ _ _) s = do
     -- maximum number of bytes to transmit in one system call
     sendLimit = 4194304 :: Int
 
--- | Send a message on a socket. The socket must be in a connected state. This
--- function continues to send data until either all data has been sent or an
--- error occurs. If there is an error, an exception is raised, and there is
--- no way to determine how much data was sent.  /Unix only/.
+-- | Send data to the socket.  The socket must be in a connected
+-- state. This function continues to send data until either all data
+-- has been sent or an error occurs.  If there is an error, an
+-- exception is raised, and there is no way to determine how much data
+-- was sent.  /Unix only/.
 sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
@@ -113,13 +114,15 @@ sendAll sock bs = do
 -- -----------------------------------------------------------------------------
 -- Receiving
 
--- | Receive a message from a socket. The socket must be in a connected state.
--- Data is received on demand, in chunks; each chunk will be sized to reflect
--- the amount of data received by individual 'recv_' calls.
+-- | Receive data from the socket.  The socket must be in a connected
+-- state.  Data is received on demand, in chunks; each chunk will be
+-- sized to reflect the amount of data received by individual 'recv'
+-- calls.
 --
--- All remaining data from the socket is consumed. When there is no more data
--- to be received, the receiving side of the socket is shut down. If there is
--- an error and an exception is thrown, the socket is not shut down.
+-- All remaining data from the socket is consumed.  When there is no
+-- more data to be received, the receiving side of the socket is shut
+-- down.  If there is an error and an exception is thrown, the socket
+-- is not shut down.
 getContents :: Socket         -- ^ Connected socket
             -> IO ByteString  -- ^ Data received
 getContents sock = loop where
@@ -129,10 +132,11 @@ getContents sock = loop where
       then shutdown sock ShutdownReceive >> return Empty
       else Chunk s `liftM` loop
 
--- | Receive a message from a socket. The socket must be in a connected state.
--- This function may return fewer bytes than specified. If the message is
--- longer than the specified length, it may be discarded depending on the type
--- of socket. This function may block until a message arrives.
+-- | Receive data from the socket.  The socket must be in a connected
+-- state.  This function may return fewer bytes than specified.  If
+-- the received data is longer than the specified length, it may be
+-- discarded depending on the type of socket.  This function may block
+-- until a message arrives.
 --
 -- If there is no more data to be received, returns an empty 'ByteString'.
 recv :: Socket         -- ^ Connected socket
