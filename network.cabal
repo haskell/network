@@ -4,7 +4,7 @@ license:        BSD3
 license-file:   LICENSE
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
 synopsis:       Networking-related facilities
-category:       System
+category:       Network
 build-type:     Configure
 cabal-version:  >=1.2
 extra-tmp-files:
