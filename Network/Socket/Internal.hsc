@@ -530,6 +530,8 @@ throwSocketErrorIfMinus1_
     -> IO a             -- ^ the 'IO' operation to be executed
     -> IO ()
 
+{-# SPECIALIZE throwSocketErrorIfMinus1_ :: String -> IO CInt -> IO () #-}
+
 -- | Throw an 'IOError' corresponding to the current socket error if
 -- the IO action returns a result of @-1@, but retries in case of an
 -- interrupted operation.
@@ -537,6 +539,8 @@ throwSocketErrorIfMinus1Retry
     :: Num a => String  -- ^ textual description of the location
     -> IO a             -- ^ the 'IO' operation to be executed
     -> IO a
+
+{-# SPECIALIZE throwSocketErrorIfMinus1Retry :: String -> IO CInt -> IO CInt #-}
 
 -- | Throw an 'IOError' corresponding to the current socket error if
 -- the IO action returns a result of @-1@, but retries in case of an
@@ -548,6 +552,9 @@ throwSocketErrorIfMinus1RetryMayBlock
                         --   immediate retry would block
     -> IO a             -- ^ the 'IO' operation to be executed
     -> IO a
+
+{-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
+        :: String -> IO b -> IO CInt -> IO CInt #-}
 
 #if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK_H) || defined(cygwin32_HOST_OS))
 
