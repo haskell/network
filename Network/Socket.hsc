@@ -1729,8 +1729,10 @@ packBits mapping xs = foldl' pack 0 mapping
 
 unpackBits :: Bits b => [(a, b)] -> b -> [a]
 
-unpackBits [] 0    = []
-unpackBits [] r    = error ("unpackBits: unhandled bits set: " ++ show r)
+-- Be permissive and ignore unknown bit values. At least on OS X,
+-- getaddrinfo returns an ai_flags field with bits set that have no
+-- entry in <netdb.h>.
+unpackBits [] _    = []
 unpackBits ((k,v):xs) r
     | r .&. v /= 0 = k : unpackBits xs (r .&. complement v)
     | otherwise    = unpackBits xs r
