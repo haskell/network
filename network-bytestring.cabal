@@ -1,5 +1,5 @@
 name:                network-bytestring
-version:             0.1.2
+version:             0.1.2.1
 synopsis:            Fast, memory-efficient, low-level networking
 description:         Fast, memory-efficient, low-level socket functions
                      that use 'Data.ByteString's instead of 'String's.
@@ -28,7 +28,7 @@ library
   build-depends:
     base       < 4.1,
     bytestring < 1.0,
-    network    >= 2.2.1 && < 2.3
+    network    >= 2.2.1.1 && < 2.3
 
   extensions: CPP, ForeignFunctionInterface
   ghc-options: -Wall
