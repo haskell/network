@@ -18,7 +18,7 @@
 
 #include "HsNet.h"
 
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 #define WITH_WINSOCK  1
 #endif
 
@@ -57,7 +57,7 @@ module Network.Socket.Internal
       Family(..),
 
       -- * Socket error functions
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
       c_getLastError,
 #endif
       throwSocketError,
@@ -82,7 +82,7 @@ import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
 
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 import Control.Exception ( finally )
 #  if __GLASGOW_HASKELL__
 import GHC.IOBase ( IOErrorType(..) )
@@ -556,7 +556,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK_H) || defined(cygwin32_HOST_OS))
+#if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK2_H) || defined(cygwin32_HOST_OS))
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -576,7 +576,7 @@ throwSocketErrorIfMinus1_ name act = do
   throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+# if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)
