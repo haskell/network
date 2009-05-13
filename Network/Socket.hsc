@@ -1988,11 +1988,11 @@ followAddrInfo ptr_ai | ptr_ai == nullPtr = return []
     as <- (#peek struct addrinfo, ai_next) ptr_ai >>= followAddrInfo
     return (a:as)
 
-foreign import ccall safe "getaddrinfo"
+foreign import ccall safe "hsnet_getaddrinfo"
     c_getaddrinfo :: CString -> CString -> Ptr AddrInfo -> Ptr (Ptr AddrInfo)
                   -> IO CInt
 
-foreign import ccall safe "freeaddrinfo"
+foreign import ccall safe "hsnet_freeaddrinfo"
     c_freeaddrinfo :: Ptr AddrInfo -> IO ()
 
 gai_strerror :: CInt -> IO String

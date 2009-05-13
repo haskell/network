@@ -9,6 +9,10 @@
 
 #include "HsNetworkConfig.h"
 
+#ifdef NEED_WINVER
+# define WINVER 0x0501
+#endif
+
 /* ultra-evil... */
 #undef PACKAGE_BUGREPORT
 #undef PACKAGE_NAME
@@ -32,8 +36,14 @@
 # undef IPV6_SOCKET_SUPPORT
 #endif
 
-#if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
-#include <winsock.h>
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+#include <winsock2.h>
+# ifdef HAVE_WS2TCPIP_H
+#  include <ws2tcpip.h>
+# endif
+# ifdef HAVE_WSPIAPI_H
+#  include <wspiapi.h>
+# endif
 
 extern void  shutdownWinSock();
 extern int   initWinSock ();
@@ -118,11 +128,11 @@ recvAncillary(int  sock,
 	      void** pData,
 	      int* pLen);
 
-#endif /* HAVE_WINSOCK_H && !__CYGWIN */
+#endif /* HAVE_WINSOCK2_H && !__CYGWIN */
 
 INLINE char *
 my_inet_ntoa(
-#if defined(HAVE_WINSOCK_H)
+#if defined(HAVE_WINSOCK2_H)
              u_long addr
 #elif defined(HAVE_IN_ADDR_T)
              in_addr_t addr
@@ -137,5 +147,20 @@ my_inet_ntoa(
     a.s_addr = addr;
     return inet_ntoa(a);
 }
+
+#ifdef HAVE_GETADDRINFO
+INLINE int
+hsnet_getaddrinfo(const char *hostname, const char *servname,
+		  const struct addrinfo *hints, struct addrinfo **res)
+{
+    return getaddrinfo(hostname, servname, hints, res);
+}
+
+INLINE void
+hsnet_freeaddrinfo(struct addrinfo *ai)
+{
+    freeaddrinfo(ai);
+}
+#endif
 
 #endif
