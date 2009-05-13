@@ -352,7 +352,11 @@ instance Storable HostEntry where
         return (HostEntry {
                         hostName       = h_name,
                         hostAliases    = h_aliases,
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+                        hostFamily     = unpackFamily (fromIntegral (h_addrtype :: CShort)),
+#else
                         hostFamily     = unpackFamily h_addrtype,
+#endif
                         hostAddresses  = h_addr_list
                 })
 

@@ -1502,6 +1502,8 @@ unpackFamily f = case f of
 #ifdef AF_BLUETOOTH
 	(#const AF_BLUETOOTH) -> AF_BLUETOOTH
 #endif
+	unknown -> error ("Network.Socket.unpackFamily: unknown address " ++
+                          "family " ++ show unknown)
 
 -- Socket Types.
 
