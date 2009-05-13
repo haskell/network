@@ -1997,10 +1997,14 @@ foreign import ccall safe "hsnet_freeaddrinfo"
 
 gai_strerror :: CInt -> IO String
 
+#ifdef HAVE_GAI_STRERROR
 gai_strerror n = c_gai_strerror n >>= peekCString
 
 foreign import ccall safe "gai_strerror"
     c_gai_strerror :: CInt -> IO CString
+#else
+gai_strerror n = return ("error " ++ show n)
+#endif
 
 withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
 withCStringIf False _ f = f 0 nullPtr

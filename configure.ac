@@ -119,6 +119,9 @@ if test "x$ac_have_getaddrinfo" = x; then
   fi
 fi
 
+dnl Missing under mingw, sigh.
+AC_CHECK_FUNCS(gai_strerror)
+
 dnl -------------------------------------------------------
 dnl * test for AI_* flags that not all implementations have
 dnl -------------------------------------------------------
