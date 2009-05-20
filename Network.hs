@@ -62,6 +62,7 @@ module Network (
        ) where
 
 import Control.Monad (liftM)
+import Data.Maybe (fromJust)
 import Network.BSD
 import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
 import qualified Network.Socket as Socket ( accept )
@@ -269,7 +270,14 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
 #if defined(IPV6_SOCKET_SUPPORT)
 accept sock@(MkSocket _ AF_INET6 _ _ _) = do
  (sock', addr) <- Socket.accept sock
- (Just peer, _) <- getNameInfo [] True False addr
+ peer <- catchIO ((fromJust . fst) `liftM` getNameInfo [] True False addr) $
+         \_ -> case addr of
+                 SockAddrInet  _   a   -> inet_ntoa a
+                 SockAddrInet6 _ _ a _ -> return (show a)
+# if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+                 SockAddrUnix      a   -> return a
+# endif
+                 a                     -> return (show a)
  handle <- socketToHandle sock' ReadWriteMode
  let port = case addr of
               SockAddrInet  p _     -> p
