@@ -271,7 +271,10 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
  (sock', addr) <- Socket.accept sock
  (Just peer, _) <- getNameInfo [] True False addr
  handle <- socketToHandle sock' ReadWriteMode
- (PortNumber port) <- socketPort sock'
+ let port = case addr of
+              SockAddrInet  p _     -> p
+              SockAddrInet6 p _ _ _ -> p
+              _                     -> -1
  return (handle, peer, port)
 #endif
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
