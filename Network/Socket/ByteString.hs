@@ -24,14 +24,10 @@ module Network.Socket.ByteString
   ( -- * Send data to a socket
     send
   , sendAll
-#if !defined(mingw32_HOST_OS)
   , sendMany
-#endif
   , sendTo
   , sendAllTo
-#if !defined(mingw32_HOST_OS)
   , sendManyTo
-#endif
 
     -- * Receive data from a socket
   , recv
@@ -129,16 +125,16 @@ sendAll sock bs = do
     sent <- send sock bs
     when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
 
-#if !defined(mingw32_HOST_OS)
 -- | Send data to the socket.  The socket must be in a connected
 -- state.  The data is sent as if the parts have been concatenated.
 -- This function continues to send data until either all data has been
 -- sent or an error occurs.  On error, an exception is raised, and
 -- there is no way to determine how much data, if any, was
--- successfully sent.  /Unix only/.
+-- successfully sent.
 sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
+#if !defined(mingw32_HOST_OS)
 sendMany sock@(MkSocket fd _ _ _ _) cs = do
     sent <- sendManyInner
     when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
@@ -148,6 +144,8 @@ sendMany sock@(MkSocket fd _ _ _ _) cs = do
           throwSocketErrorIfMinus1RetryMayBlock "writev"
               (threadWaitWrite (fromIntegral fd)) $
               c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
+#else
+sendMany sock = sendAll sock . B.concat
 #endif
 
 -- | Send data to the socket.  The recipient can be specified
@@ -175,18 +173,17 @@ sendAllTo sock xs addr = do
     sent <- sendTo sock xs addr
     when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
 
-#if !defined(mingw32_HOST_OS)
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  The
 -- data is sent as if the parts have been concatenated.  This function
 -- continues to send data until either all data has been sent or an
 -- error occurs.  On error, an exception is raised, and there is no
 -- way to determine how much data, if any, was successfully sent.
--- /Unix only/.
 sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
            -> IO ()
+#if !defined(mingw32_HOST_OS)
 sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
     sent <- liftM fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
@@ -203,6 +200,8 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
             throwSocketErrorIfMinus1RetryMayBlock "sendmsg"
               (threadWaitWrite (fromIntegral fd)) $
               c_sendmsg (fromIntegral fd) msgHdrPtr 0
+#else
+sendManyTo sock cs = sendAllTo sock (B.concat cs)
 #endif
 
 -- -----------------------------------------------------------------------------
