@@ -85,11 +85,11 @@ testOverFlowRecvFrom = TestCase $ connectedTest client server
 -- finished before the client closes the connection.
 connectedTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
 connectedTest clientAct serverAct = do
-  barrier <- newEmptyMVar
-  forkIO $ server barrier
-  client barrier
-    where
-      server barrier = do
+    barrier <- newEmptyMVar
+    forkIO $ server barrier
+    client barrier
+  where
+    server barrier = do
         addr <- inet_addr "127.0.0.1"
         bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
             setSocketOption sock ReuseAddr 1
@@ -100,11 +100,11 @@ connectedTest clientAct serverAct = do
             serverAct clientSock
             sClose clientSock
             putMVar barrier ()
-        where
-          -- | Signal to the client that it can proceed.
-          serverReady = putMVar barrier ()
+      where
+        -- | Signal to the client that it can proceed.
+        serverReady = putMVar barrier ()
 
-      client barrier = do
+    client barrier = do
         takeMVar barrier
         bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
             addr <- inet_addr "127.0.0.1"
@@ -117,8 +117,8 @@ connectedTest clientAct serverAct = do
 
 main :: IO ()
 main = withSocketsDo $ do
-  counts <- runTestTT tests
-  when (errors counts + failures counts > 0) exitFailure
+    counts <- runTestTT tests
+    when (errors counts + failures counts > 0) exitFailure
 
 tests :: Test
 tests = TestList [TestLabel "testSendAll" testSendAll,
