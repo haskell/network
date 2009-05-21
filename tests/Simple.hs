@@ -4,10 +4,11 @@ import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Exception (bracket)
 import Control.Monad (when)
-import Network.Socket hiding (recv)
+import Network.Socket hiding (recv, recvFrom, send)
 import System.Exit (exitFailure)
 import Test.HUnit (Counts(..), Test(..), (@=?), runTestTT)
 
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 
 import Network.Socket.ByteString
@@ -18,16 +19,63 @@ port = fromIntegral (3000 :: Int)
 ------------------------------------------------------------------------
 -- Tests
 
+testMsg :: S.ByteString
+testMsg = C.pack "This is a test message."
+
 testSendAll :: Test
 testSendAll = TestCase $ connectedTest client server
     where
-      server sock = do
-        bytes <- recv sock 1024
-        testData @=? bytes
+      server sock = do msg <- recv sock 1024
+                       testMsg @=? msg
 
-      client sock = sendAll sock testData
+      client sock = sendAll sock testMsg
 
-      testData = C.pack "test"
+testSendMany :: Test
+testSendMany = TestCase $ connectedTest client server
+    where
+      server sock = do msg <- recv sock 1024
+                       S.append seg1 seg2 @=? msg
+
+      client sock = sendMany sock [seg1, seg2]
+
+      seg1 = C.pack "This is a "
+      seg2 = C.pack "test message."
+
+testRecv :: Test
+testRecv = TestCase $ connectedTest client server
+    where
+      server sock = do msg <- recv sock 1024
+                       testMsg @=? msg
+
+      client sock = send sock testMsg
+
+testOverFlowRecv :: Test
+testOverFlowRecv = TestCase $ connectedTest client server
+    where
+      server sock = do seg1 <- recv sock (S.length testMsg - 3)
+                       seg2 <- recv sock 1024
+                       let msg = S.append seg1 seg2
+                       testMsg @=? msg
+
+      client sock = send sock testMsg
+
+testRecvFrom :: Test
+testRecvFrom = TestCase $ connectedTest client server
+    where
+      server sock = do (msg, _) <- recvFrom sock 1024
+                       testMsg @=? msg
+
+      client sock = send sock testMsg
+
+testOverFlowRecvFrom :: Test
+testOverFlowRecvFrom = TestCase $ connectedTest client server
+    where
+      server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
+                       (seg2, _) <- recvFrom sock 1024
+                       let msg = S.append seg1 seg2
+                       testMsg @=? msg
+
+      client sock = send sock testMsg
 
 ------------------------------------------------------------------------
 -- Test helpers
@@ -64,8 +112,18 @@ connectedTest clientAct serverAct = do
             clientAct sock
             takeMVar barrier
 
+------------------------------------------------------------------------
+-- Test harness
+
 main :: IO ()
 main = withSocketsDo $ do
-  counts <- runTestTT $ TestList [TestLabel "testSendAll" testSendAll]
+  counts <- runTestTT tests
   when (errors counts + failures counts > 0) exitFailure
 
+tests :: Test
+tests = TestList [TestLabel "testSendAll" testSendAll,
+                  TestLabel "testSendMany" testSendMany,
+                  TestLabel "testRecv" testRecv,
+                  TestLabel "testOverFlowRecv" testOverFlowRecv,
+                  TestLabel "testRecvFrom" testRecvFrom,
+                  TestLabel "testOverFlowRecvFrom" testOverFlowRecvFrom]
