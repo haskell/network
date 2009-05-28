@@ -30,6 +30,10 @@ library
     bytestring < 1.0,
     network    >= 2.2.1.1 && < 2.3
 
+  if !os(windows)
+    build-depends:
+      unix >= 2 && < 3
+
   extensions: CPP, ForeignFunctionInterface
   ghc-options: -Wall
   if impl(ghc >= 6.8)
