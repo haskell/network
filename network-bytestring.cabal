@@ -38,3 +38,7 @@ library
   ghc-options: -Wall
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
+
+source-repository head
+  type:     git
+  location: git://github.com/tibbe/network-bytestring.git
