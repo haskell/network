@@ -35,24 +35,26 @@ module Network.Socket.ByteString.Lazy
   ) where
 
 import Control.Monad (liftM)
-import qualified Data.ByteString as S
 import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
 import Data.Int (Int64)
-import qualified Network.Socket.ByteString as N
 import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
 import Prelude hiding (getContents)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
+import qualified Data.ByteString as S
+import qualified Network.Socket.ByteString as N
+
 #if !defined(mingw32_HOST_OS)
 import Control.Monad (when)
-import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(..))
-import Network.Socket.ByteString.IOVec
+import Network.Socket.ByteString.IOVec (IOVec(IOVec))
+import Network.Socket.ByteString.Internal (c_writev)
 import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock)
-import Network.Socket.ByteString.Internal
+
+import qualified Data.ByteString.Lazy as L
 
 #  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitWrite)

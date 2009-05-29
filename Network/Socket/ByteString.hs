@@ -42,7 +42,6 @@ module Network.Socket.ByteString
   ) where
 
 import Control.Monad (liftM, when)
-import qualified Data.ByteString as B
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
@@ -51,6 +50,9 @@ import Foreign.C.Types (CInt)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr)
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+
+import qualified Data.ByteString as B
+
 import Network.Socket.ByteString.Internal
 
 #if !defined(mingw32_HOST_OS)
@@ -62,14 +64,15 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (nullPtr, plusPtr)
 import Foreign.Storable (Storable(..))
-import Network.Socket.ByteString.IOVec
-import Network.Socket.ByteString.MsgHdr
 import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock,
                                 withSockAddr)
 import System.IO (Handle)
 import System.Posix.Files (fileSize, getFdStatus)
-import System.Posix.IO (OpenMode (ReadOnly), closeFd, defaultFileFlags, openFd)
+import System.Posix.IO (OpenMode(ReadOnly), closeFd, defaultFileFlags, openFd)
 import System.Posix.Types (COff, CSsize)
+
+import Network.Socket.ByteString.IOVec (IOVec(..))
+import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
 #  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
@@ -373,14 +376,16 @@ withIOVec cs f =
 -- > -- Echo server program
 -- > module Main where
 -- >
--- > import Control.Monad
--- > import qualified Data.ByteString as S
+-- > import Control.Monad (unless)
 -- > import Network.Socket hiding (recv)
--- > import Network.Socket.ByteString
+-- > import qualified Data.ByteString as S
+-- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
 -- > main = withSocketsDo $
--- >     do addrinfos <- getAddrInfo Nothing (Just "") (Just "3000")
+-- >     do addrinfos <- getAddrInfo
+-- >                     (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+-- >                     Nothing (Just "3000")
 -- >        let serveraddr = head addrinfos
 -- >        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
 -- >        bindSocket sock (addrAddress serveraddr)
@@ -399,9 +404,9 @@ withIOVec cs f =
 -- > -- Echo client program
 -- > module Main where
 -- >
--- > import qualified Data.ByteString.Char8 as C
 -- > import Network.Socket hiding (recv)
--- > import Network.Socket.ByteString
+-- > import Network.Socket.ByteString (recv, sendAll)
+-- > import qualified Data.ByteString.Char8 as C
 -- >
 -- > main :: IO ()
 -- > main = withSocketsDo $

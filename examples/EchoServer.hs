@@ -1,10 +1,10 @@
 -- Echo server program
 module Main where
 
-import Control.Monad
-import qualified Data.ByteString as S
+import Control.Monad (unless)
 import Network.Socket hiding (recv)
-import Network.Socket.ByteString
+import qualified Data.ByteString as S
+import Network.Socket.ByteString (recv, sendAll)
 
 main :: IO ()
 main = withSocketsDo $

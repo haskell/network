@@ -11,7 +11,7 @@ import Test.HUnit (Counts(..), Test(..), (@=?), runTestTT)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 
-import Network.Socket.ByteString
+import Network.Socket.ByteString (recv, recvFrom, send, sendAll, sendMany)
 
 port :: PortNumber
 port = fromIntegral (3000 :: Int)

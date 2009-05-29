@@ -1,9 +1,9 @@
 -- Echo client program
 module Main where
 
-import qualified Data.ByteString.Char8 as C
 import Network.Socket hiding (recv)
-import Network.Socket.ByteString
+import Network.Socket.ByteString (recv, sendAll)
+import qualified Data.ByteString.Char8 as C
 
 main :: IO ()
 main = withSocketsDo $
