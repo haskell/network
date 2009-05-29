@@ -38,7 +38,8 @@ Commit your changes in one or more commits:
 Make sure you write a good commit message.  Commit messages should
 contain a short summary on a separate line and, if needed, a more
 thorough explanation of the change.  Write full sentences and use
-proper spelling, punctuation, and grammar.
+proper spelling, punctuation, and grammar.  See
+[A Note About Git Commit Messages] [2] for more information.
 
 You might want to use `git rebase` to make sure your commits
 correspond to nice, logical commits.  Make sure whitespace only
@@ -58,3 +59,4 @@ changes to your local repository and use `git rebase` to massage them
 into nice, logical commits and resend the patches.
 
 [1]: http://github.com/tibbe/haskell-style-guide
+[2]: http://www.tpope.net/node/106
