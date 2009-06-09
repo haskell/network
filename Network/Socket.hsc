@@ -2077,7 +2077,7 @@ getNameInfo flags doHost doService addr =
                            (mkIOError NoSuchThing "getNameInfo" Nothing 
                             Nothing) err)
 
-foreign import ccall safe "getnameinfo"
+foreign import ccall safe "hsnet_getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
                   -> CSize -> CInt -> IO CInt
 #endif

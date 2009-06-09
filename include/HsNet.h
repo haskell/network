@@ -150,6 +150,13 @@ my_inet_ntoa(
 
 #ifdef HAVE_GETADDRINFO
 INLINE int
+hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
+                  DWORD d, char* e, DWORD f, int g)
+{
+  return getnameinfo(a,b,c,d,e,f,g);
+}
+
+INLINE int
 hsnet_getaddrinfo(const char *hostname, const char *servname,
 		  const struct addrinfo *hints, struct addrinfo **res)
 {
