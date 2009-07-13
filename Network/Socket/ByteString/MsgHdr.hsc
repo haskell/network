@@ -8,21 +8,20 @@ module Network.Socket.ByteString.MsgHdr
 #include <sys/types.h>
 #include <sys/socket.h>
 
-import Foreign.C.Types (CChar, CInt, CSize)
+import Foreign.C.Types (CInt, CSize)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr)
 
 import Network.Socket.ByteString.IOVec (IOVec)
 
+-- We don't use msg_control, msg_controllen, and msg_flags as these
+-- don't exist on OpenSolaris.
 data MsgHdr = MsgHdr
-    { msgName       :: Ptr SockAddr
-    , msgNameLen    :: CSize
-    , msgIov        :: Ptr IOVec
-    , msgIovLen     :: CSize
-    , msgControl    :: Ptr CChar
-    , msgControlLen :: CSize
-    , msgFlags      :: CInt
+    { msgName    :: Ptr SockAddr
+    , msgNameLen :: CSize
+    , msgIov     :: Ptr IOVec
+    , msgIovLen  :: CSize
     }
 
 instance Storable MsgHdr where
@@ -34,16 +33,10 @@ instance Storable MsgHdr where
     nameLen    <- (#peek struct msghdr, msg_namelen)    p
     iov        <- (#peek struct msghdr, msg_iov)        p
     iovLen     <- (#peek struct msghdr, msg_iovlen)     p
-    control    <- (#peek struct msghdr, msg_control)    p
-    controlLen <- (#peek struct msghdr, msg_controllen) p
-    flags      <- (#peek struct msghdr, msg_flags)      p
-    return $ MsgHdr name nameLen iov iovLen control controlLen flags
+    return $ MsgHdr name nameLen iov iovLen
 
   poke p mh = do
     (#poke struct msghdr, msg_name)       p (msgName       mh)
     (#poke struct msghdr, msg_namelen)    p (msgNameLen    mh)
     (#poke struct msghdr, msg_iov)        p (msgIov        mh)
     (#poke struct msghdr, msg_iovlen)     p (msgIovLen     mh)
-    (#poke struct msghdr, msg_control)    p (msgControl    mh)
-    (#poke struct msghdr, msg_controllen) p (msgControlLen mh)
-    (#poke struct msghdr, msg_flags)      p (msgFlags      mh)

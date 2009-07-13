@@ -210,8 +210,6 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
           let msgHdr = MsgHdr
                 addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
-                nullPtr 0
-                0
           with msgHdr $ \msgHdrPtr ->
             throwSocketErrorIfMinus1RetryMayBlock "sendmsg"
               (threadWaitWrite (fromIntegral fd)) $
