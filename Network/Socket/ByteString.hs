@@ -296,8 +296,8 @@ recv :: Socket         -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
 recv (MkSocket s _ _ _ _) nbytes
-    | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise   = createAndTrim nbytes $ recvInner s nbytes
+    | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
+    | otherwise  = createAndTrim nbytes $ recvInner s nbytes
 
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr =
