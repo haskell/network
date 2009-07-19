@@ -219,8 +219,15 @@ import GHC.Conc		(threadWaitRead, threadWaitWrite)
 import GHC.Conc		( asyncDoProc )
 import Foreign( FunPtr )
 # endif
-import GHC.Handle
+# if __GLASGOW_HASKELL__ >= 611
+import qualified GHC.IO.Device
+import GHC.IO.Handle.FD
+import GHC.IO.Exception
+import GHC.IO
+# else
 import GHC.IOBase
+import GHC.Handle
+# endif
 import qualified System.Posix.Internals
 #else
 import System.IO.Unsafe	(unsafePerformIO)
@@ -412,7 +419,11 @@ socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "socket" $
 		c_socket (packFamily family) (packSocketType stype) protocol
 #if !defined(__HUGS__)
+# if __GLASGOW_HASKELL__ < 611
     System.Posix.Internals.setNonBlockingFD fd
+# else
+    System.Posix.Internals.setNonBlockingFD fd True
+# endif
 #endif
     socket_status <- newMVar NotConnected
     return (MkSocket fd family stype protocol socket_status)
@@ -439,7 +450,11 @@ socketPair family stype protocol = do
   where
     mkSocket fd = do
 #if !defined(__HUGS__)
+# if __GLASGOW_HASKELL__ < 611
        System.Posix.Internals.setNonBlockingFD fd
+# else
+       System.Posix.Internals.setNonBlockingFD fd True
+# endif
 #endif
        stat <- newMVar Connected
        return (MkSocket fd family stype protocol stat)
@@ -619,7 +634,11 @@ accept sock@(MkSocket s family stype protocol status) = do
 # endif
 			(c_accept s sockaddr ptr_len)
 # if !defined(__HUGS__)
+#  if __GLASGOW_HASKELL__ < 611
      System.Posix.Internals.setNonBlockingFD new_sock
+#  else
+     System.Posix.Internals.setNonBlockingFD new_sock True
+#  endif
 # endif
 #endif
      addr <- peekSockAddr sockaddr
@@ -1703,7 +1722,9 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
     if status == ConvertedToHandle
 	then ioError (userError ("socketToHandle: already a Handle"))
 	else do
-# if __GLASGOW_HASKELL__ >= 608
+# if __GLASGOW_HASKELL__ >= 611
+    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
+# elif __GLASGOW_HASKELL__ >= 608
     h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
 # elif __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 608
     h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}

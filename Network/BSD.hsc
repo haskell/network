@@ -107,7 +107,11 @@ import System.IO.Error
 import System.IO.Unsafe ( unsafePerformIO )
 
 #ifdef __GLASGOW_HASKELL__
+# if __GLASGOW_HASKELL__ >= 611
+import GHC.IO.Exception
+# else
 import GHC.IOBase
+# endif
 #endif
 
 import Control.Monad ( liftM )
