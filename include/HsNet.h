@@ -151,7 +151,11 @@ my_inet_ntoa(
 #ifdef HAVE_GETADDRINFO
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
+# if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
                   DWORD d, char* e, DWORD f, int g)
+# else
+                  socklen_t d, char* e, socklen_t f, int g)
+# endif
 {
   return getnameinfo(a,b,c,d,e,f,g);
 }
