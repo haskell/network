@@ -516,7 +516,7 @@ connect :: Socket	-- Unconnected Socket
 
 connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \currentStatus -> do
- if currentStatus /= NotConnected 
+ if currentStatus /= NotConnected && currentStatus /= Bound
   then
    ioError (userError ("connect: can't peform connect on socket in status " ++
          show currentStatus))
