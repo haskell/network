@@ -233,6 +233,10 @@ import qualified System.Posix.Internals
 import System.IO.Unsafe	(unsafePerformIO)
 #endif
 
+# if __GLASGOW_HASKELL__ >= 611
+import GHC.IO.FD
+#endif
+
 import Network.Socket.Internal
 
 type HostName       = String
@@ -296,6 +300,10 @@ data Socket
 	    (MVar SocketStatus)  -- Status Flag
 
 INSTANCE_TYPEABLE0(Socket,socketTc,"Socket")
+
+socket2FD  (MkSocket fd _ _ _ _) = 
+  -- HACK, 1 means True 
+  FD{fdFD = fd,fdIsSocket_ = 1} 
 
 mkSocket :: CInt
 	 -> Family
@@ -729,13 +737,28 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
 send :: Socket	-- Bound/Connected Socket
      -> String	-- Data to send
      -> IO Int	-- Number of Bytes sent
-send (MkSocket s _family _stype _protocol status) xs = do
+send sock@(MkSocket s _family _stype _protocol status) xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-      writeRawBufferPtr "Network.Socket.send" (fromIntegral s) True str 0
-		(fromIntegral len)
+# if __GLASGOW_HASKELL__ >= 611    
+    writeRawBufferPtr 
+      "Network.Socket.send" 
+      (socket2FD sock)
+      (castPtr str)
+      0
+      (fromIntegral len)
+#else      
+      writeRawBufferPtr 
+        "Network.Socket.send" 
+        (fromIntegral s) 
+        True 
+        str 
+        0 
+       (fromIntegral len)
+#endif    
+    
 #else
 # if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "send"
@@ -754,8 +777,11 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
      allocaBytes nbytes $ \ptr -> do
         len <- 
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-	  readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
-		 (fromIntegral nbytes)
+# if __GLASGOW_HASKELL__ >= 611    
+	  readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0  (fromIntegral nbytes)
+#else          
+  readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0    
+#endif
 #else
 # if !defined(__HUGS__)
 	       throwSocketErrorIfMinus1RetryMayBlock "recv"
@@ -767,7 +793,7 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
 	if len' == 0
 	 then ioError (mkEOFError "Network.Socket.recv")
 	 else do
-	   s <- peekCStringLen (ptr,len')
+	   s <- peekCStringLen (castPtr ptr,len')
 	   return (s, len')
 
 -- ---------------------------------------------------------------------------
