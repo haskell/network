@@ -10,8 +10,10 @@ import Test.HUnit (Counts(..), Test(..), (@=?), runTestTT)
 
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy.Char8 as L
 
 import Network.Socket.ByteString (recv, recvFrom, send, sendAll, sendMany)
+import qualified Network.Socket.ByteString.Lazy as NSBL
 
 port :: PortNumber
 port = fromIntegral (3000 :: Int)
@@ -21,6 +23,21 @@ port = fromIntegral (3000 :: Int)
 
 testMsg :: S.ByteString
 testMsg = C.pack "This is a test message."
+
+testLazySend :: Test
+testLazySend = TestCase $ connectedTest client server
+    where
+      server sock = do msg <- recv sock 1024
+                       C.take 1024 strictTestMsg @=? msg
+
+      client sock = do n <- NSBL.send sock lazyTestMsg
+                       1024 @=? n
+
+      -- message containing too many chunks to be sent in one system call
+      lazyTestMsg = let alphabet = map C.singleton ['a'..'z']
+                    in L.fromChunks (concat (replicate 100 alphabet))
+
+      strictTestMsg = C.concat . L.toChunks $ lazyTestMsg
 
 testSendAll :: Test
 testSendAll = TestCase $ connectedTest client server
@@ -121,7 +138,8 @@ main = withSocketsDo $ do
     when (errors counts + failures counts > 0) exitFailure
 
 tests :: Test
-tests = TestList [TestLabel "testSendAll" testSendAll,
+tests = TestList [TestLabel "testLazySend" testLazySend,
+                  TestLabel "testSendAll" testSendMany,
                   TestLabel "testSendMany" testSendMany,
                   TestLabel "testRecv" testRecv,
                   TestLabel "testOverFlowRecv" testOverFlowRecv,
