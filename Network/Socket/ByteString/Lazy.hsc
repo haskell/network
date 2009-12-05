@@ -73,12 +73,14 @@ import GHC.Conc (threadWaitWrite)
 -- this function caps the amount it will attempt to send at 4MB.  This
 -- number is large (so it should not penalize performance on fast
 -- networks), but not outrageously so (to avoid demanding lazily
--- computed data unnecessarily early).  /Unix only/.
+-- computed data unnecessarily early).  Before being sent, the lazy
+-- 'ByteString' will be converted to a list of strict 'ByteString's
+-- with 'L.toChunks'; at most 1024 chunks will be sent.  /Unix only/.
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
 send (MkSocket fd _ _ _ _) s = do
-  let cs  = L.toChunks s
+  let cs  = take maxNumChunks (L.toChunks s)
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
@@ -90,15 +92,15 @@ send (MkSocket fd _ _ _ _) s = do
   where
     withPokes ss p f = loop ss p 0 0
       where loop (c:cs) q k !niovs
-                | k < sendLimit =
+                | k < maxNumBytes =
                     unsafeUseAsCStringLen c $ \(ptr,len) -> do
                       poke q $ IOVec ptr (fromIntegral len)
                       loop cs (q `plusPtr` sizeOf (undefined :: IOVec))
                               (k + fromIntegral len) (niovs + 1)
                 | otherwise = f niovs
             loop _ _ _ niovs = f niovs
-    -- maximum number of bytes to transmit in one system call
-    sendLimit = 4194304 :: Int
+    maxNumBytes  = 4194304 :: Int  -- maximum number of bytes to transmit in one system call
+    maxNumChunks = 1024    :: Int  -- maximum number of chunks to transmit in one system call
 
 -- | Send data to the socket.  The socket must be in a connected
 -- state. This function continues to send data until either all data
