@@ -15,11 +15,10 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import Network.Socket.ByteString (recv, recvFrom, send, sendAll, sendMany)
 import qualified Network.Socket.ByteString.Lazy as NSBL
 
+------------------------------------------------------------------------
+
 port :: PortNumber
 port = fromIntegral (3000 :: Int)
-
-------------------------------------------------------------------------
--- Tests
 
 testMsg :: S.ByteString
 testMsg = C.pack "This is a test message."
@@ -27,11 +26,8 @@ testMsg = C.pack "This is a test message."
 testLazySend :: Test
 testLazySend = TestCase $ connectedTest client server
     where
-      server sock = do msg <- recv sock 1024
-                       C.take 1024 strictTestMsg @=? msg
-
-      client sock = do n <- NSBL.send sock lazyTestMsg
-                       1024 @=? n
+      server sock = recv sock 1024 >>= (@=?) (C.take 1024 strictTestMsg)
+      client sock = NSBL.send sock lazyTestMsg >>= (@=?) 1024
 
       -- message containing too many chunks to be sent in one system call
       lazyTestMsg = let alphabet = map C.singleton ['a'..'z']
@@ -39,20 +35,19 @@ testLazySend = TestCase $ connectedTest client server
 
       strictTestMsg = C.concat . L.toChunks $ lazyTestMsg
 
+------------------------------------------------------------------------
+-- Tests
+
 testSendAll :: Test
 testSendAll = TestCase $ connectedTest client server
     where
-      server sock = do msg <- recv sock 1024
-                       testMsg @=? msg
-
+      server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = sendAll sock testMsg
 
 testSendMany :: Test
 testSendMany = TestCase $ connectedTest client server
     where
-      server sock = do msg <- recv sock 1024
-                       S.append seg1 seg2 @=? msg
-
+      server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
       client sock = sendMany sock [seg1, seg2]
 
       seg1 = C.pack "This is a "
@@ -61,9 +56,7 @@ testSendMany = TestCase $ connectedTest client server
 testRecv :: Test
 testRecv = TestCase $ connectedTest client server
     where
-      server sock = do msg <- recv sock 1024
-                       testMsg @=? msg
-
+      server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = send sock testMsg
 
 testOverFlowRecv :: Test
