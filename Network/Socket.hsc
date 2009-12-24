@@ -780,9 +780,11 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
         len <- 
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
 # if __GLASGOW_HASKELL__ >= 611    
-	  readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0  (fromIntegral nbytes)
+          readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
+                 (fromIntegral nbytes)
 #else          
-  readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0    
+          readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
+                 (fromIntegral nbytes)
 #endif
 #else
 # if !defined(__HUGS__)
