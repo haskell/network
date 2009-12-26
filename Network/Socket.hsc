@@ -301,7 +301,7 @@ data Socket
 
 INSTANCE_TYPEABLE0(Socket,socketTc,"Socket")
 
-#if __GLASGOW_HASKELL__ >= 611
+#if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
 socket2FD  (MkSocket fd _ _ _ _) = 
   -- HACK, 1 means True 
   FD{fdFD = fd,fdIsSocket_ = 1} 
