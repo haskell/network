@@ -26,7 +26,7 @@ library
       Network.Socket.ByteString.MsgHdr
 
   build-depends:
-    base       < 4.1,
+    base       < 4.3,
     bytestring < 1.0,
     network    >= 2.2.1.1 && < 2.3
 

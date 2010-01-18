@@ -81,7 +81,11 @@ import GHC.IOBase (haFD)
 #  endif
 #else
 #  if defined(__GLASGOW_HASKELL__)
+#    if __GLASGOW_HASKELL__ >= 611
+import GHC.IO.FD 
+#    else
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
+#    endif
 #  endif
 #endif
 
@@ -119,8 +123,13 @@ send (MkSocket s _ _ _ _) xs =
     unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#  if __GLASGOW_HASKELL__ >= 611
+        writeRawBufferPtr "Network.Socket.ByteString.send" 
+        (FD s 1) (castPtr str) 0 (fromIntegral len)
+#  else
         writeRawBufferPtr "Network.Socket.ByteString.send"
         (fromIntegral s) True str 0 (fromIntegral len)
+#  endif
 #else
 #  if !defined(__HUGS__)
         throwSocketErrorIfMinus1RetryMayBlock "send"
@@ -303,8 +312,12 @@ recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr =
     fmap fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#  if __GLASGOW_HASKELL__ >= 611
+        readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
+#  else
         readRawBufferPtr "Network.Socket.ByteString.recv" (fromIntegral s)
         True (castPtr ptr) 0 (fromIntegral nbytes)
+#  endif
 #else
 #  if !defined(__HUGS__)
         throwSocketErrorIfMinus1RetryMayBlock "recv"
