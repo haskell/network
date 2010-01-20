@@ -28,7 +28,7 @@ module Network.Socket.ByteString
   , sendTo
   , sendAllTo
   , sendManyTo
-#if !defined(mingw32_HOST_OS)
+#if !defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 611
   , sendFile
   , sendEntireFile
 #endif
@@ -77,7 +77,9 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 #  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 import GHC.Handle (wantReadableHandle)
+#   if __GLASGOW_HASKELL__ < 611
 import GHC.IOBase (haFD)
+#   endif
 #  endif
 #else
 #  if defined(__GLASGOW_HASKELL__)
@@ -227,12 +229,12 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
 #endif
 
+#if !defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 611
 -- | Send data to the socket from a file descriptor.  The socket must be
 -- connected to a remote socket.  Returns @(n, offset)@ where @n@ is the number
 -- of bytes sent and @offset@ is the offset of the byte following the last byte
 -- that was read.  Applications are responsible for ensuring that all data has
 -- been sent.
-#if !defined(mingw32_HOST_OS)
 sendFile :: Socket                 -- ^ Socket
          -> Handle                 -- ^ Handle of file containing data to send
          -> Integer                -- ^ Starting offset
