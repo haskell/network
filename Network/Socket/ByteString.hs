@@ -24,9 +24,12 @@ module Network.Socket.ByteString
   ( -- * Send data to a socket
     send
   , sendAll
-  , sendMany
   , sendTo
   , sendAllTo
+
+    -- ** Vectored I/O
+    -- $vectored
+  , sendMany
   , sendManyTo
 
     -- * Receive data from a socket
@@ -99,7 +102,7 @@ foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 
--- -----------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
 -- Sending
 
 -- | Send data to the socket.  The socket must be connected to a
@@ -139,29 +142,6 @@ sendAll sock bs = do
     sent <- send sock bs
     when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
 
--- | Send data to the socket.  The socket must be in a connected
--- state.  The data is sent as if the parts have been concatenated.
--- This function continues to send data until either all data has been
--- sent or an error occurs.  On error, an exception is raised, and
--- there is no way to determine how much data, if any, was
--- successfully sent.
-sendMany :: Socket        -- ^ Connected socket
-         -> [ByteString]  -- ^ Data to send
-         -> IO ()
-#if !defined(mingw32_HOST_OS)
-sendMany sock@(MkSocket fd _ _ _ _) cs = do
-    sent <- sendManyInner
-    when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
-  where
-    sendManyInner =
-      liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-          throwSocketErrorIfMinus1RetryMayBlock "writev"
-              (threadWaitWrite (fromIntegral fd)) $
-              c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
-#else
-sendMany sock = sendAll sock . B.concat
-#endif
-
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent. Applications are responsible for
@@ -186,6 +166,51 @@ sendAllTo :: Socket      -- ^ Socket
 sendAllTo sock xs addr = do
     sent <- sendTo sock xs addr
     when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
+
+-- ----------------------------------------------------------------------------
+-- ** Vectored I/O
+
+-- $vectored
+--
+-- Vectored I\/O, also known as scatter\/gather I\/O, allows multiple
+-- data segments to be sent using a single system call, without first
+-- concatenating the segments.  For example, given a list of
+-- @ByteString@s, @xs@,
+--
+-- > sendMany sock xs
+--
+-- is equivalent to
+--
+-- > sendAll sock (concat xs)
+--
+-- but potentially more efficient.
+--
+-- Vectored I\/O are often useful when implementing network protocols
+-- that, for example, group data into segments consisting of one or
+-- more fixed-length headers followed by a variable-length body.
+
+-- | Send data to the socket.  The socket must be in a connected
+-- state.  The data is sent as if the parts have been concatenated.
+-- This function continues to send data until either all data has been
+-- sent or an error occurs.  On error, an exception is raised, and
+-- there is no way to determine how much data, if any, was
+-- successfully sent.
+sendMany :: Socket        -- ^ Connected socket
+         -> [ByteString]  -- ^ Data to send
+         -> IO ()
+#if !defined(mingw32_HOST_OS)
+sendMany sock@(MkSocket fd _ _ _ _) cs = do
+    sent <- sendManyInner
+    when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
+  where
+    sendManyInner =
+      liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
+          throwSocketErrorIfMinus1RetryMayBlock "writev"
+              (threadWaitWrite (fromIntegral fd)) $
+              c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
+#else
+sendMany sock = sendAll sock . B.concat
+#endif
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  The
@@ -216,7 +241,7 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
 #endif
 
--- -----------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
 -- Receiving
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -268,7 +293,7 @@ recvFrom sock nbytes =
         str <- B.packCStringLen (ptr, len)
         return (str, sockaddr)
 
--- -----------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
 -- Not exported
 
 #if !defined(mingw32_HOST_OS)
