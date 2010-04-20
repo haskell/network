@@ -58,7 +58,6 @@ import Network.Socket.ByteString.Internal
 #if !defined(mingw32_HOST_OS)
 import Control.Exception (bracket)
 import Control.Monad (zipWithM_)
-import Data.List (iterate)
 import Foreign.C.Types (CChar, CSize)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)

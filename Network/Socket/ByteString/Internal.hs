@@ -20,7 +20,11 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr)
 #endif
 
 #ifdef __GLASGOW_HASKELL__
+# if __GLASGOW_HASKELL__ < 611
 import GHC.IOBase (IOErrorType(..))
+# else
+import GHC.IO.Exception (IOErrorType(..))
+# endif
 #elif __HUGS__
 import Hugs.Prelude (IOErrorType(..))
 #endif
