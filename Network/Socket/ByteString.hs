@@ -83,7 +83,7 @@ import GHC.IOBase (haFD)
 #else
 #  if defined(__GLASGOW_HASKELL__)
 #    if __GLASGOW_HASKELL__ >= 611
-import GHC.IO.FD 
+import GHC.IO.FD
 #    else
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 #    endif
@@ -125,7 +125,7 @@ send (MkSocket s _ _ _ _) xs =
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
 #  if __GLASGOW_HASKELL__ >= 611
-        writeRawBufferPtr "Network.Socket.ByteString.send" 
+        writeRawBufferPtr "Network.Socket.ByteString.send"
         (FD s 1) (castPtr str) 0 (fromIntegral len)
 #  else
         writeRawBufferPtr "Network.Socket.ByteString.send"
