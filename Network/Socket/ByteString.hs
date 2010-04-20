@@ -28,10 +28,6 @@ module Network.Socket.ByteString
   , sendTo
   , sendAllTo
   , sendManyTo
-#if !defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 611
-  , sendFile
-  , sendEntireFile
-#endif
 
     -- * Receive data from a socket
   , recv
@@ -56,26 +52,20 @@ import qualified Data.ByteString as B
 import Network.Socket.ByteString.Internal
 
 #if !defined(mingw32_HOST_OS)
-import Control.Exception (bracket)
 import Control.Monad (zipWithM_)
 import Foreign.C.Types (CChar, CSize)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (nullPtr, plusPtr)
+import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock,
                                 withSockAddr)
-import System.IO (Handle)
-import System.Posix.Files (fileSize, getFdStatus)
-import System.Posix.IO (OpenMode(ReadOnly), closeFd, defaultFileFlags, openFd)
-import System.Posix.Types (COff, CSsize)
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
 #  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-import GHC.Handle (wantReadableHandle)
 #   if __GLASGOW_HASKELL__ < 611
 import GHC.IOBase (haFD)
 #   endif
@@ -107,8 +97,6 @@ foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import CALLCONV unsafe "sendfile"
-  c_sendfile :: CInt -> CInt -> Ptr COff -> CSize -> IO CSsize
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -226,66 +214,6 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
               c_sendmsg (fromIntegral fd) msgHdrPtr 0
 #else
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
-#endif
-
-#if !defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ < 611
--- | Send data to the socket from a file descriptor.  The socket must be
--- connected to a remote socket.  Returns @(n, offset)@ where @n@ is the number
--- of bytes sent and @offset@ is the offset of the byte following the last byte
--- that was read.  Applications are responsible for ensuring that all data has
--- been sent.
-sendFile :: Socket                 -- ^ Socket
-         -> Handle                 -- ^ Handle of file containing data to send
-         -> Integer                -- ^ Starting offset
-         -> Integer                -- ^ Number of bytes to send
-         -> IO (Integer, Integer)  -- ^ Number of bytes sent and offset to first unread byte
-sendFile (MkSocket outFdC _ _ _ _) h offset size =
-    with (fromIntegral offset) $ \offsetPtr ->
-    wantReadableHandle "sendFile" h $ \h' -> do
-        let inFd = (fromIntegral . haFD) h'
-        sent <-
-          throwSocketErrorIfMinus1RetryMayBlock "sendfile"
-          (threadWaitWrite (fromIntegral outFdC)) $
-            throwSocketErrorIfMinus1RetryMayBlock "sendfile"
-            (threadWaitRead inFd) $
-              c_sendfile outFdC (fromIntegral inFd) offsetPtr (fromIntegral size)
-        offset' <- peek offsetPtr
-        return (fromIntegral sent, fromIntegral offset')
-#endif
-
--- | Send data from a file to the socket.  The socket must be connected to a
--- remote socket.  Unlike 'sendFile', this function continues to send data
--- until either all data has been sent or an error occurs.  On error, an
--- exception is raised, and there is no way to determine how much data, if any,
--- was successfully sent.
-#if !defined(mingw32_HOST_OS)
-sendEntireFile :: Socket    -- ^ Socket
-               -> FilePath  -- ^ Path of file to send
-               -> IO ()
-sendEntireFile (MkSocket outFdC _ _ _ _) fp =
-    bracket
-      (openFd fp ReadOnly Nothing defaultFileFlags)
-      closeFd
-      (\inFd ->
-        fmap (fromIntegral . fileSize) (getFdStatus inFd) >>=
-        sendAllFileInner outFdC (fromIntegral inFd)
-      )
-
-sendAllFileInner :: CInt -> CInt -> Integer -> IO ()
-sendAllFileInner outFdC inFdC = sendAllFileInner'
-  where
-    sendAllFileInner' 0    = return ()
-    sendAllFileInner' left = do
-        sent <- fmap fromIntegral $
-          throwSocketErrorIfMinus1RetryMayBlock "sendfile"
-          (threadWaitWrite outFd) $
-            throwSocketErrorIfMinus1RetryMayBlock "sendfile"
-            (threadWaitRead inFd) $
-              c_sendfile outFdC inFdC nullPtr (fromIntegral left)
-        sendAllFileInner' (left - sent)
-      where
-        outFd = fromIntegral outFdC
-        inFd  = fromIntegral inFdC
 #endif
 
 -- -----------------------------------------------------------------------------
