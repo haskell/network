@@ -69,9 +69,6 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
 #  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-#   if __GLASGOW_HASKELL__ < 611
-import GHC.IOBase (haFD)
-#   endif
 #  endif
 #else
 #  if defined(__GLASGOW_HASKELL__)
