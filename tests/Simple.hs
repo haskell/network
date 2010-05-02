@@ -131,10 +131,11 @@ main = withSocketsDo $ do
     when (errors counts + failures counts > 0) exitFailure
 
 tests :: Test
-tests = TestList [TestLabel "testLazySend" testLazySend,
-                  TestLabel "testSendAll" testSendMany,
-                  TestLabel "testSendMany" testSendMany,
-                  TestLabel "testRecv" testRecv,
-                  TestLabel "testOverFlowRecv" testOverFlowRecv,
-                  TestLabel "testRecvFrom" testRecvFrom,
-                  TestLabel "testOverFlowRecvFrom" testOverFlowRecvFrom]
+tests = TestList [ TestLabel "testLazySend" testLazySend
+                 , TestLabel "testSendAll" testSendMany
+                 , TestLabel "testSendMany" testSendMany
+                 , TestLabel "testRecv" testRecv
+                 , TestLabel "testOverFlowRecv" testOverFlowRecv
+                 , TestLabel "testRecvFrom" testRecvFrom
+                 , TestLabel "testOverFlowRecvFrom" testOverFlowRecvFrom
+                 ]

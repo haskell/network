@@ -25,13 +25,13 @@ module Network.Socket.ByteString.Lazy
   (
 #if !defined(mingw32_HOST_OS)
     -- * Send data to a socket
-    send,
-    sendAll,
+      send
+    , sendAll
 #endif
 
     -- * Receive data from a socket
-    getContents,
-    recv
+    , getContents
+    , recv
   ) where
 
 import Control.Monad (liftM)
