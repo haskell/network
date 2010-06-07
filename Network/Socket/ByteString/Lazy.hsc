@@ -45,7 +45,7 @@ import qualified Data.ByteString as S
 import qualified Network.Socket.ByteString as N
 
 #if !defined(mingw32_HOST_OS)
-import Control.Monad (when)
+import Control.Monad (unless)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Ptr (plusPtr)
@@ -112,7 +112,8 @@ sendAll :: Socket      -- ^ Connected socket
         -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
-  when (sent < L.length bs) $ sendAll sock (L.drop sent bs)
+  let bs' = L.drop sent bs
+  unless (L.null bs') $ sendAll sock bs'
 #endif
 
 -- -----------------------------------------------------------------------------
