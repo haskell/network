@@ -29,12 +29,13 @@ library
   build-depends: base < 5, parsec
 
   if flag(base4)
-      build-depends:    base>=4
+      build-depends:    base >= 4 && < 4.4
       cpp-options:      -DBASE4
   else
       build-depends:    base<4
 
-  extensions:   CPP
+  extensions:   CPP, DeriveDataTypeable, ForeignFunctionInterface,
+                TypeSynonymInstances
   include-dirs:         include
   includes:       HsNet.h
   install-includes:

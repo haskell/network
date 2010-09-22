@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fglasgow-exts -cpp #-}
+{-# LANGUAGE CPP #-}
 --------------------------------------------------------------------------------
 -- |
 --  Module      :  Network.URI
