@@ -1070,6 +1070,7 @@ relativeFrom uabs base
         , uriQuery     = ""
         }
     where
+        diff :: Eq b => (a -> b) -> a -> a -> Bool
         diff sel u1 u2 = sel u1 /= sel u2
         -- Remove dot segments except the final segment
         removeBodyDotSegments p = removeDotSegments p1 ++ p2
