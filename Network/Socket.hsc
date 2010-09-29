@@ -656,11 +656,14 @@ sendTo sock xs addr = do
  withCString xs $ \str -> do
    sendBufTo sock str (length xs) addr
 
-sendBufTo :: Socket	      -- (possibly) bound/connected Socket
-          -> Ptr a -> Int     -- Data to send
+-- | Send data to the socket.  The recipient can be specified
+-- explicitly, so the socket need not be in a connected state.
+-- Returns the number of bytes sent.  Applications are responsible for
+-- ensuring that all data has been sent.
+sendBufTo :: Socket	       -- (possibly) bound/connected Socket
+          -> Ptr a -> Int  -- Data to send
           -> SockAddr
-          -> IO Int	      -- Number of Bytes sent
-
+          -> IO Int	       -- Number of Bytes sent
 sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
@@ -672,9 +675,10 @@ sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
 			p_addr (fromIntegral sz)
 
 -- | Receive data from the socket. The socket need not be in a
--- connected state. Returns @(bytes, address)@ where bytes is a
--- @String@ representing the data received and @address@ is a
--- 'SockAddr' representing the address of the sending socket.
+-- connected state. Returns @(bytes, nbytes, address)@ where @bytes@
+-- is a @String@ of length @nbytes@ representing the data received and
+-- @address@ is a 'SockAddr' representing the address of the sending
+-- socket.
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
@@ -685,6 +689,14 @@ recvFrom sock nbytes =
     str <- peekCStringLen (ptr, len)
     return (str, len, sockaddr)
 
+-- | Receive data from the socket, writing it into buffer instead of
+-- creating a new string.  The socket need not be in a connected
+-- state. Returns @(nbytes, address)@ where @nbytes@ is the number of
+-- bytes received and @address@ is a 'SockAddr' representing the
+-- address of the sending socket.
+--
+-- NOTE: blocking on Windows unless you compile with -threaded (see
+-- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
@@ -1658,6 +1670,11 @@ sdownCmdToInt ShutdownReceive = 0
 sdownCmdToInt ShutdownSend    = 1
 sdownCmdToInt ShutdownBoth    = 2
 
+-- | Shut down one or both halves of the connection, depending on the
+-- second argument to the function.  If how is 'ShutdownReceive',
+-- further receives are disallowed.  If how is 'ShutdownSend', further
+-- sends are disallowed.  If how is 'ShutdownBoth', further sends and
+-- receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown (MkSocket s _ _ _ _) stype = do
   throwSocketErrorIfMinus1Retry "shutdown" (c_shutdown s (sdownCmdToInt stype))
