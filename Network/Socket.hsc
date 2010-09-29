@@ -83,7 +83,7 @@ module Network.Socket (
     getNameInfo,            -- :: [NameInfoFlag] -> Bool -> Bool -> SockAddr -> IO (Maybe HostName, Maybe ServiceName)
 #endif
 
-    -- * Socket Operations
+    -- * Socket operations
     socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
 #if defined(DOMAIN_SOCKET_SUPPORT)
     socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
@@ -143,7 +143,7 @@ module Network.Socket (
 
 #endif
 
-    -- * Special Constants
+    -- * Special constants
     aNY_PORT,		-- :: PortNumber
     iNADDR_ANY,		-- :: HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -414,17 +414,14 @@ instance Show SockAddr where
 -- programmers and have thus been renamed by appending the prefix
 -- Socket.
 
--- Create an unconnected socket of the given family, type and
--- protocol.  The most common invocation of $socket$ is the following:
---    ...
---    my_socket <- socket AF_INET Stream 6
---    ...
-
+-- | Create a new socket using the given address family, socket type
+-- and protocol number.  The address family is usually 'AF_INET',
+-- 'AF_INET6', or 'AF_UNIX'.  The socket type is usually 'Stream' or
+-- 'Datagram'.  The protocol number is usually 'defaultProtocol'.
 socket :: Family 	 -- Family Name (usually AF_INET)
        -> SocketType 	 -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket	 -- Unconnected Socket
-
 socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "socket" $
 		c_socket (packFamily family) (packSocketType stype) protocol
@@ -438,10 +435,10 @@ socket family stype protocol = do
     socket_status <- newMVar NotConnected
     return (MkSocket fd family stype protocol socket_status)
 
--- Create an unnamed pair of connected sockets, given family, type and
--- protocol. Differs from a normal pipe in being a bi-directional channel
--- of communication.
-
+-- | Build a pair of connected socket objects using the given address
+-- family, socket type, and protocol number.  Address family, socket
+-- type, and protocol number are as for the 'socket' function above.
+-- Availability: Unix.
 #if defined(DOMAIN_SOCKET_SUPPORT)
 socketPair :: Family 	          -- Family Name (usually AF_INET or AF_INET6)
            -> SocketType 	  -- Socket Type (usually Stream)
@@ -475,26 +472,15 @@ foreign import ccall unsafe "socketpair"
 
 -----------------------------------------------------------------------------
 -- Binding a socket
---
--- Given a port number this {\em binds} the socket to that port. This
--- means that the programmer is only interested in data being sent to
--- that port number. The $Family$ passed to $bindSocket$ must
--- be the same as that passed to $socket$.	 If the special port
--- number $aNY\_PORT$ is passed then the system assigns the next
--- available use port.
--- 
--- Port numbers for standard unix services can be found by calling
--- $getServiceEntry$.  These are traditionally port numbers below
--- 1000; although there are afew, namely NFS and IRC, which used higher
--- numbered ports.
--- 
--- The port number allocated to a socket bound by using $aNY\_PORT$ can be
--- found by calling $port$
 
+-- | Bind the socket to an address. The socket must not already be
+-- bound.  The 'Family' passed to @bindSocket@ must be the
+-- same as that passed to 'socket'.  If the special port number
+-- 'aNY_PORT' is passed then the system assigns the next available
+-- use port.
 bindSocket :: Socket	-- Unconnected Socket
-	   -> SockAddr	-- Address to Bind to
-	   -> IO ()
-
+           -> SockAddr  -- Address to Bind to
+           -> IO ()
 bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \ status -> do
  if status /= NotConnected 
@@ -508,22 +494,11 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
---
--- Make a connection to an already opened socket on a given machine
--- and port.  assumes that we have already called createSocket,
--- otherwise it will fail.
---
--- This is the dual to $bindSocket$.  The {\em server} process will
--- usually bind to a port number, the {\em client} will then connect
--- to the same port number.  Port numbers of user applications are
--- normally agreed in advance, otherwise we must rely on some meta
--- protocol for telling the other side what port number we have been
--- allocated.
 
-connect :: Socket	-- Unconnected Socket
-	-> SockAddr 	-- Socket address stuff
-	-> IO ()
-
+-- | Connect to a remote socket at address.
+connect :: Socket    -- Unconnected Socket
+        -> SockAddr  -- Socket address stuff
+        -> IO ()
 connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
@@ -573,21 +548,13 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 
 -----------------------------------------------------------------------------
 -- Listen
---
--- The programmer must call $listen$ to tell the system software that
--- they are now interested in receiving data on this port.  This must
--- be called on the bound socket before any calls to read or write
--- data are made.
 
--- The programmer also gives a number which indicates the length of
--- the incoming queue of unread messages for this socket. On most
--- systems the maximum queue length is around 5.  To remove a message
--- from the queue for processing a call to $accept$ should be made.
-
+-- | Listen for connections made to the socket.  The second argument
+-- specifies the maximum number of queued connections and should be at
+-- least 1; the maximum value is system-dependent (usually 5).
 listen :: Socket  -- Connected & Bound Socket
        -> Int 	  -- Queue Length
        -> IO ()
-
 listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
  modifyMVar_ socketStatus $ \ status -> do
  if status /= Bound 
@@ -607,6 +574,11 @@ listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
 -- should then be closed. Using the socket returned by `accept' allows
 -- incoming requests to be queued on the original socket.
 
+-- | Accept a connection.  The socket must be bound to an address and
+-- listening for connections.  The return value is a pair @(conn,
+-- address)@ where @conn@ is a new socket object usable to send and
+-- receive data on the connection, and @address@ is the address bound
+-- to the socket on the other end of the connection.
 accept :: Socket			-- Queue Socket
        -> IO (Socket,			-- Readable Socket
 	      SockAddr)			-- Peer details
@@ -669,13 +641,17 @@ foreign import ccall unsafe "free"
 -----------------------------------------------------------------------------
 -- sendTo & recvFrom
 
--- | NOTE: blocking on Windows unless you compile with -threaded (see
+-- | Send data to the socket.  The recipient can be specified
+-- explicitly, so the socket need not be in a connected state.
+-- Returns the number of bytes sent.  Applications are responsible for
+-- ensuring that all data has been sent.
+--
+-- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 sendTo :: Socket	-- (possibly) bound/connected Socket
        -> String	-- Data to send
        -> SockAddr
        -> IO Int	-- Number of Bytes sent
-
 sendTo sock xs addr = do
  withCString xs $ \str -> do
    sendBufTo sock str (length xs) addr
@@ -695,7 +671,12 @@ sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
 	c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
 			p_addr (fromIntegral sz)
 
--- | NOTE: blocking on Windows unless you compile with -threaded (see
+-- | Receive data from the socket. The socket need not be in a
+-- connected state. Returns @(bytes, address)@ where bytes is a
+-- @String@ representing the data received and @address@ is a
+-- 'SockAddr' representing the address of the sending socket.
+--
+-- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
 recvFrom sock nbytes =
@@ -736,6 +717,9 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
 -----------------------------------------------------------------------------
 -- send & recv
 
+-- | Send data to the socket. The socket must be connected to a remote
+-- socket. Returns the number of bytes sent.  Applications are
+-- responsible for ensuring that all data has been sent.
 send :: Socket	-- Bound/Connected Socket
      -> String	-- Data to send
      -> IO Int	-- Number of Bytes sent
@@ -769,6 +753,17 @@ send sock@(MkSocket s _family _stype _protocol status) xs = do
 	c_send s str (fromIntegral len) 0{-flags-} 
 #endif
 
+-- | Receive data from the socket.  The socket must be in a connected
+-- state. This function may return fewer bytes than specified.  If the
+-- message is longer than the specified length, it may be discarded
+-- depending on the type of socket.  This function may block until a
+-- message arrives.
+--
+-- Considering hardware and network realities, the maximum number of
+-- bytes to receive should be a small power of 2, e.g., 4096.
+--
+-- For TCP sockets, a zero length return value means the peer has
+-- closed its half side of the connection.
 recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
@@ -1670,7 +1665,9 @@ shutdown (MkSocket s _ _ _ _) stype = do
 
 -- -----------------------------------------------------------------------------
 
--- | Closes a socket
+-- | Close the socket.  All future operations on the socket object
+-- will fail.  The remote end will receive no more data (after queued
+-- data is flushed).
 sClose	 :: Socket -> IO ()
 sClose (MkSocket s _ _ _ socketStatus) = do 
  modifyMVar_ socketStatus $ \ status ->
@@ -1736,7 +1733,7 @@ inet_ntoa haddr = do
   pstr <- c_inet_ntoa haddr
   peekCString pstr
 
--- | turns a Socket into an 'Handle'. By default, the new handle is
+-- | Turns a Socket into an 'Handle'. By default, the new handle is
 -- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
 --
 -- Note that since a 'Handle' is automatically closed by a finalizer
