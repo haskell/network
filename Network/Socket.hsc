@@ -1671,10 +1671,10 @@ sdownCmdToInt ShutdownSend    = 1
 sdownCmdToInt ShutdownBoth    = 2
 
 -- | Shut down one or both halves of the connection, depending on the
--- second argument to the function.  If how is 'ShutdownReceive',
--- further receives are disallowed.  If how is 'ShutdownSend', further
--- sends are disallowed.  If how is 'ShutdownBoth', further sends and
--- receives are disallowed.
+-- second argument to the function.  If the second argument is
+-- 'ShutdownReceive', further receives are disallowed.  If it is
+-- 'ShutdownSend', further sends are disallowed.  If it is
+-- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown (MkSocket s _ _ _ _) stype = do
   throwSocketErrorIfMinus1Retry "shutdown" (c_shutdown s (sdownCmdToInt stype))
