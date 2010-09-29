@@ -239,6 +239,9 @@ import GHC.IO.FD
 
 import Network.Socket.Internal
 
+-- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
+-- address string consisting of a dotted decimal IPv4 address or an
+-- IPv6 address e.g., @\"192.168.0.1\"@.
 type HostName       = String
 type ServiceName    = String
 
