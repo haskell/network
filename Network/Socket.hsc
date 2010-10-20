@@ -1728,9 +1728,10 @@ sIsWritable = sIsReadable -- sort of.
 
 sIsAcceptable :: Socket -> IO Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sIsAcceptable (MkSocket _ AF_UNIX Stream _ status) = do
-    value <- readMVar status
-    return (value == Connected || value == Bound || value == Listening)
+sIsAcceptable (MkSocket _ AF_UNIX x _ status)
+    | x == Stream || x == SeqPacket = do
+        value <- readMVar status
+        return (value == Connected || value == Bound || value == Listening)
 sIsAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
 #endif
 sIsAcceptable (MkSocket _ _ _ _ status) = do
