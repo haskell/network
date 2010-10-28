@@ -147,7 +147,9 @@ connect' host serv = do
                              , addrProtocol = proto
                              , addrSocketType = Stream }
     addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
-    let addr = head addrs
+    firstSuccessful $ map tryToConnect addrs
+  where
+  tryToConnect addr =
     bracketOnError
 	(socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
 	(sClose)  -- only done if there's an error
@@ -448,3 +450,12 @@ catchIO = Exception.catch
 catchIO = Exception.catchJust Exception.ioErrors
 #endif
 
+-- Returns the first action from a list which does not throw an exception.
+-- If all the actions throw exceptions (and the list of actions is not empty),
+-- the last exception is thrown.
+firstSuccessful :: [IO a] -> IO a
+firstSuccessful [] = error "firstSuccessful: empty list"
+firstSuccessful (p:ps) = catchIO p $ \e ->
+    case ps of
+        [] -> Exception.throw e
+        _  -> firstSuccessful ps
