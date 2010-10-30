@@ -9,17 +9,15 @@ category:       Network
 build-type:     Configure
 cabal-version:  >=1.6
 extra-tmp-files:
-                config.log config.status autom4te.cache
-                network.buildinfo include/HsNetworkConfig.h
+  config.log config.status autom4te.cache network.buildinfo
+  include/HsNetworkConfig.h
 extra-source-files:
-                README examples/*.hs tests/*.hs
-                config.guess config.sub install-sh
-                configure.ac configure
-                network.buildinfo.in include/HsNetworkConfig.h.in
-                include/HsNet.h include/Typeable.h
-                -- C sources only used on some systems
-                cbits/ancilData.c
-                cbits/asyncAccept.c cbits/initWinSock.c cbits/winSockErr.c
+  README examples/*.hs tests/*.hs config.guess config.sub install-sh
+  configure.ac configure network.buildinfo.in
+  include/HsNetworkConfig.h.in include/HsNet.h include/Typeable.h
+  -- C sources only used on some systems
+  cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
+  cbits/winSockErr.c
 homepage:       http://github.com/haskell/network
 bug-reports:    http://trac.haskell.org/network/
 
@@ -52,18 +50,17 @@ library
       unix >= 2 && < 3
 
   if flag(base4)
-      build-depends:    base >= 4 && < 4.4
-      cpp-options:      -DBASE4
+    build-depends: base >= 4 && < 4.4
+    cpp-options: -DBASE4
   else
-      build-depends:    base<4
+    build-depends: base<4
 
-  extensions:   CPP, DeriveDataTypeable, ForeignFunctionInterface,
-                TypeSynonymInstances
-  include-dirs:         include
-  includes:       HsNet.h
-  install-includes:
-                HsNet.h HsNetworkConfig.h
-  c-sources:    cbits/HsNet.c
+  extensions:
+    CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
+  include-dirs: include
+  includes: HsNet.h
+  install-includes: HsNet.h HsNetworkConfig.h
+  c-sources: cbits/HsNet.c
 
 source-repository head
   type:     git
