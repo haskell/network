@@ -1,9 +1,10 @@
 name:           network
-version:        2.2.1.10
+version:        2.2.2.10
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
-synopsis:       Networking-related facilities
+synopsis:       Low-level networking interface
+description:    Low-level networking interface
 category:       Network
 build-type:     Configure
 cabal-version:  >=1.6
@@ -11,6 +12,7 @@ extra-tmp-files:
                 config.log config.status autom4te.cache
                 network.buildinfo include/HsNetworkConfig.h
 extra-source-files:
+                README examples/*.hs tests/*.hs
                 config.guess config.sub install-sh
                 configure.ac configure
                 network.buildinfo.in include/HsNetworkConfig.h.in
@@ -18,15 +20,36 @@ extra-source-files:
                 -- C sources only used on some systems
                 cbits/ancilData.c
                 cbits/asyncAccept.c cbits/initWinSock.c cbits/winSockErr.c
+homepage:       http://github.com/haskell/network
 bug-reports:    http://trac.haskell.org/network/
 
 flag base4
 
 library
   exposed-modules:
-                Network Network.BSD Network.Socket.Internal Network.Socket
-                Network.URI
-  build-depends: base < 5, parsec
+    Network
+    Network.BSD
+    Network.Socket
+    Network.Socket.ByteString
+    Network.Socket.ByteString.Lazy
+    Network.Socket.Internal
+    Network.URI
+  other-modules:
+    Network.Socket.ByteString.Internal
+
+  if !os(windows)
+    other-modules:
+      Network.Socket.ByteString.IOVec
+      Network.Socket.ByteString.MsgHdr
+
+  build-depends:
+    base < 5,
+    bytestring < 1.0,
+    parsec
+
+  if !os(windows)
+    build-depends:
+      unix >= 2 && < 3
 
   if flag(base4)
       build-depends:    base >= 4 && < 4.4
