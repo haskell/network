@@ -18,22 +18,6 @@
 
 #include "HsNet.h"
 
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
-#define WITH_WINSOCK  1
-#endif
-
-#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
-#define DOMAIN_SOCKET_SUPPORT 1
-#endif
-
-#if !defined(CALLCONV)
-#ifdef WITH_WINSOCK
-#define CALLCONV stdcall
-#else
-#define CALLCONV ccall
-#endif
-#endif
-
 module Network.Socket.Internal
     (
       -- * Socket addresses

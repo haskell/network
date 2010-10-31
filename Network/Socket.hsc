@@ -24,22 +24,6 @@
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
 ##include "Typeable.h"
 
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
-#define WITH_WINSOCK  1
-#endif
-
-#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
-#define DOMAIN_SOCKET_SUPPORT 1
-#endif
-
-#if !defined(CALLCONV)
-#ifdef WITH_WINSOCK
-#define CALLCONV stdcall
-#else
-#define CALLCONV ccall
-#endif
-#endif
-
 -- In order to process this file, you need to have CALLCONV defined.
 
 module Network.Socket (

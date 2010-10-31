@@ -174,4 +174,20 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 }
 #endif
 
+#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+# define WITH_WINSOCK  1
 #endif
+
+#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
+# define DOMAIN_SOCKET_SUPPORT 1
+#endif
+
+#if !defined(CALLCONV)
+# if defined(WITH_WINSOCK)
+#  define CALLCONV stdcall
+# else
+#  define CALLCONV ccall
+# endif
+#endif
+
+#endif /* HSNET_H */

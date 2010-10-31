@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 
+#include "HsNet.h"
+
 -- |
 -- Module      : Network.Socket.ByteString
 -- Copyright   : (c) Johan Tibell 2007
@@ -77,18 +79,6 @@ import GHC.IO.FD
 #    else
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 #    endif
-#  endif
-#endif
-
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
-#  define WITH_WINSOCK 1
-#endif
-
-#if !defined(CALLCONV)
-#  ifdef WITH_WINSOCK
-#    define CALLCONV stdcall
-#  else
-#    define CALLCONV ccall
 #  endif
 #endif
 
