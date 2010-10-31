@@ -27,7 +27,6 @@
 -- In order to process this file, you need to have CALLCONV defined.
 
 module Network.Socket (
-
     -- * Types
     Socket(..),		-- instance Eq, Show
     Family(..),		
@@ -88,6 +87,8 @@ module Network.Socket (
 
     socketToHandle,	-- :: Socket -> IOMode -> IO Handle
 
+    -- ** Sending and receiving data
+    -- $sendrecv
     sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
     sendBufTo,          -- :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
 
@@ -624,6 +625,17 @@ foreign import ccall unsafe "HsNet.h &acceptDoProc"
 foreign import ccall unsafe "free"
   c_free:: Ptr a -> IO ()
 #endif
+
+-----------------------------------------------------------------------------
+-- ** Sending and reciving data
+
+-- $sendrecv
+--
+-- Do not use the @send@ and @recv@ functions defined in this module
+-- in new code, as they incorrectly represent binary data as a Unicode
+-- string.  As a result, these functions are inefficient and may lead
+-- to bugs in the program.  Instead use the @send@ and @recv@
+-- functions defined in the 'Network.Socket.ByteString' module.
 
 -----------------------------------------------------------------------------
 -- sendTo & recvFrom

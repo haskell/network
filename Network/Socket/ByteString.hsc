@@ -4,11 +4,11 @@
 
 -- |
 -- Module      : Network.Socket.ByteString
--- Copyright   : (c) Johan Tibell 2007
+-- Copyright   : (c) Johan Tibell 2007-2010
 -- License     : BSD-style
 --
 -- Maintainer  : johan.tibell@gmail.com
--- Stability   : experimental
+-- Stability   : stable
 -- Portability : portable
 --
 -- This module provides access to the BSD /socket/ interface.  This

@@ -1,5 +1,14 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 
+-- |
+-- Module      : Network.Socket.ByteString.Internal
+-- Copyright   : (c) Johan Tibell 2007-2010
+-- License     : BSD-style
+--
+-- Maintainer  : johan.tibell@gmail.com
+-- Stability   : stable
+-- Portability : portable
+--
 module Network.Socket.ByteString.Internal
   ( mkInvalidRecvArgError
 #if !defined(mingw32_HOST_OS)
