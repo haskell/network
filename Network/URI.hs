@@ -125,11 +125,11 @@ import Control.Monad( MonadPlus(..) )
 
 #ifdef __GLASGOW_HASKELL__
 import Data.Typeable  ( Typeable )
-#ifdef BASE4
+# if MIN_VERSION_base(4,0,0)
 import Data.Data      ( Data )
-#else
+# else
 import Data.Generics  ( Data )
-#endif
+# endif
 #else
 import Data.Typeable  ( Typeable(..), TyCon, mkTyCon, mkTyConApp )
 #endif

@@ -442,7 +442,7 @@ the POSIX library:
 -}
 
 catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
-#ifdef BASE4
+#if MIN_VERSION_base(4,0,0)
 catchIO = Exception.catch
 #else
 catchIO = Exception.catchJust Exception.ioErrors

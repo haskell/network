@@ -21,8 +21,6 @@ extra-source-files:
 homepage:       http://github.com/haskell/network
 bug-reports:    http://trac.haskell.org/network/
 
-flag base4
-
 library
   exposed-modules:
     Network
@@ -41,19 +39,13 @@ library
       Network.Socket.ByteString.MsgHdr
 
   build-depends:
-    base < 5,
+    base >= 3 && < 4.4,
     bytestring < 1.0,
-    parsec
+    parsec >= 2.0 && < 3.1.1
 
   if !os(windows)
     build-depends:
       unix >= 2 && < 3
-
-  if flag(base4)
-    build-depends: base >= 4 && < 4.4
-    cpp-options: -DBASE4
-  else
-    build-depends: base<4
 
   extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
