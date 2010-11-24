@@ -53,6 +53,9 @@ module Network.Socket.Internal
 
       -- * Initialization
       withSocketsDo,
+
+      -- * Low-level helpers
+      zeroMemory,
     ) where
 
 import Data.Bits ( (.|.), shiftL, shiftR )
