@@ -1,4 +1,4 @@
-{-# OPTIONS -fglasgow-exts -cpp #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
@@ -200,6 +200,9 @@ import System.IO.Error
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
+##if MIN_VERSION_base(4,3,1)
+import GHC.Conc		(closeFd)
+##endif
 # if defined(mingw32_HOST_OS)
 import GHC.Conc		( asyncDoProc )
 import Foreign( FunPtr )
@@ -1039,6 +1042,10 @@ getPeerCred sock = do
      return (pid, uid, gid)
 #endif
 
+##if !MIN_VERSION_base(4,3,1)
+closeFd closer fd = closer fd
+##endif
+
 #if defined(DOMAIN_SOCKET_SUPPORT)
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
@@ -1054,8 +1061,7 @@ sendFd sock outfd = do
 #endif
    -- Note: If Winsock supported FD-passing, thi would have been 
    -- incorrect (since socket FDs need to be closed via closesocket().)
-  c_close outfd
-  return ()
+  close outfd
   
 recvFd :: Socket -> IO CInt
 recvFd sock = do
@@ -1692,7 +1698,7 @@ sClose (MkSocket s _ _ _ socketStatus) = do
 	 ioError (userError ("sClose: converted to a Handle, use hClose instead"))
      Closed ->
 	 return status
-     _ -> c_close s >> return Closed
+     _ -> closeFd (close . fromIntegral) (fromIntegral s) >> return Closed
 
 -- -----------------------------------------------------------------------------
 
@@ -2170,6 +2176,9 @@ foreign import CALLCONV unsafe "inet_addr"
 
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt 
+
+close :: CInt -> IO ()
+close fd = throwErrnoIfMinus1Retry_ "Network.Socket.close" $ c_close fd
 
 #if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
