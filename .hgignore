@@ -1,0 +1,7 @@
+^(?:autom4te.cache|configure|config.status|dist)$
+\.(?:aux|eventlog|h[ip]|log|[oa]|orig|prof|ps|swp)$
+~$
+syntax: glob
+.\#*
+include/HsNetworkConfig.h*
+network.buildinfo
