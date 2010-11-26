@@ -12,6 +12,7 @@ import Foreign.C.Types (CInt, CSize)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 import Network.Socket (SockAddr)
+import Network.Socket.Internal (zeroMemory)
 
 import Network.Socket.ByteString.IOVec (IOVec)
 
@@ -36,6 +37,10 @@ instance Storable MsgHdr where
     return $ MsgHdr name nameLen iov iovLen
 
   poke p mh = do
+    -- We need to zero the msg_control, msg_controllen, and msg_flags
+    -- fields, but they only exist on some platforms (e.g. not on
+    -- Solaris).  Instead of using CPP, we zero the entire struct.
+    zeroMemory p (#const sizeof(struct msghdr))
     (#poke struct msghdr, msg_name)       p (msgName       mh)
     (#poke struct msghdr, msg_namelen)    p (msgNameLen    mh)
     (#poke struct msghdr, msg_iov)        p (msgIov        mh)
