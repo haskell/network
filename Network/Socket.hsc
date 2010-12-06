@@ -201,7 +201,7 @@ import System.IO.Error
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc		(threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
-import GHC.Conc		(closeFd)
+import GHC.Conc		(closeFdWith)
 ##endif
 # if defined(mingw32_HOST_OS)
 import GHC.Conc		( asyncDoProc )
@@ -1043,7 +1043,7 @@ getPeerCred sock = do
 #endif
 
 ##if !MIN_VERSION_base(4,3,1)
-closeFd closer fd = closer fd
+closeFdWith closer fd = closer fd
 ##endif
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
@@ -1698,7 +1698,7 @@ sClose (MkSocket s _ _ _ socketStatus) = do
 	 ioError (userError ("sClose: converted to a Handle, use hClose instead"))
      Closed ->
 	 return status
-     _ -> closeFd (close . fromIntegral) (fromIntegral s) >> return Closed
+     _ -> closeFdWith (close . fromIntegral) (fromIntegral s) >> return Closed
 
 -- -----------------------------------------------------------------------------
 
