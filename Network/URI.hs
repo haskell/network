@@ -119,25 +119,21 @@ import Text.ParserCombinators.Parsec
     , unexpected
     )
 
-import Data.Char( ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt )
-
-import Debug.Trace( trace )
-
-import Numeric( showIntAtBase )
-
-import Data.Maybe( isJust )
-
-import Control.Monad( MonadPlus(..) )
+import Control.Monad (MonadPlus(..))
+import Data.Char (ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt)
+import Data.Maybe (isJust)
+import Debug.Trace (trace)
+import Numeric (showIntAtBase)
 
 #ifdef __GLASGOW_HASKELL__
-import Data.Typeable  ( Typeable )
+import Data.Typeable (Typeable)
 # if MIN_VERSION_base(4,0,0)
-import Data.Data      ( Data )
+import Data.Data (Data)
 # else
-import Data.Generics  ( Data )
+import Data.Generics (Data)
 # endif
 #else
-import Data.Typeable  ( Typeable(..), TyCon, mkTyCon, mkTyConApp )
+import Data.Typeable (Typeable(..), TyCon, mkTyCon, mkTyConApp)
 #endif
 
 ------------------------------------------------------------

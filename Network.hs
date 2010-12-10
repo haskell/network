@@ -63,8 +63,8 @@ module Network
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
-import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
-import qualified Network.Socket as Socket ( accept )
+import Network.Socket hiding (accept, socketPort, recvFrom, sendTo, PortNumber)
+import qualified Network.Socket as Socket (accept)
 import System.IO
 import Prelude
 import qualified Control.Exception as Exception

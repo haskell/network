@@ -176,19 +176,20 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
-import Data.Word ( Word8, Word16, Word32 )
-import Foreign.Ptr ( Ptr, castPtr, nullPtr, plusPtr )
-import Foreign.Storable ( Storable(..) )
+import Data.Word (Word8, Word16, Word32)
+import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
+import Foreign.Storable (Storable(..))
 import Foreign.C.Error
-import Foreign.C.String ( CString, withCString, peekCString, peekCStringLen, castCharToCChar )
-import Foreign.C.Types ( CInt, CUInt, CChar, CSize )
-import Foreign.Marshal.Alloc ( alloca, allocaBytes )
-import Foreign.Marshal.Array ( peekArray, pokeArray, pokeArray0 )
-import Foreign.Marshal.Utils ( maybeWith, with )
+import Foreign.C.String (CString, withCString, peekCString, peekCStringLen,
+                         castCharToCChar )
+import Foreign.C.Types (CInt, CUInt, CChar, CSize)
+import Foreign.Marshal.Alloc (alloca, allocaBytes)
+import Foreign.Marshal.Array (peekArray, pokeArray, pokeArray0)
+import Foreign.Marshal.Utils (maybeWith, with)
 
 import System.IO
-import Control.Monad ( liftM, when )
-import Data.Ratio ( (%) )
+import Control.Monad (liftM, when)
+import Data.Ratio ((%))
 
 import qualified Control.Exception
 import Control.Concurrent.MVar
@@ -196,13 +197,13 @@ import Data.Typeable
 import System.IO.Error
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Conc         (threadWaitRead, threadWaitWrite)
+import GHC.Conc (threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
-import GHC.Conc         (closeFdWith)
+import GHC.Conc (closeFdWith)
 ##endif
 # if defined(mingw32_HOST_OS)
-import GHC.Conc         ( asyncDoProc )
-import Foreign( FunPtr )
+import GHC.Conc (asyncDoProc)
+import Foreign (FunPtr)
 # endif
 # if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Device

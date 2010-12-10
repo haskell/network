@@ -92,21 +92,21 @@ module Network.BSD
     ) where
 
 #ifdef __HUGS__
-import Hugs.Prelude ( IOException(..), IOErrorType(..) )
+import Hugs.Prelude (IOException(..), IOErrorType(..))
 #endif
 import Network.Socket
 
-import Control.Concurrent       ( MVar, newMVar, withMVar )
-import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
-import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
-import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
-import Foreign.Ptr ( Ptr, nullPtr )
-import Foreign.Storable ( Storable(..) )
-import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
-import Foreign.Marshal.Utils ( with, fromBool )
+import Control.Concurrent (MVar, newMVar, withMVar)
+import Foreign.C.Error (throwErrnoIfMinus1, throwErrnoIfMinus1_)
+import Foreign.C.String (CString, peekCString, peekCStringLen, withCString)
+import Foreign.C.Types (CInt, CULong, CChar, CSize, CShort)
+import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (Storable(..))
+import Foreign.Marshal.Array (allocaArray0, peekArray0)
+import Foreign.Marshal.Utils (with, fromBool)
 import Data.Typeable
 import System.IO.Error
-import System.IO.Unsafe ( unsafePerformIO )
+import System.IO.Unsafe (unsafePerformIO)
 
 #ifdef __GLASGOW_HASKELL__
 # if __GLASGOW_HASKELL__ >= 611
@@ -116,7 +116,7 @@ import GHC.IOBase
 # endif
 #endif
 
-import Control.Monad ( liftM )
+import Control.Monad (liftM)
 
 -- ---------------------------------------------------------------------------
 -- Basic Types
