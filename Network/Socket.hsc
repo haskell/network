@@ -161,8 +161,7 @@ module Network.Socket (
     packFamily, unpackFamily,
     packSocketType,
     throwSocketErrorIfMinus1_
-
-) where
+    ) where
 
 #ifdef __HUGS__
 import Hugs.Prelude ( IOException(..), IOErrorType(..) )

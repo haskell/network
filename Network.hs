@@ -23,43 +23,41 @@
 #endif
 
 module Network (
+    -- * Basic data types
+    Socket,
+    PortID(..),
+    HostName,
+    PortNumber,     -- instance (Eq, Enum, Num, Real, Integral)
 
-        -- * Basic data types
-        Socket,
-        PortID(..),
-        HostName,
-        PortNumber,     -- instance (Eq, Enum, Num, Real, Integral)
+    -- * Initialisation
+    withSocketsDo,  -- :: IO a   -> IO a
+    
+    -- * Server-side connections
+    listenOn,       -- :: PortID -> IO Socket
+    accept,         -- :: Socket -> IO (Handle, HostName, PortNumber)
+    sClose,         -- :: Socket -> IO ()
 
-        -- * Initialisation
-        withSocketsDo,  -- :: IO a   -> IO a
-        
-        -- * Server-side connections
-        listenOn,       -- :: PortID -> IO Socket
-        accept,         -- :: Socket -> IO (Handle, HostName, PortNumber)
-        sClose,         -- :: Socket -> IO ()
+    -- * Client-side connections
+    connectTo,      -- :: HostName -> PortID -> IO Handle
 
-        -- * Client-side connections
-        connectTo,      -- :: HostName -> PortID -> IO Handle
+    -- * Simple sending and receiving
+    {-$sendrecv-}
+    sendTo,         -- :: HostName -> PortID -> String -> IO ()
+    recvFrom,       -- :: HostName -> PortID -> IO String
 
-        -- * Simple sending and receiving
-        {-$sendrecv-}
-        sendTo,         -- :: HostName -> PortID -> String -> IO ()
-        recvFrom,       -- :: HostName -> PortID -> IO String
+    -- * Miscellaneous
+    socketPort,     -- :: Socket -> IO PortID
 
-        -- * Miscellaneous
-        socketPort,     -- :: Socket -> IO PortID
+    -- * Networking Issues
+    -- ** Buffering
+    {-$buffering-}
 
-        -- * Networking Issues
-        -- ** Buffering
-        {-$buffering-}
+    -- ** Improving I\/O Performance over sockets
+    {-$performance-}
 
-        -- ** Improving I\/O Performance over sockets
-        {-$performance-}
-
-        -- ** @SIGPIPE@
-        {-$sigpipe-}
-
-       ) where
+    -- ** @SIGPIPE@
+    {-$sigpipe-}
+    ) where
 
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)

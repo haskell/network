@@ -20,7 +20,6 @@
 ##include "Typeable.h"
 
 module Network.BSD (
-       
     -- * Host names
     HostName,
     getHostName,            -- :: IO HostName
