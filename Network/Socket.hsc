@@ -622,7 +622,7 @@ foreign import ccall unsafe "free"
 
 -- $sendrecv
 --
--- Do not use the @send@ and @recv@ functions defined in this module
+-- Do not use the 'send' and 'recv' functions defined in this module
 -- in new code, as they incorrectly represent binary data as a Unicode
 -- string.  As a result, these functions are inefficient and may lead
 -- to bugs in the program.  Instead use the @send@ and @recv@
@@ -821,9 +821,9 @@ socketPort (MkSocket _ family _ _ _) =
 -- ---------------------------------------------------------------------------
 -- getPeerName
 
--- | Returns the address of the peer connected to the specified
--- socket.  This is useful to find out the port number of a remote
--- IPv4/v6 socket, for instance.
+-- | Return the address of the peer connected to the specified socket.
+-- This is useful to find out the port number of a remote IPv4/v6
+-- socket, for instance.
 getPeerName   :: Socket -> IO SockAddr
 getPeerName (MkSocket s family _ _ _) =
     withNewSockAddr family $ \ptr sz ->
@@ -1345,7 +1345,7 @@ inet_ntoa haddr = do
   pstr <- c_inet_ntoa haddr
   peekCString pstr
 
--- | Turns a Socket into an 'Handle'. By default, the new handle is
+-- | Turn a Socket into an 'Handle'. By default, the new handle is
 -- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
 --
 -- Note that since a 'Handle' is automatically closed by a finalizer
