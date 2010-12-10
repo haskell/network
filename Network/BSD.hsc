@@ -4,7 +4,7 @@
 -- Module      :  Network.BSD
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/network/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  non-portable
@@ -139,7 +139,7 @@ type ProtocolName = String
 -- close the database a call to endServiceEntry is required.  This
 -- database file is usually stored in the file /etc/services.
 
-data ServiceEntry  = 
+data ServiceEntry  =
   ServiceEntry  {
      serviceName     :: ServiceName,    -- Official Name
      serviceAliases  :: [ServiceName],  -- aliases
@@ -187,7 +187,7 @@ getServiceByName name proto = withLock $ do
    $ (trySysCall (c_getservbyname cstr_name cstr_proto))
  >>= peek
 
-foreign import CALLCONV unsafe "getservbyname" 
+foreign import CALLCONV unsafe "getservbyname"
   c_getservbyname :: CString -> CString -> IO (Ptr ServiceEntry)
 
 -- | Get the service given a 'PortNumber' and 'ProtocolName'.
@@ -198,7 +198,7 @@ getServiceByPort (PortNum port) proto = withLock $ do
    $ (trySysCall (c_getservbyport (fromIntegral port) cstr_proto))
  >>= peek
 
-foreign import CALLCONV unsafe "getservbyport" 
+foreign import CALLCONV unsafe "getservbyport"
   c_getservbyport :: CInt -> CString -> IO (Ptr ServiceEntry)
 
 -- | Get the 'PortNumber' corresponding to the 'ServiceName'.
@@ -242,9 +242,9 @@ getServiceEntries stayOpen = do
 -- As for setServiceEntry above, calling setProtocolEntry.
 -- determines whether or not the protocol database file, usually
 -- @/etc/protocols@, is to be kept open between calls of
--- getProtocolEntry. Similarly, 
+-- getProtocolEntry. Similarly,
 
-data ProtocolEntry = 
+data ProtocolEntry =
   ProtocolEntry  {
      protoName    :: ProtocolName,      -- Official Name
      protoAliases :: [ProtocolName],    -- aliases
@@ -266,12 +266,12 @@ instance Storable ProtocolEntry where
          -- With WinSock, the protocol number is only a short;
          -- hoist it in as such, but represent it on the Haskell side
          -- as a CInt.
-        p_proto_short  <- (#peek struct protoent, p_proto) p 
+        p_proto_short  <- (#peek struct protoent, p_proto) p
         let p_proto = fromIntegral (p_proto_short :: CShort)
 #else
-        p_proto        <- (#peek struct protoent, p_proto) p 
+        p_proto        <- (#peek struct protoent, p_proto) p
 #endif
-        return (ProtocolEntry { 
+        return (ProtocolEntry {
                         protoName    = p_name,
                         protoAliases = p_aliases,
                         protoNumber  = p_proto
@@ -286,7 +286,7 @@ getProtocolByName name = withLock $ do
    $ (trySysCall.c_getprotobyname) name_cstr
  >>= peek
 
-foreign import  CALLCONV unsafe  "getprotobyname" 
+foreign import  CALLCONV unsafe  "getprotobyname"
    c_getprotobyname :: CString -> IO (Ptr ProtocolEntry)
 
 
@@ -333,7 +333,7 @@ getProtocolEntries stayOpen = withLock $ do
 -- ---------------------------------------------------------------------------
 -- Host lookups
 
-data HostEntry = 
+data HostEntry =
   HostEntry  {
      hostName      :: HostName,         -- Official Name
      hostAliases   :: [HostName],       -- aliases
@@ -389,7 +389,7 @@ getHostByName name = withLock $ do
                 $ trySysCall $ c_gethostbyname name_cstr
    peek ent
 
-foreign import CALLCONV safe "gethostbyname" 
+foreign import CALLCONV safe "gethostbyname"
    c_gethostbyname :: CString -> IO (Ptr HostEntry)
 
 
@@ -466,7 +466,7 @@ instance Storable NetworkEntry where
         return (NetworkEntry {
                         networkName      = n_name,
                         networkAliases   = n_aliases,
-                        networkFamily    = unpackFamily (fromIntegral 
+                        networkFamily    = unpackFamily (fromIntegral
                                                         (n_addrtype :: CInt)),
                         networkAddress   = n_net
                 })
@@ -482,7 +482,7 @@ getNetworkByName name = withLock $ do
     $ trySysCall $ c_getnetbyname name_cstr
   >>= peek
 
-foreign import ccall unsafe "getnetbyname" 
+foreign import ccall unsafe "getnetbyname"
    c_getnetbyname  :: CString -> IO (Ptr NetworkEntry)
 
 getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
@@ -491,7 +491,7 @@ getNetworkByAddr addr family = withLock $ do
    $ trySysCall $ c_getnetbyaddr addr (packFamily family)
  >>= peek
 
-foreign import ccall unsafe "getnetbyaddr" 
+foreign import ccall unsafe "getnetbyaddr"
    c_getnetbyaddr  :: NetworkAddr -> CInt -> IO (Ptr NetworkEntry)
 
 getNetworkEntry :: IO NetworkEntry
@@ -545,7 +545,7 @@ getHostName = do
     throwSocketErrorIfMinus1_ "getHostName" $ c_gethostname cstr (fromIntegral size)
     peekCString cstr
 
-foreign import CALLCONV unsafe "gethostname" 
+foreign import CALLCONV unsafe "gethostname"
    c_gethostname :: CString -> CSize -> IO CInt
 
 -- Helper function used by the exported functions that provides a

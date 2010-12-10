@@ -607,10 +607,10 @@ packFamily f = case f of
     AF_SDL -> #const AF_SDL
 #endif
 #ifdef AF_NETWARE
-    AF_NETWARE -> #const AF_NETWARE 
+    AF_NETWARE -> #const AF_NETWARE
 #endif
 #ifdef AF_NDD
-    AF_NDD -> #const AF_NDD     
+    AF_NDD -> #const AF_NDD
 #endif
 #ifdef AF_INTF
     AF_INTF -> #const AF_INTF
@@ -646,7 +646,7 @@ packFamily f = case f of
     Pseudo_AF_HDRCMPLT -> #const Pseudo_AF_HDRCMPLT
 #endif
 #ifdef AF_ENCAP
-    AF_ENCAP -> #const AF_ENCAP 
+    AF_ENCAP -> #const AF_ENCAP
 #endif
 #ifdef AF_LINK
     AF_LINK -> #const AF_LINK
@@ -805,10 +805,10 @@ unpackFamily f = case f of
     (#const AF_SDL) -> AF_SDL
 #endif
 #ifdef AF_NETWARE
-    (#const AF_NETWARE) -> AF_NETWARE       
+    (#const AF_NETWARE) -> AF_NETWARE
 #endif
 #ifdef AF_NDD
-    (#const AF_NDD) -> AF_NDD           
+    (#const AF_NDD) -> AF_NDD
 #endif
 #ifdef AF_INTF
     (#const AF_INTF) -> AF_INTF
@@ -844,7 +844,7 @@ unpackFamily f = case f of
     (#const Pseudo_AF_HDRCMPLT) -> Pseudo_AF_HDRCMPLT
 #endif
 #ifdef AF_ENCAP
-    (#const AF_ENCAP) -> AF_ENCAP 
+    (#const AF_ENCAP) -> AF_ENCAP
 #endif
 #ifdef AF_LINK
     (#const AF_LINK) -> AF_LINK
