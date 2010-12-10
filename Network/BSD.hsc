@@ -23,51 +23,51 @@ module Network.BSD (
        
     -- * Host names
     HostName,
-    getHostName,	    -- :: IO HostName
+    getHostName,            -- :: IO HostName
 
     HostEntry(..),
-    getHostByName,	    -- :: HostName -> IO HostEntry
-    getHostByAddr,	    -- :: HostAddress -> Family -> IO HostEntry
-    hostAddress,	    -- :: HostEntry -> HostAddress
+    getHostByName,          -- :: HostName -> IO HostEntry
+    getHostByAddr,          -- :: HostAddress -> Family -> IO HostEntry
+    hostAddress,            -- :: HostEntry -> HostAddress
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getHostEntries,	    -- :: Bool -> IO [HostEntry]
+    getHostEntries,         -- :: Bool -> IO [HostEntry]
     -- ** Low level functionality
-    setHostEntry,	    -- :: Bool -> IO ()
-    getHostEntry,	    -- :: IO HostEntry
-    endHostEntry,	    -- :: IO ()
+    setHostEntry,           -- :: Bool -> IO ()
+    getHostEntry,           -- :: IO HostEntry
+    endHostEntry,           -- :: IO ()
 #endif
 
     -- * Service names
     ServiceEntry(..),
     ServiceName,
-    getServiceByName,	    -- :: ServiceName -> ProtocolName -> IO ServiceEntry
+    getServiceByName,       -- :: ServiceName -> ProtocolName -> IO ServiceEntry
     getServiceByPort,       -- :: PortNumber  -> ProtocolName -> IO ServiceEntry
     getServicePortNumber,   -- :: ServiceName -> IO PortNumber
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getServiceEntries,	    -- :: Bool -> IO [ServiceEntry]
+    getServiceEntries,      -- :: Bool -> IO [ServiceEntry]
     -- ** Low level functionality
-    getServiceEntry,	    -- :: IO ServiceEntry
-    setServiceEntry,	    -- :: Bool -> IO ()
-    endServiceEntry,	    -- :: IO ()
+    getServiceEntry,        -- :: IO ServiceEntry
+    setServiceEntry,        -- :: Bool -> IO ()
+    endServiceEntry,        -- :: IO ()
 #endif
 
     -- * Protocol names
     ProtocolName,
     ProtocolNumber,
     ProtocolEntry(..),
-    getProtocolByName,	    -- :: ProtocolName   -> IO ProtocolEntry
+    getProtocolByName,      -- :: ProtocolName   -> IO ProtocolEntry
     getProtocolByNumber,    -- :: ProtocolNumber -> IO ProtcolEntry
-    getProtocolNumber,	    -- :: ProtocolName   -> ProtocolNumber
+    getProtocolNumber,      -- :: ProtocolName   -> ProtocolNumber
     defaultProtocol,        -- :: ProtocolNumber
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getProtocolEntries,	    -- :: Bool -> IO [ProtocolEntry]
+    getProtocolEntries,     -- :: Bool -> IO [ProtocolEntry]
     -- ** Low level functionality
-    setProtocolEntry,	    -- :: Bool -> IO ()
-    getProtocolEntry,	    -- :: IO ProtocolEntry
-    endProtocolEntry,	    -- :: IO ()
+    setProtocolEntry,       -- :: Bool -> IO ()
+    getProtocolEntry,       -- :: IO ProtocolEntry
+    endProtocolEntry,       -- :: IO ()
 #endif
 
     -- * Port numbers
@@ -79,13 +79,13 @@ module Network.BSD (
     NetworkEntry(..)
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    , getNetworkByName	    -- :: NetworkName -> IO NetworkEntry
+    , getNetworkByName      -- :: NetworkName -> IO NetworkEntry
     , getNetworkByAddr      -- :: NetworkAddr -> Family -> IO NetworkEntry
     , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
     -- ** Low level functionality
-    , setNetworkEntry	    -- :: Bool -> IO ()
-    , getNetworkEntry	    -- :: IO NetworkEntry
-    , endNetworkEntry	    -- :: IO ()
+    , setNetworkEntry       -- :: Bool -> IO ()
+    , getNetworkEntry       -- :: IO NetworkEntry
+    , endNetworkEntry       -- :: IO ()
 #endif
     ) where
 
@@ -94,7 +94,7 @@ import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 #endif
 import Network.Socket
 
-import Control.Concurrent 	( MVar, newMVar, withMVar )
+import Control.Concurrent       ( MVar, newMVar, withMVar )
 import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
 import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
 import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
@@ -137,10 +137,10 @@ type ProtocolName = String
 
 data ServiceEntry  = 
   ServiceEntry  {
-     serviceName     :: ServiceName,	-- Official Name
-     serviceAliases  :: [ServiceName],	-- aliases
-     servicePort     :: PortNumber,	-- Port Number  ( network byte order )
-     serviceProtocol :: ProtocolName	-- Protocol
+     serviceName     :: ServiceName,    -- Official Name
+     serviceAliases  :: [ServiceName],  -- aliases
+     servicePort     :: PortNumber,     -- Port Number  ( network byte order )
+     serviceProtocol :: ProtocolName    -- Protocol
   } deriving (Show)
 
 INSTANCE_TYPEABLE0(ServiceEntry,serviceEntryTc,"ServiceEntry")
@@ -173,9 +173,9 @@ instance Storable ServiceEntry where
 
 
 -- | Get service by name.
-getServiceByName :: ServiceName 	-- Service Name
-		 -> ProtocolName 	-- Protocol Name
-		 -> IO ServiceEntry	-- Service Entry
+getServiceByName :: ServiceName         -- Service Name
+                 -> ProtocolName        -- Protocol Name
+                 -> IO ServiceEntry     -- Service Entry
 getServiceByName name proto = withLock $ do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
@@ -204,7 +204,7 @@ getServicePortNumber name = do
     return port
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-getServiceEntry	:: IO ServiceEntry
+getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
    $ trySysCall c_getservent
@@ -212,12 +212,12 @@ getServiceEntry = withLock $ do
 
 foreign import ccall unsafe "getservent" c_getservent :: IO (Ptr ServiceEntry)
 
-setServiceEntry	:: Bool -> IO ()
+setServiceEntry :: Bool -> IO ()
 setServiceEntry flg = withLock $ trySysCall $ c_setservent (fromBool flg)
 
 foreign import ccall unsafe  "setservent" c_setservent :: CInt -> IO ()
 
-endServiceEntry	:: IO ()
+endServiceEntry :: IO ()
 endServiceEntry = withLock $ trySysCall $ c_endservent
 
 foreign import ccall unsafe  "endservent" c_endservent :: IO ()
@@ -242,9 +242,9 @@ getServiceEntries stayOpen = do
 
 data ProtocolEntry = 
   ProtocolEntry  {
-     protoName    :: ProtocolName,	-- Official Name
-     protoAliases :: [ProtocolName],	-- aliases
-     protoNumber  :: ProtocolNumber	-- Protocol Number
+     protoName    :: ProtocolName,      -- Official Name
+     protoAliases :: [ProtocolName],    -- aliases
+     protoNumber  :: ProtocolNumber     -- Protocol Number
   } deriving (Read, Show)
 
 INSTANCE_TYPEABLE0(ProtocolEntry,protocolEntryTc,"ProtocolEntry")
@@ -302,15 +302,15 @@ getProtocolNumber proto = do
  return num
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB
+getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
-   		$ trySysCall c_getprotoent
+                $ trySysCall c_getprotoent
  peek ent
 
 foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
-setProtocolEntry :: Bool -> IO ()	-- Keep DB Open ?
+setProtocolEntry :: Bool -> IO ()       -- Keep DB Open ?
 setProtocolEntry flg = withLock $ trySysCall $ c_setprotoent (fromBool flg)
 
 foreign import ccall unsafe "setprotoent" c_setprotoent :: CInt -> IO ()
@@ -331,10 +331,10 @@ getProtocolEntries stayOpen = withLock $ do
 
 data HostEntry = 
   HostEntry  {
-     hostName      :: HostName,  	-- Official Name
-     hostAliases   :: [HostName],	-- aliases
-     hostFamily    :: Family,	        -- Host Type (currently AF_INET)
-     hostAddresses :: [HostAddress]	-- Set of Network Addresses  (in network byte order)
+     hostName      :: HostName,         -- Official Name
+     hostAliases   :: [HostName],       -- aliases
+     hostFamily    :: Family,           -- Host Type (currently AF_INET)
+     hostAddresses :: [HostAddress]     -- Set of Network Addresses  (in network byte order)
   } deriving (Read, Show)
 
 INSTANCE_TYPEABLE0(HostEntry,hostEntryTc,"hostEntry")
@@ -382,7 +382,7 @@ getHostByName :: HostName -> IO HostEntry
 getHostByName name = withLock $ do
   withCString name $ \ name_cstr -> do
    ent <- throwNoSuchThingIfNull "getHostByName" "no such host entry"
-    		$ trySysCall $ c_gethostbyname name_cstr
+                $ trySysCall $ c_gethostbyname name_cstr
    peek ent
 
 foreign import CALLCONV safe "gethostbyname" 
@@ -395,7 +395,7 @@ foreign import CALLCONV safe "gethostbyname"
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
  with addr $ \ ptr_addr -> withLock $ do
- throwNoSuchThingIfNull 	"getHostByAddr" "no such host entry"
+ throwNoSuchThingIfNull         "getHostByAddr" "no such host entry"
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 
@@ -405,7 +405,7 @@ foreign import CALLCONV safe "gethostbyaddr"
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
- throwNoSuchThingIfNull 	"getHostEntry" "unable to retrieve host entry"
+ throwNoSuchThingIfNull         "getHostEntry" "unable to retrieve host entry"
    $ trySysCall $ c_gethostent
  >>= peek
 
@@ -440,10 +440,10 @@ type NetworkName = String
 
 data NetworkEntry =
   NetworkEntry {
-     networkName	:: NetworkName,   -- official name
-     networkAliases	:: [NetworkName], -- aliases
-     networkFamily	:: Family,	   -- type
-     networkAddress	:: NetworkAddr
+     networkName        :: NetworkName,   -- official name
+     networkAliases     :: [NetworkName], -- aliases
+     networkFamily      :: Family,         -- type
+     networkAddress     :: NetworkAddr
    } deriving (Read, Show)
 
 INSTANCE_TYPEABLE0(NetworkEntry,networkEntryTc,"NetworkEntry")
@@ -549,7 +549,7 @@ foreign import CALLCONV unsafe "gethostname"
 
 getEntries :: IO a  -- read
            -> IO () -- at end
-	   -> IO [a]
+           -> IO [a]
 getEntries getOne atEnd = loop
   where
     loop = do
