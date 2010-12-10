@@ -53,6 +53,8 @@ library
   includes: HsNet.h
   install-includes: HsNet.h HsNetworkConfig.h
   c-sources: cbits/HsNet.c
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
 
 source-repository head
   type:     git
