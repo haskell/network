@@ -27,26 +27,26 @@ module Network (
     Socket,
     PortID(..),
     HostName,
-    PortNumber,     -- instance (Eq, Enum, Num, Real, Integral)
+    PortNumber,
 
     -- * Initialisation
-    withSocketsDo,  -- :: IO a   -> IO a
+    withSocketsDo,
     
     -- * Server-side connections
-    listenOn,       -- :: PortID -> IO Socket
-    accept,         -- :: Socket -> IO (Handle, HostName, PortNumber)
-    sClose,         -- :: Socket -> IO ()
+    listenOn,
+    accept,
+    sClose,
 
     -- * Client-side connections
-    connectTo,      -- :: HostName -> PortID -> IO Handle
+    connectTo,
 
     -- * Simple sending and receiving
     {-$sendrecv-}
-    sendTo,         -- :: HostName -> PortID -> String -> IO ()
-    recvFrom,       -- :: HostName -> PortID -> IO String
+    sendTo,
+    recvFrom,
 
     -- * Miscellaneous
-    socketPort,     -- :: Socket -> IO PortID
+    socketPort,
 
     -- * Networking Issues
     -- ** Buffering

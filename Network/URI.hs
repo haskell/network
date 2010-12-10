@@ -64,10 +64,10 @@ module Network.URI
     , URIAuth(..)
     , nullURI
       -- * Parsing
-    , parseURI                  -- :: String -> Maybe URI
-    , parseURIReference         -- :: String -> Maybe URI
-    , parseRelativeReference    -- :: String -> Maybe URI
-    , parseAbsoluteURI          -- :: String -> Maybe URI
+    , parseURI
+    , parseURIReference
+    , parseRelativeReference
+    , parseAbsoluteURI
       -- * Test for strings containing various kinds of URI
     , isURI
     , isURIReference
@@ -76,9 +76,9 @@ module Network.URI
     , isIPv6address
     , isIPv4address
       -- * Relative URIs
-    , relativeTo                -- :: URI -> URI -> Maybe URI
-    , nonStrictRelativeTo       -- :: URI -> URI -> Maybe URI
-    , relativeFrom              -- :: URI -> URI -> URI
+    , relativeTo
+    , nonStrictRelativeTo
+    , relativeFrom
       -- * Operations on URI strings
       -- | Support for putting strings into URI-friendly
       --   escaped format and getting them back again.
@@ -87,23 +87,22 @@ module Network.URI
       --   The URI spec [3], section 2.4, indicates that all URI components
       --   should be escaped before they are assembled as a URI:
       --   \"Once produced, a URI is always in its percent-encoded form\"
-    , uriToString               -- :: URI -> ShowS
-    , isReserved, isUnreserved  -- :: Char -> Bool
-    , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
-    , escapeURIChar             -- :: (Char->Bool) -> Char -> String
-    , escapeURIString           -- :: (Char->Bool) -> String -> String
-    , unEscapeString            -- :: String -> String
+    , uriToString
+    , isReserved, isUnreserved
+    , isAllowedInURI, isUnescapedInURI
+    , escapeURIChar
+    , escapeURIString
+    , unEscapeString
     -- * URI Normalization functions
-    , normalizeCase             -- :: String -> String
-    , normalizeEscape           -- :: String -> String
-    , normalizePathSegments     -- :: String -> String
+    , normalizeCase
+    , normalizeEscape
+    , normalizePathSegments
     -- * Deprecated functions
-    , parseabsoluteURI          -- :: String -> Maybe URI
-    , escapeString              -- :: String -> (Char->Bool) -> String
-    , reserved, unreserved      -- :: Char -> Bool
+    , parseabsoluteURI
+    , escapeString
+    , reserved, unreserved
     , scheme, authority, path, query, fragment
-    )
-where
+    ) where
 
 import Text.ParserCombinators.Parsec
     ( GenParser(..), ParseError(..)

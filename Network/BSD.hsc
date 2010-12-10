@@ -22,51 +22,51 @@
 module Network.BSD (
     -- * Host names
     HostName,
-    getHostName,            -- :: IO HostName
+    getHostName,
 
     HostEntry(..),
-    getHostByName,          -- :: HostName -> IO HostEntry
-    getHostByAddr,          -- :: HostAddress -> Family -> IO HostEntry
-    hostAddress,            -- :: HostEntry -> HostAddress
+    getHostByName,
+    getHostByAddr,
+    hostAddress,
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getHostEntries,         -- :: Bool -> IO [HostEntry]
+    getHostEntries,
     -- ** Low level functionality
-    setHostEntry,           -- :: Bool -> IO ()
-    getHostEntry,           -- :: IO HostEntry
-    endHostEntry,           -- :: IO ()
+    setHostEntry,
+    getHostEntry,
+    endHostEntry,
 #endif
 
     -- * Service names
     ServiceEntry(..),
     ServiceName,
-    getServiceByName,       -- :: ServiceName -> ProtocolName -> IO ServiceEntry
-    getServiceByPort,       -- :: PortNumber  -> ProtocolName -> IO ServiceEntry
-    getServicePortNumber,   -- :: ServiceName -> IO PortNumber
+    getServiceByName,
+    getServiceByPort,
+    getServicePortNumber,
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getServiceEntries,      -- :: Bool -> IO [ServiceEntry]
+    getServiceEntries,
     -- ** Low level functionality
-    getServiceEntry,        -- :: IO ServiceEntry
-    setServiceEntry,        -- :: Bool -> IO ()
-    endServiceEntry,        -- :: IO ()
+    getServiceEntry,
+    setServiceEntry,
+    endServiceEntry,
 #endif
 
     -- * Protocol names
     ProtocolName,
     ProtocolNumber,
     ProtocolEntry(..),
-    getProtocolByName,      -- :: ProtocolName   -> IO ProtocolEntry
-    getProtocolByNumber,    -- :: ProtocolNumber -> IO ProtcolEntry
-    getProtocolNumber,      -- :: ProtocolName   -> ProtocolNumber
-    defaultProtocol,        -- :: ProtocolNumber
+    getProtocolByName,
+    getProtocolByNumber,
+    getProtocolNumber,
+    defaultProtocol,
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getProtocolEntries,     -- :: Bool -> IO [ProtocolEntry]
+    getProtocolEntries,
     -- ** Low level functionality
-    setProtocolEntry,       -- :: Bool -> IO ()
-    getProtocolEntry,       -- :: IO ProtocolEntry
-    endProtocolEntry,       -- :: IO ()
+    setProtocolEntry,
+    getProtocolEntry,
+    endProtocolEntry,
 #endif
 
     -- * Port numbers
@@ -78,13 +78,13 @@ module Network.BSD (
     NetworkEntry(..)
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    , getNetworkByName      -- :: NetworkName -> IO NetworkEntry
-    , getNetworkByAddr      -- :: NetworkAddr -> Family -> IO NetworkEntry
-    , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
+    , getNetworkByName
+    , getNetworkByAddr
+    , getNetworkEntries
     -- ** Low level functionality
-    , setNetworkEntry       -- :: Bool -> IO ()
-    , getNetworkEntry       -- :: IO NetworkEntry
-    , endNetworkEntry       -- :: IO ()
+    , setNetworkEntry
+    , getNetworkEntry
+    , endNetworkEntry
 #endif
     ) where
 

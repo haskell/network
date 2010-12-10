@@ -28,7 +28,7 @@
 
 module Network.Socket (
     -- * Types
-    Socket(..),         -- instance Eq, Show
+    Socket(..),
     Family(..),         
     SocketType(..),
     SockAddr(..),
@@ -41,7 +41,7 @@ module Network.Socket (
 #endif
     ShutdownCmd(..),
     ProtocolNumber,
-    defaultProtocol,        -- :: ProtocolNumber
+    defaultProtocol,
     PortNumber(..),
     -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
     -- this use and make the type abstract.
@@ -55,103 +55,99 @@ module Network.Socket (
     AddrInfo(..),
 
     AddrInfoFlag(..),
-    addrInfoFlagImplemented,-- :: AddrInfoFlag -> Bool
+    addrInfoFlagImplemented,
 
-    defaultHints,           -- :: AddrInfo
+    defaultHints,
 
-    getAddrInfo,            -- :: Maybe AddrInfo -> Maybe HostName -> Maybe ServiceName -> IO [AddrInfo]
+    getAddrInfo,
 
     NameInfoFlag(..),
 
-    getNameInfo,            -- :: [NameInfoFlag] -> Bool -> Bool -> SockAddr -> IO (Maybe HostName, Maybe ServiceName)
+    getNameInfo,
 #endif
 
     -- * Socket operations
-    socket,             -- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
+    socket,
 #if defined(DOMAIN_SOCKET_SUPPORT)
-    socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
+    socketPair,
 #endif
-    connect,            -- :: Socket -> SockAddr -> IO ()
-    bindSocket,         -- :: Socket -> SockAddr -> IO ()
-    listen,             -- :: Socket -> Int -> IO ()
-    accept,             -- :: Socket -> IO (Socket, SockAddr)
-    getPeerName,        -- :: Socket -> IO SockAddr
-    getSocketName,      -- :: Socket -> IO SockAddr
+    connect,
+    bindSocket,
+    listen,
+    accept,
+    getPeerName,
+    getSocketName,
 
 #ifdef HAVE_STRUCT_UCRED
     -- get the credentials of our domain socket peer.
-    getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
+    getPeerCred,
 #endif
 
-    socketPort,         -- :: Socket -> IO PortNumber
+    socketPort,
 
-    socketToHandle,     -- :: Socket -> IOMode -> IO Handle
+    socketToHandle,
 
     -- ** Sending and receiving data
     -- $sendrecv
-    sendTo,             -- :: Socket -> String -> SockAddr -> IO Int
-    sendBufTo,          -- :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
+    sendTo,
+    sendBufTo,
 
-    recvFrom,           -- :: Socket -> Int -> IO (String, Int, SockAddr)
-    recvBufFrom,        -- :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
+    recvFrom,
+    recvBufFrom,
     
-    send,               -- :: Socket -> String -> IO Int
-    recv,               -- :: Socket -> Int    -> IO String
-    recvLen,            -- :: Socket -> Int    -> IO (String, Int)
+    send,
+    recv,
+    recvLen,
 
-    inet_addr,          -- :: String -> IO HostAddress
-    inet_ntoa,          -- :: HostAddress -> IO String
+    inet_addr,
+    inet_ntoa,
 
-    shutdown,           -- :: Socket -> ShutdownCmd -> IO ()
-    sClose,             -- :: Socket -> IO ()
+    shutdown,
+    sClose,
 
     -- ** Predicates on sockets
-    sIsConnected,       -- :: Socket -> IO Bool
-    sIsBound,           -- :: Socket -> IO Bool
-    sIsListening,       -- :: Socket -> IO Bool 
-    sIsReadable,        -- :: Socket -> IO Bool
-    sIsWritable,        -- :: Socket -> IO Bool
+    sIsConnected,
+    sIsBound,
+    sIsListening,
+    sIsReadable,
+    sIsWritable,
 
     -- * Socket options
     SocketOption(..),
-    getSocketOption,     -- :: Socket -> SocketOption -> IO Int
-    setSocketOption,     -- :: Socket -> SocketOption -> Int -> IO ()
+    getSocketOption,
+    setSocketOption,
 
     -- * File descriptor transmission
 #ifdef DOMAIN_SOCKET_SUPPORT
-    sendFd,              -- :: Socket -> CInt -> IO ()
-    recvFd,              -- :: Socket -> IO CInt
+    sendFd,
+    recvFd,
 
     -- Note: these two will disappear shortly
-    sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
-    recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
+    sendAncillary,
+    recvAncillary,
 
 #endif
 
     -- * Special constants
-    aNY_PORT,           -- :: PortNumber
-    iNADDR_ANY,         -- :: HostAddress
+    aNY_PORT,
+    iNADDR_ANY,
 #if defined(IPV6_SOCKET_SUPPORT)
-    iN6ADDR_ANY,        -- :: HostAddress6
+    iN6ADDR_ANY,
 #endif
-    sOMAXCONN,          -- :: Int
-    sOL_SOCKET,         -- :: Int
+    sOMAXCONN,
+    sOL_SOCKET,
 #ifdef SCM_RIGHTS
-    sCM_RIGHTS,         -- :: Int
+    sCM_RIGHTS,
 #endif
-    maxListenQueue,     -- :: Int
+    maxListenQueue,
 
     -- * Initialisation
-    withSocketsDo,      -- :: IO a -> IO a
+    withSocketsDo,
     
     -- * Very low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    fdSocket,           -- :: Socket -> CInt
-    mkSocket,           -- :: CInt   -> Family 
-                        -- -> SocketType
-                        -- -> ProtocolNumber
-                        -- -> SocketStatus
-                        -- -> IO Socket
+    fdSocket,
+    mkSocket,
 
     -- * Internal
 
