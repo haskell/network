@@ -821,26 +821,28 @@ socketPort (MkSocket _ family _ _ _) =
 -- ---------------------------------------------------------------------------
 -- getPeerName
 
--- Calling $getPeerName$ returns the address details of the machine,
--- other than the local one, which is connected to the socket. This is
--- used in programs such as FTP to determine where to send the
--- returning data.  The corresponding call to get the details of the
--- local machine is $getSocketName$.
-
+-- | Returns the address of the peer connected to the specified
+-- socket.  This is useful to find out the port number of a remote
+-- IPv4/v6 socket, for instance.
 getPeerName   :: Socket -> IO SockAddr
-getPeerName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
-   with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
-   sz <- peek int_star
-   peekSockAddr ptr
+getPeerName (MkSocket s family _ _ _) =
+    withNewSockAddr family $ \ptr sz ->
+    with (fromIntegral sz) $ \int_star -> do
+        throwSocketErrorIfMinus1Retry "getPeerName" $
+            c_getpeername s ptr int_star
+        sz <- peek int_star
+        peekSockAddr ptr
     
+-- | Return the current address for the specified socket.  This is
+-- useful to find out the port number of an IPv4/v6 socket, for
+-- instance.
 getSocketName :: Socket -> IO SockAddr
-getSocketName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
-   with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry "getSocketName" $ c_getsockname s ptr int_star
-   peekSockAddr ptr
+getSocketName (MkSocket s family _ _ _) =
+    withNewSockAddr family $ \ptr sz ->
+    with (fromIntegral sz) $ \int_star -> do
+        throwSocketErrorIfMinus1Retry "getSocketName" $
+            c_getsockname s ptr int_star
+        peekSockAddr ptr
 
 -----------------------------------------------------------------------------
 -- Socket Properties
