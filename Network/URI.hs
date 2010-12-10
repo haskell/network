@@ -59,44 +59,51 @@
 --------------------------------------------------------------------------------
 
 module Network.URI
-    ( -- * The URI type
+    (
+    -- * The URI type
       URI(..)
     , URIAuth(..)
     , nullURI
-      -- * Parsing
+      
+    -- * Parsing
     , parseURI
     , parseURIReference
     , parseRelativeReference
     , parseAbsoluteURI
-      -- * Test for strings containing various kinds of URI
+      
+    -- * Test for strings containing various kinds of URI
     , isURI
     , isURIReference
     , isRelativeReference
     , isAbsoluteURI
     , isIPv6address
     , isIPv4address
-      -- * Relative URIs
+      
+    -- * Relative URIs
     , relativeTo
     , nonStrictRelativeTo
     , relativeFrom
-      -- * Operations on URI strings
-      -- | Support for putting strings into URI-friendly
-      --   escaped format and getting them back again.
-      --   This can't be done transparently in all cases, because certain
-      --   characters have different meanings in different kinds of URI.
-      --   The URI spec [3], section 2.4, indicates that all URI components
-      --   should be escaped before they are assembled as a URI:
-      --   \"Once produced, a URI is always in its percent-encoded form\"
+      
+    -- * Operations on URI strings
+    -- | Support for putting strings into URI-friendly
+    --   escaped format and getting them back again.
+    --   This can't be done transparently in all cases, because certain
+    --   characters have different meanings in different kinds of URI.
+    --   The URI spec [3], section 2.4, indicates that all URI components
+    --   should be escaped before they are assembled as a URI:
+    --   \"Once produced, a URI is always in its percent-encoded form\"
     , uriToString
     , isReserved, isUnreserved
     , isAllowedInURI, isUnescapedInURI
     , escapeURIChar
     , escapeURIString
     , unEscapeString
+      
     -- * URI Normalization functions
     , normalizeCase
     , normalizeEscape
     , normalizePathSegments
+      
     -- * Deprecated functions
     , parseabsoluteURI
     , escapeString

@@ -26,137 +26,139 @@
 
 -- In order to process this file, you need to have CALLCONV defined.
 
-module Network.Socket (
+module Network.Socket
+    (
     -- * Types
-    Socket(..),
-    Family(..),         
-    SocketType(..),
-    SockAddr(..),
-    SocketStatus(..),
-    HostAddress,
+      Socket(..)
+    , Family(..)         
+    , SocketType(..)
+    , SockAddr(..)
+    , SocketStatus(..)
+    , HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
-    HostAddress6,
-    FlowInfo,
-    ScopeID,
+    , HostAddress6
+    , FlowInfo
+    , ScopeID
 #endif
-    ShutdownCmd(..),
-    ProtocolNumber,
-    defaultProtocol,
-    PortNumber(..),
+    , ShutdownCmd(..)
+    , ProtocolNumber
+    , defaultProtocol
+    , PortNumber(..)
     -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
     -- this use and make the type abstract.
 
     -- * Address operations
 
-    HostName,
-    ServiceName,
+    , HostName
+    , ServiceName
 
 #if defined(IPV6_SOCKET_SUPPORT)
-    AddrInfo(..),
+    , AddrInfo(..)
 
-    AddrInfoFlag(..),
-    addrInfoFlagImplemented,
+    , AddrInfoFlag(..)
+    , addrInfoFlagImplemented
 
-    defaultHints,
+    , defaultHints
 
-    getAddrInfo,
+    , getAddrInfo
 
-    NameInfoFlag(..),
+    , NameInfoFlag(..)
 
-    getNameInfo,
+    , getNameInfo
 #endif
 
     -- * Socket operations
-    socket,
+    , socket
 #if defined(DOMAIN_SOCKET_SUPPORT)
-    socketPair,
+    , socketPair
 #endif
-    connect,
-    bindSocket,
-    listen,
-    accept,
-    getPeerName,
-    getSocketName,
+    , connect
+    , bindSocket
+    , listen
+    , accept
+    , getPeerName
+    , getSocketName
 
 #ifdef HAVE_STRUCT_UCRED
     -- get the credentials of our domain socket peer.
-    getPeerCred,
+    , getPeerCred
 #endif
 
-    socketPort,
+    , socketPort
 
-    socketToHandle,
+    , socketToHandle
 
     -- ** Sending and receiving data
     -- $sendrecv
-    sendTo,
-    sendBufTo,
+    , sendTo
+    , sendBufTo
 
-    recvFrom,
-    recvBufFrom,
+    , recvFrom
+    , recvBufFrom
     
-    send,
-    recv,
-    recvLen,
+    , send
+    , recv
+    , recvLen
 
-    inet_addr,
-    inet_ntoa,
+    , inet_addr
+    , inet_ntoa
 
-    shutdown,
-    sClose,
+    , shutdown
+    , sClose
 
     -- ** Predicates on sockets
-    sIsConnected,
-    sIsBound,
-    sIsListening,
-    sIsReadable,
-    sIsWritable,
+    , sIsConnected
+    , sIsBound
+    , sIsListening
+    , sIsReadable
+    , sIsWritable
 
     -- * Socket options
-    SocketOption(..),
-    getSocketOption,
-    setSocketOption,
+    , SocketOption(..)
+    , getSocketOption
+    , setSocketOption
 
     -- * File descriptor transmission
 #ifdef DOMAIN_SOCKET_SUPPORT
-    sendFd,
-    recvFd,
+    , sendFd
+    , recvFd
 
     -- Note: these two will disappear shortly
-    sendAncillary,
-    recvAncillary,
+    , sendAncillary
+    , recvAncillary
 
 #endif
 
     -- * Special constants
-    aNY_PORT,
-    iNADDR_ANY,
+    , aNY_PORT
+    , iNADDR_ANY
 #if defined(IPV6_SOCKET_SUPPORT)
-    iN6ADDR_ANY,
+    , iN6ADDR_ANY
 #endif
-    sOMAXCONN,
-    sOL_SOCKET,
+    , sOMAXCONN
+    , sOL_SOCKET
 #ifdef SCM_RIGHTS
-    sCM_RIGHTS,
+    , sCM_RIGHTS
 #endif
-    maxListenQueue,
+    , maxListenQueue
 
     -- * Initialisation
-    withSocketsDo,
+    , withSocketsDo
     
     -- * Very low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    fdSocket,
-    mkSocket,
+    , fdSocket
+    , mkSocket
 
     -- * Internal
 
     -- | The following are exported ONLY for use in the BSD module and
     -- should not be used anywhere else.
 
-    packFamily, unpackFamily,
-    packSocketType,
-    throwSocketErrorIfMinus1_
+    , packFamily
+    , unpackFamily
+    , packSocketType
+    , throwSocketErrorIfMinus1_
     ) where
 
 #ifdef __HUGS__

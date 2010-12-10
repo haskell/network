@@ -1,7 +1,7 @@
 -- | Support module for the POSIX writev system call.
 module Network.Socket.ByteString.IOVec
-  ( IOVec(..)
-  ) where
+    ( IOVec(..)
+    ) where
 
 import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Ptr (Ptr)

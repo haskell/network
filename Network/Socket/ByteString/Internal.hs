@@ -10,12 +10,13 @@
 -- Portability : portable
 --
 module Network.Socket.ByteString.Internal
-  ( mkInvalidRecvArgError
+    (
+      mkInvalidRecvArgError
 #if !defined(mingw32_HOST_OS)
-  , c_writev
-  , c_sendmsg
+    , c_writev
+    , c_sendmsg
 #endif
-  ) where
+    ) where
 
 import System.IO.Error (ioeSetErrorString, mkIOError)
 

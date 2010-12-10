@@ -19,63 +19,66 @@
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
 ##include "Typeable.h"
 
-module Network.BSD (
+module Network.BSD
+    (
     -- * Host names
-    HostName,
-    getHostName,
+      HostName
+    , getHostName
 
-    HostEntry(..),
-    getHostByName,
-    getHostByAddr,
-    hostAddress,
+    , HostEntry(..)
+    , getHostByName
+    , getHostByAddr
+    , hostAddress
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getHostEntries,
+    , getHostEntries
+
     -- ** Low level functionality
-    setHostEntry,
-    getHostEntry,
-    endHostEntry,
+    , setHostEntry
+    , getHostEntry
+    , endHostEntry
 #endif
 
     -- * Service names
-    ServiceEntry(..),
-    ServiceName,
-    getServiceByName,
-    getServiceByPort,
-    getServicePortNumber,
+    , ServiceEntry(..)
+    , ServiceName
+    , getServiceByName
+    , getServiceByPort
+    , getServicePortNumber
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getServiceEntries,
+    , getServiceEntries
+
     -- ** Low level functionality
-    getServiceEntry,
-    setServiceEntry,
-    endServiceEntry,
+    , getServiceEntry
+    , setServiceEntry
+    , endServiceEntry
 #endif
 
     -- * Protocol names
-    ProtocolName,
-    ProtocolNumber,
-    ProtocolEntry(..),
-    getProtocolByName,
-    getProtocolByNumber,
-    getProtocolNumber,
-    defaultProtocol,
+    , ProtocolName
+    , ProtocolNumber
+    , ProtocolEntry(..)
+    , getProtocolByName
+    , getProtocolByNumber
+    , getProtocolNumber
+    , defaultProtocol
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getProtocolEntries,
+    , getProtocolEntries
     -- ** Low level functionality
-    setProtocolEntry,
-    getProtocolEntry,
-    endProtocolEntry,
+    , setProtocolEntry
+    , getProtocolEntry
+    , endProtocolEntry
 #endif
 
     -- * Port numbers
-    PortNumber,
+    , PortNumber
 
     -- * Network names
-    NetworkName,
-    NetworkAddr,
-    NetworkEntry(..)
+    , NetworkName
+    , NetworkAddr
+    , NetworkEntry(..)
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
     , getNetworkByName

@@ -22,17 +22,17 @@
 -- > import Prelude hiding (getContents)
 --
 module Network.Socket.ByteString.Lazy
-  (
+    (
 #if !defined(mingw32_HOST_OS)
     -- * Send data to a socket
-      send,
-      sendAll,
+      send
+    , sendAll
 #endif
 
     -- * Receive data from a socket
-      getContents,
-      recv
-  ) where
+    , getContents
+    , recv
+    ) where
 
 import Control.Monad (liftM)
 import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)

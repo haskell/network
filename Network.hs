@@ -22,31 +22,32 @@
 #define IPV6_SOCKET_SUPPORT 1
 #endif
 
-module Network (
+module Network
+    (
     -- * Basic data types
-    Socket,
-    PortID(..),
-    HostName,
-    PortNumber,
+      Socket
+    , PortID(..)
+    , HostName
+    , PortNumber
 
     -- * Initialisation
-    withSocketsDo,
+    , withSocketsDo
     
     -- * Server-side connections
-    listenOn,
-    accept,
-    sClose,
+    , listenOn
+    , accept
+    , sClose
 
     -- * Client-side connections
-    connectTo,
+    , connectTo
 
     -- * Simple sending and receiving
     {-$sendrecv-}
-    sendTo,
-    recvFrom,
+    , sendTo
+    , recvFrom
 
     -- * Miscellaneous
-    socketPort,
+    , socketPort
 
     -- * Networking Issues
     -- ** Buffering
