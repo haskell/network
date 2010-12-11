@@ -166,7 +166,12 @@ newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
 -- families are supported.
 
 #if defined(IPV6_SOCKET_SUPPORT)
+-- | Used in IPv6, 'FlowInfo' represents the @sin6_flowinfo@ member in
+-- @struct sockaddr_in6@ in C.
 type FlowInfo = Word32
+
+-- | Used in IPv6, 'ScopeID' represents the @sin6_scope_id@ member in
+-- @struct sockaddr_in6@ in C.
 type ScopeID = Word32
 #endif
 

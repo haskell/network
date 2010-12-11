@@ -14,9 +14,6 @@
 -- this module; in general the operations follow the behaviour of the C
 -- functions of the same name (consult your favourite Unix networking book).
 --
--- A higher level interface to networking operations is provided
--- through the module "Network".
---
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
