@@ -5,7 +5,7 @@
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/network/LICENSE)
 --
--- Maintainer  :  libraries@haskell.org
+-- Maintainer  :  johan.tibell@gmail.com
 -- Stability   :  provisional
 -- Portability :  portable
 --

@@ -5,7 +5,7 @@
 --  Copyright   :  (c) 2004, Graham Klyne
 --  License     :  BSD-style (see end of this file)
 --
---  Maintainer  :  Graham Klyne <gk@ninebynine.org>
+--  Maintainer  :  johan.tibell@gmail.com
 --  Stability   :  provisional
 --  Portability :  portable
 --
