@@ -43,7 +43,9 @@ import Test.HUnit
 
 import IO ( Handle, openFile, IOMode(WriteMode), hClose, hPutStr, hPutStrLn )
 
+import Control.Monad (when)
 import Maybe ( fromJust )
+import System.Exit (exitFailure)
 
 -- Test supplied string for valid URI reference syntax
 --   isValidURIRef :: String -> Bool
@@ -1014,7 +1016,9 @@ allTests = TestList
   , testAltFn
   ]
 
-main = runTestTT allTests
+main = do
+    counts <- runTestTT allTests
+    when (errors counts + failures counts > 0) exitFailure
 
 runTestFile t = do
     h <- openFile "a.tmp" WriteMode

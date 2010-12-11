@@ -6,15 +6,20 @@ package-conf := ../dist/package.conf.inplace
 
 all: run-tests
 
-run-tests: tests
-	./tests
+run-tests: simple uri
+	./simple
+	./uri
 
-tests: $(lib) Simple.hs
+simple: $(lib) Simple.hs
 	ranlib $(lib)
-	$(ghc) --make Simple -threaded -o $@ -package-conf=$(package-conf)
+	$(ghc) --make Simple.hs -threaded -o $@ -package-conf=$(package-conf)
+
+uri: $(lib) uri001.hs
+	ranlib $(lib)
+	$(ghc) --make uri001.hs -threaded -o $@ -package-conf=$(package-conf)
 
 clean:
 	-find . \( -name '*.o' -o -name '*.hi' \) -exec rm {} \;
-	-rm -f tests
+	-rm -f simple uri
 
 .PHONY: all clean run-tests
