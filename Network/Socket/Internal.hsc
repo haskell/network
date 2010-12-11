@@ -141,6 +141,8 @@ instance Storable HostAddress6 where
 -- network-byte-order first.
 --
 
+-- | The port number of a socket.  Construct a 'PortNumber' using
+-- 'fromIntegral'.
 newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
 
 ------------------------------------------------------------------------

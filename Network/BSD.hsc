@@ -95,8 +95,8 @@ module Network.BSD
 import Hugs.Prelude (IOException(..), IOErrorType(..))
 #endif
 import Network.Socket
-import Network.Socket.Internal (packFamily, throwSocketErrorIfMinus1_,
-                                unpackFamily)
+import Network.Socket.Internal (
+    PortNumber(..), packFamily, throwSocketErrorIfMinus1_, unpackFamily)
 
 import Control.Concurrent (MVar, newMVar, withMVar)
 import Foreign.C.Error (throwErrnoIfMinus1, throwErrnoIfMinus1_)

@@ -43,12 +43,9 @@ module Network.Socket
     , ShutdownCmd(..)
     , ProtocolNumber
     , defaultProtocol
-    , PortNumber(..)
-    -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
-    -- this use and make the type abstract.
+    , PortNumber
 
     -- * Address operations
-
     , HostName
     , ServiceName
 
