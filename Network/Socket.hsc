@@ -32,32 +32,26 @@ module Network.Socket
     , SockAddr(..)
     , SocketStatus(..)
     , HostAddress
+    , ProtocolNumber
+    , defaultProtocol
+    , PortNumber
 #if defined(IPV6_SOCKET_SUPPORT)
+    -- ** IPv6 address components
     , HostAddress6
     , FlowInfo
     , ScopeID
 #endif
-    , ShutdownCmd(..)
-    , ProtocolNumber
-    , defaultProtocol
-    , PortNumber
 
     -- * Address operations
     , HostName
     , ServiceName
-
 #if defined(IPV6_SOCKET_SUPPORT)
     , AddrInfo(..)
-
     , AddrInfoFlag(..)
     , addrInfoFlagImplemented
-
     , defaultHints
-
     , getAddrInfo
-
     , NameInfoFlag(..)
-
     , getNameInfo
 #endif
 
@@ -78,6 +72,7 @@ module Network.Socket
     , getPeerName
     , getSocketName
     , listen
+    , ShutdownCmd(..)
     , shutdown
     , sClose
     , socketPort
@@ -1240,10 +1235,12 @@ maxListenQueue = sOMAXCONN
 
 -- -----------------------------------------------------------------------------
 
+-- | 'ShutdownCmd' is used to indicate which half of a connection
+-- should be shut down.
 data ShutdownCmd
- = ShutdownReceive
- | ShutdownSend
- | ShutdownBoth
+    = ShutdownReceive  -- ^ Further receives will be disallowed
+    | ShutdownSend     -- ^ Further sends will be disallowed
+    | ShutdownBoth     -- ^ Further sends and receives will be disallowed
 
 INSTANCE_TYPEABLE0(ShutdownCmd,shutdownCmdTc,"ShutdownCmd")
 

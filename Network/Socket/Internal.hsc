@@ -82,9 +82,11 @@ import System.IO.Error ( ioeSetErrorString, mkIOError )
 
 ------------------------------------------------------------------------
 
+-- | An IPv4 address.
 type HostAddress = Word32
 
 #if defined(IPV6_SOCKET_SUPPORT)
+-- | An IPv6 address.
 type HostAddress6 = (Word32, Word32, Word32, Word32)
 
 -- The peek32 and poke32 functions work around the fact that the RFCs
@@ -166,12 +168,10 @@ newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
 -- families are supported.
 
 #if defined(IPV6_SOCKET_SUPPORT)
--- | Used in IPv6, 'FlowInfo' represents the @sin6_flowinfo@ member in
--- @struct sockaddr_in6@ in C.
+-- | IPv6 flow information.
 type FlowInfo = Word32
 
--- | Used in IPv6, 'ScopeID' represents the @sin6_scope_id@ member in
--- @struct sockaddr_in6@ in C.
+-- | An IPv6 scope ID.
 type ScopeID = Word32
 #endif
 
