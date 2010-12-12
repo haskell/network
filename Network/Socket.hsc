@@ -61,44 +61,37 @@ module Network.Socket
     , getNameInfo
 #endif
 
-    -- * Socket operations
+    -- * Creating sockets
     , socket
 #if defined(DOMAIN_SOCKET_SUPPORT)
     , socketPair
 #endif
-    , connect
-    , bindSocket
-    , listen
-    , accept
-    , getPeerName
-    , getSocketName
 
+    -- * Socket operations
+    , accept
+    , bindSocket
+    , connect
 #ifdef HAVE_STRUCT_UCRED
     -- get the credentials of our domain socket peer.
     , getPeerCred
 #endif
-
-    , socketPort
-
-    , socketToHandle
-
-    -- ** Sending and receiving data
-    -- $sendrecv
-    , sendTo
-    , sendBufTo
-
-    , recvFrom
-    , recvBufFrom
-
-    , send
-    , recv
-    , recvLen
-
-    , inet_addr
-    , inet_ntoa
-
+    , getPeerName
+    , getSocketName
+    , listen
     , shutdown
     , sClose
+    , socketPort
+    , socketToHandle
+
+    -- ** Sending and receiving
+    -- $sendrecv
+    , recv
+    , recvBufFrom
+    , recvFrom
+    , recvLen
+    , send
+    , sendBufTo
+    , sendTo
 
     -- ** Predicates on sockets
     , sIsConnected
@@ -107,12 +100,12 @@ module Network.Socket
     , sIsReadable
     , sIsWritable
 
-    -- * Socket options
+    -- ** Socket options
     , SocketOption(..)
     , getSocketOption
     , setSocketOption
 
-    -- * File descriptor transmission
+    -- ** File descriptor transmission
 #ifdef DOMAIN_SOCKET_SUPPORT
     , sendFd
     , recvFd
@@ -120,7 +113,6 @@ module Network.Socket
     -- Note: these two will disappear shortly
     , sendAncillary
     , recvAncillary
-
 #endif
 
     -- * Special constants
@@ -138,6 +130,10 @@ module Network.Socket
 
     -- * Initialisation
     , withSocketsDo
+
+    -- * Utility functions
+    , inet_addr
+    , inet_ntoa
 
     -- * Very low level operations
     -- in case you ever want to get at the underlying file descriptor..
