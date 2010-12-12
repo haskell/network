@@ -1219,6 +1219,7 @@ iN6ADDR_ANY :: HostAddress6
 iN6ADDR_ANY = (0, 0, 0, 0)
 #endif
 
+-- | See 'maxListenQueue'.
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
 
@@ -1230,6 +1231,8 @@ sCM_RIGHTS :: Int
 sCM_RIGHTS = #const SCM_RIGHTS
 #endif
 
+-- | The maximum number of pending incoming connections to keep.  Also
+-- see 'listen'.
 maxListenQueue :: Int
 maxListenQueue = sOMAXCONN
 
