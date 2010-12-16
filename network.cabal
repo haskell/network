@@ -50,7 +50,7 @@ library
   extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
   if impl(ghc >= 7.0)
-    extensions: NondecreasingIndentation
+    extensions: NondecreasingIndentation, FlexibleInstances
 
   include-dirs: include
   includes: HsNet.h
