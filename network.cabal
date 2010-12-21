@@ -49,7 +49,7 @@ library
 
   extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
-  if impl(ghc >= 7.0)
+  if impl(ghc >= 7.0.2)
     extensions: NondecreasingIndentation, FlexibleInstances
 
   include-dirs: include
