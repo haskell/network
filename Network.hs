@@ -63,8 +63,8 @@ module Network
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
-import Network.Socket hiding (accept, socketPort, recvFrom, sendTo, PortNumber)
-import qualified Network.Socket as Socket (accept)
+import Network.Socket hiding (accept, connectTo, listenOn, socketPort, recvFrom, sendTo)
+import qualified Network.Socket as Socket (accept, connectTo, listenOn)
 import System.IO
 import Prelude
 import qualified Control.Exception as Exception
@@ -72,91 +72,20 @@ import qualified Control.Exception as Exception
 -- ---------------------------------------------------------------------------
 -- High Level ``Setup'' functions
 
--- If the @PortID@ specifies a unix family socket and the @Hostname@
--- differs from that returned by @getHostname@ then an error is
--- raised. Alternatively an empty string may be given to @connectTo@
--- signalling that the current hostname applies.
-
-data PortID =
-          Service String                -- Service Name eg "ftp"
-        | PortNumber PortNumber         -- User defined Port Number
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-        | UnixSocket String             -- Unix family socket in file system
-#endif
-
 -- | Calling 'connectTo' creates a client side socket which is
 -- connected to the given host and port.  The Protocol and socket type is
 -- derived from the given port identifier.  If a port number is given
 -- then the result is always an internet family 'Stream' socket.
-
+--
+-- This is a wrapper around Network.Socket.'Network.Socket.connectTo'.
 connectTo :: HostName           -- Hostname
           -> PortID             -- Port Identifier
           -> IO Handle          -- Connected Socket
-
-#if defined(IPV6_SOCKET_SUPPORT)
--- IPv6 and IPv4.
-
-connectTo hostname (Service serv) = connect' hostname serv
-
-connectTo hostname (PortNumber port) = connect' hostname (show port)
-#else
--- IPv4 only.
-
-connectTo hostname (Service serv) = do
-    proto <- getProtocolNumber "tcp"
-    bracketOnError
-        (socket AF_INET Stream proto)
-        (sClose)  -- only done if there's an error
-        (\sock -> do
-          port  <- getServicePortNumber serv
-          he    <- getHostByName hostname
-          connect sock (SockAddrInet port (hostAddress he))
-          socketToHandle sock ReadWriteMode
-        )
-
-connectTo hostname (PortNumber port) = do
-    proto <- getProtocolNumber "tcp"
-    bracketOnError
-        (socket AF_INET Stream proto)
-        (sClose)  -- only done if there's an error
-        (\sock -> do
-          he <- getHostByName hostname
-          connect sock (SockAddrInet port (hostAddress he))
-          socketToHandle sock ReadWriteMode
-        )
-#endif
-
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-connectTo _ (UnixSocket path) = do
-    bracketOnError
-        (socket AF_UNIX Stream 0)
-        (sClose)
-        (\sock -> do
-          connect sock (SockAddrUnix path)
-          socketToHandle sock ReadWriteMode
-        )
-#endif
-
-#if defined(IPV6_SOCKET_SUPPORT)
-connect' :: HostName -> ServiceName -> IO Handle
-
-connect' host serv = do
-    proto <- getProtocolNumber "tcp"
-    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG]
-                             , addrProtocol = proto
-                             , addrSocketType = Stream }
-    addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
-    firstSuccessful $ map tryToConnect addrs
-  where
-  tryToConnect addr =
-    bracketOnError
-        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
-        (sClose)  -- only done if there's an error
-        (\sock -> do
-          connect sock (addrAddress addr)
-          socketToHandle sock ReadWriteMode
-        )
-#endif
+connectTo hostname port = do
+  proto <- getProtocolNumber "tcp"
+  -- Socket.connectTo could override proto for some types of PortIDs
+  sock <- Socket.connectTo proto hostname port
+  socketToHandle sock ReadWriteMode
 
 -- | Creates the server side socket which has been bound to the
 -- specified port.
@@ -169,75 +98,10 @@ connect' host serv = do
 
 listenOn :: PortID      -- ^ Port Identifier
          -> IO Socket   -- ^ Connected Socket
-
-#if defined(IPV6_SOCKET_SUPPORT)
--- IPv6 and IPv4.
-
-listenOn (Service serv) = listen' serv
-
-listenOn (PortNumber port) = listen' (show port)
-#else
--- IPv4 only.
-
-listenOn (Service serv) = do
-    proto <- getProtocolNumber "tcp"
-    bracketOnError
-        (socket AF_INET Stream proto)
-        (sClose)
-        (\sock -> do
-            port    <- getServicePortNumber serv
-            setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
-            listen sock maxListenQueue
-            return sock
-        )
-
-listenOn (PortNumber port) = do
-    proto <- getProtocolNumber "tcp"
-    bracketOnError
-        (socket AF_INET Stream proto)
-        (sClose)
-        (\sock -> do
-            setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
-            listen sock maxListenQueue
-            return sock
-        )
-#endif
-
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-listenOn (UnixSocket path) =
-    bracketOnError
-        (socket AF_UNIX Stream 0)
-        (sClose)
-        (\sock -> do
-            setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrUnix path)
-            listen sock maxListenQueue
-            return sock
-        )
-#endif
-
-#if defined(IPV6_SOCKET_SUPPORT)
-listen' :: ServiceName -> IO Socket
-
-listen' serv = do
-    proto <- getProtocolNumber "tcp"
-    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_PASSIVE]
-                             , addrSocketType = Stream
-                             , addrProtocol = proto }
-    addrs <- getAddrInfo (Just hints) Nothing (Just serv)
-    let addr = head addrs
-    bracketOnError
-        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
-        (sClose)
-        (\sock -> do
-            setSocketOption sock ReuseAddr 1
-            bindSocket sock (addrAddress addr)
-            listen sock maxListenQueue
-            return sock
-        )
-#endif
+listenOn port = do
+  proto <- getProtocolNumber "tcp"
+  -- Socket.listenOn could override proto for some types of PortIDs
+  Socket.listenOn proto port
 
 -- -----------------------------------------------------------------------------
 -- accept
@@ -386,25 +250,6 @@ socketPort s = do
 -- ---------------------------------------------------------------------------
 -- Utils
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
--- Like bracket, but only performs the final action if there was an
--- exception raised by the middle bit.
-bracketOnError
-        :: IO a         -- ^ computation to run first (\"acquire resource\")
-        -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
-        -> (a -> IO c)  -- ^ computation to run in-between
-        -> IO c         -- returns the value from the in-between computation
-bracketOnError before after thing =
-  Exception.block (do
-    a <- before
-    r <- Exception.catch
-           (Exception.unblock (thing a))
-           (\e -> do { after a; Exception.throw e })
-    return r
- )
-#else
-bracketOnError = Exception.bracketOnError
-#endif
 
 -----------------------------------------------------------------------------
 -- Extra documentation
@@ -448,12 +293,3 @@ catchIO = Exception.catch
 catchIO = Exception.catchJust Exception.ioErrors
 #endif
 
--- Returns the first action from a list which does not throw an exception.
--- If all the actions throw exceptions (and the list of actions is not empty),
--- the last exception is thrown.
-firstSuccessful :: [IO a] -> IO a
-firstSuccessful [] = error "firstSuccessful: empty list"
-firstSuccessful (p:ps) = catchIO p $ \e ->
-    case ps of
-        [] -> Exception.throw e
-        _  -> firstSuccessful ps

@@ -34,6 +34,7 @@ module Network.Socket
     , HostAddress
     , ProtocolNumber
     , defaultProtocol
+    , PortID(..)
     , PortNumber
 #if defined(IPV6_SOCKET_SUPPORT)
     -- ** IPv6 address components
@@ -62,7 +63,11 @@ module Network.Socket
 #endif
 
     -- * Socket operations
+    -- * High-level setup
+    , connectTo
+    , listenOn
     , accept
+    -- * Low-level setup
     , bindSocket
     , connect
 #ifdef HAVE_STRUCT_UCRED
@@ -197,6 +202,7 @@ import GHC.IO.FD
 #endif
 
 import Network.Socket.Internal
+import qualified Control.Exception as Exception
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
@@ -457,6 +463,89 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
 -----------------------------------------------------------------------------
 -- Connecting a socket
 
+-- If the @PortID@ specifies a unix family socket and the @Hostname@
+-- differs from that returned by @getHostname@ then an error is
+-- raised. Alternatively an empty string may be given to @connectTo@
+-- signalling that the current hostname applies.
+
+data PortID =
+          Service String                -- Service Name eg "ftp"
+        | PortNumber PortNumber         -- User defined Port Number
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+        | UnixSocket String             -- Unix family socket in file system
+#endif
+
+-- | Calling 'connectTo' creates a client side socket which is
+-- connected to the given host and port using specified protocol.
+-- Socket type is derived from the given port identifier. If a port
+-- number is given then the result is always an internet family
+-- 'Stream' socket.
+
+connectTo :: ProtocolNumber     -- ^ Protocol Number, usually 'defaultProtocol' (or use 'getProtocolByName' to find value)
+          -> HostName           -- ^ Hostname
+          -> PortID             -- ^ Port Identifier
+          -> IO Socket          -- ^ Connected Socket
+
+#if defined(IPV6_SOCKET_SUPPORT)
+-- IPv6 and IPv4.
+
+connectTo proto hostname (Service serv) = connect' proto hostname serv
+
+connectTo proto hostname (PortNumber port) = connect' proto hostname (show port)
+#else
+-- IPv4 only.
+
+connectTo proto hostname (Service serv) = do
+    bracketOnError
+        (socket AF_INET Stream proto)
+        (sClose)  -- only done if there's an error
+        (\sock -> do
+          port  <- getServicePortNumber serv
+          he    <- getHostByName hostname
+          connect sock (SockAddrInet port (hostAddress he))
+        )
+
+connectTo proto hostname (PortNumber port) = do
+    bracketOnError
+        (socket AF_INET Stream proto)
+        (sClose)  -- only done if there's an error
+        (\sock -> do
+          he <- getHostByName hostname
+          connect sock (SockAddrInet port (hostAddress he))
+        )
+#endif
+
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+connectTo _ _ (UnixSocket path) = do
+    bracketOnError
+        (socket AF_UNIX Stream 0)
+        (sClose)
+        (\sock -> do
+          connect sock (SockAddrUnix path)
+          return sock
+        )
+#endif
+
+#if defined(IPV6_SOCKET_SUPPORT)
+connect' :: ProtocolNumber -> HostName -> ServiceName -> IO Socket
+
+connect' proto host serv = do
+    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG]
+                             , addrProtocol = proto
+                             , addrSocketType = Stream }
+    addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
+    firstSuccessful $ map tryToConnect addrs
+  where
+  tryToConnect addr =
+    bracketOnError
+        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+        (sClose)  -- only done if there's an error
+        (\sock -> do
+          connect sock (addrAddress addr)
+          return sock
+        )
+#endif
+
 -- | Connect to a remote socket at address.
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
@@ -510,6 +599,85 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 
 -----------------------------------------------------------------------------
 -- Listen
+
+-- | Creates the server side socket which has been bound to the
+-- specified port.
+--
+-- NOTE: To avoid the \"Address already in use\"
+-- problems popped up several times on the GHC-Users mailing list we
+-- set the 'ReuseAddr' socket option on the listening socket.  If you
+-- don't want this behaviour, please use the lower level
+-- 'Network.Socket.listen' instead.
+
+listenOn :: ProtocolNumber -- ^ ProtocolNumber, usually 'defaultProtocol' (or use 'getProtocolByName' to find out)
+         -> PortID         -- ^ Port Identifier
+         -> IO Socket      -- ^ Connected Socket
+
+#if defined(IPV6_SOCKET_SUPPORT)
+-- IPv6 and IPv4.
+
+listenOn proto (Service serv) = listen' proto serv
+
+listenOn proto (PortNumber port) = listen' proto (show port)
+#else
+-- IPv4 only.
+
+listenOn proto (Service serv) = do
+    bracketOnError
+        (socket AF_INET Stream proto)
+        (sClose)
+        (\sock -> do
+            port    <- getServicePortNumber serv
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            listen sock maxListenQueue
+            return sock
+        )
+
+listenOn proto (PortNumber port) = do
+    bracketOnError
+        (socket AF_INET Stream proto)
+        (sClose)
+        (\sock -> do
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            listen sock maxListenQueue
+            return sock
+        )
+#endif
+
+#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+listenOn _ (UnixSocket path) =
+    bracketOnError
+        (socket AF_UNIX Stream 0)
+        (sClose)
+        (\sock -> do
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrUnix path)
+            listen sock maxListenQueue
+            return sock
+        )
+#endif
+
+#if defined(IPV6_SOCKET_SUPPORT)
+listen' :: ProtocolNumber -> ServiceName -> IO Socket
+
+listen' proto serv = do
+    let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_PASSIVE]
+                             , addrSocketType = Stream
+                             , addrProtocol = proto }
+    addrs <- getAddrInfo (Just hints) Nothing (Just serv)
+    let addr = head addrs
+    bracketOnError
+        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+        (sClose)
+        (\sock -> do
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (addrAddress addr)
+            listen sock maxListenQueue
+            return sock
+        )
+#endif
 
 -- | Listen for connections made to the socket.  The second argument
 -- specifies the maximum number of queued connections and should be at
@@ -1235,6 +1403,43 @@ sCM_RIGHTS = #const SCM_RIGHTS
 -- see 'listen'.
 maxListenQueue :: Int
 maxListenQueue = sOMAXCONN
+
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
+-- Like bracket, but only performs the final action if there was an
+-- exception raised by the middle bit.
+bracketOnError
+        :: IO a         -- ^ computation to run first (\"acquire resource\")
+        -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
+        -> (a -> IO c)  -- ^ computation to run in-between
+        -> IO c         -- returns the value from the in-between computation
+bracketOnError before after thing =
+  Exception.block (do
+    a <- before
+    r <- Exception.catch
+           (Exception.unblock (thing a))
+           (\e -> do { after a; Exception.throw e })
+    return r
+ )
+#else
+bracketOnError = Exception.bracketOnError
+#endif
+
+-- Returns the first action from a list which does not throw an exception.
+-- If all the actions throw exceptions (and the list of actions is not empty),
+-- the last exception is thrown.
+firstSuccessful :: [IO a] -> IO a
+firstSuccessful [] = error "firstSuccessful: empty list"
+firstSuccessful (p:ps) = catchIO p $ \e ->
+    case ps of
+        [] -> Exception.throw e
+        _  -> firstSuccessful ps
+
+catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
+##if MIN_VERSION_base(4,0,0)
+catchIO = Exception.catch
+##else
+catchIO = Exception.catchJust Exception.ioErrors
+##endif
 
 -- -----------------------------------------------------------------------------
 
