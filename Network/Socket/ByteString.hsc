@@ -363,7 +363,7 @@ withIOVec cs f =
 -- >
 -- > main :: IO ()
 -- > main = withSocketsDo $
--- >     do addrinfos <- getAddrInfo Nothing (Just "") (Just "3000")
+-- >     do addrinfos <- getAddrInfo Nothing Nothing (Just "3000")
 -- >        let serveraddr = head addrinfos
 -- >        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
 -- >        connect sock (addrAddress serveraddr)
