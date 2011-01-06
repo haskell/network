@@ -106,7 +106,7 @@ peek32 :: Ptr a -> Int -> IO Word32
 peek32 p i = do
     let i' = i * 4
         peekByte n = peekByteOff p (s6_addr_offset + i' + n) :: IO Word8
-        a `sl` i = fromIntegral a `shiftL` i
+        w `sl` n = fromIntegral w `shiftL` n
     a0 <- peekByte 0
     a1 <- peekByte 1
     a2 <- peekByte 2
@@ -117,7 +117,7 @@ poke32 :: Ptr a -> Int -> Word32 -> IO ()
 poke32 p i a = do
     let i' = i * 4
         pokeByte n = pokeByteOff p (s6_addr_offset + i' + n)
-        a `sr` i = fromIntegral (a `shiftR` i) :: Word8
+        w `sr` n = fromIntegral (w `shiftR` n) :: Word8
     pokeByte 0 (a `sr` 24)
     pokeByte 1 (a `sr` 16)
     pokeByte 2 (a `sr`  8)
