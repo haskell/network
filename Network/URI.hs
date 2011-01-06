@@ -112,17 +112,15 @@ module Network.URI
     ) where
 
 import Text.ParserCombinators.Parsec
-    ( GenParser(..), ParseError(..)
+    ( GenParser, ParseError
     , parse, (<|>), (<?>), try
-    , option, many, many1, count, notFollowedBy, lookAhead
-    , char, satisfy, oneOf, string, letter, digit, hexDigit, eof
+    , option, many, many1, count, notFollowedBy
+    , char, satisfy, oneOf, string, eof
     , unexpected
     )
 
 import Control.Monad (MonadPlus(..))
-import Data.Char (ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt)
-import Data.Maybe (isJust)
-import Debug.Trace (trace)
+import Data.Char (ord, chr, isHexDigit, toLower, toUpper, digitToInt)
 import Numeric (showIntAtBase)
 
 #ifdef __GLASGOW_HASKELL__
@@ -209,7 +207,7 @@ nullURI = URI
 --  data exposed by show.]]]
 --
 instance Show URI where
-    showsPrec _ uri = uriToString defaultUserInfoMap uri
+    showsPrec _ u = uriToString defaultUserInfoMap u
 
 defaultUserInfoMap :: String -> String
 defaultUserInfoMap uinf = user++newpass
@@ -219,17 +217,6 @@ defaultUserInfoMap uinf = user++newpass
                                    || (pass == ":@")
                         then pass
                         else ":...@"
-
-testDefaultUserInfoMap =
-     [ defaultUserInfoMap ""                == ""
-     , defaultUserInfoMap "@"               == "@"
-     , defaultUserInfoMap "user@"           == "user@"
-     , defaultUserInfoMap "user:@"          == "user:@"
-     , defaultUserInfoMap "user:anonymous@" == "user:...@"
-     , defaultUserInfoMap "user:pass@"      == "user:...@"
-     , defaultUserInfoMap "user:pass"       == "user:...@"
-     , defaultUserInfoMap "user:anonymous"  == "user:...@"
-     ]
 
 ------------------------------------------------------------
 --  Parse a URI
@@ -301,11 +288,6 @@ isIPv6address = isValidParse ipv6address
 isIPv4address :: String -> Bool
 isIPv4address = isValidParse ipv4address
 
--- |Test function: parse and reconstruct a URI reference
---
-testURIReference :: String -> String
-testURIReference uristr = show (parseAll uriReference "" uristr)
-
 --  Helper function for turning a string into a URI
 --
 parseURIAny :: URIParser URI -> String -> Maybe URI
@@ -319,7 +301,7 @@ isValidParse :: URIParser a -> String -> Bool
 isValidParse parser uristr = case parseAll parser "" uristr of
         -- Left  e -> error (show e)
         Left  _ -> False
-        Right u -> True
+        Right _ -> True
 
 parseAll :: URIParser a -> String -> String -> Either ParseError a
 parseAll parser filename uristr = parse newparser filename uristr
@@ -359,12 +341,11 @@ escaped =
 isReserved :: Char -> Bool
 isReserved c = isGenDelims c || isSubDelims c
 
+isGenDelims :: Char -> Bool
 isGenDelims c = c `elem` ":/?#[]@"
 
+isSubDelims :: Char -> Bool
 isSubDelims c = c `elem` "!$&'()*+,;="
-
-genDelims :: URIParser String
-genDelims = do { c <- satisfy isGenDelims ; return [c] }
 
 subDelims :: URIParser String
 subDelims = do { c <- satisfy isSubDelims ; return [c] }
@@ -479,6 +460,7 @@ ipvFuture =
         ; return $ 'c':h:'.':a
         }
 
+isIpvFutureChar :: Char -> Bool
 isIpvFutureChar c = isUnreserved c || isSubDelims c || (c==';')
 
 ipv6address :: URIParser String
@@ -579,7 +561,7 @@ ipv4address =
 decOctet :: URIParser String
 decOctet =
     do  { a1 <- countMinMax 1 3 digitChar
-        ; if read a1 > 255 then
+        ; if (read a1 :: Integer) > 255 then
             fail "Decimal octet value too large"
           else
             return a1
@@ -787,14 +769,19 @@ absoluteURI =
     --    certainly be allowed.
     -- ]]]
 
+isAlphaChar :: Char -> Bool
 isAlphaChar c    = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 
+isDigitChar :: Char -> Bool
 isDigitChar c    = (c >= '0' && c <= '9')
 
+isAlphaNumChar :: Char -> Bool
 isAlphaNumChar c = isAlphaChar c || isDigitChar c
 
+isHexDigitChar :: Char -> Bool
 isHexDigitChar c = isHexDigit c
 
+isSchemeChar :: Char -> Bool
 isSchemeChar c   = (isAlphaNumChar c) || (c `elem` "+-.")
 
 alphaChar :: URIParser Char
@@ -802,9 +789,6 @@ alphaChar = satisfy isAlphaChar         -- or: Parsec.letter ?
 
 digitChar :: URIParser Char
 digitChar = satisfy isDigitChar         -- or: Parsec.digit ?
-
-alphaNumChar :: URIParser Char
-alphaNumChar = satisfy isAlphaNumChar
 
 hexDigitChar :: URIParser Char
 hexDigitChar = satisfy isHexDigitChar   -- or: Parsec.hexDigit ?
@@ -847,25 +831,25 @@ notMatching p = do { a <- try p ; unexpected (show a) } <|> return ()
 --  to preserve the password in the formatted output.
 --
 uriToString :: (String->String) -> URI -> ShowS
-uriToString userinfomap URI { uriScheme=scheme
-                            , uriAuthority=authority
-                            , uriPath=path
-                            , uriQuery=query
-                            , uriFragment=fragment
+uriToString userinfomap URI { uriScheme=sch
+                            , uriAuthority=auth
+                            , uriPath=p
+                            , uriQuery=q
+                            , uriFragment=frag
                             } =
-    (scheme++) . (uriAuthToString userinfomap authority)
-               . (path++) . (query++) . (fragment++)
+    (sch++) . (uriAuthToString userinfomap auth)
+            . (p++) . (q++) . (frag++)
 
 uriAuthToString :: (String->String) -> (Maybe URIAuth) -> ShowS
 uriAuthToString _           Nothing   = id          -- shows ""
 uriAuthToString userinfomap
         (Just URIAuth { uriUserInfo = uinfo
                       , uriRegName  = regname
-                      , uriPort     = port
+                      , uriPort     = prt
                       } ) =
     ("//"++) . (if null uinfo then id else ((userinfomap uinfo)++))
              . (regname++)
-             . (port++)
+             . (prt++)
 
 ------------------------------------------------------------
 --  Character classes
@@ -895,9 +879,9 @@ escapeURIChar p c
     where
         myShowHex :: Int -> ShowS
         myShowHex n r =  case showIntAtBase 16 (toChrHex) n r of
-            []  -> "00"
-            [c] -> ['0',c]
-            cs  -> cs
+            []   -> "00"
+            [c'] -> ['0',c']
+            cs   -> cs
         toChrHex d
             | d < 10    = chr (ord '0' + fromIntegral d)
             | otherwise = chr (ord 'A' + fromIntegral (d - 10))
@@ -1009,7 +993,7 @@ elimDots ps rs = elimDots ps1 (r:rs)
 --  Return tail of non-null list, otherwise return null list
 dropHead :: [a] -> [a]
 dropHead []     = []
-dropHead (r:rs) = rs
+dropHead (_:rs) = rs
 
 --  Returns the next segment and the rest of the path from a path string.
 --  Each segment ends with the next '/' or the end of string.
@@ -1022,9 +1006,9 @@ nextSegment ps =
 
 --  Split last (name) segment from path, returning (path,name)
 splitLast :: String -> (String,String)
-splitLast path = (reverse revpath,reverse revname)
+splitLast p = (reverse revpath,reverse revname)
     where
-        (revname,revpath) = break (=='/') $ reverse path
+        (revname,revpath) = break (=='/') $ reverse p
 
 ------------------------------------------------------------
 -- Finding a URI relative to a base URI
@@ -1080,7 +1064,7 @@ relativeFrom uabs base
                 (p1,p2) = splitLast p
 
 relPathFrom :: String -> String -> String
-relPathFrom []   base = "/"
+relPathFrom []   _    = "/"
 relPathFrom pabs []   = pabs
 relPathFrom pabs base =                 -- Construct a relative path segments
     if sa1 == sb1                       -- if the paths share a leading segment
@@ -1112,7 +1096,7 @@ relPathFrom1 pabs base = relName
                   else
                       rp++na
         -- Precede name with some path if it is null or contains a ':'
-        protect na = null na || ':' `elem` na
+        protect name = null name || ':' `elem` name
 
 --  relSegsFrom discards any common leading segments from both paths,
 --  then invokes difSegsFrom to calculate a relative path from the end
@@ -1189,16 +1173,6 @@ normalizePathSegments uristr = normstr juri
         normstr Nothing  = uristr
         normstr (Just u) = show (normuri u)
         normuri u = u { uriPath = removeDotSegments (uriPath u) }
-
-------------------------------------------------------------
---  Local trace helper functions
-------------------------------------------------------------
-
-traceShow :: Show a => String -> a -> a
-traceShow msg x = trace (msg ++ show x) x
-
-traceVal :: Show a => String -> a -> b -> b
-traceVal msg x y = trace (msg ++ show x) y
 
 ------------------------------------------------------------
 --  Deprecated functions
