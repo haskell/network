@@ -152,19 +152,18 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
-import Data.Word (Word16, Word32)
+import Data.Word (Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
 import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
-import Foreign.C.Types (CInt, CUInt, CChar, CSize)
+import Foreign.C.Types (CInt, CChar, CSize)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (maybeWith, with)
 
 import System.IO
-import Control.Monad (liftM, when)
-import Data.Ratio ((%))
+import Control.Monad (liftM)
 
 import Control.Concurrent.MVar
 import Data.Typeable
@@ -285,7 +284,7 @@ instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
 instance Show Socket where
-  showsPrec n (MkSocket fd _ _ _ _) =
+  showsPrec _ (MkSocket fd _ _ _ _) =
         showString "<socket: " . shows fd . showString ">"
 
 
@@ -363,16 +362,16 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-    rc <- throwSocketErrorIfMinus1Retry "socketpair" $
+    _ <- throwSocketErrorIfMinus1Retry "socketpair" $
                 c_socketpair (packFamily family)
                              (packSocketType stype)
                              protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr
-    s1 <- mkSocket fd1
-    s2 <- mkSocket fd2
+    s1 <- create fd1
+    s2 <- create fd2
     return (s1,s2)
   where
-    mkSocket fd = do
+    create fd = do
 #if !defined(__HUGS__)
 # if __GLASGOW_HASKELL__ < 611
        System.Posix.Internals.setNonBlockingFD fd
@@ -1264,7 +1263,6 @@ sCM_RIGHTS = #const SCM_RIGHTS
 maxListenQueue :: Int
 maxListenQueue = sOMAXCONN
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 -- Like bracket, but only performs the final action if there was an
 -- exception raised by the middle bit.
 bracketOnError
@@ -1272,6 +1270,7 @@ bracketOnError
         -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
         -> (a -> IO c)  -- ^ computation to run in-between
         -> IO c         -- returns the value from the in-between computation
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 bracketOnError before after thing =
   Exception.block (do
     a <- before
