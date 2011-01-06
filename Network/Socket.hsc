@@ -467,7 +467,6 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
 -- differs from that returned by @getHostname@ then an error is
 -- raised. Alternatively an empty string may be given to @connectTo@
 -- signalling that the current hostname applies.
-
 data PortID =
           Service String                -- Service Name eg "ftp"
         | PortNumber PortNumber         -- User defined Port Number
@@ -475,48 +474,39 @@ data PortID =
         | UnixSocket String             -- Unix family socket in file system
 #endif
 
--- | Calling 'connectTo' creates a client side socket which is
--- connected to the given host and port using specified protocol.
--- Socket type is derived from the given port identifier. If a port
--- number is given then the result is always an internet family
--- 'Stream' socket.
-
-connectTo :: ProtocolNumber     -- ^ Protocol Number, usually 'defaultProtocol' (or use 'getProtocolByName' to find value)
-          -> HostName           -- ^ Hostname
+-- | Convenience function.  Create a socket which is connected to the
+-- given address.  The socket type is derived from the given port
+-- identifier.  If a port number is given then the result is always an
+-- internet family 'Stream' socket.
+connectTo :: HostName           -- ^ Hostname
           -> PortID             -- ^ Port Identifier
           -> IO Socket          -- ^ Connected Socket
-
 #if defined(IPV6_SOCKET_SUPPORT)
 -- IPv6 and IPv4.
-
-connectTo proto hostname (Service serv) = connect' proto hostname serv
-
-connectTo proto hostname (PortNumber port) = connect' proto hostname (show port)
+connectTo hostname (Service serv) = connect' hostname serv
+connectTo hostname (PortNumber port) = connect' hostname (show port)
 #else
 -- IPv4 only.
-
-connectTo proto hostname (Service serv) = do
+connectTo hostname (Service serv) = do
     bracketOnError
-        (socket AF_INET Stream proto)
+        (socket AF_INET Stream defaultProtocol)
         (sClose)  -- only done if there's an error
         (\sock -> do
           port  <- getServicePortNumber serv
           he    <- getHostByName hostname
           connect sock (SockAddrInet port (hostAddress he))
         )
-
-connectTo proto hostname (PortNumber port) = do
+connectTo hostname (PortNumber port) = do
     bracketOnError
-        (socket AF_INET Stream proto)
+        (socket AF_INET Stream defaultProtocol)
         (sClose)  -- only done if there's an error
         (\sock -> do
           he <- getHostByName hostname
           connect sock (SockAddrInet port (hostAddress he))
         )
 #endif
-
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-connectTo _ _ (UnixSocket path) = do
+connectTo _ (UnixSocket path) = do
     bracketOnError
         (socket AF_UNIX Stream 0)
         (sClose)
@@ -527,11 +517,10 @@ connectTo _ _ (UnixSocket path) = do
 #endif
 
 #if defined(IPV6_SOCKET_SUPPORT)
-connect' :: ProtocolNumber -> HostName -> ServiceName -> IO Socket
-
-connect' proto host serv = do
+connect' :: HostName -> ServiceName -> IO Socket
+connect' host serv = do
     let hints = defaultHints { addrFlags = [AI_ADDRCONFIG]
-                             , addrProtocol = proto
+                             , addrProtocol = defaultProtocol
                              , addrSocketType = Stream }
     addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
     firstSuccessful $ map tryToConnect addrs

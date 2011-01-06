@@ -82,9 +82,7 @@ connectTo :: HostName           -- Hostname
           -> PortID             -- Port Identifier
           -> IO Handle          -- Connected Socket
 connectTo hostname port = do
-  proto <- getProtocolNumber "tcp"
-  -- Socket.connectTo could override proto for some types of PortIDs
-  sock <- Socket.connectTo proto hostname port
+  sock <- Socket.connectTo hostname port
   socketToHandle sock ReadWriteMode
 
 -- | Creates the server side socket which has been bound to the
