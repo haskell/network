@@ -41,11 +41,11 @@ import Network.URI
 
 import Test.HUnit
 
-import IO ( Handle, openFile, IOMode(WriteMode), hClose, hPutStr, hPutStrLn )
-
 import Control.Monad (when)
-import Maybe ( fromJust )
+import Data.Maybe (fromJust)
 import System.Exit (exitFailure)
+import System.IO (Handle, openFile, IOMode(WriteMode), hClose, hPutStr,
+                  hPutStrLn)
 
 -- Test supplied string for valid URI reference syntax
 --   isValidURIRef :: String -> Bool
