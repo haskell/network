@@ -298,53 +298,6 @@ type ProtocolNumber = CInt
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
 
-----------------------------------------------------------------------------
--- Port Numbers
-
-INSTANCE_TYPEABLE0(PortNumber,portNumberTc,"PortNumber")
-
-instance Show PortNumber where
-  showsPrec p pn = showsPrec p (portNumberToInt pn)
-
-intToPortNumber :: Int -> PortNumber
-intToPortNumber v = PortNum (htons (fromIntegral v))
-
-portNumberToInt :: PortNumber -> Int
-portNumberToInt (PortNum po) = fromIntegral (ntohs po)
-
-foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
-foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
---foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
-foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
-
-instance Enum PortNumber where
-    toEnum   = intToPortNumber
-    fromEnum = portNumberToInt
-
-instance Num PortNumber where
-   fromInteger i = intToPortNumber (fromInteger i)
-    -- for completeness.
-   (+) x y   = intToPortNumber (portNumberToInt x + portNumberToInt y)
-   (-) x y   = intToPortNumber (portNumberToInt x - portNumberToInt y)
-   negate x  = intToPortNumber (-portNumberToInt x)
-   (*) x y   = intToPortNumber (portNumberToInt x * portNumberToInt y)
-   abs n     = intToPortNumber (abs (portNumberToInt n))
-   signum n  = intToPortNumber (signum (portNumberToInt n))
-
-instance Real PortNumber where
-    toRational x = toInteger x % 1
-
-instance Integral PortNumber where
-    quotRem a b = let (c,d) = quotRem (portNumberToInt a) (portNumberToInt b) in
-                  (intToPortNumber c, intToPortNumber d)
-    toInteger a = toInteger (portNumberToInt a)
-
-instance Storable PortNumber where
-   sizeOf    _ = sizeOf    (undefined :: Word16)
-   alignment _ = alignment (undefined :: Word16)
-   poke p (PortNum po) = poke (castPtr p) po
-   peek p = PortNum `liftM` peek (castPtr p)
-
 -----------------------------------------------------------------------------
 -- SockAddr
 
@@ -1317,6 +1270,8 @@ aNY_PORT = 0
 
 iNADDR_ANY :: HostAddress
 iNADDR_ANY = htonl (#const INADDR_ANY)
+
+foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
 
 #if defined(IPV6_SOCKET_SUPPORT)
 -- | The IPv6 wild card address.

@@ -18,6 +18,9 @@
 
 #include "HsNet.h"
 
+-- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
+##include "Typeable.h"
+
 module Network.Socket.Internal
     (
     -- * Socket addresses
@@ -60,7 +63,10 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
+import Control.Monad (liftM)
 import Data.Bits ( (.|.), shiftL, shiftR )
+import Data.Ratio ((%))
+import Data.Typeable (Typeable(typeOf), mkTyCon, mkTyConApp)
 import Data.Word ( Word8, Word16, Word32 )
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
@@ -146,6 +152,48 @@ instance Storable HostAddress6 where
 -- | The port number of a socket.  Construct a 'PortNumber' using
 -- 'fromIntegral'.
 newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
+
+INSTANCE_TYPEABLE0(PortNumber,portNumberTc,"PortNumber")
+
+instance Show PortNumber where
+  showsPrec p pn = showsPrec p (portNumberToInt pn)
+
+intToPortNumber :: Int -> PortNumber
+intToPortNumber v = PortNum (htons (fromIntegral v))
+
+portNumberToInt :: PortNumber -> Int
+portNumberToInt (PortNum po) = fromIntegral (ntohs po)
+
+foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
+foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
+
+instance Enum PortNumber where
+    toEnum   = intToPortNumber
+    fromEnum = portNumberToInt
+
+instance Num PortNumber where
+   fromInteger i = intToPortNumber (fromInteger i)
+    -- for completeness.
+   (+) x y   = intToPortNumber (portNumberToInt x + portNumberToInt y)
+   (-) x y   = intToPortNumber (portNumberToInt x - portNumberToInt y)
+   negate x  = intToPortNumber (-portNumberToInt x)
+   (*) x y   = intToPortNumber (portNumberToInt x * portNumberToInt y)
+   abs n     = intToPortNumber (abs (portNumberToInt n))
+   signum n  = intToPortNumber (signum (portNumberToInt n))
+
+instance Real PortNumber where
+    toRational x = toInteger x % 1
+
+instance Integral PortNumber where
+    quotRem a b = let (c,d) = quotRem (portNumberToInt a) (portNumberToInt b) in
+                  (intToPortNumber c, intToPortNumber d)
+    toInteger a = toInteger (portNumberToInt a)
+
+instance Storable PortNumber where
+   sizeOf    _ = sizeOf    (undefined :: Word16)
+   alignment _ = alignment (undefined :: Word16)
+   poke p (PortNum po) = poke (castPtr p) po
+   peek p = PortNum `liftM` peek (castPtr p)
 
 ------------------------------------------------------------------------
 -- Socket addresses
