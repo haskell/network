@@ -436,7 +436,7 @@ connectTo hostname (PortNumber port) = connect' hostname (show port)
 #else
 -- IPv4 only.
 connectTo hostname (Service serv) = do
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_INET Stream defaultProtocol)
         (sClose)  -- only done if there's an error
         (\sock -> do
@@ -445,7 +445,7 @@ connectTo hostname (Service serv) = do
           connect sock (SockAddrInet port (hostAddress he))
         )
 connectTo hostname (PortNumber port) = do
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_INET Stream defaultProtocol)
         (sClose)  -- only done if there's an error
         (\sock -> do
@@ -455,7 +455,7 @@ connectTo hostname (PortNumber port) = do
 #endif
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 connectTo _ (UnixSocket path) = do
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_UNIX Stream 0)
         (sClose)
         (\sock -> do
@@ -474,7 +474,7 @@ connect' host serv = do
     firstSuccessful $ map tryToConnect addrs
   where
   tryToConnect addr =
-    bracketOnError
+    Exception.bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
         (sClose)  -- only done if there's an error
         (\sock -> do
@@ -560,7 +560,7 @@ listenOn proto (PortNumber port) = listen' proto (show port)
 -- IPv4 only.
 
 listenOn proto (Service serv) = do
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_INET Stream proto)
         (sClose)
         (\sock -> do
@@ -572,7 +572,7 @@ listenOn proto (Service serv) = do
         )
 
 listenOn proto (PortNumber port) = do
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_INET Stream proto)
         (sClose)
         (\sock -> do
@@ -585,7 +585,7 @@ listenOn proto (PortNumber port) = do
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 listenOn _ (UnixSocket path) =
-    bracketOnError
+    Exception.bracketOnError
         (socket AF_UNIX Stream 0)
         (sClose)
         (\sock -> do
@@ -605,7 +605,7 @@ listen' proto serv = do
                              , addrProtocol = proto }
     addrs <- getAddrInfo (Just hints) Nothing (Just serv)
     let addr = head addrs
-    bracketOnError
+    Exception.bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
         (sClose)
         (\sock -> do
@@ -1263,26 +1263,6 @@ sCM_RIGHTS = #const SCM_RIGHTS
 maxListenQueue :: Int
 maxListenQueue = sOMAXCONN
 
--- Like bracket, but only performs the final action if there was an
--- exception raised by the middle bit.
-bracketOnError
-        :: IO a         -- ^ computation to run first (\"acquire resource\")
-        -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
-        -> (a -> IO c)  -- ^ computation to run in-between
-        -> IO c         -- returns the value from the in-between computation
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
-bracketOnError before after thing =
-  Exception.block (do
-    a <- before
-    r <- Exception.catch
-           (Exception.unblock (thing a))
-           (\e -> do { after a; Exception.throw e })
-    return r
- )
-#else
-bracketOnError = Exception.bracketOnError
-#endif
-
 -- Returns the first action from a list which does not throw an exception.
 -- If all the actions throw exceptions (and the list of actions is not empty),
 -- the last exception is thrown.
@@ -1414,11 +1394,11 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
         then ioError (userError ("socketToHandle: already a Handle"))
         else do
 # if __GLASGOW_HASKELL__ >= 611
-    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
+    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) 
+         mode True{-bin-}
 # elif __GLASGOW_HASKELL__ >= 608
-    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# elif __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 608
-    h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
+    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True 
+         (show s) mode True{-bin-}
 # elif defined(__HUGS__)
     h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
 # endif
