@@ -12,7 +12,7 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as L
 
-import Network.Socket.ByteString (recv, recvFrom, send, sendAll, sendMany)
+import Network.Socket.ByteString (recv, recvFrom, send, send, sendAll, sendMany)
 import qualified Network.Socket.ByteString.Lazy as NSBL
 
 ------------------------------------------------------------------------
@@ -37,6 +37,12 @@ testLazySend = TestCase $ connectedTest client server
 
 ------------------------------------------------------------------------
 -- Tests
+
+testSend :: Test
+testSend = TestCase $ connectedTest client server
+    where
+      server sock = recv sock 1024 >>= (@=?) testMsg
+      client sock = send sock testMsg
 
 testSendAll :: Test
 testSendAll = TestCase $ connectedTest client server
@@ -132,6 +138,7 @@ main = withSocketsDo $ do
 
 tests :: Test
 tests = TestList [ TestLabel "testLazySend" testLazySend
+                 , TestLabel "testSend" testSendMany
                  , TestLabel "testSendAll" testSendMany
                  , TestLabel "testSendMany" testSendMany
                  , TestLabel "testRecv" testRecv
