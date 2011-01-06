@@ -96,10 +96,7 @@ connectTo hostname port = do
 
 listenOn :: PortID      -- ^ Port Identifier
          -> IO Socket   -- ^ Connected Socket
-listenOn port = do
-  proto <- getProtocolNumber "tcp"
-  -- Socket.listenOn could override proto for some types of PortIDs
-  Socket.listenOn proto port
+listenOn port = Socket.listenOn port
 
 -- -----------------------------------------------------------------------------
 -- accept

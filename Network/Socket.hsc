@@ -546,22 +546,17 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 -- don't want this behaviour, please use the lower level
 -- 'Network.Socket.listen' instead.
 
-listenOn :: ProtocolNumber -- ^ ProtocolNumber, usually 'defaultProtocol' (or use 'getProtocolByName' to find out)
-         -> PortID         -- ^ Port Identifier
+listenOn :: PortID         -- ^ Port Identifier
          -> IO Socket      -- ^ Connected Socket
-
 #if defined(IPV6_SOCKET_SUPPORT)
 -- IPv6 and IPv4.
-
-listenOn proto (Service serv) = listen' proto serv
-
-listenOn proto (PortNumber port) = listen' proto (show port)
+listenOn (Service serv) = listen' serv
+listenOn (PortNumber port) = listen' (show port)
 #else
 -- IPv4 only.
-
-listenOn proto (Service serv) = do
+listenOn (Service serv) = do
     Exception.bracketOnError
-        (socket AF_INET Stream proto)
+        (socket AF_INET Stream defaultProtocol)
         (sClose)
         (\sock -> do
             port    <- getServicePortNumber serv
@@ -570,10 +565,9 @@ listenOn proto (Service serv) = do
             listen sock maxListenQueue
             return sock
         )
-
-listenOn proto (PortNumber port) = do
+listenOn (PortNumber port) = do
     Exception.bracketOnError
-        (socket AF_INET Stream proto)
+        (socket AF_INET Stream defaultProtocol)
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
@@ -582,9 +576,8 @@ listenOn proto (PortNumber port) = do
             return sock
         )
 #endif
-
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-listenOn _ (UnixSocket path) =
+listenOn (UnixSocket path) =
     Exception.bracketOnError
         (socket AF_UNIX Stream 0)
         (sClose)
@@ -597,12 +590,11 @@ listenOn _ (UnixSocket path) =
 #endif
 
 #if defined(IPV6_SOCKET_SUPPORT)
-listen' :: ProtocolNumber -> ServiceName -> IO Socket
-
-listen' proto serv = do
+listen' :: ServiceName -> IO Socket
+listen' serv = do
     let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_PASSIVE]
                              , addrSocketType = Stream
-                             , addrProtocol = proto }
+                             , addrProtocol = defaultProtocol }
     addrs <- getAddrInfo (Just hints) Nothing (Just serv)
     let addr = head addrs
     Exception.bracketOnError
