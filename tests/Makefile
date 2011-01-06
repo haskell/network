@@ -11,7 +11,7 @@ programs := simple uri
 
 all: run-tests
 
-run-tests: simple uri
+run-tests: $(programs)
 	./simple
 	./uri
 
