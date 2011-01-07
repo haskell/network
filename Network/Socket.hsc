@@ -86,6 +86,7 @@ module Network.Socket
     -- ** Sending and receiving
     -- $sendrecv
     , recv
+    , recvBuf
     , recvBufFrom
     , recvFrom
     , recvLen
@@ -759,16 +760,10 @@ recvFrom sock nbytes =
     str <- peekCStringLen (ptr, len)
     return (str, len, sockaddr)
 
--- | Receive data from the socket, writing it into buffer instead of
--- creating a new string.  The socket need not be in a connected
--- state. Returns @(nbytes, address)@ where @nbytes@ is the number of
--- bytes received and @address@ is a 'SockAddr' representing the
--- address of the sending socket.
---
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
-recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
+recvBufFrom' :: Socket -> Ptr a -> Int -> IO (Int, Ptr SockAddr)
+recvBufFrom' sock@(MkSocket s family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   =
     withNewSockAddr family $ \ptr_addr sz -> do
@@ -784,17 +779,41 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
         let len' = fromIntegral len
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
-         else do
-           flg <- sIsConnected sock
-             -- For at least one implementation (WinSock 2), recvfrom() ignores
-             -- filling in the sockaddr for connected TCP sockets. Cope with
-             -- this by using getPeerName instead.
-           sockaddr <-
-                if flg then
-                   getPeerName sock
-                else
-                   peekSockAddr ptr_addr
-           return (len', sockaddr)
+         else return (len', ptr_addr)
+
+-- | Receive data from the socket, writing it into buffer instead of
+-- creating a new string.  The socket need not be in a connected
+-- state. Returns @(nbytes, address)@ where @nbytes@ is the number of
+-- bytes received and @address@ is a 'SockAddr' representing the
+-- address of the sending socket.
+--
+-- NOTE: blocking on Windows unless you compile with -threaded (see
+-- GHC ticket #1129)
+recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
+recvBufFrom sock ptr nbytes = do
+  (len, ptr_addr) <- recvBufFrom' sock ptr nbytes
+  flg <- sIsConnected sock
+    -- For at least one implementation (WinSock 2), recvfrom() ignores
+    -- filling in the sockaddr for connected TCP sockets. Cope with
+    -- this by using getPeerName instead.
+  sockaddr <-
+       if flg then
+          getPeerName sock
+       else
+          peekSockAddr ptr_addr
+  return (len, sockaddr)
+
+-- | Receive data from the socket, writing it into buffer instead of
+-- creating a new string.  The socket need not be in a connected
+-- state. Returns @(nbytes)@ where @nbytes@ is the number of
+-- bytes received.
+--
+-- NOTE: blocking on Windows unless you compile with -threaded (see
+-- GHC ticket #1129)
+recvBuf :: Socket -> Ptr a -> Int -> IO Int
+recvBuf sock ptr nbytes = do
+  (len, ptr_addr) <- recvBufFrom' sock ptr nbytes
+  return len
 
 -----------------------------------------------------------------------------
 -- send & recv
