@@ -103,7 +103,16 @@ testOverFlowRecvFrom = TestCase $ connectedTest client server
 -- is started before the client and the specified server action is
 -- finished before the client closes the connection.
 connectedTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-connectedTest clientAct serverAct = do
+connectedTest clientAct serverAct = test client serverAct
+    where
+      client sock = do
+          addr <- inet_addr serverAddr 
+          connect sock $ SockAddrInet serverPort addr
+          clientAct sock
+
+
+test :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
+test clientAct serverAct = do
     barrier <- newEmptyMVar
     forkIO $ server barrier
     client barrier
@@ -126,8 +135,6 @@ connectedTest clientAct serverAct = do
     client barrier = do
         takeMVar barrier
         bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
-            addr <- inet_addr serverAddr
-            connect sock $ SockAddrInet serverPort addr
             clientAct sock
             takeMVar barrier
 
