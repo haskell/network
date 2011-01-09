@@ -4,7 +4,8 @@ ghc := ghc
 ghc-flags :=  -Wall -O -fno-warn-unused-do-bind -hide-all-packages \
 	-package-conf ../dist/package.conf.inplace -package base \
 	-package bytestring -package HUnit -package parsec -package $(package) \
-	-fno-warn-missing-signatures
+	-fno-warn-missing-signatures -package test-framework \
+	-package test-framework-hunit
 lib := ../dist/build/libHS$(package)-$(version).a
 package-conf := ../dist/package.conf.inplace
 

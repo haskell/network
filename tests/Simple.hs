@@ -5,11 +5,11 @@ module Main where
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Exception (SomeException, bracket, catch, throwTo)
-import Control.Monad (when)
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Prelude hiding (catch)
-import System.Exit (exitFailure)
-import Test.HUnit (Counts(..), Test(..), (@=?), runTestTT)
+import Test.Framework (Test, defaultMain)
+import Test.Framework.Providers.HUnit (testCase)
+import Test.HUnit (Assertion, (@=?))
 
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
@@ -30,8 +30,8 @@ serverAddr = "127.0.0.1"
 testMsg :: S.ByteString
 testMsg = C.pack "This is a test message."
 
-testLazySend :: Test
-testLazySend = TestCase $ tcpTest client server
+testLazySend :: Assertion
+testLazySend = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) (C.take 1024 strictTestMsg)
       client sock = NSBL.send sock lazyTestMsg >>= (@=?) 1024
@@ -45,34 +45,34 @@ testLazySend = TestCase $ tcpTest client server
 ------------------------------------------------------------------------
 -- Tests
 
-testSend :: Test
-testSend = TestCase $ tcpTest client server
+testSend :: Assertion
+testSend = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = send sock testMsg
 
-testSendAll :: Test
-testSendAll = TestCase $ tcpTest client server
+testSendAll :: Assertion
+testSendAll = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = sendAll sock testMsg
 
-testSendTo :: Test
-testSendTo = TestCase $ udpTest client server
+testSendTo :: Assertion
+testSendTo = udpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = do addr <- inet_addr serverAddr
                        sendTo sock testMsg (SockAddrInet serverPort addr)
 
-testSendAllTo :: Test
-testSendAllTo = TestCase $ udpTest client server
+testSendAllTo :: Assertion
+testSendAllTo = udpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = do addr <- inet_addr serverAddr
                        sendAllTo sock testMsg (SockAddrInet serverPort addr)
 
-testSendMany :: Test
-testSendMany = TestCase $ tcpTest client server
+testSendMany :: Assertion
+testSendMany = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
       client sock = sendMany sock [seg1, seg2]
@@ -80,8 +80,8 @@ testSendMany = TestCase $ tcpTest client server
       seg1 = C.pack "This is a "
       seg2 = C.pack "test message."
 
-testSendManyTo :: Test
-testSendManyTo = TestCase $ udpTest client server
+testSendManyTo :: Assertion
+testSendManyTo = udpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
       client sock = do addr <- inet_addr serverAddr
@@ -91,14 +91,14 @@ testSendManyTo = TestCase $ udpTest client server
       seg1 = C.pack "This is a "
       seg2 = C.pack "test message."
 
-testRecv :: Test
-testRecv = TestCase $ tcpTest client server
+testRecv :: Assertion
+testRecv = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = send sock testMsg
 
-testOverFlowRecv :: Test
-testOverFlowRecv = TestCase $ tcpTest client server
+testOverFlowRecv :: Assertion
+testOverFlowRecv = tcpTest client server
     where
       server sock = do seg1 <- recv sock (S.length testMsg - 3)
                        seg2 <- recv sock 1024
@@ -107,16 +107,16 @@ testOverFlowRecv = TestCase $ tcpTest client server
 
       client sock = send sock testMsg
 
-testRecvFrom :: Test
-testRecvFrom = TestCase $ tcpTest client server
+testRecvFrom :: Assertion
+testRecvFrom = tcpTest client server
     where
       server sock = do (msg, _) <- recvFrom sock 1024
                        testMsg @=? msg
 
       client sock = send sock testMsg
 
-testOverFlowRecvFrom :: Test
-testOverFlowRecvFrom = TestCase $ tcpTest client server
+testOverFlowRecvFrom :: Assertion
+testOverFlowRecvFrom = tcpTest client server
     where
       server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
                        (seg2, _) <- recvFrom sock 1024
@@ -208,20 +208,18 @@ bracketWithReraise tid before after thing =
 -- Test harness
 
 main :: IO ()
-main = withSocketsDo $ do
-    counts <- runTestTT tests
-    when (errors counts + failures counts > 0) exitFailure
+main = withSocketsDo $ defaultMain tests
 
-tests :: Test
-tests = TestList [ TestLabel "testLazySend" testLazySend
-                 , TestLabel "testSend" testSend
-                 , TestLabel "testSendAll" testSendAll
-                 , TestLabel "testSendTo" testSendTo
-                 , TestLabel "testSendAllTo" testSendAllTo
-                 , TestLabel "testSendMany" testSendMany
-                 , TestLabel "testSendManyTo" testSendManyTo
-                 , TestLabel "testRecv" testRecv
-                 , TestLabel "testOverFlowRecv" testOverFlowRecv
-                 , TestLabel "testRecvFrom" testRecvFrom
-                 , TestLabel "testOverFlowRecvFrom" testOverFlowRecvFrom
-                 ]
+tests :: [Test]
+tests = [ testCase "testLazySend" testLazySend
+        , testCase "testSend" testSend
+        , testCase "testSendAll" testSendAll
+        , testCase "testSendTo" testSendTo
+        , testCase "testSendAllTo" testSendAllTo
+        , testCase "testSendMany" testSendMany
+        , testCase "testSendManyTo" testSendManyTo
+        , testCase "testRecv" testRecv
+        , testCase "testOverFlowRecv" testOverFlowRecv
+        , testCase "testRecvFrom" testRecvFrom
+        , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+        ]
