@@ -7,7 +7,7 @@ synopsis:       Low-level networking interface
 description:    Low-level networking interface
 category:       Network
 build-type:     Configure
-cabal-version:  >=1.6
+cabal-version:  >=1.8
 extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
   include/HsNetworkConfig.h
@@ -59,6 +59,29 @@ library
   ghc-options: -Wall -fno-warn-unused-do-bind
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
+
+test-suite simple
+  hs-source-dirs: tests
+  main-is: Simple.hs
+  type: exitcode-stdio-1.0
+
+  build-depends:
+    base < 4.4,
+    bytestring < 0.10,
+    HUnit < 1.3,
+    network,
+    test-framework < 0.4,
+    test-framework-hunit < 0.3
+
+test-suite uri
+  hs-source-dirs: tests
+  main-is: uri001.hs
+  type: exitcode-stdio-1.0
+
+  build-depends:
+    base < 4.4,
+    HUnit < 1.3,
+    network
 
 source-repository head
   type:     git
