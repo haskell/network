@@ -1,9 +1,10 @@
 package := network
 version := $(shell awk '/^version:/{print $$2}' ../$(package).cabal)
 ghc := ghc
-ghc-flags :=  -Wall -O -hide-all-packages \
+ghc-flags :=  -Wall -O -fno-warn-unused-do-bind -hide-all-packages \
 	-package-conf ../dist/package.conf.inplace -package base \
-	-package bytestring -package HUnit -package parsec -package $(package)
+	-package bytestring -package HUnit -package parsec -package $(package) \
+	-fno-warn-missing-signatures
 lib := ../dist/build/libHS$(package)-$(version).a
 package-conf := ../dist/package.conf.inplace
 

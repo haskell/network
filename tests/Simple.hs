@@ -17,8 +17,11 @@ import qualified Network.Socket.ByteString.Lazy as NSBL
 
 ------------------------------------------------------------------------
 
-port :: PortNumber
-port = fromIntegral (3000 :: Int)
+serverPort :: PortNumber
+serverPort = fromIntegral (3000 :: Int)
+
+serverAddr :: String
+serverAddr = "127.0.0.1"
 
 testMsg :: S.ByteString
 testMsg = C.pack "This is a test message."
@@ -106,10 +109,10 @@ connectedTest clientAct serverAct = do
     client barrier
   where
     server barrier = do
-        addr <- inet_addr "127.0.0.1"
+        addr <- inet_addr serverAddr
         bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port addr)
+            bindSocket sock (SockAddrInet serverPort addr)
             listen sock 1
             serverReady
             (clientSock, _) <- accept sock
@@ -123,8 +126,8 @@ connectedTest clientAct serverAct = do
     client barrier = do
         takeMVar barrier
         bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
-            addr <- inet_addr "127.0.0.1"
-            connect sock $ SockAddrInet port addr
+            addr <- inet_addr serverAddr
+            connect sock $ SockAddrInet serverPort addr
             clientAct sock
             takeMVar barrier
 

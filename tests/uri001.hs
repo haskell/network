@@ -29,9 +29,8 @@ import Network.URI
     ( URI(..), URIAuth(..)
     , nullURI
     , parseURI, parseURIReference, parseRelativeReference, parseAbsoluteURI
-    , parseabsoluteURI
+    , parseAbsoluteURI
     , isURI, isURIReference, isRelativeReference, isAbsoluteURI
-    , isIPv6address, isIPv4address
     , relativeTo, nonStrictRelativeTo
     , relativeFrom
     , uriToString
@@ -44,8 +43,7 @@ import Test.HUnit
 import Control.Monad (when)
 import Data.Maybe (fromJust)
 import System.Exit (exitFailure)
-import System.IO (Handle, openFile, IOMode(WriteMode), hClose, hPutStr,
-                  hPutStrLn)
+import System.IO (openFile, IOMode(WriteMode), hClose)
 
 -- Test supplied string for valid URI reference syntax
 --   isValidURIRef :: String -> Bool
@@ -86,7 +84,7 @@ testURIRef t u = TestList
   ]
 
 testURIRefComponents :: String -> (Maybe URI) -> String -> Test
-testURIRefComponents lab uv us =
+testURIRefComponents _lab uv us =
     testEq ("testURIRefComponents:"++us) uv (parseURIReference us)
 
 
@@ -973,7 +971,7 @@ testAltFn06 = testEq "testAltFn06" "Nothing"
 testAltFn07 = testEq "testAltFn07" "Nothing"
     (show . parseAbsoluteURI $ "c/d")
 testAltFn08 = testEq "testAltFn08" "Just http://a.b/c"
-    (show . parseabsoluteURI $ "http://a.b/c")
+    (show . parseAbsoluteURI $ "http://a.b/c")
 
 testAltFn11 = testEq "testAltFn11" True  (isURI "http://a.b/c#f")
 testAltFn12 = testEq "testAltFn12" True  (isURIReference "http://a.b/c#f")
