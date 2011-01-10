@@ -198,6 +198,10 @@ import qualified System.Posix.Internals
 import System.IO.Unsafe (unsafePerformIO)
 #endif
 
+##if !MIN_VERSION_base(4,3,1)
+import System.Posix.Types (Fd)
+##endif
+
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
 -- IPv6 address e.g., @\"192.168.0.1\"@.
@@ -1130,6 +1134,9 @@ getPeerCred sock = do
 #endif
 
 ##if !MIN_VERSION_base(4,3,1)
+closeFdWith :: (Fd -> IO ())  -- ^ Low-level action that performs the real close.
+            -> Fd             -- ^ File descriptor to close.
+            -> IO ()
 closeFdWith closer fd = closer fd
 ##endif
 
