@@ -5,19 +5,17 @@ module Main where
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Exception (SomeException, bracket, catch, throwTo)
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy.Char8 as L
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
+import Network.Socket.ByteString (recv, recvFrom, send, send, sendAll,
+                                  sendTo, sendAllTo, sendMany, sendManyTo)
+import qualified Network.Socket.ByteString.Lazy as NSBL
 import Prelude hiding (catch)
 import Test.Framework (Test, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
-
-import qualified Data.ByteString as S
-import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy.Char8 as L
-
-import Network.Socket.ByteString (recv, recvFrom, send, send, sendAll,
-                                  sendTo, sendAllTo, sendMany, sendManyTo)
-import qualified Network.Socket.ByteString.Lazy as NSBL
 
 ------------------------------------------------------------------------
 
@@ -132,6 +130,27 @@ testOverFlowRecvFrom = tcpTest client server
 -- Other
 
 ------------------------------------------------------------------------
+-- List of all tests
+
+tests :: [Test]
+tests = [
+          -- Sending and receiving
+          testCase "testLazySend" testLazySend
+        , testCase "testSend" testSend
+        , testCase "testSendAll" testSendAll
+        , testCase "testSendTo" testSendTo
+        , testCase "testSendAllTo" testSendAllTo
+        , testCase "testSendMany" testSendMany
+        , testCase "testSendManyTo" testSendManyTo
+        , testCase "testRecv" testRecv
+        , testCase "testOverFlowRecv" testOverFlowRecv
+        , testCase "testRecvFrom" testRecvFrom
+        , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+
+          -- Other
+        ]
+
+------------------------------------------------------------------------
 -- Test helpers
 
 -- | Establish a connection between client and server and then run
@@ -215,21 +234,3 @@ bracketWithReraise tid before after thing =
 
 main :: IO ()
 main = withSocketsDo $ defaultMain tests
-
-tests :: [Test]
-tests = [
-          -- Sending and receiving
-          testCase "testLazySend" testLazySend
-        , testCase "testSend" testSend
-        , testCase "testSendAll" testSendAll
-        , testCase "testSendTo" testSendTo
-        , testCase "testSendAllTo" testSendAllTo
-        , testCase "testSendMany" testSendMany
-        , testCase "testSendManyTo" testSendManyTo
-        , testCase "testRecv" testRecv
-        , testCase "testOverFlowRecv" testOverFlowRecv
-        , testCase "testRecvFrom" testRecvFrom
-        , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
-
-          -- Other
-        ]
