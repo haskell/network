@@ -114,7 +114,7 @@ testRecvFrom = tcpTest client server
       server sock = do (msg, _) <- recvFrom sock 1024
                        testMsg @=? msg
 
-      client sock = send sock testMsg
+      client sock = sendTo sock testMsg (SockAddrInet serverPort addr)
 
 testOverFlowRecvFrom :: Assertion
 testOverFlowRecvFrom = tcpTest client server
