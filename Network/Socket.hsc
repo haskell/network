@@ -404,7 +404,7 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
          show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
-   status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
+   throwSocketErrorIfMinus1Retry_ "bind" $ c_bind s p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
