@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
@@ -138,6 +138,29 @@ module Network.Socket
     , mkSocket
     ) where
 
+import Control.Concurrent.MVar
+import qualified Control.Exception as Exception
+import Control.Monad (liftM)
+import Data.Bits
+import Data.List (foldl')
+import Data.Typeable
+import Data.Word (Word32)
+import Foreign.C.Error
+import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
+import Foreign.C.Types (CInt, CChar, CSize)
+import Foreign.Marshal.Alloc (alloca, allocaBytes)
+import Foreign.Marshal.Array (peekArray)
+import Foreign.Marshal.Utils (maybeWith, with)
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
+import Foreign.Storable (Storable(..))
+import Network.Socket.Internal
+import System.IO
+import System.IO.Error
+
+#ifdef HAVE_STRUCT_UCRED
+import Foreign.C.Types (CUInt)
+#endif
+
 #ifdef __HUGS__
 import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 import Hugs.IO ( openFd )
@@ -151,58 +174,29 @@ import Hugs.IO ( openFd )
 # endif
 #endif
 
-import Data.Bits
-import Data.List (foldl')
-import Data.Word (Word32)
-import Foreign.Ptr (Ptr, castPtr, nullPtr)
-import Foreign.Storable (Storable(..))
-import Foreign.C.Error
-import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
-import Foreign.C.Types (CInt, CChar, CSize)
-import Foreign.Marshal.Alloc (alloca, allocaBytes)
-import Foreign.Marshal.Array (peekArray)
-import Foreign.Marshal.Utils (maybeWith, with)
-
-import System.IO
-import Control.Monad (liftM)
-
-import Control.Concurrent.MVar
-import Data.Typeable
-import System.IO.Error
-
-#ifdef HAVE_STRUCT_UCRED
-import Foreign.C.Types (CUInt)
-#endif
-
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-##if MIN_VERSION_base(4,3,1)
+## if MIN_VERSION_base(4,3,1)
 import GHC.Conc (closeFdWith)
-##endif
+## endif
 # if defined(mingw32_HOST_OS)
-import GHC.Conc (asyncDoProc)
 import Foreign (FunPtr)
+import GHC.Conc (asyncDoProc)
 # endif
 # if __GLASGOW_HASKELL__ >= 611
-import qualified GHC.IO.Device
-import GHC.IO.Handle.FD
-import GHC.IO.Exception
 import GHC.IO
+import GHC.IO.Exception
+import qualified GHC.IO.Device
+import GHC.IO.FD
+import GHC.IO.Handle.FD
 # else
-import GHC.IOBase
 import GHC.Handle
+import GHC.IOBase
 # endif
 import qualified System.Posix.Internals
 #else
 import System.IO.Unsafe (unsafePerformIO)
 #endif
-
-# if __GLASGOW_HASKELL__ >= 611
-import GHC.IO.FD
-#endif
-
-import Network.Socket.Internal
-import qualified Control.Exception as Exception
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
