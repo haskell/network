@@ -170,6 +170,10 @@ import Control.Concurrent.MVar
 import Data.Typeable
 import System.IO.Error
 
+#ifdef HAVE_STRUCT_UCRED
+import Foreign.C.Types (CUInt)
+#endif
+
 #ifdef __GLASGOW_HASKELL__
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
