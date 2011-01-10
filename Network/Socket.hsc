@@ -187,7 +187,6 @@ import GHC.Conc (asyncDoProc)
 import GHC.IO
 import GHC.IO.Exception
 import qualified GHC.IO.Device
-import GHC.IO.FD
 import GHC.IO.Handle.FD
 # else
 import GHC.Handle
@@ -201,6 +200,10 @@ import System.IO.Unsafe (unsafePerformIO)
 ##if !MIN_VERSION_base(4,3,1)
 import System.Posix.Types (Fd)
 ##endif
+
+#if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
+import GHC.IO.FD
+#endif
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
@@ -765,7 +768,7 @@ recvFrom sock nbytes =
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom' :: Socket -> Ptr a -> Int -> IO (Int, Ptr SockAddr)
-recvBufFrom' sock@(MkSocket s family _stype _protocol _status) ptr nbytes
+recvBufFrom' (MkSocket s family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   =
     withNewSockAddr family $ \ptr_addr sz -> do
@@ -814,7 +817,7 @@ recvBufFrom sock ptr nbytes = do
 -- GHC ticket #1129)
 recvBuf :: Socket -> Ptr a -> Int -> IO Int
 recvBuf sock ptr nbytes = do
-  (len, ptr_addr) <- recvBufFrom' sock ptr nbytes
+  (len, _) <- recvBufFrom' sock ptr nbytes
   return len
 
 -----------------------------------------------------------------------------
@@ -826,7 +829,11 @@ recvBuf sock ptr nbytes = do
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ >= 611
 send sock@(MkSocket s _family _stype _protocol _status) xs = do
+#else
+send (MkSocket s _family _stype _protocol _status) xs = do
+#endif
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
@@ -838,7 +845,7 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
       (castPtr str)
       0
       (fromIntegral len)
-#else
+# else
       writeRawBufferPtr
         "Network.Socket.send"
         (fromIntegral s)
@@ -846,8 +853,7 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
         str
         0
        (fromIntegral len)
-#endif
-
+# endif
 #else
 # if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "send"
@@ -871,7 +877,11 @@ recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
 recvLen :: Socket -> Int -> IO (String, Int)
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS) && __GLASGOW_HASKELL__ >= 611
 recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
+#else
+recvLen (MkSocket s _family _stype _protocol _status) nbytes
+#endif
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
@@ -931,7 +941,6 @@ getPeerName (MkSocket s family _ _ _) =
     with (fromIntegral sz) $ \int_star -> do
         throwSocketErrorIfMinus1Retry "getPeerName" $
             c_getpeername s ptr int_star
-        sz <- peek int_star
         peekSockAddr ptr
 
 -- | Return the current address for the specified socket.  This is
