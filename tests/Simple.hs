@@ -45,6 +45,9 @@ testLazySend = tcpTest client server
 ------------------------------------------------------------------------
 -- Tests
 
+------------------------------------------------------------------------
+-- Sending and receiving
+
 testSend :: Assertion
 testSend = tcpTest client server
     where
@@ -124,6 +127,9 @@ testOverFlowRecvFrom = tcpTest client server
                        testMsg @=? msg
 
       client sock = send sock testMsg
+
+------------------------------------------------------------------------
+-- Other
 
 ------------------------------------------------------------------------
 -- Test helpers
@@ -211,7 +217,9 @@ main :: IO ()
 main = withSocketsDo $ defaultMain tests
 
 tests :: [Test]
-tests = [ testCase "testLazySend" testLazySend
+tests = [
+          -- Sending and receiving
+          testCase "testLazySend" testLazySend
         , testCase "testSend" testSend
         , testCase "testSendAll" testSendAll
         , testCase "testSendTo" testSendTo
@@ -222,4 +230,6 @@ tests = [ testCase "testLazySend" testLazySend
         , testCase "testOverFlowRecv" testOverFlowRecv
         , testCase "testRecvFrom" testRecvFrom
         , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+
+          -- Other
         ]
