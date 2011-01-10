@@ -63,11 +63,11 @@ module Network.Socket
 #endif
 
     -- * Socket operations
-    -- * High-level setup
+    -- ** High-level setup
     , connectTo
     , listenOn
     , accept
-    -- * Low-level setup
+    -- ** Low-level setup
     , bindSocket
     , connect
 #ifdef HAVE_STRUCT_UCRED
