@@ -59,6 +59,7 @@ library
   -- Automatically derived Typeable instance give rise to top-level
   -- bindings without type signatures.
   ghc-options: -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures
+    -fno-warn-incomplete-patterns -fno-warn-orphans
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
 
