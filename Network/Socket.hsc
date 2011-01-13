@@ -239,10 +239,6 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd)
 ##endif
 
-#if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
-import GHC.IO.FD
-#endif
-
 -- $unicode
 --
 -- The operating system socket API does not directly support Unicode,
