@@ -174,42 +174,20 @@ import Network.Socket.Internal
 import System.IO (Handle, IOMode, )
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
-#if !defined(mingw32_HOST_OS)
-import Control.Monad (zipWithM_)
-import Foreign.Marshal.Array (allocaArray)
-import Foreign.Ptr (plusPtr)
-
-import Network.Socket.ByteString.IOVec (IOVec(..))
-import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
-
-#  if defined(__GLASGOW_HASKELL__)
-import GHC.Conc (threadWaitRead, threadWaitWrite)
-#  endif
-#else
-#  if defined(__GLASGOW_HASKELL__)
-#    if __GLASGOW_HASKELL__ >= 611
-import GHC.IO.FD
-#    else
-import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
-#    endif
-#  endif
-#endif
+##if !MIN_VERSION_base(4,3,1)
+import System.Posix.Types (Fd)
+##endif
 
 #ifdef HAVE_STRUCT_UCRED
 import Foreign.C.Types (CUInt)
 #endif
 
-#ifdef __HUGS__
-import Hugs.Prelude ( IOException(..), IOErrorType(..) )
-import Hugs.IO ( openFd )
-
-{-# CFILES cbits/HsNet.c #-}
-# if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
-{-# CFILES cbits/ancilData.c #-}
-# endif
-# if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
-{-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
-# endif
+#if !defined(mingw32_HOST_OS)
+import Control.Monad (zipWithM_)
+import Foreign.Marshal.Array (allocaArray)
+import Foreign.Ptr (plusPtr)
+import Network.Socket.ByteString.IOVec (IOVec(..))
+import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 #endif
 
 #ifdef __GLASGOW_HASKELL__
@@ -220,12 +198,17 @@ import GHC.Conc (closeFdWith)
 # if defined(mingw32_HOST_OS)
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
+#  if __GLASGOW_HASKELL__ >= 611
+import GHC.IO.FD
+#  else
+import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
+#  endif
 # endif
 # if __GLASGOW_HASKELL__ >= 611
-import GHC.IO
-import GHC.IO.Exception
-import qualified GHC.IO.Device
-import GHC.IO.Handle.FD
+import GHC.IO (unsafePerformIO)
+import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument, NoSuchThing))
+import qualified GHC.IO.Device (IODeviceType(Stream))
+import GHC.IO.Handle.FD (fdToHandle')
 # else
 import GHC.Handle
 import GHC.IOBase
@@ -235,9 +218,18 @@ import qualified System.Posix.Internals
 import System.IO.Unsafe (unsafePerformIO)
 #endif
 
-##if !MIN_VERSION_base(4,3,1)
-import System.Posix.Types (Fd)
-##endif
+#ifdef __HUGS__
+import Hugs.Prelude (IOException(..), IOErrorType(..))
+import Hugs.IO (openFd)
+
+{-# CFILES cbits/HsNet.c #-}
+# if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
+{-# CFILES cbits/ancilData.c #-}
+# endif
+# if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+{-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
+# endif
+#endif
 
 -- $unicode
 --
