@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, DeriveDataTypeable #-}
+
 --------------------------------------------------------------------------------
 -- |
 --  Module      :  Network.URI

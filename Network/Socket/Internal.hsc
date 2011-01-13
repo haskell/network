@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface, TypeSynonymInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket.Internal
