@@ -9,7 +9,6 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as L
 import Network.Socket
-import qualified Network.Socket.ByteString.Lazy as NSBL
 import Prelude hiding (catch)
 import Test.Framework (Test, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
@@ -25,18 +24,6 @@ serverAddr = "127.0.0.1"
 
 testMsg :: S.ByteString
 testMsg = C.pack "This is a test message."
-
-testLazySend :: Assertion
-testLazySend = tcpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) (C.take 1024 strictTestMsg)
-      client sock = NSBL.send sock lazyTestMsg >>= (@=?) 1024
-
-      -- message containing too many chunks to be sent in one system call
-      lazyTestMsg = let alphabet = map C.singleton ['a'..'z']
-                    in L.fromChunks (concat (replicate 100 alphabet))
-
-      strictTestMsg = C.concat . L.toChunks $ lazyTestMsg
 
 ------------------------------------------------------------------------
 -- Tests
@@ -134,8 +121,7 @@ testOverFlowRecvFrom = tcpTest client server
 tests :: [Test]
 tests = [
           -- Sending and receiving
-          testCase "testLazySend" testLazySend
-        , testCase "testSend" testSend
+          testCase "testSend" testSend
         , testCase "testSendAll" testSendAll
         , testCase "testSendTo" testSendTo
         , testCase "testSendAllTo" testSendAllTo

@@ -26,8 +26,6 @@ library
     Network
     Network.BSD
     Network.Socket
-    Network.Socket.ByteString
-    Network.Socket.ByteString.Lazy
     Network.Socket.Internal
     Network.URI
   other-modules:
