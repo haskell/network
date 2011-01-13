@@ -147,18 +147,21 @@ module Network.Socket
     , mkSocket
     ) where
 
-import Control.Concurrent.MVar
+import Control.Concurrent.MVar (MVar, modifyMVar, modifyMVar_, newMVar,
+                                readMVar)
 import qualified Control.Exception as Exception
 import Control.Monad (liftM, when)
-import Data.Bits
+import Data.Bits (Bits, (.|.), (.&.), complement)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.ByteString.Internal (createAndTrim)
-import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import qualified Data.ByteString.Internal as B
+import qualified Data.ByteString.Unsafe as B
 import Data.List (foldl')
-import Data.Typeable
+import Data.Typeable (Typeable(typeOf), mkTyCon, mkTyConApp)
 import Data.Word (Word8, Word32)
-import Foreign.C.Error
+import Foreign.C.Error (Errno(..), eINPROGRESS, eINTR, errnoToIOError, getErrno,
+                        throwErrnoIfMinus1, throwErrnoIfMinus1_,
+                        throwErrnoIfMinus1Retry_)
 import Foreign.C.String (CString, withCString, peekCString)
 import Foreign.C.Types (CInt, CChar, CSize)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
@@ -168,8 +171,8 @@ import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket.ByteString.Internal hiding (mkInvalidRecvArgError)
 import Network.Socket.Internal
-import System.IO
-import System.IO.Error
+import System.IO (Handle, IOMode, )
+import System.IO.Error (ioeSetErrorString, mkIOError)
 
 #if !defined(mingw32_HOST_OS)
 import Control.Monad (zipWithM_)
@@ -751,7 +754,7 @@ send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
 send (MkSocket s _ _ _ _) xs =
-    unsafeUseAsCStringLen xs $ \(str, len) ->
+    B.unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
 #  if __GLASGOW_HASKELL__ >= 611
@@ -790,7 +793,7 @@ sendTo :: Socket      -- ^ Socket
        -> SockAddr    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
 sendTo sock xs addr =
-    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo sock str len addr
+    B.unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo sock str len addr
 
 -- | Send data to the socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  Unlike
@@ -918,7 +921,7 @@ recv :: Socket         -- ^ Connected socket
      -> IO ByteString  -- ^ Data received
 recv (MkSocket s _ _ _ _) nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ recvInner s nbytes
+    | otherwise  = B.createAndTrim nbytes $ recvInner s nbytes
 
 recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr =
@@ -1941,7 +1944,7 @@ withIOVec cs f =
     csLen = length cs
     ptrs = iterate (`plusPtr` sizeOf (undefined :: IOVec))
     pokeIov ptr s =
-        unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
+        B.unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)
 #endif
 
