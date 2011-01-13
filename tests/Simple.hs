@@ -8,9 +8,7 @@ import Control.Exception (SomeException, bracket, catch, throwTo)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as L
-import Network.Socket hiding (recv, recvFrom, send, sendTo)
-import Network.Socket.ByteString (recv, recvFrom, send, send, sendAll,
-                                  sendTo, sendAllTo, sendMany, sendManyTo)
+import Network.Socket
 import qualified Network.Socket.ByteString.Lazy as NSBL
 import Prelude hiding (catch)
 import Test.Framework (Test, defaultMain)

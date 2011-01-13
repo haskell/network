@@ -11,8 +11,7 @@ module Network.Socket.ByteString.MsgHdr
 import Foreign.C.Types (CInt, CSize)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
-import Network.Socket (SockAddr)
-import Network.Socket.Internal (zeroMemory)
+import Network.Socket.Internal (SockAddr, zeroMemory)
 
 import Network.Socket.ByteString.IOVec (IOVec)
 
