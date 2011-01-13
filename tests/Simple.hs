@@ -10,7 +10,7 @@ import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as L
 import Network.Socket
 import Prelude hiding (catch)
-import Test.Framework (Test, defaultMain)
+import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
 
@@ -118,22 +118,23 @@ testOverFlowRecvFrom = tcpTest client server
 ------------------------------------------------------------------------
 -- List of all tests
 
-tests :: [Test]
-tests = [
-          -- Sending and receiving
-          testCase "testSend" testSend
-        , testCase "testSendAll" testSendAll
-        , testCase "testSendTo" testSendTo
-        , testCase "testSendAllTo" testSendAllTo
-        , testCase "testSendMany" testSendMany
-        , testCase "testSendManyTo" testSendManyTo
-        , testCase "testRecv" testRecv
-        , testCase "testOverFlowRecv" testOverFlowRecv
-        , testCase "testRecvFrom" testRecvFrom
-        , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+basicTests = testGroup "Basic socket operations"
+    [
+      -- Sending and receiving
+      testCase "testSend" testSend
+    , testCase "testSendAll" testSendAll
+    , testCase "testSendTo" testSendTo
+    , testCase "testSendAllTo" testSendAllTo
+    , testCase "testSendMany" testSendMany
+    , testCase "testSendManyTo" testSendManyTo
+    , testCase "testRecv" testRecv
+    , testCase "testOverFlowRecv" testOverFlowRecv
+    , testCase "testRecvFrom" testRecvFrom
+    , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+    ]
 
-          -- Other
-        ]
+tests :: [Test]
+tests = [basicTests]
 
 ------------------------------------------------------------------------
 -- Test helpers
