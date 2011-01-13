@@ -14,8 +14,6 @@
 -- sockets.  Essentially the entire C socket API is exposed through
 -- this module; in general the operations follow the behaviour of the C
 -- functions of the same name (consult your favourite Unix networking book).
---
------------------------------------------------------------------------------
 
 #include "HsNet.h"
 
@@ -26,6 +24,9 @@
 
 module Network.Socket
     (
+    -- * Unicode issues
+    -- $unicode
+
     -- * Types
       Socket(..)
     , Family(..)
@@ -238,6 +239,12 @@ import System.Posix.Types (Fd)
 #if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
 import GHC.IO.FD
 #endif
+
+-- $unicode
+--
+-- The operating system socket API does not directly support Unicode,
+-- and neither does this module.  All encoding/decoding must be
+-- handled by the API user.
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
