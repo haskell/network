@@ -197,6 +197,7 @@ import GHC.Conc (closeFdWith)
 ## endif
 # if defined(mingw32_HOST_OS)
 import Foreign (FunPtr)
+import Foreign.C.Error (throwErrnoIfMinus1Retry)
 import GHC.Conc (asyncDoProc)
 #  if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.FD
