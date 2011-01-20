@@ -185,9 +185,9 @@ getServiceByName :: ServiceName         -- Service Name
                  -> IO ServiceEntry     -- Service Entry
 getServiceByName name proto = withLock $ do
  withCString name  $ \ cstr_name  -> do
- withCString proto $ \ cstr_proto -> do
- throwNoSuchThingIfNull "getServiceByName" "no such service entry"
-   $ (trySysCall (c_getservbyname cstr_name cstr_proto))
+  withCString proto $ \ cstr_proto -> do
+   throwNoSuchThingIfNull "getServiceByName" "no such service entry"
+    $ (trySysCall (c_getservbyname cstr_name cstr_proto))
  >>= peek
 
 foreign import CALLCONV unsafe "getservbyname"
@@ -197,7 +197,7 @@ foreign import CALLCONV unsafe "getservbyname"
 getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
 getServiceByPort (PortNum port) proto = withLock $ do
  withCString proto $ \ cstr_proto -> do
- throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
+  throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
    $ (trySysCall (c_getservbyport (fromIntegral port) cstr_proto))
  >>= peek
 
@@ -285,7 +285,7 @@ instance Storable ProtocolEntry where
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = withLock $ do
  withCString name $ \ name_cstr -> do
- throwNoSuchThingIfNull "getProtocolByName" ("no such protocol name: " ++ name)
+  throwNoSuchThingIfNull "getProtocolByName" ("no such protocol name: " ++ name)
    $ (trySysCall.c_getprotobyname) name_cstr
  >>= peek
 
@@ -402,7 +402,7 @@ foreign import CALLCONV safe "gethostbyname"
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
  with addr $ \ ptr_addr -> withLock $ do
- throwNoSuchThingIfNull         "getHostByAddr" "no such host entry"
+  throwNoSuchThingIfNull         "getHostByAddr" "no such host entry"
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 

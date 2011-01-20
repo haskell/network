@@ -394,7 +394,7 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
-    allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
+   allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
     _ <- throwSocketErrorIfMinus1Retry "socketpair" $
                 c_socketpair (packFamily family)
                              (packSocketType stype)
@@ -432,14 +432,14 @@ bindSocket :: Socket    -- Unconnected Socket
            -> IO ()
 bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \ status -> do
- if status /= NotConnected
-  then
-   ioError (userError ("bindSocket: can't peform bind on socket in status " ++
-         show status))
-  else do
-   withSockAddr addr $ \p_addr sz -> do
-   throwSocketErrorIfMinus1Retry_ "bind" $ c_bind s p_addr (fromIntegral sz)
-   return Bound
+  if status /= NotConnected
+   then
+    ioError (userError ("bindSocket: can't peform bind on socket in status " ++
+          show status))
+   else do
+    withSockAddr addr $ \p_addr sz -> do
+     throwSocketErrorIfMinus1Retry_ "bind" $ c_bind s p_addr (fromIntegral sz)
+     return Bound
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
@@ -522,14 +522,14 @@ connect :: Socket    -- Unconnected Socket
         -> IO ()
 connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \currentStatus -> do
- if currentStatus /= NotConnected && currentStatus /= Bound
-  then
-    ioError (userError ("connect: can't peform connect on socket in status " ++
-        show currentStatus))
-  else do
-    withSockAddr addr $ \p_addr sz -> do
+  if currentStatus /= NotConnected && currentStatus /= Bound
+   then
+     ioError (userError ("connect: can't peform connect on socket in status " ++
+         show currentStatus))
+   else do
+     withSockAddr addr $ \p_addr sz -> do
 
-    let connectLoop = do
+      let connectLoop = do
            r <- c_connect s p_addr (fromIntegral sz)
            if r == -1
                then do
@@ -553,7 +553,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 #endif
                else return r
 
-        connectBlocked = do
+          connectBlocked = do
 #if !defined(__HUGS__)
            threadWaitWrite (fromIntegral s)
 #endif
@@ -564,8 +564,8 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                                 (Errno (fromIntegral err))
                                 Nothing Nothing)
 
-    connectLoop
-    return Connected
+      connectLoop
+      return Connected
 
 -----------------------------------------------------------------------------
 -- Listen
@@ -649,7 +649,7 @@ listen :: Socket  -- Connected & Bound Socket
        -> IO ()
 listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
  modifyMVar_ socketStatus $ \ status -> do
- if status /= Bound
+  if status /= Bound
    then
      ioError (userError ("listen: can't peform listen on socket in status " ++
          show status))
@@ -686,7 +686,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
-     new_sock <-
+      new_sock <-
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwErrnoIfMinus1Retry "Network.Socket.accept" $
@@ -700,8 +700,8 @@ accept sock@(MkSocket s family stype protocol status) = do
                      (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
                 return new_sock
 #else
-     with (fromIntegral sz) $ \ ptr_len -> do
-     new_sock <-
+      with (fromIntegral sz) $ \ ptr_len -> do
+       new_sock <-
 # if !defined(__HUGS__)
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
                         (threadWaitRead (fromIntegral s))
@@ -709,15 +709,15 @@ accept sock@(MkSocket s family stype protocol status) = do
                         (c_accept s sockaddr ptr_len)
 # if !defined(__HUGS__)
 #  if __GLASGOW_HASKELL__ < 611
-     System.Posix.Internals.setNonBlockingFD new_sock
+       System.Posix.Internals.setNonBlockingFD new_sock
 #  else
-     System.Posix.Internals.setNonBlockingFD new_sock True
+       System.Posix.Internals.setNonBlockingFD new_sock True
 #  endif
 # endif
 #endif
-     addr <- peekSockAddr sockaddr
-     new_status <- newMVar Connected
-     return ((MkSocket new_sock family stype protocol new_status), addr)
+       addr <- peekSockAddr sockaddr
+       new_status <- newMVar Connected
+       return ((MkSocket new_sock family stype protocol new_status), addr)
 
 #if defined(mingw32_HOST_OS) && !defined(__HUGS__)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
@@ -1195,7 +1195,7 @@ setSocketOption :: Socket
                 -> Int          -- Option Value
                 -> IO ()
 setSocketOption (MkSocket s _ _ _ _) so v = do
-   with (fromIntegral v) $ \ptr_v -> do
+  with (fromIntegral v) $ \ptr_v -> do
    throwErrnoIfMinus1_ "setSocketOption" $
        c_setsockopt s (socketOptLevel so) (packSocketOption so) ptr_v
           (fromIntegral (sizeOf v))
@@ -1481,7 +1481,7 @@ sIsAcceptable (MkSocket _ _ _ _ status) = do
 
 inet_addr :: String -> IO HostAddress
 inet_addr ipstr = do
-   withCString ipstr $ \str -> do
+  withCString ipstr $ \str -> do
    had <- c_inet_addr str
    if had == -1
     then ioError (userError ("inet_addr: Malformed address: " ++ ipstr))

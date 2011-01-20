@@ -187,11 +187,10 @@ recvFrom host port = do
     allowed <- map addrAddress `liftM` getAddrInfo (Just hints) (Just host)
                                                    Nothing
     s <- listenOn port
-    let waiting = do
-        (s', addr) <- Socket.accept s
-        if not (addr `oneOf` allowed)
-         then sClose s' >> waiting
-         else socketToHandle s' ReadMode >>= hGetContents
+    let waiting = do (s', addr) <- Socket.accept s
+                     if not (addr `oneOf` allowed)
+                       then sClose s' >> waiting
+                       else socketToHandle s' ReadMode >>= hGetContents
     waiting
   where
     a@(SockAddrInet _ ha) `oneOf` ((SockAddrInet _ hb):bs)
