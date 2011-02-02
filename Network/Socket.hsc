@@ -330,7 +330,7 @@ mkSocket fd fam sType pNum stat = do
 -- | Add a finalizer to a 'Socket'. Normally, the 'Socket' should be
 -- explicitly closed before all references to it are garbage
 -- collected. If it has not been explicitly closed, the finalizer
--- silently closes it once all references to the 'Socket' have been
+-- silently closes the 'Socket' once all references to it have been
 -- lost.
 addSocketFinalizer :: Socket -> IO ()
 addSocketFinalizer sock@(MkSocket fd _fam _type _num mstat) =
@@ -338,7 +338,10 @@ addSocketFinalizer sock@(MkSocket fd _fam _type _num mstat) =
       case stat of
         s@ConvertedToHandle -> return s
         s@Closed            -> return s
-        _                   -> c_close (fromIntegral fd) >> return Closed
+        _                   -> do
+          closeFdWith (\n -> close (fromIntegral n) `catchIO` const (return ()))
+                      (fromIntegral fd)
+          return Closed
   
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
