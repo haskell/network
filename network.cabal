@@ -41,7 +41,7 @@ library
   build-depends:
     base >= 3 && < 4.4,
     bytestring < 1.0,
-    parsec >= 2.0 && < 3.1.1
+    parsec >= 2.0 && < 3.2
 
   if !os(windows)
     build-depends:
