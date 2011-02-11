@@ -220,19 +220,6 @@ import qualified System.Posix.Internals
 import System.IO.Unsafe (unsafePerformIO)
 #endif
 
-#ifdef __HUGS__
-import Hugs.Prelude (IOException(..), IOErrorType(..))
-import Hugs.IO (openFd)
-
-{-# CFILES cbits/HsNet.c #-}
-# if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
-{-# CFILES cbits/ancilData.c #-}
-# endif
-# if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
-{-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
-# endif
-#endif
-
 -- $unicode
 --
 -- The operating system socket API does not directly support Unicode,
@@ -404,12 +391,10 @@ socket :: Family         -- Family Name (usually AF_INET)
 socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "socket" $
                 c_socket (packFamily family) (packSocketType stype) protocol
-#if !defined(__HUGS__)
-# if __GLASGOW_HASKELL__ < 611
+#if __GLASGOW_HASKELL__ < 611
     System.Posix.Internals.setNonBlockingFD fd
-# else
+#else
     System.Posix.Internals.setNonBlockingFD fd True
-# endif
 #endif
     sock <- MkSocket fd family stype protocol `liftM` newMVar NotConnected
     addSocketFinalizer sock
@@ -436,12 +421,10 @@ socketPair family stype protocol = do
     return (s1,s2)
   where
     create fd = do
-#if !defined(__HUGS__)
-# if __GLASGOW_HASKELL__ < 611
+#if __GLASGOW_HASKELL__ < 611
        System.Posix.Internals.setNonBlockingFD fd
-# else
+#else
        System.Posix.Internals.setNonBlockingFD fd True
-# endif
 #endif
        sock <- MkSocket fd family stype protocol `liftM` newMVar Connected
        addSocketFinalizer sock
@@ -586,9 +569,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                else return r
 
           connectBlocked = do
-#if !defined(__HUGS__)
            threadWaitWrite (fromIntegral s)
-#endif
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return 0
@@ -734,17 +715,13 @@ accept sock@(MkSocket s family stype protocol status) = do
 #else
       with (fromIntegral sz) $ \ ptr_len -> do
        new_sock <-
-# if !defined(__HUGS__)
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
                         (threadWaitRead (fromIntegral s))
-# endif
                         (c_accept s sockaddr ptr_len)
-# if !defined(__HUGS__)
-#  if __GLASGOW_HASKELL__ < 611
+# if __GLASGOW_HASKELL__ < 611
        System.Posix.Internals.setNonBlockingFD new_sock
-#  else
+# else
        System.Posix.Internals.setNonBlockingFD new_sock True
-#  endif
 # endif
 #endif
        addr <- peekSockAddr sockaddr
@@ -753,7 +730,7 @@ accept sock@(MkSocket s family stype protocol status) = do
        addSocketFinalizer newSock
        return (newSock, addr)
 
-#if defined(mingw32_HOST_OS) && !defined(__HUGS__)
+#if defined(mingw32_HOST_OS)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"
@@ -788,10 +765,8 @@ send (MkSocket s _ _ _ _) xs =
         (fromIntegral s) True str 0 (fromIntegral len)
 #  endif
 #else
-#  if !defined(__HUGS__)
         throwSocketErrorIfMinus1RetryMayBlock "send"
         (threadWaitWrite (fromIntegral s)) $
-#  endif
         c_send s str (fromIntegral len) 0
 #endif
 
@@ -844,10 +819,8 @@ sendBufTo :: Socket    -- ^ Socket
 sendBufTo (MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
-#if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "sendTo"
         (threadWaitWrite (fromIntegral s)) $
-#endif
         c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
@@ -957,10 +930,8 @@ recvInner s nbytes ptr =
         True (castPtr ptr) 0 (fromIntegral nbytes)
 #  endif
 #else
-#  if !defined(__HUGS__)
         throwSocketErrorIfMinus1RetryMayBlock "recv"
         (threadWaitRead (fromIntegral s)) $
-#  endif
         c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
 
@@ -999,10 +970,8 @@ recvBufFrom' (MkSocket s family _stype _protocol _status) ptr nbytes
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
         len <-
-#if !defined(__HUGS__)
                throwSocketErrorIfMinus1RetryMayBlock "recvFrom"
                    (threadWaitRead (fromIntegral s)) $
-#endif
                    c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
@@ -1279,11 +1248,9 @@ closeFdWith closer fd = closer fd
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
   let fd = fdSocket sock
-#if !defined(__HUGS__)
   throwSocketErrorIfMinus1RetryMayBlock "sendFd"
      (threadWaitWrite (fromIntegral fd)) $
      c_sendFd fd outfd
-#else
   c_sendFd fd outfd
 #endif
    -- Note: If Winsock supported FD-passing, thi would have been
@@ -1294,17 +1261,13 @@ recvFd :: Socket -> IO CInt
 recvFd sock = do
   let fd = fdSocket sock
   theFd <-
-#if !defined(__HUGS__)
     throwSocketErrorIfMinus1RetryMayBlock "recvFd"
         (threadWaitRead (fromIntegral fd)) $
-#endif
          c_recvFd fd
   return theFd
 
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
-
-#endif
 
 -- ---------------------------------------------------------------------------
 -- OS Dependent Definitions
@@ -1548,8 +1511,6 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
 # elif __GLASGOW_HASKELL__ >= 608
     h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True 
          (show s) mode True{-bin-}
-# elif defined(__HUGS__)
-    h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
 # endif
     return (ConvertedToHandle, h)
 #else

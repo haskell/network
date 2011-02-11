@@ -91,9 +91,6 @@ module Network.BSD
 #endif
     ) where
 
-#ifdef __HUGS__
-import Hugs.Prelude (IOException(..), IOErrorType(..))
-#endif
 import Network.Socket
 import Network.Socket.Internal (
     PortNumber(..), packFamily, throwSocketErrorIfMinus1_, unpackFamily)

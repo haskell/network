@@ -49,13 +49,11 @@ extern void  shutdownWinSock();
 extern int   initWinSock ();
 extern const char* getWSErrorDescr(int err);
 
-# if !defined(__HUGS__)
 extern void* newAcceptParams(int sock,
 			     int sz,
 			     void* sockaddr);
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
-# endif
 
 #else
 
