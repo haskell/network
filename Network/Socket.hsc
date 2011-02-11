@@ -173,6 +173,7 @@ import Network.Socket.ByteString.Internal hiding (mkInvalidRecvArgError)
 import Network.Socket.Internal
 import System.IO (Handle, IOMode, )
 import System.IO.Error (ioeSetErrorString, mkIOError)
+import System.Mem.Weak (addFinalizer)
 
 ##if !MIN_VERSION_base(4,3,1)
 import System.Posix.Types (Fd)
@@ -293,6 +294,17 @@ data SocketStatus
 
 INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
 
+-- | A socket.
+--
+-- Since sockets are scarce system resources, you should manage them
+-- manually: use 'sClose' or 'shutdown' to close a socket when you are
+-- finished with it.
+--
+-- Every 'Socket' has a finalizer associated with it that may
+-- eventually close the socket some time after it becomes unreachable.
+-- Since finalizers are neither reliable nor timely, you should not
+-- rely on this behaviour, as by doing so you may leave yourself open
+-- to resource leaks.
 data Socket
   = MkSocket
             CInt                 -- File Descriptor
@@ -303,6 +315,7 @@ data Socket
 
 INSTANCE_TYPEABLE0(Socket,socketTc,"Socket")
 
+-- | Create a 'Socket' from the low-level description.
 mkSocket :: CInt
          -> Family
          -> SocketType
@@ -310,9 +323,26 @@ mkSocket :: CInt
          -> SocketStatus
          -> IO Socket
 mkSocket fd fam sType pNum stat = do
-   mStat <- newMVar stat
-   return (MkSocket fd fam sType pNum mStat)
+  sock <- MkSocket fd fam sType pNum `liftM` newMVar stat
+  addSocketFinalizer sock
+  return sock
 
+-- | Add a finalizer to a 'Socket'. Normally, the 'Socket' should be
+-- explicitly closed before all references to it are garbage
+-- collected. If it has not been explicitly closed, the finalizer
+-- silently closes the 'Socket' once all references to it have been
+-- lost.
+addSocketFinalizer :: Socket -> IO ()
+addSocketFinalizer sock@(MkSocket fd _fam _type _num mstat) =
+    addFinalizer sock . modifyMVar_ mstat $ \stat ->
+      case stat of
+        s@ConvertedToHandle -> return s
+        s@Closed            -> return s
+        _                   -> do
+          closeFdWith (\n -> close (fromIntegral n) `catchIO` const (return ()))
+                      (fromIntegral fd)
+          return Closed
+  
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
@@ -381,8 +411,9 @@ socket family stype protocol = do
     System.Posix.Internals.setNonBlockingFD fd True
 # endif
 #endif
-    socket_status <- newMVar NotConnected
-    return (MkSocket fd family stype protocol socket_status)
+    sock <- MkSocket fd family stype protocol `liftM` newMVar NotConnected
+    addSocketFinalizer sock
+    return sock
 
 -- | Build a pair of connected socket objects using the given address
 -- family, socket type, and protocol number.  Address family, socket
@@ -412,8 +443,9 @@ socketPair family stype protocol = do
        System.Posix.Internals.setNonBlockingFD fd True
 # endif
 #endif
-       stat <- newMVar Connected
-       return (MkSocket fd family stype protocol stat)
+       sock <- MkSocket fd family stype protocol `liftM` newMVar Connected
+       addSocketFinalizer sock
+       return sock
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
@@ -716,8 +748,10 @@ accept sock@(MkSocket s family stype protocol status) = do
 # endif
 #endif
        addr <- peekSockAddr sockaddr
-       new_status <- newMVar Connected
-       return ((MkSocket new_sock family stype protocol new_status), addr)
+       newSock <- MkSocket new_sock family stype protocol `liftM`
+                  newMVar Connected
+       addSocketFinalizer newSock
+       return (newSock, addr)
 
 #if defined(mingw32_HOST_OS) && !defined(__HUGS__)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
