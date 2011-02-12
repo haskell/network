@@ -158,14 +158,14 @@ tcpTest clientAct serverAct =
         sock <- socket AF_INET Stream defaultProtocol
         setSocketOption sock ReuseAddr 1
         addr <- inet_addr serverAddr
-        bindSocket sock (SockAddrInet serverPort addr)
+        bind sock (SockAddrInet serverPort addr)
         listen sock 1
         return sock
 
     server sock = do
         (clientSock, _) <- accept sock
         serverAct clientSock
-        sClose clientSock
+        close clientSock
 
 -- | Create an unconnected 'Socket' for sending UDP and receiving
 -- datagrams and then run 'clientAct' and 'serverAct'.
@@ -179,7 +179,7 @@ udpTest clientAct serverAct =
         sock <- socket AF_INET Datagram defaultProtocol
         setSocketOption sock ReuseAddr 1
         addr <- inet_addr serverAddr
-        bindSocket sock (SockAddrInet serverPort addr)
+        bind sock (SockAddrInet serverPort addr)
         return sock
 
 -- | Run a client/server pair and synchronize them so that the server
@@ -193,7 +193,7 @@ test clientSetup clientAct serverSetup serverAct = do
     client tid barrier
   where
     server barrier = do
-        bracket serverSetup sClose $ \sock -> do
+        bracket serverSetup close $ \sock -> do
             serverReady
             serverAct sock
             putMVar barrier ()
@@ -204,7 +204,7 @@ test clientSetup clientAct serverSetup serverAct = do
     client tid barrier = do
         takeMVar barrier
         -- Transfer exceptions to the main thread.
-        bracketWithReraise tid clientSetup sClose $ \res -> do
+        bracketWithReraise tid clientSetup close $ \res -> do
             clientAct res
             takeMVar barrier
 

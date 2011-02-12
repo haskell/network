@@ -70,7 +70,7 @@ module Network.Socket
     , listenOn
     , accept
     -- ** Low-level setup
-    , bindSocket
+    , bind
     , connect
 #ifdef HAVE_STRUCT_UCRED
     -- get the credentials of our domain socket peer.
@@ -81,9 +81,9 @@ module Network.Socket
     , listen
     , ShutdownCmd(..)
     , shutdown
-    , sClose
+    , close
     , socketPort
-    , socketToHandle
+    , toHandle
 
     -- ** Send data to a socket
     , send
@@ -272,11 +272,11 @@ type ServiceName    = String
 data SocketStatus
   -- Returned Status    Function called
   = NotConnected        -- socket
-  | Bound               -- bindSocket
+  | Bound               -- bind
   | Listening           -- listen
   | Connected           -- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
-  | Closed              -- sClose
+  | Closed              -- close
     deriving (Eq, Show)
 
 INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
@@ -284,7 +284,7 @@ INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
 -- | A socket.
 --
 -- Since sockets are scarce system resources, you should manage them
--- manually: use 'sClose' or 'shutdown' to close a socket when you are
+-- manually: use 'close' or 'shutdown' to close a socket when you are
 -- finished with it.
 --
 -- Every 'Socket' has a finalizer associated with it that may
@@ -326,7 +326,7 @@ addSocketFinalizer sock@(MkSocket fd _fam _type _num mstat) =
         s@ConvertedToHandle -> return s
         s@Closed            -> return s
         _                   -> do
-          closeFdWith (\n -> close (fromIntegral n) `catchIO` const (return ()))
+          closeFdWith (\n -> closeFd (fromIntegral n) `catchIO` const (return ()))
                       (fromIntegral fd)
           return Closed
   
@@ -438,18 +438,18 @@ foreign import ccall unsafe "socketpair"
 -- Binding a socket
 
 -- | Bind the socket to an address. The socket must not already be
--- bound.  The 'Family' passed to @bindSocket@ must be the
+-- bound.  The 'Family' passed to @bind@ must be the
 -- same as that passed to 'socket'.  If the special port number
 -- 'aNY_PORT' is passed then the system assigns the next available
 -- use port.
-bindSocket :: Socket    -- Unconnected Socket
+bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
+bind (MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \ status -> do
   if status /= NotConnected
    then
-    ioError (userError ("bindSocket: can't peform bind on socket in status " ++
+    ioError (userError ("bind: can't peform bind on socket in status " ++
           show status))
    else do
     withSockAddr addr $ \p_addr sz -> do
@@ -486,7 +486,7 @@ connectTo hostname (PortNumber port) = connect' hostname (show port)
 connectTo hostname (Service serv) = do
     Exception.bracketOnError
         (socket AF_INET Stream defaultProtocol)
-        (sClose)  -- only done if there's an error
+        close  -- only done if there's an error
         (\sock -> do
           port  <- getServicePortNumber serv
           he    <- getHostByName hostname
@@ -495,7 +495,7 @@ connectTo hostname (Service serv) = do
 connectTo hostname (PortNumber port) = do
     Exception.bracketOnError
         (socket AF_INET Stream defaultProtocol)
-        (sClose)  -- only done if there's an error
+        close  -- only done if there's an error
         (\sock -> do
           he <- getHostByName hostname
           connect sock (SockAddrInet port (hostAddress he))
@@ -505,7 +505,7 @@ connectTo hostname (PortNumber port) = do
 connectTo _ (UnixSocket path) = do
     Exception.bracketOnError
         (socket AF_UNIX Stream 0)
-        (sClose)
+        close
         (\sock -> do
           connect sock (SockAddrUnix path)
           return sock
@@ -524,7 +524,7 @@ connect' host serv = do
   tryToConnect addr =
     Exception.bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
-        (sClose)  -- only done if there's an error
+        close  -- only done if there's an error
         (\sock -> do
           connect sock (addrAddress addr)
           return sock
@@ -603,21 +603,21 @@ listenOn (PortNumber port) = listen' (show port)
 listenOn (Service serv) = do
     Exception.bracketOnError
         (socket AF_INET Stream defaultProtocol)
-        (sClose)
+        close
         (\sock -> do
             port    <- getServicePortNumber serv
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            bind sock (SockAddrInet port iNADDR_ANY)
             listen sock maxListenQueue
             return sock
         )
 listenOn (PortNumber port) = do
     Exception.bracketOnError
         (socket AF_INET Stream defaultProtocol)
-        (sClose)
+        close
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            bind sock (SockAddrInet port iNADDR_ANY)
             listen sock maxListenQueue
             return sock
         )
@@ -626,10 +626,10 @@ listenOn (PortNumber port) = do
 listenOn (UnixSocket path) =
     Exception.bracketOnError
         (socket AF_UNIX Stream 0)
-        (sClose)
+        close
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrUnix path)
+            bind sock (SockAddrUnix path)
             listen sock maxListenQueue
             return sock
         )
@@ -645,10 +645,10 @@ listen' serv = do
     let addr = head addrs
     Exception.bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
-        (sClose)
+        close
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (addrAddress addr)
+            bind sock (addrAddress addr)
             listen sock maxListenQueue
             return sock
         )
@@ -1255,7 +1255,7 @@ sendFd sock outfd = do
 #endif
    -- Note: If Winsock supported FD-passing, thi would have been
    -- incorrect (since socket FDs need to be closed via closesocket().)
-  close outfd
+  closeFd outfd
 
 recvFd :: Socket -> IO CInt
 recvFd sock = do
@@ -1423,15 +1423,15 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Close the socket.  All future operations on the socket object
 -- will fail.  The remote end will receive no more data (after queued
 -- data is flushed).
-sClose   :: Socket -> IO ()
-sClose (MkSocket s _ _ _ socketStatus) = do
+close   :: Socket -> IO ()
+close (MkSocket s _ _ _ socketStatus) = do
  modifyMVar_ socketStatus $ \ status ->
    case status of
      ConvertedToHandle ->
-         ioError (userError ("sClose: converted to a Handle, use hClose instead"))
+         ioError (userError ("close: converted to a Handle, use hClose instead"))
      Closed ->
          return status
-     _ -> closeFdWith (close . fromIntegral) (fromIntegral s) >> return Closed
+     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
 
 -- -----------------------------------------------------------------------------
 
@@ -1494,16 +1494,16 @@ inet_ntoa haddr = do
 --
 -- Note that since a 'Handle' is automatically closed by a finalizer
 -- when it is no longer referenced, you should avoid doing any more
--- operations on the 'Socket' after calling 'socketToHandle'.  To
--- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
+-- operations on the 'Socket' after calling 'toHandle'.  To
+-- close the 'Socket' after 'toHandle', call 'System.IO.hClose'
 -- on the 'Handle'.
 
 #ifndef __PARALLEL_HASKELL__
-socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
+toHandle :: Socket -> IOMode -> IO Handle
+toHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
  modifyMVar socketStatus $ \ status ->
     if status == ConvertedToHandle
-        then ioError (userError ("socketToHandle: already a Handle"))
+        then ioError (userError ("toHandle: already a Handle"))
         else do
 # if __GLASGOW_HASKELL__ >= 611
     h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) 
@@ -1514,8 +1514,8 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
 # endif
     return (ConvertedToHandle, h)
 #else
-socketToHandle (MkSocket s family stype protocol status) m =
-  error "socketToHandle not implemented in a parallel setup"
+toHandle (MkSocket s family stype protocol status) m =
+  error "toHandle not implemented in a parallel setup"
 #endif
 
 -- | Pack a list of values into a bitmask.  The possible mappings from
@@ -1681,7 +1681,7 @@ defaultHints = AddrInfo {
 -- | Resolve a host or service name to one or more addresses.
 -- The 'AddrInfo' values that this function returns contain 'SockAddr'
 -- values that you can pass directly to 'connect' or
--- 'bindSocket'.
+-- 'bind'.
 --
 -- This function is protocol independent.  It can return both IPv4 and
 -- IPv6 address information.
@@ -1944,8 +1944,8 @@ foreign import CALLCONV unsafe "inet_addr"
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
 
-close :: CInt -> IO ()
-close fd = throwErrnoIfMinus1Retry_ "Network.Socket.close" $ c_close fd
+closeFd :: CInt -> IO ()
+closeFd fd = throwErrnoIfMinus1Retry_ "Network.Socket.closeFd" $ c_close fd
 
 #if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"

@@ -36,7 +36,7 @@ module Network
     -- * Server-side connections
     , listenOn
     , accept
-    , sClose
+    , close
 
     -- * Client-side connections
     , connectTo
@@ -83,7 +83,7 @@ connectTo :: HostName           -- Hostname
           -> IO Handle          -- Connected Socket
 connectTo hostname port = do
   sock <- Socket.connectTo hostname port
-  socketToHandle sock ReadWriteMode
+  toHandle sock ReadWriteMode
 
 -- | Creates the server side socket which has been bound to the
 -- specified port.
@@ -125,7 +125,7 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
           )
           (\ _ -> inet_ntoa haddr)
                 -- if getHostByName fails, we fall back to the IP address
- handle <- socketToHandle sock' ReadWriteMode
+ handle <- toHandle sock' ReadWriteMode
  return (handle, peer, port)
 #if defined(IPV6_SOCKET_SUPPORT)
 accept sock@(MkSocket _ AF_INET6 _ _ _) = do
@@ -137,7 +137,7 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
 # if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
                  SockAddrUnix      a   -> return a
 # endif
- handle <- socketToHandle sock' ReadWriteMode
+ handle <- toHandle sock' ReadWriteMode
  let port = case addr of
               SockAddrInet  p _     -> p
               SockAddrInet6 p _ _ _ -> p
@@ -147,7 +147,7 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  ~(sock', (SockAddrUnix path)) <- Socket.accept sock
- handle <- socketToHandle sock' ReadWriteMode
+ handle <- toHandle sock' ReadWriteMode
  return (handle, path, -1)
 #endif
 accept (MkSocket _ family _ _ _) =
@@ -189,8 +189,8 @@ recvFrom host port = do
     s <- listenOn port
     let waiting = do (s', addr) <- Socket.accept s
                      if not (addr `oneOf` allowed)
-                       then sClose s' >> waiting
-                       else socketToHandle s' ReadMode >>= hGetContents
+                       then close s' >> waiting
+                       else toHandle s' ReadMode >>= hGetContents
     waiting
   where
     a@(SockAddrInet _ ha) `oneOf` ((SockAddrInet _ hb):bs)
@@ -211,10 +211,10 @@ recvFrom host port = do
      he <- getHostByAddr AF_INET haddr
      if not (any (`elem` ipHs) (hostAddresses he))
       then do
-         sClose s'
+         close s'
          waiting
       else do
-        h <- socketToHandle s' ReadMode
+        h <- toHandle s' ReadMode
         msg <- hGetContents h
         return msg
 
