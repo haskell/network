@@ -1051,7 +1051,7 @@ getSocketName (MkSocket s family _ _ _) =
 -- Socket Properties
 
 data SocketOption
-    = DummySocketOption__
+    = DummySocketOption__  -- to make sure there's at least one constructor
 #ifdef SO_DEBUG
     | Debug         {- SO_DEBUG     -}
 #endif
