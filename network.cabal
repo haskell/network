@@ -48,7 +48,7 @@ library
   default-language: Haskell98
   other-extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
-  if impl(ghc >= 7.0.2)
+  if impl(ghc >= 7.1)
     other-extensions: NondecreasingIndentation, FlexibleInstances
 
   include-dirs: include
