@@ -222,11 +222,17 @@ listen' :: ServiceName -> IO Socket
 
 listen' serv = do
     proto <- getProtocolNumber "tcp"
+    -- We should probably specify addrFamily = AF_INET6 and the filter
+    -- code below should be removed. AI_ADDRCONFIG is probably not
+    -- necessary. But this code is well-tested. So, let's keep it.
     let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_PASSIVE]
                              , addrSocketType = Stream
                              , addrProtocol = proto }
     addrs <- getAddrInfo (Just hints) Nothing (Just serv)
-    let addr = head addrs
+    -- Choose an IPv6 socket if exists.  This ensures the socket can
+    -- handle both IPv4 and IPv6 if v6only is false.
+    let addrs' = filter (\x -> addrFamily x == AF_INET6) addrs
+        addr = if null addrs' then head addrs else head addrs'
     bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
 	(sClose)
