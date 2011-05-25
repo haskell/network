@@ -1042,7 +1042,7 @@ getPeerCred sock = do
      return (pid, uid, gid)
 #endif
 
-##if !MIN_VERSION_base(4,3,1)
+##if !(MIN_VERSION_base(4,3,1))
 closeFdWith closer fd = closer fd
 ##endif
 
