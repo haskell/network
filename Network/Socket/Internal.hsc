@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, FlexibleInstances, ForeignFunctionInterface #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket.Internal
