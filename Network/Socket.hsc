@@ -1223,7 +1223,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
   let fd = fdSocket sock
-  let sz = (fromIntegral (#const sizeof(struct ucred)))
+  let sz = #const sizeof(struct ucred)
   with sz $ \ ptr_cr ->
    alloca       $ \ ptr_sz -> do
      poke ptr_sz sz
