@@ -95,6 +95,7 @@ import Hugs.Prelude ( IOException(..), IOErrorType(..) )
 import Network.Socket
 
 import Control.Concurrent 	( MVar, newMVar, withMVar )
+import Control.Exception (catch)
 import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
 import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
 import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
@@ -103,7 +104,8 @@ import Foreign.Storable ( Storable(..) )
 import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
 import Foreign.Marshal.Utils ( with, fromBool )
 import Data.Typeable
-import System.IO.Error
+import Prelude hiding (catch)
+import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe ( unsafePerformIO )
 
 #ifdef __GLASGOW_HASKELL__
@@ -545,7 +547,8 @@ getEntries :: IO a  -- read
 getEntries getOne atEnd = loop
   where
     loop = do
-      vv <- catch (liftM Just getOne) ((const.return) Nothing)
+      vv <- catch (liftM Just getOne)
+            (\ e -> let _types = e :: IOException in return Nothing)
       case vv of
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)
