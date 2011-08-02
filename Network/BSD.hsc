@@ -141,9 +141,7 @@ data ServiceEntry  =
      serviceAliases  :: [ServiceName],	-- aliases
      servicePort     :: PortNumber,	-- Port Number  ( network byte order )
      serviceProtocol :: ProtocolName	-- Protocol
-  } deriving (Show)
-
-INSTANCE_TYPEABLE0(ServiceEntry,serviceEntryTc,"ServiceEntry")
+  } deriving (Show, Typeable)
 
 instance Storable ServiceEntry where
    sizeOf    _ = #const sizeof(struct servent)
@@ -245,9 +243,7 @@ data ProtocolEntry =
      protoName    :: ProtocolName,	-- Official Name
      protoAliases :: [ProtocolName],	-- aliases
      protoNumber  :: ProtocolNumber	-- Protocol Number
-  } deriving (Read, Show)
-
-INSTANCE_TYPEABLE0(ProtocolEntry,protocolEntryTc,"ProtocolEntry")
+  } deriving (Read, Show, Typeable)
 
 instance Storable ProtocolEntry where
    sizeOf    _ = #const sizeof(struct protoent)
@@ -335,9 +331,7 @@ data HostEntry =
      hostAliases   :: [HostName],	-- aliases
      hostFamily    :: Family,	        -- Host Type (currently AF_INET)
      hostAddresses :: [HostAddress]	-- Set of Network Addresses  (in network byte order)
-  } deriving (Read, Show)
-
-INSTANCE_TYPEABLE0(HostEntry,hostEntryTc,"hostEntry")
+  } deriving (Read, Show, Typeable)
 
 instance Storable HostEntry where
    sizeOf    _ = #const sizeof(struct hostent)
@@ -444,9 +438,7 @@ data NetworkEntry =
      networkAliases	:: [NetworkName], -- aliases
      networkFamily	:: Family,	   -- type
      networkAddress	:: NetworkAddr
-   } deriving (Read, Show)
-
-INSTANCE_TYPEABLE0(NetworkEntry,networkEntryTc,"NetworkEntry")
+   } deriving (Read, Show, Typeable)
 
 instance Storable NetworkEntry where
    sizeOf    _ = #const sizeof(struct hostent)

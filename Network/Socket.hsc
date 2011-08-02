@@ -278,9 +278,7 @@ data SocketStatus
   | Connected		-- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
   | Closed		-- sClose 
-    deriving (Eq, Show)
-
-INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
+    deriving (Eq, Show, Typeable)
 
 data Socket
   = MkSocket
@@ -289,8 +287,7 @@ data Socket
 	    SocketType				  
 	    ProtocolNumber	 -- Protocol Number
 	    (MVar SocketStatus)  -- Status Flag
-
-INSTANCE_TYPEABLE0(Socket,socketTc,"Socket")
+  deriving Typeable
 
 #if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
 socket2FD  (MkSocket fd _ _ _ _) = 
@@ -327,8 +324,6 @@ defaultProtocol = 0
 
 ----------------------------------------------------------------------------
 -- Port Numbers
-
-INSTANCE_TYPEABLE0(PortNumber,portNumberTc,"PortNumber")
 
 instance Show PortNumber where
   showsPrec p pn = showsPrec p (portNumberToInt pn)
@@ -374,8 +369,6 @@ instance Storable PortNumber where
 
 -----------------------------------------------------------------------------
 -- SockAddr
-
-INSTANCE_TYPEABLE0(SockAddr,sockAddrTc,"SockAddr")
 
 instance Show SockAddr where
 #if defined(DOMAIN_SOCKET_SUPPORT)
@@ -919,8 +912,7 @@ data SocketOption
 #ifdef SO_USELOOPBACK
     | UseLoopBack   {- SO_USELOOPBACK -}
 #endif
-
-INSTANCE_TYPEABLE0(SocketOption,socketOptionTc,"SocketOption")
+    deriving Typeable
 
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so = 
@@ -1589,10 +1581,8 @@ data SocketType
 #ifdef SOCK_SEQPACKET
 	| SeqPacket
 #endif
-	deriving (Eq, Ord, Read, Show)
+	deriving (Eq, Ord, Read, Show, Typeable)
 	
-INSTANCE_TYPEABLE0(SocketType,socketTypeTc,"SocketType")
-
 packSocketType stype = case stype of
 	NoSocketType -> 0
 #ifdef SOCK_STREAM
@@ -1667,8 +1657,7 @@ data ShutdownCmd
  = ShutdownReceive
  | ShutdownSend
  | ShutdownBoth
-
-INSTANCE_TYPEABLE0(ShutdownCmd,shutdownCmdTc,"ShutdownCmd")
+ deriving Typeable
 
 sdownCmdToInt :: ShutdownCmd -> CInt
 sdownCmdToInt ShutdownReceive = 0
@@ -1824,9 +1813,7 @@ data AddrInfoFlag
     | AI_NUMERICSERV
     | AI_PASSIVE
     | AI_V4MAPPED
-    deriving (Eq, Read, Show)
-
-INSTANCE_TYPEABLE0(AddrInfoFlag,addrInfoFlagTc,"AddrInfoFlag")
+    deriving (Eq, Read, Show, Typeable)
 
 aiFlagMapping :: [(AddrInfoFlag, CInt)]
 
@@ -1871,9 +1858,7 @@ data AddrInfo =
         addrAddress :: SockAddr,
         addrCanonName :: Maybe String
         }
-    deriving (Eq, Show)
-
-INSTANCE_TYPEABLE0(AddrInfo,addrInfoTc,"AddrInfo")
+    deriving (Eq, Show, Typeable)
 
 instance Storable AddrInfo where
     sizeOf    _ = #const sizeof(struct addrinfo)
@@ -1920,9 +1905,7 @@ data NameInfoFlag
     | NI_NOFQDN
     | NI_NUMERICHOST
     | NI_NUMERICSERV
-    deriving (Eq, Read, Show)
-
-INSTANCE_TYPEABLE0(NameInfoFlag,nameInfoFlagTc,"NameInfoFlag")
+    deriving (Eq, Read, Show, Typeable)
 
 niFlagMapping :: [(NameInfoFlag, CInt)]
 

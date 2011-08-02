@@ -60,6 +60,7 @@ module Network.Socket.Internal
 
 import Data.Bits ( (.|.), shiftL, shiftR )
 import Data.Word ( Word8, Word16, Word32 )
+import Data.Typeable (Typeable)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
 import Foreign.C.String ( castCharToCChar, peekCString )
@@ -139,7 +140,7 @@ instance Storable HostAddress6 where
 -- network-byte-order first.
 --
 
-newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
+newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
 
 ------------------------------------------------------------------------
 -- Socket addresses
@@ -181,7 +182,7 @@ data SockAddr       -- C Names
   | SockAddrUnix
         String          -- sun_path
 #endif
-  deriving (Eq)
+  deriving (Eq, Typeable)
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)
