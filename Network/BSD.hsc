@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, ForeignFunctionInterface #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.BSD
@@ -96,6 +96,7 @@ import Network.Socket.Internal (
     PortNumber(..), packFamily, throwSocketErrorIfMinus1_, unpackFamily)
 
 import Control.Concurrent (MVar, newMVar, withMVar)
+import Control.Exception (catch)
 import Foreign.C.String (CString, peekCString, withCString)
 import Foreign.C.Types (CInt, CULong, CSize)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -103,7 +104,8 @@ import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
 import Foreign.Marshal.Utils (with, fromBool)
 import Data.Typeable
-import System.IO.Error
+import Prelude hiding (catch)
+import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
 #if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
@@ -145,9 +147,7 @@ data ServiceEntry  =
      serviceAliases  :: [ServiceName],  -- aliases
      servicePort     :: PortNumber,     -- Port Number  ( network byte order )
      serviceProtocol :: ProtocolName    -- Protocol
-  } deriving (Show)
-
-INSTANCE_TYPEABLE0(ServiceEntry,serviceEntryTc,"ServiceEntry")
+  } deriving (Show, Typeable)
 
 instance Storable ServiceEntry where
    sizeOf    _ = #const sizeof(struct servent)
@@ -249,9 +249,7 @@ data ProtocolEntry =
      protoName    :: ProtocolName,      -- Official Name
      protoAliases :: [ProtocolName],    -- aliases
      protoNumber  :: ProtocolNumber     -- Protocol Number
-  } deriving (Read, Show)
-
-INSTANCE_TYPEABLE0(ProtocolEntry,protocolEntryTc,"ProtocolEntry")
+  } deriving (Read, Show, Typeable)
 
 instance Storable ProtocolEntry where
    sizeOf    _ = #const sizeof(struct protoent)
@@ -339,9 +337,7 @@ data HostEntry =
      hostAliases   :: [HostName],       -- aliases
      hostFamily    :: Family,           -- Host Type (currently AF_INET)
      hostAddresses :: [HostAddress]     -- Set of Network Addresses  (in network byte order)
-  } deriving (Read, Show)
-
-INSTANCE_TYPEABLE0(HostEntry,hostEntryTc,"hostEntry")
+  } deriving (Read, Show, Typeable)
 
 instance Storable HostEntry where
    sizeOf    _ = #const sizeof(struct hostent)
@@ -446,11 +442,9 @@ data NetworkEntry =
   NetworkEntry {
      networkName        :: NetworkName,   -- official name
      networkAliases     :: [NetworkName], -- aliases
-     networkFamily      :: Family,         -- type
+     networkFamily      :: Family,        -- type
      networkAddress     :: NetworkAddr
-   } deriving (Read, Show)
-
-INSTANCE_TYPEABLE0(NetworkEntry,networkEntryTc,"NetworkEntry")
+   } deriving (Read, Show, Typeable)
 
 instance Storable NetworkEntry where
    sizeOf    _ = #const sizeof(struct hostent)
@@ -557,7 +551,8 @@ getEntries :: IO a  -- read
 getEntries getOne atEnd = loop
   where
     loop = do
-      vv <- catch (liftM Just getOne) ((const.return) Nothing)
+      vv <- catch (liftM Just getOne)
+            (\ e -> let _types = e :: IOException in return Nothing)
       case vv of
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)

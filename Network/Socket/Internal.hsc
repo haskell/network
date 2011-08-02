@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances,
+             ForeignFunctionInterface, TypeSynonymInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket.Internal
@@ -67,8 +68,8 @@ module Network.Socket.Internal
 import Control.Monad (liftM)
 import Data.Bits ( (.|.), shiftL, shiftR )
 import Data.Ratio ((%))
-import Data.Typeable (Typeable(typeOf), mkTyCon, mkTyConApp)
 import Data.Word ( Word8, Word16, Word32 )
+import Data.Typeable (Typeable)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
 import Foreign.C.String ( castCharToCChar, peekCString )
@@ -152,9 +153,7 @@ instance Storable HostAddress6 where
 
 -- | The port number of a socket.  Construct a 'PortNumber' using
 -- 'fromIntegral'.
-newtype PortNumber = PortNum Word16 deriving ( Eq, Ord )
-
-INSTANCE_TYPEABLE0(PortNumber,portNumberTc,"PortNumber")
+newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
 
 instance Show PortNumber where
   showsPrec p pn = showsPrec p (portNumberToInt pn)
@@ -242,7 +241,7 @@ data SockAddr       -- C Names
   | SockAddrRaw
         Family          -- socket family
         [Word8]         -- raw bytes
-  deriving (Eq)
+  deriving (Eq, Typeable)
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)
@@ -339,9 +338,9 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p addr
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
-pokeSockAddr p sa@(SockAddrRaw family bytes) = do
+pokeSockAddr p _sa@(SockAddrRaw family bytes) = do
 #if defined(darwin_TARGET_OS)
-    zeroMemory p (sizeOfSockAddr sa)
+    zeroMemory p (sizeOfSockAddr _sa)
 #endif
     (#poke struct sockaddr, sa_family) p (fromIntegral (packFamily family) :: CSaFamily)
     pokeArray ((#ptr struct sockaddr, sa_data) p) bytes

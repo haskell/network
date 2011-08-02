@@ -1,5 +1,5 @@
 name:           network
-version:        2.3.0.2
+version:        2.3.0.4
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
@@ -14,7 +14,7 @@ extra-tmp-files:
 extra-source-files:
   README.md examples/*.hs tests/*.hs config.guess config.sub install-sh
   configure.ac configure network.buildinfo.in
-  include/HsNetworkConfig.h.in include/HsNet.h include/Typeable.h
+  include/HsNetworkConfig.h.in include/HsNet.h
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
   cbits/winSockErr.c
@@ -37,7 +37,7 @@ library
       Network.Socket.ByteString.MsgHdr
 
   build-depends:
-    base >= 3 && < 4.4,
+    base >= 3 && < 4.5,
     bytestring < 1.0,
     parsec >= 2.0 && < 3.2
 

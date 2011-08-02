@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, ForeignFunctionInterface #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
@@ -157,7 +157,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Unsafe as B
 import Data.List (foldl')
-import Data.Typeable (Typeable(typeOf), mkTyCon, mkTyConApp)
+import Data.Typeable (Typeable)
 import Data.Word (Word8, Word32)
 import Foreign.C.Error (Errno(..), eINPROGRESS, eINTR, errnoToIOError, getErrno,
                         throwErrnoIfMinus1, throwErrnoIfMinus1_,
@@ -277,9 +277,7 @@ data SocketStatus
   | Connected           -- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
   | Closed              -- close
-    deriving (Eq, Show)
-
-INSTANCE_TYPEABLE0(SocketStatus,socketStatusTc,"SocketStatus")
+    deriving (Eq, Show, Typeable)
 
 -- | A socket.
 --
@@ -299,8 +297,7 @@ data Socket
             SocketType
             ProtocolNumber       -- Protocol Number
             (MVar SocketStatus)  -- Status Flag
-
-INSTANCE_TYPEABLE0(Socket,socketTc,"Socket")
+  deriving Typeable
 
 -- | Create a 'Socket' from the low-level description.
 mkSocket :: CInt
@@ -329,7 +326,7 @@ addSocketFinalizer sock@(MkSocket fd _fam _type _num mstat) =
           closeFdWith (\n -> closeFd (fromIntegral n) `catchIO` const (return ()))
                       (fromIntegral fd)
           return Closed
-  
+
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
@@ -349,8 +346,6 @@ defaultProtocol = 0
 
 -----------------------------------------------------------------------------
 -- SockAddr
-
-INSTANCE_TYPEABLE0(SockAddr,sockAddrTc,"SockAddr")
 
 instance Show SockAddr where
 #if defined(DOMAIN_SOCKET_SUPPORT)
@@ -1112,8 +1107,7 @@ data SocketOption
 #ifdef SO_USELOOPBACK
     | UseLoopBack   {- SO_USELOOPBACK -}
 #endif
-
-INSTANCE_TYPEABLE0(SocketOption,socketOptionTc,"SocketOption")
+    deriving Typeable
 
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so =
@@ -1235,7 +1229,7 @@ getPeerCred sock = do
      return (pid, uid, gid)
 #endif
 
-##if !MIN_VERSION_base(4,3,1)
+##if !(MIN_VERSION_base(4,3,1))
 closeFdWith :: (Fd -> IO ())  -- ^ Low-level action that performs the real close.
             -> Fd             -- ^ File descriptor to close.
             -> IO ()
@@ -1298,9 +1292,7 @@ data SocketType
 #ifdef SOCK_SEQPACKET
         | SeqPacket
 #endif
-        deriving (Eq, Ord, Read, Show)
-
-INSTANCE_TYPEABLE0(SocketType,socketTypeTc,"SocketType")
+        deriving (Eq, Ord, Read, Show, Typeable)
 
 packSocketType stype = case stype of
         NoSocketType -> 0
@@ -1400,8 +1392,7 @@ data ShutdownCmd
     = ShutdownReceive  -- ^ Further receives will be disallowed
     | ShutdownSend     -- ^ Further sends will be disallowed
     | ShutdownBoth     -- ^ Further sends and receives will be disallowed
-
-INSTANCE_TYPEABLE0(ShutdownCmd,shutdownCmdTc,"ShutdownCmd")
+    deriving Typeable
 
 sdownCmdToInt :: ShutdownCmd -> CInt
 sdownCmdToInt ShutdownReceive = 0
@@ -1506,10 +1497,10 @@ toHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
         then ioError (userError ("toHandle: already a Handle"))
         else do
 # if __GLASGOW_HASKELL__ >= 611
-    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) 
+    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s)
          mode True{-bin-}
 # elif __GLASGOW_HASKELL__ >= 608
-    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True 
+    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True
          (show s) mode True{-bin-}
 # endif
     return (ConvertedToHandle, h)
@@ -1555,9 +1546,7 @@ data AddrInfoFlag
     | AI_NUMERICSERV
     | AI_PASSIVE
     | AI_V4MAPPED
-    deriving (Eq, Read, Show)
-
-INSTANCE_TYPEABLE0(AddrInfoFlag,addrInfoFlagTc,"AddrInfoFlag")
+    deriving (Eq, Read, Show, Typeable)
 
 aiFlagMapping :: [(AddrInfoFlag, CInt)]
 
@@ -1602,9 +1591,7 @@ data AddrInfo =
         addrAddress :: SockAddr,
         addrCanonName :: Maybe String
         }
-    deriving (Eq, Show)
-
-INSTANCE_TYPEABLE0(AddrInfo,addrInfoTc,"AddrInfo")
+    deriving (Eq, Show, Typeable)
 
 instance Storable AddrInfo where
     sizeOf    _ = #const sizeof(struct addrinfo)
@@ -1651,9 +1638,7 @@ data NameInfoFlag
     | NI_NOFQDN
     | NI_NUMERICHOST
     | NI_NUMERICSERV
-    deriving (Eq, Read, Show)
-
-INSTANCE_TYPEABLE0(NameInfoFlag,nameInfoFlagTc,"NameInfoFlag")
+    deriving (Eq, Read, Show, Typeable)
 
 niFlagMapping :: [(NameInfoFlag, CInt)]
 
