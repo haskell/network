@@ -127,6 +127,11 @@ dnl * test for AI_* flags that not all implementations have
 dnl -------------------------------------------------------
 AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])
 
+dnl -------------------------------------------------------
+dnl * test for IPV6_V6ONLY flags that not all implementations have
+dnl -------------------------------------------------------
+AC_CHECK_DECLS([IPV6_V6ONLY])
+
 dnl --------------------------------------------------
 dnl * test for Linux sendfile(2)
 dnl --------------------------------------------------

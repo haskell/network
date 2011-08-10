@@ -240,7 +240,9 @@ listen' serv = do
 	(sClose)
 	(\sock -> do
 	    setSocketOption sock ReuseAddr 1
+#ifdef HAVE_DECL_IPV6_V6ONLY
 	    setSocketOption sock IPv6Only 0
+#endif
 	    bindSocket sock (addrAddress addr)
 	    listen sock maxListenQueue
 	    return sock
