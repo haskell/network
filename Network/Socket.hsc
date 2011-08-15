@@ -912,6 +912,9 @@ data SocketOption
 #ifdef SO_USELOOPBACK
     | UseLoopBack   {- SO_USELOOPBACK -}
 #endif
+#ifdef HAVE_DECL_IPV6_V6ONLY
+    | IPv6Only      {- IPV6_V6ONLY -}
+#endif
     deriving Typeable
 
 socketOptLevel :: SocketOption -> CInt
@@ -925,6 +928,9 @@ socketOptLevel so =
 #endif
 #ifdef TCP_NODELAY
     NoDelay      -> #const IPPROTO_TCP
+#endif
+#ifdef HAVE_DECL_IPV6_V6ONLY
+    IPv6Only     -> #const IPPROTO_IPV6
 #endif
     _            -> #const SOL_SOCKET
 
@@ -990,6 +996,9 @@ packSocketOption so =
 #endif
 #ifdef SO_USELOOPBACK
     UseLoopBack   -> #const SO_USELOOPBACK
+#endif
+#ifdef HAVE_DECL_IPV6_V6ONLY
+    IPv6Only      -> #const IPV6_V6ONLY
 #endif
 
 setSocketOption :: Socket 
