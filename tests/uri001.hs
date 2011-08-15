@@ -29,9 +29,8 @@ import Network.URI
     ( URI(..), URIAuth(..)
     , nullURI
     , parseURI, parseURIReference, parseRelativeReference, parseAbsoluteURI
-    , parseabsoluteURI
+    , parseAbsoluteURI
     , isURI, isURIReference, isRelativeReference, isAbsoluteURI
-    , isIPv6address, isIPv4address
     , relativeTo, nonStrictRelativeTo
     , relativeFrom
     , uriToString
@@ -41,9 +40,12 @@ import Network.URI
 
 import Test.HUnit
 
-import IO ( Handle, openFile, IOMode(WriteMode), hClose, hPutStr, hPutStrLn )
-
-import Maybe ( fromJust )
+import Control.Monad (when)
+import Data.Maybe (fromJust)
+import System.Exit (exitFailure)
+import System.IO (openFile, IOMode(WriteMode), hClose)
+import qualified Test.Framework as TF
+import qualified Test.Framework.Providers.HUnit as TF
 
 -- Test supplied string for valid URI reference syntax
 --   isValidURIRef :: String -> Bool
@@ -73,18 +75,18 @@ isAbsIdT :: URIType -> Bool
 isAbsIdT AbsId = True
 isAbsIdT _     = False
 
-testEq :: (Eq a, Show a) => String -> a -> a -> Test
-testEq lab a1 a2 = TestCase ( assertEqual lab a1 a2 )
+testEq :: (Eq a, Show a) => String -> a -> a -> Assertion
+testEq lab a1 a2 = assertEqual lab a1 a2
 
-testURIRef :: URIType -> String -> Test
-testURIRef t u = TestList
+testURIRef :: URIType -> String -> Assertion
+testURIRef t u = sequence_
   [ testEq ("test_isURIReference:"++u) (isValidT t) (isURIReference u)
   , testEq ("test_isRelativeReference:"++u)  (isRelRfT t) (isRelativeReference  u)
   , testEq ("test_isAbsoluteURI:"++u)  (isAbsIdT t) (isAbsoluteURI  u)
   ]
 
-testURIRefComponents :: String -> (Maybe URI) -> String -> Test
-testURIRefComponents lab uv us =
+testURIRefComponents :: String -> (Maybe URI) -> String -> Assertion
+testURIRefComponents _lab uv us =
     testEq ("testURIRefComponents:"++us) uv (parseURIReference us)
 
 
@@ -213,50 +215,125 @@ testURIRef115 = testURIRef InvRf "dcp.tcp.pft://192.168.0.1:1002:3002?fec=1&crc=
 testURIRef116 = testURIRef AbsId "dcp.tcp.pft://192.168.0.1:1002?fec=1&crc=0"
 testURIRef117 = testURIRef AbsId "foo://"
 
-testURIRefSuite = TestLabel "Test URIrefs" testURIRefList
-testURIRefList = TestList
-  [
-    testURIRef001, testURIRef002, testURIRef003, testURIRef004,
-    testURIRef005, testURIRef006, testURIRef007, testURIRef008,
-    testURIRef009, testURIRef010,
+testURIRefSuite = TF.testGroup "Test URIrefs" testURIRefList
+testURIRefList =
+  [ TF.testCase "testURIRef001" testURIRef001
+  , TF.testCase "testURIRef002" testURIRef002
+  , TF.testCase "testURIRef003" testURIRef003
+  , TF.testCase "testURIRef004" testURIRef004
+  , TF.testCase "testURIRef005" testURIRef005
+  , TF.testCase "testURIRef006" testURIRef006
+  , TF.testCase "testURIRef007" testURIRef007
+  , TF.testCase "testURIRef008" testURIRef008
+  , TF.testCase "testURIRef009" testURIRef009
+  , TF.testCase "testURIRef010" testURIRef010
     --
-    testURIRef011, testURIRef012, testURIRef013, testURIRef014,
-    testURIRef015, testURIRef016, testURIRef017, testURIRef018,
+  , TF.testCase "testURIRef011" testURIRef011
+  , TF.testCase "testURIRef012" testURIRef012
+  , TF.testCase "testURIRef013" testURIRef013
+  , TF.testCase "testURIRef014" testURIRef014
+  , TF.testCase "testURIRef015" testURIRef015
+  , TF.testCase "testURIRef016" testURIRef016
+  , TF.testCase "testURIRef017" testURIRef017
+  , TF.testCase "testURIRef018" testURIRef018
     --
-    testURIRef019,
+  , TF.testCase "testURIRef019" testURIRef019
     --
-    testURIRef021, testURIRef022, testURIRef023, testURIRef024,
-    testURIRef025, testURIRef026, testURIRef027, testURIRef028,
-    testURIRef029,
+  , TF.testCase "testURIRef021" testURIRef021
+  , TF.testCase "testURIRef022" testURIRef022
+  , TF.testCase "testURIRef023" testURIRef023
+  , TF.testCase "testURIRef024" testURIRef024
+  , TF.testCase "testURIRef025" testURIRef025
+  , TF.testCase "testURIRef026" testURIRef026
+  , TF.testCase "testURIRef027" testURIRef027
+  , TF.testCase "testURIRef028" testURIRef028
+  , TF.testCase "testURIRef029" testURIRef029
     --
-    testURIRef031, testURIRef032, testURIRef033, testURIRef034,
-    testURIRef035, testURIRef036, testURIRef037, testURIRef038,
-    testURIRef039,
-    testURIRef040, testURIRef041, testURIRef042, testURIRef043,
-    testURIRef044, testURIRef045, testURIRef046, testURIRef047,
-    testURIRef048, testURIRef049,
-    testURIRef050, testURIRef051, testURIRef052, testURIRef053,
-    testURIRef054, testURIRef055, testURIRef056, testURIRef057,
-    testURIRef058, testURIRef059,
-    testURIRef060, testURIRef061, testURIRef062, testURIRef063,
-    testURIRef064, testURIRef065, testURIRef066, testURIRef067,
-    testURIRef068, testURIRef069,
-    testURIRef070, testURIRef071, testURIRef072, testURIRef073,
-    testURIRef074, testURIRef075, testURIRef076, testURIRef077,
+  , TF.testCase "testURIRef031" testURIRef031
+  , TF.testCase "testURIRef032" testURIRef032
+  , TF.testCase "testURIRef033" testURIRef033
+  , TF.testCase "testURIRef034" testURIRef034
+  , TF.testCase "testURIRef035" testURIRef035
+  , TF.testCase "testURIRef036" testURIRef036
+  , TF.testCase "testURIRef037" testURIRef037
+  , TF.testCase "testURIRef038" testURIRef038
+  , TF.testCase "testURIRef039" testURIRef039
+  , TF.testCase "testURIRef040" testURIRef040
+  , TF.testCase "testURIRef041" testURIRef041
+  , TF.testCase "testURIRef042" testURIRef042
+  , TF.testCase "testURIRef043" testURIRef043
+  , TF.testCase "testURIRef044" testURIRef044
+  , TF.testCase "testURIRef045" testURIRef045
+  , TF.testCase "testURIRef046" testURIRef046
+  , TF.testCase "testURIRef047" testURIRef047
+  , TF.testCase "testURIRef048" testURIRef048
+  , TF.testCase "testURIRef049" testURIRef049
+  , TF.testCase "testURIRef050" testURIRef050
+  , TF.testCase "testURIRef051" testURIRef051
+  , TF.testCase "testURIRef052" testURIRef052
+  , TF.testCase "testURIRef053" testURIRef053
+  , TF.testCase "testURIRef054" testURIRef054
+  , TF.testCase "testURIRef055" testURIRef055
+  , TF.testCase "testURIRef056" testURIRef056
+  , TF.testCase "testURIRef057" testURIRef057
+  , TF.testCase "testURIRef058" testURIRef058
+  , TF.testCase "testURIRef059" testURIRef059
+  , TF.testCase "testURIRef060" testURIRef060
+  , TF.testCase "testURIRef061" testURIRef061
+  , TF.testCase "testURIRef062" testURIRef062
+  , TF.testCase "testURIRef063" testURIRef063
+  , TF.testCase "testURIRef064" testURIRef064
+  , TF.testCase "testURIRef065" testURIRef065
+  , TF.testCase "testURIRef066" testURIRef066
+  , TF.testCase "testURIRef067" testURIRef067
+  , TF.testCase "testURIRef068" testURIRef068
+  , TF.testCase "testURIRef069" testURIRef069
+  , TF.testCase "testURIRef070" testURIRef070
+  , TF.testCase "testURIRef071" testURIRef071
+  , TF.testCase "testURIRef072" testURIRef072
+  , TF.testCase "testURIRef073" testURIRef073
+  , TF.testCase "testURIRef074" testURIRef074
+  , TF.testCase "testURIRef075" testURIRef075
+  , TF.testCase "testURIRef076" testURIRef076
+  , TF.testCase "testURIRef077" testURIRef077
     --
-    testURIRef080,
-    testURIRef081, testURIRef082, testURIRef083, testURIRef084,
-    testURIRef085, testURIRef086, testURIRef087, -- testURIRef088,
+  , TF.testCase "testURIRef080" testURIRef080
+  , TF.testCase "testURIRef081" testURIRef081
+  , TF.testCase "testURIRef082" testURIRef082
+  , TF.testCase "testURIRef083" testURIRef083
+  , TF.testCase "testURIRef084" testURIRef084
+  , TF.testCase "testURIRef085" testURIRef085
+  , TF.testCase "testURIRef086" testURIRef086
+  , TF.testCase "testURIRef087" testURIRef087
+    -- testURIRef088,
     -- testURIRef089,
-    testURIRef090, testURIRef091, testURIRef092, testURIRef093,
-    testURIRef094, testURIRef095, testURIRef096, testURIRef097,
-    testURIRef098, -- testURIRef099,
+  , TF.testCase "testURIRef090" testURIRef090
+  , TF.testCase "testURIRef091" testURIRef091
+  , TF.testCase "testURIRef092" testURIRef092
+  , TF.testCase "testURIRef093" testURIRef093
+  , TF.testCase "testURIRef094" testURIRef094
+  , TF.testCase "testURIRef095" testURIRef095
+  , TF.testCase "testURIRef096" testURIRef096
+  , TF.testCase "testURIRef097" testURIRef097
+  , TF.testCase "testURIRef098" testURIRef098
+    -- testURIRef099,
     --
-    testURIRef101, testURIRef102, testURIRef103, testURIRef104,
-    testURIRef105, testURIRef106, testURIRef107, testURIRef108,
+  , TF.testCase "testURIRef101" testURIRef101
+  , TF.testCase "testURIRef102" testURIRef102
+  , TF.testCase "testURIRef103" testURIRef103
+  , TF.testCase "testURIRef104" testURIRef104
+  , TF.testCase "testURIRef105" testURIRef105
+  , TF.testCase "testURIRef106" testURIRef106
+  , TF.testCase "testURIRef107" testURIRef107
+  , TF.testCase "testURIRef108" testURIRef108
     --
-    testURIRef111, testURIRef112, testURIRef113, testURIRef114,
-    testURIRef115, testURIRef116, testURIRef117
+  , TF.testCase "testURIRef111" testURIRef111
+  , TF.testCase "testURIRef112" testURIRef112
+  , TF.testCase "testURIRef113" testURIRef113
+  , TF.testCase "testURIRef114" testURIRef114
+  , TF.testCase "testURIRef115" testURIRef115
+  , TF.testCase "testURIRef116" testURIRef116
+  , TF.testCase "testURIRef117" testURIRef117
   ]
 
 -- test decomposition of URI into components
@@ -318,13 +395,13 @@ testComponent12 = testURIRefComponents "testComponent03"
             } )
         "file://windowsauth/d$"
 
-testComponentSuite = TestLabel "Test URIrefs" $ TestList
-  [ testComponent01
-  , testComponent02
-  , testComponent03
-  , testComponent04
-  , testComponent11
-  , testComponent12
+testComponentSuite = TF.testGroup "Test URIrefs" $
+  [ TF.testCase "testComponent01" testComponent01
+  , TF.testCase "testComponent02" testComponent02
+  , TF.testCase "testComponent03" testComponent03
+  , TF.testCase "testComponent04" testComponent04
+  , TF.testCase "testComponent11" testComponent11
+  , TF.testCase "testComponent12" testComponent12
   ]
 
 -- Get reference relative to given base
@@ -339,7 +416,7 @@ testComponentSuite = TestLabel "Test URIrefs" $ TestList
 -- NOTE:  absoluteURI base (relativeRef base u) is always equivalent to u.
 -- cf. http://lists.w3.org/Archives/Public/uri/2003Jan/0008.html
 
-testRelSplit :: String -> String -> String -> String -> Test
+testRelSplit :: String -> String -> String -> String -> Assertion
 testRelSplit label base uabs urel =
     testEq label urel (mkrel puabs pubas)
     where
@@ -349,7 +426,7 @@ testRelSplit label base uabs urel =
         puabs = parseURIReference uabs
         pubas = parseURIReference base
 
-testRelJoin  :: String -> String -> String -> String -> Test
+testRelJoin  :: String -> String -> String -> String -> Assertion
 testRelJoin label base urel uabs =
     testEq label uabs (mkabs purel pubas)
     where
@@ -361,8 +438,8 @@ testRelJoin label base urel uabs =
         purel = parseURIReference urel
         pubas = parseURIReference base
 
-testRelative :: String -> String -> String -> String -> Test
-testRelative label base uabs urel = TestList
+testRelative :: String -> String -> String -> String -> Assertion
+testRelative label base uabs urel = sequence_
     [
     (testRelSplit (label++"(rel)") base uabs urel),
     (testRelJoin  (label++"(abs)") base urel uabs)
@@ -595,39 +672,98 @@ testRelative99 = testRelJoin "testRelative99"
                     "f://g"
 
 
-testRelativeSuite = TestLabel "Test Relative URIs" testRelativeList
-testRelativeList  = TestList
-  [ testRelative01, testRelative02, testRelative03, testRelative04
-  , testRelative05, testRelative06, testRelative07, testRelative08
-  , testRelative09
-  , testRelative10, testRelative11, testRelative12, testRelative13
-  , testRelative14, testRelative15, testRelative16, testRelative17
-  , testRelative18, testRelative19
-  , testRelative20, testRelative21, testRelative22, testRelative23
-  , testRelative24, testRelative25, testRelative26, testRelative27
-  , testRelative28, testRelative29
-  , testRelative30, testRelative31, testRelative32, testRelative33
-  , testRelative34, testRelative35, testRelative36, testRelative37
-  , testRelative38, testRelative39
-  , testRelative40, testRelative41, testRelative42, testRelative43
-  , testRelative44, testRelative45, testRelative46, testRelative47
-  , testRelative48, testRelative49
+testRelativeSuite = TF.testGroup "Test Relative URIs" testRelativeList
+testRelativeList  =
+  [ TF.testCase "testRelative01" testRelative01
+  , TF.testCase "testRelative02" testRelative02
+  , TF.testCase "testRelative03" testRelative03
+  , TF.testCase "testRelative04" testRelative04
+  , TF.testCase "testRelative05" testRelative05
+  , TF.testCase "testRelative06" testRelative06
+  , TF.testCase "testRelative07" testRelative07
+  , TF.testCase "testRelative08" testRelative08
+  , TF.testCase "testRelative09" testRelative09
+  , TF.testCase "testRelative10" testRelative10
+  , TF.testCase "testRelative11" testRelative11
+  , TF.testCase "testRelative12" testRelative12
+  , TF.testCase "testRelative13" testRelative13
+  , TF.testCase "testRelative14" testRelative14
+  , TF.testCase "testRelative15" testRelative15
+  , TF.testCase "testRelative16" testRelative16
+  , TF.testCase "testRelative17" testRelative17
+  , TF.testCase "testRelative18" testRelative18
+  , TF.testCase "testRelative19" testRelative19
+  , TF.testCase "testRelative20" testRelative20
+  , TF.testCase "testRelative21" testRelative21
+  , TF.testCase "testRelative22" testRelative22
+  , TF.testCase "testRelative23" testRelative23
+  , TF.testCase "testRelative24" testRelative24
+  , TF.testCase "testRelative25" testRelative25
+  , TF.testCase "testRelative26" testRelative26
+  , TF.testCase "testRelative27" testRelative27
+  , TF.testCase "testRelative28" testRelative28
+  , TF.testCase "testRelative29" testRelative29
+  , TF.testCase "testRelative30" testRelative30
+  , TF.testCase "testRelative31" testRelative31
+  , TF.testCase "testRelative32" testRelative32
+  , TF.testCase "testRelative33" testRelative33
+  , TF.testCase "testRelative34" testRelative34
+  , TF.testCase "testRelative35" testRelative35
+  , TF.testCase "testRelative36" testRelative36
+  , TF.testCase "testRelative37" testRelative37
+  , TF.testCase "testRelative38" testRelative38
+  , TF.testCase "testRelative39" testRelative39
+  , TF.testCase "testRelative40" testRelative40
+  , TF.testCase "testRelative41" testRelative41
+  , TF.testCase "testRelative42" testRelative42
+  , TF.testCase "testRelative43" testRelative43
+  , TF.testCase "testRelative44" testRelative44
+  , TF.testCase "testRelative45" testRelative45
+  , TF.testCase "testRelative46" testRelative46
+  , TF.testCase "testRelative47" testRelative47
+  , TF.testCase "testRelative48" testRelative48
+  , TF.testCase "testRelative49" testRelative49
     --
-  , testRelative50, testRelative51, testRelative52, testRelative53
-  , testRelative54, testRelative55, testRelative56, testRelative57
+  , TF.testCase "testRelative50" testRelative50
+  , TF.testCase "testRelative51" testRelative51
+  , TF.testCase "testRelative52" testRelative52
+  , TF.testCase "testRelative53" testRelative53
+  , TF.testCase "testRelative54" testRelative54
+  , TF.testCase "testRelative55" testRelative55
+  , TF.testCase "testRelative56" testRelative56
+  , TF.testCase "testRelative57" testRelative57
     --
-  , testRelative60, testRelative61, testRelative62, testRelative63
-  , testRelative64, testRelative65
+  , TF.testCase "testRelative60" testRelative60
+  , TF.testCase "testRelative61" testRelative61
+  , TF.testCase "testRelative62" testRelative62
+  , TF.testCase "testRelative63" testRelative63
+  , TF.testCase "testRelative64" testRelative64
+  , TF.testCase "testRelative65" testRelative65
     --
-  , testRelative70, testRelative71, testRelative72, testRelative73
-  , testRelative74, testRelative75, testRelative76, testRelative77
+  , TF.testCase "testRelative70" testRelative70
+  , TF.testCase "testRelative71" testRelative71
+  , TF.testCase "testRelative72" testRelative72
+  , TF.testCase "testRelative73" testRelative73
+  , TF.testCase "testRelative74" testRelative74
+  , TF.testCase "testRelative75" testRelative75
+  , TF.testCase "testRelative76" testRelative76
+  , TF.testCase "testRelative77" testRelative77
   -- Awkward cases:
-  , testRelative78, testRelative79, testRelative80, testRelative81
+  , TF.testCase "testRelative78" testRelative78
+  , TF.testCase "testRelative79" testRelative79
+  , TF.testCase "testRelative80" testRelative80
+  , TF.testCase "testRelative81" testRelative81
     --
-  -- , testRelative90
-  , testRelative91, testRelative92, testRelative93
-  , testRelative94, testRelative95, testRelative96
-  , testRelative97, testRelative98, testRelative99
+  -- , TF.testCase "testRelative90" testRelative90
+  , TF.testCase "testRelative91" testRelative91
+  , TF.testCase "testRelative92" testRelative92
+  , TF.testCase "testRelative93" testRelative93
+  , TF.testCase "testRelative94" testRelative94
+  , TF.testCase "testRelative95" testRelative95
+  , TF.testCase "testRelative96" testRelative96
+  , TF.testCase "testRelative97" testRelative97
+  , TF.testCase "testRelative98" testRelative98
+  , TF.testCase "testRelative99" testRelative99
   ]
 
 -- RFC2396 relative-to-absolute URI tests
@@ -697,30 +833,65 @@ testRFC69 = testRelJoin  "testRFC69" "http://ex"     "./"              "http://e
 testRFC70 = testRelative "testRFC70" "http://ex"     "http://ex/a/b"   "/a/b"
 testRFC71 = testRelative "testRFC71" "http://ex/a/b" "http://ex"       "./"
 
-testRFC2396Suite = TestLabel "Test RFC2396 examples" testRFC2396List
-testRFC2396List  = TestList
-  [
-    testRFC01, testRFC02, testRFC03, testRFC04,
-    testRFC05, testRFC06, testRFC07, testRFC08,
-    testRFC09,
-    testRFC10, testRFC11, testRFC12, testRFC13,
-    testRFC14, testRFC15, testRFC16, testRFC17,
-    testRFC18, testRFC19,
-    testRFC20, testRFC21, testRFC22, testRFC23,
-    testRFC24,
+testRFC2396Suite = TF.testGroup "Test RFC2396 examples" testRFC2396List
+testRFC2396List  =
+  [ TF.testCase "testRFC01" testRFC01
+  , TF.testCase "testRFC02" testRFC02
+  , TF.testCase "testRFC03" testRFC03
+  , TF.testCase "testRFC04" testRFC04
+  , TF.testCase "testRFC05" testRFC05
+  , TF.testCase "testRFC06" testRFC06
+  , TF.testCase "testRFC07" testRFC07
+  , TF.testCase "testRFC08" testRFC08
+  , TF.testCase "testRFC09" testRFC09
+  , TF.testCase "testRFC10" testRFC10
+  , TF.testCase "testRFC11" testRFC11
+  , TF.testCase "testRFC12" testRFC12
+  , TF.testCase "testRFC13" testRFC13
+  , TF.testCase "testRFC14" testRFC14
+  , TF.testCase "testRFC15" testRFC15
+  , TF.testCase "testRFC16" testRFC16
+  , TF.testCase "testRFC17" testRFC17
+  , TF.testCase "testRFC18" testRFC18
+  , TF.testCase "testRFC19" testRFC19
+  , TF.testCase "testRFC20" testRFC20
+  , TF.testCase "testRFC21" testRFC21
+  , TF.testCase "testRFC22" testRFC22
+  , TF.testCase "testRFC23" testRFC23
+  , TF.testCase "testRFC24" testRFC24
     -- testRFC30,
-    testRFC31, testRFC32, testRFC33,
-    testRFC34, testRFC35, testRFC36, testRFC37,
-    testRFC38, testRFC39,
-    testRFC40, testRFC41, testRFC42, testRFC43,
-    testRFC44, testRFC45, testRFC46, testRFC47,
-    testRFC48, testRFC49,
-    testRFC50,
+  , TF.testCase "testRFC31" testRFC31
+  , TF.testCase "testRFC32" testRFC32
+  , TF.testCase "testRFC33" testRFC33
+  , TF.testCase "testRFC34" testRFC34
+  , TF.testCase "testRFC35" testRFC35
+  , TF.testCase "testRFC36" testRFC36
+  , TF.testCase "testRFC37" testRFC37
+  , TF.testCase "testRFC38" testRFC38
+  , TF.testCase "testRFC39" testRFC39
+  , TF.testCase "testRFC40" testRFC40
+  , TF.testCase "testRFC41" testRFC41
+  , TF.testCase "testRFC42" testRFC42
+  , TF.testCase "testRFC43" testRFC43
+  , TF.testCase "testRFC44" testRFC44
+  , TF.testCase "testRFC45" testRFC45
+  , TF.testCase "testRFC46" testRFC46
+  , TF.testCase "testRFC47" testRFC47
+  , TF.testCase "testRFC48" testRFC48
+  , TF.testCase "testRFC49" testRFC49
+  , TF.testCase "testRFC50" testRFC50
     --
-    testRFC60, testRFC61, testRFC62, testRFC63,
-    testRFC64, testRFC65, testRFC66, testRFC67,
-    testRFC68, testRFC69,
-    testRFC70
+  , TF.testCase "testRFC60" testRFC60
+  , TF.testCase "testRFC61" testRFC61
+  , TF.testCase "testRFC62" testRFC62
+  , TF.testCase "testRFC63" testRFC63
+  , TF.testCase "testRFC64" testRFC64
+  , TF.testCase "testRFC65" testRFC65
+  , TF.testCase "testRFC66" testRFC66
+  , TF.testCase "testRFC67" testRFC67
+  , TF.testCase "testRFC68" testRFC68
+  , TF.testCase "testRFC69" testRFC69
+  , TF.testCase "testRFC70" testRFC70
   ]
 
 -- And some other oddballs:
@@ -760,11 +931,18 @@ testInfo18 = testRelJoin "testInfo18"
              "info:/name/1234/../567" "name/9876/../543"
              "info:/name/name/543"
 
-testOddballSuite = TestLabel "Test oddball examples" testOddballList
-testOddballList  = TestList
-  [ testMail01, testMail02, testMail03
-  , testMail11, testMail12, testMail13, testMail14, testMail15, testMail16
-  , testInfo17
+testOddballSuite = TF.testGroup "Test oddball examples" testOddballList
+testOddballList  =
+  [ TF.testCase "testMail01" testMail01
+  , TF.testCase "testMail02" testMail02
+  , TF.testCase "testMail03" testMail03
+  , TF.testCase "testMail11" testMail11
+  , TF.testCase "testMail12" testMail12
+  , TF.testCase "testMail13" testMail13
+  , TF.testCase "testMail14" testMail14
+  , TF.testCase "testMail15" testMail15
+  , TF.testCase "testMail16" testMail16
+  , TF.testCase "testInfo17" testInfo17
   ]
 
 --  Normalization tests
@@ -812,13 +990,19 @@ testNormalize28 = testEq "testNormalize28"
                     "foo:e"
                     (normalizePathSegments "foo:a/b/../.././../../e")
 
-testNormalizeSuite = TestList
-  [ testNormalize01
-  , testNormalize11
-  , testNormalize12
-  , testNormalize13
-  , testNormalize21, testNormalize22, testNormalize23, testNormalize24
-  , testNormalize25, testNormalize26, testNormalize27, testNormalize28
+testNormalizeSuite = TF.testGroup "testNormalizeSuite"
+  [ TF.testCase "testNormalize01" testNormalize01
+  , TF.testCase "testNormalize11" testNormalize11
+  , TF.testCase "testNormalize12" testNormalize12
+  , TF.testCase "testNormalize13" testNormalize13
+  , TF.testCase "testNormalize21" testNormalize21
+  , TF.testCase "testNormalize22" testNormalize22
+  , TF.testCase "testNormalize23" testNormalize23
+  , TF.testCase "testNormalize24" testNormalize24
+  , TF.testCase "testNormalize25" testNormalize25
+  , TF.testCase "testNormalize26" testNormalize26
+  , TF.testCase "testNormalize27" testNormalize27
+  , TF.testCase "testNormalize28" testNormalize28
   ]
 
 -- URI formatting (show) tests
@@ -846,11 +1030,11 @@ testShowURI02 = testEq "testShowURI02" ts02str (show ts02URI)
 testShowURI03 = testEq "testShowURI03" ts03str ((uriToString id ts02URI) "")
 testShowURI04 = testEq "testShowURI04" ts04str (show ts04URI)
 
-testShowURI = TestList
-  [ testShowURI01
-  , testShowURI02
-  , testShowURI03
-  , testShowURI04
+testShowURI = TF.testGroup "testShowURI"
+  [ TF.testCase "testShowURI01" testShowURI01
+  , TF.testCase "testShowURI02" testShowURI02
+  , TF.testCase "testShowURI03" testShowURI03
+  , TF.testCase "testShowURI04" testShowURI04
   ]
 
 
@@ -873,11 +1057,11 @@ testEscapeURIString04 = testEq "testEscapeURIString04"
     te02str (unEscapeString te02esc)
 
 
-testEscapeURIString = TestList
-  [ testEscapeURIString01
-  , testEscapeURIString02
-  , testEscapeURIString03
-  , testEscapeURIString04
+testEscapeURIString = TF.testGroup "testEscapeURIString"
+  [ TF.testCase "testEscapeURIString01" testEscapeURIString01
+  , TF.testCase "testEscapeURIString02" testEscapeURIString02
+  , TF.testCase "testEscapeURIString03" testEscapeURIString03
+  , TF.testCase "testEscapeURIString04" testEscapeURIString04
   ]
 
 -- URI string normalization tests
@@ -915,19 +1099,14 @@ testNormalizeURIString06 = testEq "testNormalizeURIString06"
 testNormalizeURIString07 = testEq "testNormalizeURIString07"
     tn07nrm (normalizePathSegments tn07str)
 
-testNormalizeURIString = TestList
-  [ testNormalizeURIString01
-  , testNormalizeURIString02
-  , testNormalizeURIString03
-  , testNormalizeURIString04
-  , testNormalizeURIString05
-  , testNormalizeURIString06
-  , testNormalizeURIString07
-  ]
-
-tnus67 = runTestTT $ TestList
-  [ testNormalizeURIString06
-  , testNormalizeURIString07
+testNormalizeURIString = TF.testGroup "testNormalizeURIString"
+  [ TF.testCase "testNormalizeURIString01" testNormalizeURIString01
+  , TF.testCase "testNormalizeURIString02" testNormalizeURIString02
+  , TF.testCase "testNormalizeURIString03" testNormalizeURIString03
+  , TF.testCase "testNormalizeURIString04" testNormalizeURIString04
+  , TF.testCase "testNormalizeURIString05" testNormalizeURIString05
+  , TF.testCase "testNormalizeURIString06" testNormalizeURIString06
+  , TF.testCase "testNormalizeURIString07" testNormalizeURIString07
   ]
 
 -- Test strict vs non-strict relativeTo logic
@@ -949,10 +1128,10 @@ testRelativeTo03 = testEq "testRelativeTo03"
     (show . fromJust $
       (fromJust $ parseURIReference "http:foo") `nonStrictRelativeTo` trbase)
 
-testRelativeTo = TestList
-  [ testRelativeTo01
-  , testRelativeTo02
-  , testRelativeTo03
+testRelativeTo = TF.testGroup "testRelativeTo"
+  [ TF.testCase "testRelativeTo01" testRelativeTo01
+  , TF.testCase "testRelativeTo02" testRelativeTo02
+  , TF.testCase "testRelativeTo03" testRelativeTo03
   ]
 
 -- Test alternative parsing functions
@@ -971,7 +1150,7 @@ testAltFn06 = testEq "testAltFn06" "Nothing"
 testAltFn07 = testEq "testAltFn07" "Nothing"
     (show . parseAbsoluteURI $ "c/d")
 testAltFn08 = testEq "testAltFn08" "Just http://a.b/c"
-    (show . parseabsoluteURI $ "http://a.b/c")
+    (show . parseAbsoluteURI $ "http://a.b/c")
 
 testAltFn11 = testEq "testAltFn11" True  (isURI "http://a.b/c#f")
 testAltFn12 = testEq "testAltFn12" True  (isURIReference "http://a.b/c#f")
@@ -981,26 +1160,26 @@ testAltFn15 = testEq "testAltFn15" True  (isAbsoluteURI "http://a.b/c")
 testAltFn16 = testEq "testAltFn16" False (isAbsoluteURI "http://a.b/c#f")
 testAltFn17 = testEq "testAltFn17" False (isAbsoluteURI "c/d")
 
-testAltFn = TestList
-  [ testAltFn01
-  , testAltFn02
-  , testAltFn03
-  , testAltFn04
-  , testAltFn05
-  , testAltFn06
-  , testAltFn07
-  , testAltFn08
-  , testAltFn11
-  , testAltFn12
-  , testAltFn13
-  , testAltFn14
-  , testAltFn15
-  , testAltFn16
-  , testAltFn17
+testAltFn = TF.testGroup "testAltFn"
+  [ TF.testCase "testAltFn01" testAltFn01
+  , TF.testCase "testAltFn02" testAltFn02
+  , TF.testCase "testAltFn03" testAltFn03
+  , TF.testCase "testAltFn04" testAltFn04
+  , TF.testCase "testAltFn05" testAltFn05
+  , TF.testCase "testAltFn06" testAltFn06
+  , TF.testCase "testAltFn07" testAltFn07
+  , TF.testCase "testAltFn08" testAltFn08
+  , TF.testCase "testAltFn11" testAltFn11
+  , TF.testCase "testAltFn12" testAltFn12
+  , TF.testCase "testAltFn13" testAltFn13
+  , TF.testCase "testAltFn14" testAltFn14
+  , TF.testCase "testAltFn15" testAltFn15
+  , TF.testCase "testAltFn16" testAltFn16
+  , TF.testCase "testAltFn17" testAltFn17
   ]
 
 -- Full test suite
-allTests = TestList
+allTests =
   [ testURIRefSuite
   , testComponentSuite
   , testRelativeSuite
@@ -1014,7 +1193,7 @@ allTests = TestList
   , testAltFn
   ]
 
-main = runTestTT allTests
+main = TF.defaultMain allTests
 
 runTestFile t = do
     h <- openFile "a.tmp" WriteMode

@@ -1,51 +1,65 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
-import Control.Concurrent (forkIO)
+import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Exception (bracket)
-import Control.Monad (when)
-import Network.Socket hiding (recv, recvFrom, send)
-import System.Exit (exitFailure)
-import Test.HUnit (Counts(..), Test(..), (@=?), runTestTT)
-
+import Control.Exception (SomeException, bracket, catch, throwTo)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as L
-
-import Network.Socket.ByteString (recv, recvFrom, send, sendAll, sendMany)
-import qualified Network.Socket.ByteString.Lazy as NSBL
+import Network.Socket hiding (recv, recvFrom, send, sendTo)
+import Network.Socket.ByteString
+import Prelude hiding (catch)
+import Test.Framework (Test, defaultMain, testGroup)
+import Test.Framework.Providers.HUnit (testCase)
+import Test.HUnit (Assertion, (@=?))
 
 ------------------------------------------------------------------------
 
-port :: PortNumber
-port = fromIntegral (3000 :: Int)
+serverPort :: PortNumber
+serverPort = fromIntegral (3000 :: Int)
+
+serverAddr :: String
+serverAddr = "127.0.0.1"
 
 testMsg :: S.ByteString
 testMsg = C.pack "This is a test message."
 
-testLazySend :: Test
-testLazySend = TestCase $ connectedTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) (C.take 1024 strictTestMsg)
-      client sock = NSBL.send sock lazyTestMsg >>= (@=?) 1024
-
-      -- message containing too many chunks to be sent in one system call
-      lazyTestMsg = let alphabet = map C.singleton ['a'..'z']
-                    in L.fromChunks (concat (replicate 100 alphabet))
-
-      strictTestMsg = C.concat . L.toChunks $ lazyTestMsg
-
 ------------------------------------------------------------------------
 -- Tests
 
-testSendAll :: Test
-testSendAll = TestCase $ connectedTest client server
+------------------------------------------------------------------------
+-- Sending and receiving
+
+testSend :: Assertion
+testSend = tcpTest client server
+    where
+      server sock = recv sock 1024 >>= (@=?) testMsg
+      client sock = send sock testMsg
+
+testSendAll :: Assertion
+testSendAll = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = sendAll sock testMsg
 
-testSendMany :: Test
-testSendMany = TestCase $ connectedTest client server
+testSendTo :: Assertion
+testSendTo = udpTest client server
+    where
+      server sock = recv sock 1024 >>= (@=?) testMsg
+      client sock = do addr <- inet_addr serverAddr
+                       sendTo sock testMsg (SockAddrInet serverPort addr)
+
+testSendAllTo :: Assertion
+testSendAllTo = udpTest client server
+    where
+      server sock = recv sock 1024 >>= (@=?) testMsg
+      client sock = do addr <- inet_addr serverAddr
+                       sendAllTo sock testMsg (SockAddrInet serverPort addr)
+
+testSendMany :: Assertion
+testSendMany = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
       client sock = sendMany sock [seg1, seg2]
@@ -53,14 +67,25 @@ testSendMany = TestCase $ connectedTest client server
       seg1 = C.pack "This is a "
       seg2 = C.pack "test message."
 
-testRecv :: Test
-testRecv = TestCase $ connectedTest client server
+testSendManyTo :: Assertion
+testSendManyTo = udpTest client server
+    where
+      server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
+      client sock = do addr <- inet_addr serverAddr
+                       sendManyTo sock [seg1, seg2]
+                           (SockAddrInet serverPort addr)
+
+      seg1 = C.pack "This is a "
+      seg2 = C.pack "test message."
+
+testRecv :: Assertion
+testRecv = tcpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
       client sock = send sock testMsg
 
-testOverFlowRecv :: Test
-testOverFlowRecv = TestCase $ connectedTest client server
+testOverFlowRecv :: Assertion
+testOverFlowRecv = tcpTest client server
     where
       server sock = do seg1 <- recv sock (S.length testMsg - 3)
                        seg2 <- recv sock 1024
@@ -69,16 +94,17 @@ testOverFlowRecv = TestCase $ connectedTest client server
 
       client sock = send sock testMsg
 
-testRecvFrom :: Test
-testRecvFrom = TestCase $ connectedTest client server
+testRecvFrom :: Assertion
+testRecvFrom = tcpTest client server
     where
       server sock = do (msg, _) <- recvFrom sock 1024
                        testMsg @=? msg
 
-      client sock = send sock testMsg
+      client sock = do addr <- inet_addr serverAddr
+                       sendTo sock testMsg (SockAddrInet serverPort addr)
 
-testOverFlowRecvFrom :: Test
-testOverFlowRecvFrom = TestCase $ connectedTest client server
+testOverFlowRecvFrom :: Assertion
+testOverFlowRecvFrom = tcpTest client server
     where
       server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
                        (seg2, _) <- recvFrom sock 1024
@@ -88,54 +114,110 @@ testOverFlowRecvFrom = TestCase $ connectedTest client server
       client sock = send sock testMsg
 
 ------------------------------------------------------------------------
+-- Other
+
+------------------------------------------------------------------------
+-- List of all tests
+
+basicTests = testGroup "Basic socket operations"
+    [
+      -- Sending and receiving
+      testCase "testSend" testSend
+    , testCase "testSendAll" testSendAll
+    , testCase "testSendTo" testSendTo
+    , testCase "testSendAllTo" testSendAllTo
+    , testCase "testSendMany" testSendMany
+    , testCase "testSendManyTo" testSendManyTo
+    , testCase "testRecv" testRecv
+    , testCase "testOverFlowRecv" testOverFlowRecv
+    , testCase "testRecvFrom" testRecvFrom
+    , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+    ]
+
+tests :: [Test]
+tests = [basicTests]
+
+------------------------------------------------------------------------
 -- Test helpers
+
+-- | Establish a connection between client and server and then run
+-- 'clientAct' and 'serverAct', in different threads.  Both actions
+-- get passed a connected 'Socket', used for communicating between
+-- client and server.  'tcpTest' makes sure that the 'Socket' is
+-- closed after the actions have run.
+tcpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
+tcpTest clientAct serverAct =
+    test clientSetup clientAct serverSetup server
+  where
+    clientSetup = do
+        sock <- socket AF_INET Stream defaultProtocol
+        addr <- inet_addr serverAddr
+        connect sock $ SockAddrInet serverPort addr
+        return sock
+
+    serverSetup = do
+        sock <- socket AF_INET Stream defaultProtocol
+        setSocketOption sock ReuseAddr 1
+        addr <- inet_addr serverAddr
+        bindSocket sock (SockAddrInet serverPort addr)
+        listen sock 1
+        return sock
+
+    server sock = do
+        (clientSock, _) <- accept sock
+        serverAct clientSock
+        sClose clientSock
+
+-- | Create an unconnected 'Socket' for sending UDP and receiving
+-- datagrams and then run 'clientAct' and 'serverAct'.
+udpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
+udpTest clientAct serverAct =
+    test clientSetup clientAct serverSetup serverAct
+  where
+    clientSetup = socket AF_INET Datagram defaultProtocol
+
+    serverSetup = do
+        sock <- socket AF_INET Datagram defaultProtocol
+        setSocketOption sock ReuseAddr 1
+        addr <- inet_addr serverAddr
+        bindSocket sock (SockAddrInet serverPort addr)
+        return sock
 
 -- | Run a client/server pair and synchronize them so that the server
 -- is started before the client and the specified server action is
--- finished before the client closes the connection.
-connectedTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-connectedTest clientAct serverAct = do
+-- finished before the client closes the 'Socket'.
+test :: IO Socket -> (Socket -> IO b) -> IO Socket -> (Socket -> IO c) -> IO ()
+test clientSetup clientAct serverSetup serverAct = do
+    tid <- myThreadId
     barrier <- newEmptyMVar
     forkIO $ server barrier
-    client barrier
+    client tid barrier
   where
     server barrier = do
-        addr <- inet_addr "127.0.0.1"
-        bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
-            setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port addr)
-            listen sock 1
+        bracket serverSetup sClose $ \sock -> do
             serverReady
-            (clientSock, _) <- accept sock
-            serverAct clientSock
-            sClose clientSock
+            serverAct sock
             putMVar barrier ()
       where
         -- | Signal to the client that it can proceed.
         serverReady = putMVar barrier ()
 
-    client barrier = do
+    client tid barrier = do
         takeMVar barrier
-        bracket (socket AF_INET Stream defaultProtocol) sClose $ \sock -> do
-            addr <- inet_addr "127.0.0.1"
-            connect sock $ SockAddrInet port addr
-            clientAct sock
+        -- Transfer exceptions to the main thread.
+        bracketWithReraise tid clientSetup sClose $ \res -> do
+            clientAct res
             takeMVar barrier
+
+-- | Like 'bracket' but catches and reraises the exception in another
+-- thread, specified by the first argument.
+bracketWithReraise :: ThreadId -> IO a -> (a -> IO b) -> (a -> IO ()) -> IO ()
+bracketWithReraise tid before after thing =
+    bracket before after thing
+    `catch` \ (e :: SomeException) -> throwTo tid e
 
 ------------------------------------------------------------------------
 -- Test harness
 
 main :: IO ()
-main = withSocketsDo $ do
-    counts <- runTestTT tests
-    when (errors counts + failures counts > 0) exitFailure
-
-tests :: Test
-tests = TestList [ TestLabel "testLazySend" testLazySend
-                 , TestLabel "testSendAll" testSendMany
-                 , TestLabel "testSendMany" testSendMany
-                 , TestLabel "testRecv" testRecv
-                 , TestLabel "testOverFlowRecv" testOverFlowRecv
-                 , TestLabel "testRecvFrom" testRecvFrom
-                 , TestLabel "testOverFlowRecvFrom" testOverFlowRecvFrom
-                 ]
+main = withSocketsDo $ defaultMain tests
