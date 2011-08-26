@@ -81,9 +81,11 @@ import System.IO.Error ( ioeSetErrorString, mkIOError )
 
 ------------------------------------------------------------------------
 
+-- | Network byte order.
 type HostAddress = Word32
 
 #if defined(IPV6_SOCKET_SUPPORT)
+-- | Host byte order.
 type HostAddress6 = (Word32, Word32, Word32, Word32)
 
 -- The peek32 and poke32 functions work around the fact that the RFCs
