@@ -243,7 +243,7 @@ data SockAddr       -- C Names
         [Word8]         -- raw bytes
   deriving (Eq, Typeable)
 
-#if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
+#if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS) || defined(mingw32_HOST_OS)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_HOST_OS)
 type CSaFamily = (#type u_char)
@@ -265,7 +265,11 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
+#if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS) || defined (mingw32_HOST_OS)
+sizeOfSockAddr (SockAddrRaw _ bytes) = (#const sizeof(unsigned short)) + length bytes
+#else
 sizeOfSockAddr (SockAddrRaw _ bytes) = (#const sizeof(sa_family_t)) + length bytes
+#endif
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
