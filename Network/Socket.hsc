@@ -402,6 +402,8 @@ instance Show SockAddr where
 -- and protocol number.  The address family is usually 'AF_INET',
 -- 'AF_INET6', or 'AF_UNIX'.  The socket type is usually 'Stream' or
 -- 'Datagram'.  The protocol number is usually 'defaultProtocol'.
+-- If 'AF_INET6' is used, the 'IPv6Only' socket option is set to 0
+-- so that both IPv4 and IPv6 can be handled with one socket.
 socket :: Family 	 -- Family Name (usually AF_INET)
        -> SocketType 	 -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
@@ -417,7 +419,11 @@ socket family stype protocol = do
 # endif
 #endif
     socket_status <- newMVar NotConnected
-    return (MkSocket fd family stype protocol socket_status)
+    let sock = MkSocket fd family stype protocol socket_status
+#ifdef HAVE_DECL_IPV6_V6ONLY
+    when (family == AF_INET6) $ setSocketOption sock IPv6Only 0
+#endif
+    return sock
 
 -- | Build a pair of connected socket objects using the given address
 -- family, socket type, and protocol number.  Address family, socket

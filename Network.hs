@@ -160,13 +160,16 @@ connect' host serv = do
 #endif
 
 -- | Creates the server side socket which has been bound to the
--- specified port.  
+-- specified port.
 --
 -- NOTE: To avoid the \"Address already in use\"
 -- problems popped up several times on the GHC-Users mailing list we
 -- set the 'ReuseAddr' socket option on the listening socket.  If you
 -- don't want this behaviour, please use the lower level
 -- 'Network.Socket.listen' instead.
+--
+-- If available, the 'IPv6Only' socket option is set to 0
+-- so that both IPv4 and IPv6 can be accepted with this socket.
 
 listenOn :: PortID 	-- ^ Port Identifier
 	 -> IO Socket	-- ^ Connected Socket
@@ -240,9 +243,6 @@ listen' serv = do
 	(sClose)
 	(\sock -> do
 	    setSocketOption sock ReuseAddr 1
-#ifdef HAVE_DECL_IPV6_V6ONLY
-	    setSocketOption sock IPv6Only 0
-#endif
 	    bindSocket sock (addrAddress addr)
 	    listen sock maxListenQueue
 	    return sock
