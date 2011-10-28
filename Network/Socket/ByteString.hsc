@@ -47,7 +47,11 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
+#if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types (CInt(..))
+#else
 import Foreign.C.Types (CInt)
+#endif
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr)
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
@@ -58,7 +62,12 @@ import Network.Socket.ByteString.Internal
 
 #if !defined(mingw32_HOST_OS)
 import Control.Monad (zipWithM_)
-import Foreign.C.Types (CChar, CSize)
+import Foreign.C.Types (CChar)
+# if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types (CSize(..))
+# else
+import Foreign.C.Types (CSize)
+# endif
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (plusPtr)

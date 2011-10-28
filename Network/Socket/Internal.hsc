@@ -64,7 +64,11 @@ import Data.Typeable (Typeable)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
 import Foreign.C.String ( castCharToCChar, peekCString )
+#if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types ( CInt(..), CSize(..) )
+#else
 import Foreign.C.Types ( CInt, CSize )
+#endif
 import Foreign.Marshal.Alloc ( allocaBytes )
 import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
@@ -514,8 +518,9 @@ throwSocketError :: String  -- ^ textual description of the error location
 -- the IO action returns a result of @-1@.  Discards the result of the
 -- IO action after error handling.
 throwSocketErrorIfMinus1_
-    :: Num a => String  -- ^ textual description of the location
-    -> IO a             -- ^ the 'IO' operation to be executed
+    :: (Eq a, Num a)
+    => String  -- ^ textual description of the location
+    -> IO a    -- ^ the 'IO' operation to be executed
     -> IO ()
 
 {-# SPECIALIZE throwSocketErrorIfMinus1_ :: String -> IO CInt -> IO () #-}
@@ -524,8 +529,9 @@ throwSocketErrorIfMinus1_
 -- the IO action returns a result of @-1@, but retries in case of an
 -- interrupted operation.
 throwSocketErrorIfMinus1Retry
-    :: Num a => String  -- ^ textual description of the location
-    -> IO a             -- ^ the 'IO' operation to be executed
+    :: (Eq a, Num a)
+    => String  -- ^ textual description of the location
+    -> IO a    -- ^ the 'IO' operation to be executed
     -> IO a
 
 {-# SPECIALIZE throwSocketErrorIfMinus1Retry :: String -> IO CInt -> IO CInt #-}
@@ -535,10 +541,11 @@ throwSocketErrorIfMinus1Retry
 -- interrupted operation.  Checks for operations that would block and
 -- executes an alternative action before retrying in that case.
 throwSocketErrorIfMinus1RetryMayBlock
-    :: Num a => String  -- ^ textual description of the location
-    -> IO b             -- ^ action to execute before retrying if an
-                        --   immediate retry would block
-    -> IO a             -- ^ the 'IO' operation to be executed
+    :: (Eq a, Num a)
+    => String  -- ^ textual description of the location
+    -> IO b    -- ^ action to execute before retrying if an
+               --   immediate retry would block
+    -> IO a    -- ^ the 'IO' operation to be executed
     -> IO a
 
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
