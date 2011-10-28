@@ -98,7 +98,12 @@ import Control.Concurrent 	( MVar, newMVar, withMVar )
 import Control.Exception (catch)
 import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
 import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
-import Foreign.C.Types ( CInt, CULong, CChar, CSize, CShort )
+import Foreign.C.Types ( CChar, CShort )
+#if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types ( CInt(..), CULong(..), CSize(..) )
+#else
+import Foreign.C.Types ( CInt, CULong, CSize )
+#endif
 import Foreign.Ptr ( Ptr, nullPtr )
 import Foreign.Storable ( Storable(..) )
 import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
