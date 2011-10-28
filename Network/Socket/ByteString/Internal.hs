@@ -21,9 +21,14 @@ module Network.Socket.ByteString.Internal
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
 #if !defined(mingw32_HOST_OS)
+# if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types (CInt(..))
+import System.Posix.Types (CSsize(..))
+# else
 import Foreign.C.Types (CInt)
-import Foreign.Ptr (Ptr)
 import System.Posix.Types (CSsize)
+# endif
+import Foreign.Ptr (Ptr)
 
 import Network.Socket.ByteString.IOVec (IOVec)
 import Network.Socket.ByteString.MsgHdr (MsgHdr)

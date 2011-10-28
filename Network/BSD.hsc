@@ -98,7 +98,11 @@ import Network.Socket.Internal (
 import Control.Concurrent (MVar, newMVar, withMVar)
 import Control.Exception (catch)
 import Foreign.C.String (CString, peekCString, withCString)
+#if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types (CInt(..), CULong(..), CSize(..))
+#else
 import Foreign.C.Types (CInt, CULong, CSize)
+#endif
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)

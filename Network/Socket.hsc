@@ -163,7 +163,12 @@ import Foreign.C.Error (Errno(..), eINPROGRESS, eINTR, errnoToIOError, getErrno,
                         throwErrnoIfMinus1, throwErrnoIfMinus1_,
                         throwErrnoIfMinus1Retry_)
 import Foreign.C.String (CString, withCString, peekCString)
-import Foreign.C.Types (CInt, CChar, CSize)
+import Foreign.C.Types (CChar)
+#if __GLASGOW_HASKELL__ >= 703
+import Foreign.C.Types (CInt(..), CSize(..))
+#else
+import Foreign.C.Types (CInt, CSize)
+#endif
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (maybeWith, with)
