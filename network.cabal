@@ -39,7 +39,7 @@ library
       Network.Socket.ByteString.MsgHdr
 
   build-depends:
-    base >= 3 && < 4.5,
+    base >= 3 && < 4.6,
     bytestring < 1.0,
     parsec >= 2.0 && < 3.2
 
