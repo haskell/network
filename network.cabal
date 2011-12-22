@@ -1,5 +1,5 @@
 name:           network
-version:        2.3.0.7
+version:        2.3.0.8
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
@@ -39,7 +39,7 @@ library
       Network.Socket.ByteString.MsgHdr
 
   build-depends:
-    base >= 3 && < 4.5,
+    base >= 3 && < 4.6,
     bytestring < 1.0,
     parsec >= 2.0 && < 3.2
 
