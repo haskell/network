@@ -59,51 +59,57 @@
 --------------------------------------------------------------------------------
 
 module Network.URI
-    ( -- * The URI type
+    (
+    -- * The URI type
       URI(..)
     , URIAuth(..)
     , nullURI
-      -- * Parsing
-    , parseURI                  -- :: String -> Maybe URI
-    , parseURIReference         -- :: String -> Maybe URI
-    , parseRelativeReference    -- :: String -> Maybe URI
-    , parseAbsoluteURI          -- :: String -> Maybe URI
-      -- * Test for strings containing various kinds of URI
+      
+    -- * Parsing
+    , parseURI
+    , parseURIReference
+    , parseRelativeReference
+    , parseAbsoluteURI
+      
+    -- * Test for strings containing various kinds of URI
     , isURI
     , isURIReference
     , isRelativeReference
     , isAbsoluteURI
     , isIPv6address
     , isIPv4address
-      -- * Relative URIs
-    , relativeTo                -- :: URI -> URI -> Maybe URI
-    , nonStrictRelativeTo       -- :: URI -> URI -> Maybe URI
-    , relativeFrom              -- :: URI -> URI -> URI
-      -- * Operations on URI strings
-      -- | Support for putting strings into URI-friendly
-      --   escaped format and getting them back again.
-      --   This can't be done transparently in all cases, because certain
-      --   characters have different meanings in different kinds of URI.
-      --   The URI spec [3], section 2.4, indicates that all URI components
-      --   should be escaped before they are assembled as a URI:
-      --   \"Once produced, a URI is always in its percent-encoded form\"
-    , uriToString               -- :: URI -> ShowS
-    , isReserved, isUnreserved  -- :: Char -> Bool
-    , isAllowedInURI, isUnescapedInURI  -- :: Char -> Bool
-    , escapeURIChar             -- :: (Char->Bool) -> Char -> String
-    , escapeURIString           -- :: (Char->Bool) -> String -> String
-    , unEscapeString            -- :: String -> String
+      
+    -- * Relative URIs
+    , relativeTo
+    , nonStrictRelativeTo
+    , relativeFrom
+      
+    -- * Operations on URI strings
+    -- | Support for putting strings into URI-friendly
+    --   escaped format and getting them back again.
+    --   This can't be done transparently in all cases, because certain
+    --   characters have different meanings in different kinds of URI.
+    --   The URI spec [3], section 2.4, indicates that all URI components
+    --   should be escaped before they are assembled as a URI:
+    --   \"Once produced, a URI is always in its percent-encoded form\"
+    , uriToString
+    , isReserved, isUnreserved
+    , isAllowedInURI, isUnescapedInURI
+    , escapeURIChar
+    , escapeURIString
+    , unEscapeString
+      
     -- * URI Normalization functions
-    , normalizeCase             -- :: String -> String
-    , normalizeEscape           -- :: String -> String
-    , normalizePathSegments     -- :: String -> String
+    , normalizeCase
+    , normalizeEscape
+    , normalizePathSegments
+      
     -- * Deprecated functions
-    , parseabsoluteURI          -- :: String -> Maybe URI
-    , escapeString              -- :: String -> (Char->Bool) -> String
-    , reserved, unreserved      -- :: Char -> Bool
+    , parseabsoluteURI
+    , escapeString
+    , reserved, unreserved
     , scheme, authority, path, query, fragment
-    )
-where
+    ) where
 
 import Text.ParserCombinators.Parsec
     ( GenParser(..), ParseError(..)
@@ -113,25 +119,21 @@ import Text.ParserCombinators.Parsec
     , unexpected
     )
 
-import Data.Char( ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt )
-
-import Debug.Trace( trace )
-
-import Numeric( showIntAtBase )
-
-import Data.Maybe( isJust )
-
-import Control.Monad( MonadPlus(..) )
+import Control.Monad (MonadPlus(..))
+import Data.Char (ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt)
+import Data.Maybe (isJust)
+import Debug.Trace (trace)
+import Numeric (showIntAtBase)
 
 #ifdef __GLASGOW_HASKELL__
-import Data.Typeable  ( Typeable )
+import Data.Typeable (Typeable)
 # if MIN_VERSION_base(4,0,0)
-import Data.Data      ( Data )
+import Data.Data (Data)
 # else
-import Data.Generics  ( Data )
+import Data.Generics (Data)
 # endif
 #else
-import Data.Typeable  ( Typeable(..), TyCon, mkTyCon, mkTyConApp )
+import Data.Typeable (Typeable(..), TyCon, mkTyCon, mkTyConApp)
 #endif
 
 ------------------------------------------------------------

@@ -23,24 +23,25 @@
 -- > import Network.Socket.ByteString
 --
 module Network.Socket.ByteString
-  ( -- * Send data to a socket
-    send
-  , sendAll
-  , sendTo
-  , sendAllTo
+    ( 
+    -- * Send data to a socket
+      send
+    , sendAll
+    , sendTo
+    , sendAllTo
 
     -- ** Vectored I/O
     -- $vectored
-  , sendMany
-  , sendManyTo
+    , sendMany
+    , sendManyTo
 
     -- * Receive data from a socket
-  , recv
-  , recvFrom
+    , recv
+    , recvFrom
 
     -- * Example
     -- $example
-  ) where
+    ) where
 
 import Control.Monad (liftM, when)
 import Data.ByteString (ByteString)

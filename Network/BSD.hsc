@@ -19,99 +19,101 @@
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
 ##include "Typeable.h"
 
-module Network.BSD (
-       
+module Network.BSD
+    (
     -- * Host names
-    HostName,
-    getHostName,	    -- :: IO HostName
+      HostName
+    , getHostName
 
-    HostEntry(..),
-    getHostByName,	    -- :: HostName -> IO HostEntry
-    getHostByAddr,	    -- :: HostAddress -> Family -> IO HostEntry
-    hostAddress,	    -- :: HostEntry -> HostAddress
+    , HostEntry(..)
+    , getHostByName
+    , getHostByAddr
+    , hostAddress
 
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getHostEntries,	    -- :: Bool -> IO [HostEntry]
+    , getHostEntries
+
     -- ** Low level functionality
-    setHostEntry,	    -- :: Bool -> IO ()
-    getHostEntry,	    -- :: IO HostEntry
-    endHostEntry,	    -- :: IO ()
+    , setHostEntry
+    , getHostEntry
+    , endHostEntry
 #endif
 
     -- * Service names
-    ServiceEntry(..),
-    ServiceName,
-    getServiceByName,	    -- :: ServiceName -> ProtocolName -> IO ServiceEntry
-    getServiceByPort,       -- :: PortNumber  -> ProtocolName -> IO ServiceEntry
-    getServicePortNumber,   -- :: ServiceName -> IO PortNumber
+    , ServiceEntry(..)
+    , ServiceName
+    , getServiceByName
+    , getServiceByPort
+    , getServicePortNumber
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getServiceEntries,	    -- :: Bool -> IO [ServiceEntry]
+    , getServiceEntries
+
     -- ** Low level functionality
-    getServiceEntry,	    -- :: IO ServiceEntry
-    setServiceEntry,	    -- :: Bool -> IO ()
-    endServiceEntry,	    -- :: IO ()
+    , getServiceEntry
+    , setServiceEntry
+    , endServiceEntry
 #endif
 
     -- * Protocol names
-    ProtocolName,
-    ProtocolNumber,
-    ProtocolEntry(..),
-    getProtocolByName,	    -- :: ProtocolName   -> IO ProtocolEntry
-    getProtocolByNumber,    -- :: ProtocolNumber -> IO ProtcolEntry
-    getProtocolNumber,	    -- :: ProtocolName   -> ProtocolNumber
-    defaultProtocol,        -- :: ProtocolNumber
+    , ProtocolName
+    , ProtocolNumber
+    , ProtocolEntry(..)
+    , getProtocolByName
+    , getProtocolByNumber
+    , getProtocolNumber
+    , defaultProtocol
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    getProtocolEntries,	    -- :: Bool -> IO [ProtocolEntry]
+    , getProtocolEntries
     -- ** Low level functionality
-    setProtocolEntry,	    -- :: Bool -> IO ()
-    getProtocolEntry,	    -- :: IO ProtocolEntry
-    endProtocolEntry,	    -- :: IO ()
+    , setProtocolEntry
+    , getProtocolEntry
+    , endProtocolEntry
 #endif
 
     -- * Port numbers
-    PortNumber,
+    , PortNumber
 
     -- * Network names
-    NetworkName,
-    NetworkAddr,
-    NetworkEntry(..)
+    , NetworkName
+    , NetworkAddr
+    , NetworkEntry(..)
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-    , getNetworkByName	    -- :: NetworkName -> IO NetworkEntry
-    , getNetworkByAddr      -- :: NetworkAddr -> Family -> IO NetworkEntry
-    , getNetworkEntries     -- :: Bool -> IO [NetworkEntry]
+    , getNetworkByName
+    , getNetworkByAddr
+    , getNetworkEntries
     -- ** Low level functionality
-    , setNetworkEntry	    -- :: Bool -> IO ()
-    , getNetworkEntry	    -- :: IO NetworkEntry
-    , endNetworkEntry	    -- :: IO ()
+    , setNetworkEntry
+    , getNetworkEntry
+    , endNetworkEntry
 #endif
     ) where
 
 #ifdef __HUGS__
-import Hugs.Prelude ( IOException(..), IOErrorType(..) )
+import Hugs.Prelude (IOException(..), IOErrorType(..))
 #endif
 import Network.Socket
 
-import Control.Concurrent 	( MVar, newMVar, withMVar )
+import Control.Concurrent (MVar, newMVar, withMVar)
 import Control.Exception (catch)
-import Foreign.C.Error ( throwErrnoIfMinus1, throwErrnoIfMinus1_ )
-import Foreign.C.String ( CString, peekCString, peekCStringLen, withCString )
+import Foreign.C.Error (throwErrnoIfMinus1, throwErrnoIfMinus1_)
+import Foreign.C.String (CString, peekCString, peekCStringLen, withCString)
 import Foreign.C.Types ( CChar, CShort )
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types ( CInt(..), CULong(..), CSize(..) )
 #else
 import Foreign.C.Types ( CInt, CULong, CSize )
 #endif
-import Foreign.Ptr ( Ptr, nullPtr )
-import Foreign.Storable ( Storable(..) )
-import Foreign.Marshal.Array ( allocaArray0, peekArray0 )
-import Foreign.Marshal.Utils ( with, fromBool )
+import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (Storable(..))
+import Foreign.Marshal.Array (allocaArray0, peekArray0)
+import Foreign.Marshal.Utils (with, fromBool)
 import Data.Typeable
 import Prelude hiding (catch)
 import System.IO.Error (ioeSetErrorString, mkIOError)
-import System.IO.Unsafe ( unsafePerformIO )
+import System.IO.Unsafe (unsafePerformIO)
 
 #ifdef __GLASGOW_HASKELL__
 # if __GLASGOW_HASKELL__ >= 611
@@ -121,7 +123,7 @@ import GHC.IOBase
 # endif
 #endif
 
-import Control.Monad ( liftM )
+import Control.Monad (liftM)
 
 -- ---------------------------------------------------------------------------
 -- Basic Types
@@ -178,9 +180,9 @@ instance Storable ServiceEntry where
 
 
 -- | Get service by name.
-getServiceByName :: ServiceName 	-- Service Name
-		 -> ProtocolName 	-- Protocol Name
-		 -> IO ServiceEntry	-- Service Entry
+getServiceByName :: ServiceName         -- Service Name
+                 -> ProtocolName        -- Protocol Name
+                 -> IO ServiceEntry     -- Service Entry
 getServiceByName name proto = withLock $ do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
@@ -209,7 +211,7 @@ getServicePortNumber name = do
     return port
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-getServiceEntry	:: IO ServiceEntry
+getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
    $ trySysCall c_getservent
@@ -217,12 +219,12 @@ getServiceEntry = withLock $ do
 
 foreign import ccall unsafe "getservent" c_getservent :: IO (Ptr ServiceEntry)
 
-setServiceEntry	:: Bool -> IO ()
+setServiceEntry :: Bool -> IO ()
 setServiceEntry flg = withLock $ trySysCall $ c_setservent (fromBool flg)
 
 foreign import ccall unsafe  "setservent" c_setservent :: CInt -> IO ()
 
-endServiceEntry	:: IO ()
+endServiceEntry :: IO ()
 endServiceEntry = withLock $ trySysCall $ c_endservent
 
 foreign import ccall unsafe  "endservent" c_endservent :: IO ()
@@ -305,15 +307,15 @@ getProtocolNumber proto = do
  return num
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
-getProtocolEntry :: IO ProtocolEntry	-- Next Protocol Entry from DB
+getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
-   		$ trySysCall c_getprotoent
+                $ trySysCall c_getprotoent
  peek ent
 
 foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
-setProtocolEntry :: Bool -> IO ()	-- Keep DB Open ?
+setProtocolEntry :: Bool -> IO ()       -- Keep DB Open ?
 setProtocolEntry flg = withLock $ trySysCall $ c_setprotoent (fromBool flg)
 
 foreign import ccall unsafe "setprotoent" c_setprotoent :: CInt -> IO ()
@@ -383,7 +385,7 @@ getHostByName :: HostName -> IO HostEntry
 getHostByName name = withLock $ do
   withCString name $ \ name_cstr -> do
    ent <- throwNoSuchThingIfNull "getHostByName" "no such host entry"
-    		$ trySysCall $ c_gethostbyname name_cstr
+                $ trySysCall $ c_gethostbyname name_cstr
    peek ent
 
 foreign import CALLCONV safe "gethostbyname" 
@@ -396,7 +398,7 @@ foreign import CALLCONV safe "gethostbyname"
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
  with addr $ \ ptr_addr -> withLock $ do
- throwNoSuchThingIfNull 	"getHostByAddr" "no such host entry"
+ throwNoSuchThingIfNull         "getHostByAddr" "no such host entry"
    $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 
@@ -406,7 +408,7 @@ foreign import CALLCONV safe "gethostbyaddr"
 #if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
- throwNoSuchThingIfNull 	"getHostEntry" "unable to retrieve host entry"
+ throwNoSuchThingIfNull         "getHostEntry" "unable to retrieve host entry"
    $ trySysCall $ c_gethostent
  >>= peek
 
@@ -548,7 +550,7 @@ foreign import CALLCONV unsafe "gethostname"
 
 getEntries :: IO a  -- read
            -> IO () -- at end
-	   -> IO [a]
+           -> IO [a]
 getEntries getOne atEnd = loop
   where
     loop = do

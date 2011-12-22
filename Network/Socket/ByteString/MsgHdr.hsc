@@ -2,8 +2,8 @@
 
 -- | Support module for the POSIX 'sendmsg' system call.
 module Network.Socket.ByteString.MsgHdr
-  ( MsgHdr(..)
-  ) where
+    ( MsgHdr(..)
+    ) where
 
 #include <sys/types.h>
 #include <sys/socket.h>

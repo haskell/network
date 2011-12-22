@@ -26,143 +26,140 @@
 
 -- In order to process this file, you need to have CALLCONV defined.
 
-module Network.Socket (
+module Network.Socket
+    (
     -- * Types
-    Socket(..),         -- instance Eq, Show
-    Family(..),         
-    SocketType(..),
-    SockAddr(..),
-    SocketStatus(..),
-    HostAddress,
+      Socket(..)
+    , Family(..)         
+    , SocketType(..)
+    , SockAddr(..)
+    , SocketStatus(..)
+    , HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
-    HostAddress6,
-    FlowInfo,
-    ScopeID,
+    , HostAddress6
+    , FlowInfo
+    , ScopeID
 #endif
-    ShutdownCmd(..),
-    ProtocolNumber,
-    defaultProtocol,        -- :: ProtocolNumber
-    PortNumber(..),
+    , ShutdownCmd(..)
+    , ProtocolNumber
+    , defaultProtocol
+    , PortNumber(..)
     -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
     -- this use and make the type abstract.
 
     -- * Address operations
 
-    HostName,
-    ServiceName,
+    , HostName
+    , ServiceName
 
 #if defined(IPV6_SOCKET_SUPPORT)
-    AddrInfo(..),
+    , AddrInfo(..)
 
-    AddrInfoFlag(..),
-    addrInfoFlagImplemented,-- :: AddrInfoFlag -> Bool
+    , AddrInfoFlag(..)
+    , addrInfoFlagImplemented
 
-    defaultHints,           -- :: AddrInfo
+    , defaultHints
 
-    getAddrInfo,            -- :: Maybe AddrInfo -> Maybe HostName -> Maybe ServiceName -> IO [AddrInfo]
+    , getAddrInfo
 
-    NameInfoFlag(..),
+    , NameInfoFlag(..)
 
-    getNameInfo,            -- :: [NameInfoFlag] -> Bool -> Bool -> SockAddr -> IO (Maybe HostName, Maybe ServiceName)
+    , getNameInfo
 #endif
 
     -- * Socket operations
-    socket,             -- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
+    , socket
 #if defined(DOMAIN_SOCKET_SUPPORT)
-    socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
+    , socketPair
 #endif
-    connect,            -- :: Socket -> SockAddr -> IO ()
-    bindSocket,         -- :: Socket -> SockAddr -> IO ()
-    listen,             -- :: Socket -> Int -> IO ()
-    accept,             -- :: Socket -> IO (Socket, SockAddr)
-    getPeerName,        -- :: Socket -> IO SockAddr
-    getSocketName,      -- :: Socket -> IO SockAddr
+    , connect
+    , bindSocket
+    , listen
+    , accept
+    , getPeerName
+    , getSocketName
 
 #ifdef HAVE_STRUCT_UCRED
     -- get the credentials of our domain socket peer.
-    getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
+    , getPeerCred
 #endif
 
-    socketPort,         -- :: Socket -> IO PortNumber
+    , socketPort
 
-    socketToHandle,     -- :: Socket -> IOMode -> IO Handle
+    , socketToHandle
 
     -- ** Sending and receiving data
     -- $sendrecv
-    sendTo,             -- :: Socket -> String -> SockAddr -> IO Int
-    sendBufTo,          -- :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
+    , sendTo
+    , sendBufTo
 
-    recvFrom,           -- :: Socket -> Int -> IO (String, Int, SockAddr)
-    recvBufFrom,        -- :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
+    , recvFrom
+    , recvBufFrom
     
-    send,               -- :: Socket -> String -> IO Int
-    recv,               -- :: Socket -> Int    -> IO String
-    recvLen,            -- :: Socket -> Int    -> IO (String, Int)
+    , send
+    , recv
+    , recvLen
 
-    inet_addr,          -- :: String -> IO HostAddress
-    inet_ntoa,          -- :: HostAddress -> IO String
+    , inet_addr
+    , inet_ntoa
 
-    shutdown,           -- :: Socket -> ShutdownCmd -> IO ()
-    sClose,             -- :: Socket -> IO ()
+    , shutdown
+    , sClose
 
     -- ** Predicates on sockets
-    sIsConnected,       -- :: Socket -> IO Bool
-    sIsBound,           -- :: Socket -> IO Bool
-    sIsListening,       -- :: Socket -> IO Bool 
-    sIsReadable,        -- :: Socket -> IO Bool
-    sIsWritable,        -- :: Socket -> IO Bool
+    , sIsConnected
+    , sIsBound
+    , sIsListening
+    , sIsReadable
+    , sIsWritable
 
     -- * Socket options
-    SocketOption(..),
-    getSocketOption,     -- :: Socket -> SocketOption -> IO Int
-    setSocketOption,     -- :: Socket -> SocketOption -> Int -> IO ()
+    , SocketOption(..)
+    , getSocketOption
+    , setSocketOption
 
     -- * File descriptor transmission
 #ifdef DOMAIN_SOCKET_SUPPORT
-    sendFd,              -- :: Socket -> CInt -> IO ()
-    recvFd,              -- :: Socket -> IO CInt
+    , sendFd
+    , recvFd
 
     -- Note: these two will disappear shortly
-    sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
-    recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
+    , sendAncillary
+    , recvAncillary
 
 #endif
 
     -- * Special constants
-    aNY_PORT,           -- :: PortNumber
-    iNADDR_ANY,         -- :: HostAddress
+    , aNY_PORT
+    , iNADDR_ANY
 #if defined(IPV6_SOCKET_SUPPORT)
-    iN6ADDR_ANY,        -- :: HostAddress6
+    , iN6ADDR_ANY
 #endif
-    sOMAXCONN,          -- :: Int
-    sOL_SOCKET,         -- :: Int
+    , sOMAXCONN
+    , sOL_SOCKET
 #ifdef SCM_RIGHTS
-    sCM_RIGHTS,         -- :: Int
+    , sCM_RIGHTS
 #endif
-    maxListenQueue,     -- :: Int
+    , maxListenQueue
 
     -- * Initialisation
-    withSocketsDo,      -- :: IO a -> IO a
+    , withSocketsDo
     
     -- * Very low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    fdSocket,           -- :: Socket -> CInt
-    mkSocket,           -- :: CInt   -> Family 
-                        -- -> SocketType
-                        -- -> ProtocolNumber
-                        -- -> SocketStatus
-                        -- -> IO Socket
+    , fdSocket
+    , mkSocket
 
     -- * Internal
 
     -- | The following are exported ONLY for use in the BSD module and
     -- should not be used anywhere else.
 
-    packFamily, unpackFamily,
-    packSocketType,
-    throwSocketErrorIfMinus1_
-
-) where
+    , packFamily
+    , unpackFamily
+    , packSocketType
+    , throwSocketErrorIfMinus1_
+    ) where
 
 #ifdef __HUGS__
 import Hugs.Prelude ( IOException(..), IOErrorType(..) )
@@ -179,24 +176,25 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
-import Data.Word ( Word8, Word16, Word32 )
-import Foreign.Ptr ( Ptr, castPtr, nullPtr, plusPtr )
-import Foreign.Storable ( Storable(..) )
+import Data.Word (Word8, Word16, Word32)
+import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
+import Foreign.Storable (Storable(..))
 import Foreign.C.Error
-import Foreign.C.String ( CString, withCString, peekCString, peekCStringLen, castCharToCChar )
-import Foreign.C.Types ( CUInt, CChar )
+import Foreign.C.String (CString, withCString, peekCString, peekCStringLen,
+                        castCharToCChar)
+import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types ( CInt(..), CSize(..) )
+import Foreign.C.Types (CInt(..), CSize(..))
 #else
-import Foreign.C.Types ( CInt, CSize )
+import Foreign.C.Types (CInt, CSize)
 #endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray, pokeArray, pokeArray0 )
 import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO
-import Control.Monad ( liftM, when )
-import Data.Ratio ( (%) )
+import Control.Monad (liftM, when)
+import Data.Ratio ((%))
 
 import qualified Control.Exception
 import Control.Concurrent.MVar
@@ -204,13 +202,13 @@ import Data.Typeable
 import System.IO.Error
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Conc         (threadWaitRead, threadWaitWrite)
+import GHC.Conc (threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
-import GHC.Conc         (closeFdWith)
+import GHC.Conc (closeFdWith)
 ##endif
 # if defined(mingw32_HOST_OS)
-import GHC.Conc         ( asyncDoProc )
-import Foreign( FunPtr )
+import GHC.Conc (asyncDoProc)
+import Foreign (FunPtr)
 # endif
 # if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Device

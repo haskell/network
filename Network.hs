@@ -22,50 +22,49 @@
 #define IPV6_SOCKET_SUPPORT 1
 #endif
 
-module Network (
+module Network
+    (
+    -- * Basic data types
+      Socket
+    , PortID(..)
+    , HostName
+    , PortNumber
 
-	-- * Basic data types
-	Socket,
-        PortID(..),
-	HostName,
-	PortNumber,	-- instance (Eq, Enum, Num, Real, Integral)
+    -- * Initialisation
+    , withSocketsDo
+    
+    -- * Server-side connections
+    , listenOn
+    , accept
+    , sClose
 
-	-- * Initialisation
-	withSocketsDo,  -- :: IO a   -> IO a
-	
-	-- * Server-side connections
-	listenOn,	-- :: PortID -> IO Socket
-	accept,		-- :: Socket -> IO (Handle, HostName, PortNumber)
-        sClose,		-- :: Socket -> IO ()
+    -- * Client-side connections
+    , connectTo
 
-	-- * Client-side connections
-	connectTo,	-- :: HostName -> PortID -> IO Handle
+    -- * Simple sending and receiving
+    {-$sendrecv-}
+    , sendTo
+    , recvFrom
 
-	-- * Simple sending and receiving
-	{-$sendrecv-}
-	sendTo,		-- :: HostName -> PortID -> String -> IO ()
-	recvFrom,	-- :: HostName -> PortID -> IO String
+    -- * Miscellaneous
+    , socketPort
 
-	-- * Miscellaneous
-	socketPort,	-- :: Socket -> IO PortID
+    -- * Networking Issues
+    -- ** Buffering
+    {-$buffering-}
 
-	-- * Networking Issues
-	-- ** Buffering
-	{-$buffering-}
+    -- ** Improving I\/O Performance over sockets
+    {-$performance-}
 
-	-- ** Improving I\/O Performance over sockets
-	{-$performance-}
-
-	-- ** @SIGPIPE@
-	{-$sigpipe-}
-
-       ) where
+    -- ** @SIGPIPE@
+    {-$sigpipe-}
+    ) where
 
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
-import Network.Socket hiding ( accept, socketPort, recvFrom, sendTo, PortNumber )
-import qualified Network.Socket as Socket ( accept )
+import Network.Socket hiding (accept, socketPort, recvFrom, sendTo, PortNumber)
+import qualified Network.Socket as Socket (accept)
 import System.IO
 import Prelude
 import qualified Control.Exception as Exception
@@ -79,10 +78,10 @@ import qualified Control.Exception as Exception
 -- signalling that the current hostname applies.
 
 data PortID = 
-	  Service String		-- Service Name eg "ftp"
-	| PortNumber PortNumber		-- User defined Port Number
+          Service String                -- Service Name eg "ftp"
+        | PortNumber PortNumber         -- User defined Port Number
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-	| UnixSocket String		-- Unix family socket in file system
+        | UnixSocket String             -- Unix family socket in file system
 #endif
 
 -- | Calling 'connectTo' creates a client side socket which is
@@ -90,9 +89,9 @@ data PortID =
 -- derived from the given port identifier.  If a port number is given
 -- then the result is always an internet family 'Stream' socket. 
 
-connectTo :: HostName		-- Hostname
-	  -> PortID 		-- Port Identifier
-	  -> IO Handle		-- Connected Socket
+connectTo :: HostName           -- Hostname
+          -> PortID             -- Port Identifier
+          -> IO Handle          -- Connected Socket
 
 #if defined(IPV6_SOCKET_SUPPORT)
 -- IPv6 and IPv4.
@@ -106,36 +105,36 @@ connectTo hostname (PortNumber port) = connect' hostname (show port)
 connectTo hostname (Service serv) = do
     proto <- getProtocolNumber "tcp"
     bracketOnError
-	(socket AF_INET Stream proto)
-	(sClose)  -- only done if there's an error
-	(\sock -> do
-          port	<- getServicePortNumber serv
-          he	<- getHostByName hostname
+        (socket AF_INET Stream proto)
+        (sClose)  -- only done if there's an error
+        (\sock -> do
+          port  <- getServicePortNumber serv
+          he    <- getHostByName hostname
           connect sock (SockAddrInet port (hostAddress he))
           socketToHandle sock ReadWriteMode
- 	)
+        )
 
 connectTo hostname (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
     bracketOnError
-	(socket AF_INET Stream proto)
-	(sClose)  -- only done if there's an error
+        (socket AF_INET Stream proto)
+        (sClose)  -- only done if there's an error
         (\sock -> do
-      	  he <- getHostByName hostname
-      	  connect sock (SockAddrInet port (hostAddress he))
-      	  socketToHandle sock ReadWriteMode
-	)
+          he <- getHostByName hostname
+          connect sock (SockAddrInet port (hostAddress he))
+          socketToHandle sock ReadWriteMode
+        )
 #endif
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 connectTo _ (UnixSocket path) = do
     bracketOnError
-	(socket AF_UNIX Stream 0)
-	(sClose)
-	(\sock -> do
+        (socket AF_UNIX Stream 0)
+        (sClose)
+        (\sock -> do
           connect sock (SockAddrUnix path)
           socketToHandle sock ReadWriteMode
-	)
+        )
 #endif
 
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -151,12 +150,12 @@ connect' host serv = do
   where
   tryToConnect addr =
     bracketOnError
-	(socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
-	(sClose)  -- only done if there's an error
-	(\sock -> do
+        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+        (sClose)  -- only done if there's an error
+        (\sock -> do
           connect sock (addrAddress addr)
           socketToHandle sock ReadWriteMode
- 	)
+        )
 #endif
 
 -- | Creates the server side socket which has been bound to the
@@ -171,8 +170,8 @@ connect' host serv = do
 -- If available, the 'IPv6Only' socket option is set to 0
 -- so that both IPv4 and IPv6 can be accepted with this socket.
 
-listenOn :: PortID 	-- ^ Port Identifier
-	 -> IO Socket	-- ^ Connected Socket
+listenOn :: PortID      -- ^ Port Identifier
+         -> IO Socket   -- ^ Connected Socket
 
 #if defined(IPV6_SOCKET_SUPPORT)
 -- IPv6 and IPv4.
@@ -187,39 +186,39 @@ listenOn (Service serv) = do
     proto <- getProtocolNumber "tcp"
     bracketOnError
         (socket AF_INET Stream proto)
-	(sClose)
-	(\sock -> do
-	    port    <- getServicePortNumber serv
-	    setSocketOption sock ReuseAddr 1
-	    bindSocket sock (SockAddrInet port iNADDR_ANY)
-	    listen sock maxListenQueue
-	    return sock
-	)
+        (sClose)
+        (\sock -> do
+            port    <- getServicePortNumber serv
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            listen sock maxListenQueue
+            return sock
+        )
 
 listenOn (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
     bracketOnError
-    	(socket AF_INET Stream proto)
-	(sClose)
-	(\sock -> do
-	    setSocketOption sock ReuseAddr 1
-	    bindSocket sock (SockAddrInet port iNADDR_ANY)
-	    listen sock maxListenQueue
-	    return sock
-	)
+        (socket AF_INET Stream proto)
+        (sClose)
+        (\sock -> do
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            listen sock maxListenQueue
+            return sock
+        )
 #endif
 
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
 listenOn (UnixSocket path) =
     bracketOnError
-    	(socket AF_UNIX Stream 0)
-	(sClose)
-	(\sock -> do
-	    setSocketOption sock ReuseAddr 1
-	    bindSocket sock (SockAddrUnix path)
-	    listen sock maxListenQueue
-	    return sock
-	)
+        (socket AF_UNIX Stream 0)
+        (sClose)
+        (\sock -> do
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (SockAddrUnix path)
+            listen sock maxListenQueue
+            return sock
+        )
 #endif
 
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -240,13 +239,13 @@ listen' serv = do
         addr = if null addrs' then head addrs else head addrs'
     bracketOnError
         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
-	(sClose)
-	(\sock -> do
-	    setSocketOption sock ReuseAddr 1
-	    bindSocket sock (addrAddress addr)
-	    listen sock maxListenQueue
-	    return sock
-	)
+        (sClose)
+        (\sock -> do
+            setSocketOption sock ReuseAddr 1
+            bindSocket sock (addrAddress addr)
+            listen sock maxListenQueue
+            return sock
+        )
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -260,22 +259,22 @@ listen' serv = do
 -- (this shouldn't be a problem, though). When using AF_UNIX, HostName
 -- will be set to the path of the socket and PortNumber to -1.
 --
-accept :: Socket 		-- ^ Listening Socket
+accept :: Socket                -- ^ Listening Socket
        -> IO (Handle,
-	      HostName,
-	      PortNumber)	-- ^ Triple of: read\/write 'Handle' for 
-				-- communicating with the client,
-			 	-- the 'HostName' of the peer socket, and
-				-- the 'PortNumber' of the remote connection.
+              HostName,
+              PortNumber)       -- ^ Triple of: read\/write 'Handle' for 
+                                -- communicating with the client,
+                                -- the 'HostName' of the peer socket, and
+                                -- the 'PortNumber' of the remote connection.
 accept sock@(MkSocket _ AF_INET _ _ _) = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
  peer <- catchIO
-	  (do 	
-	     (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
-	     return peer
-	  )
-	  (\e -> inet_ntoa haddr)
-		-- if getHostByName fails, we fall back to the IP address
+          (do   
+             (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
+             return peer
+          )
+          (\e -> inet_ntoa haddr)
+                -- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -317,18 +316,18 @@ returned. Their use is strongly discouraged except for small test-applications
 or invocations from the command line.
 -}
 
-sendTo :: HostName 	-- Hostname
-       -> PortID	-- Port Number
-       -> String	-- Message to send
+sendTo :: HostName      -- Hostname
+       -> PortID        -- Port Number
+       -> String        -- Message to send
        -> IO ()
 sendTo h p msg = do
   s <- connectTo h p
   hPutStr s msg
   hClose s
 
-recvFrom :: HostName 	-- Hostname
-	 -> PortID	-- Port Number
-	 -> IO String	-- Received Data
+recvFrom :: HostName    -- Hostname
+         -> PortID      -- Port Number
+         -> IO String   -- Received Data
 
 #if defined(IPV6_SOCKET_SUPPORT)
 recvFrom host port = do
@@ -367,7 +366,7 @@ recvFrom host port = do
          sClose s'
          waiting
       else do
-	h <- socketToHandle s' ReadMode
+        h <- socketToHandle s' ReadMode
         msg <- hGetContents h
         return msg
 
@@ -391,7 +390,7 @@ socketPort s = do
      SockAddrInet6 port _ _ _ -> PortNumber port
 #endif
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
-     SockAddrUnix path	      -> UnixSocket path
+     SockAddrUnix path        -> UnixSocket path
 #endif
 
 -- ---------------------------------------------------------------------------

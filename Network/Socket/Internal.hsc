@@ -20,42 +20,42 @@
 
 module Network.Socket.Internal
     (
-      -- * Socket addresses
-      HostAddress,
+    -- * Socket addresses
+      HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
-      HostAddress6,
-      FlowInfo,
-      ScopeID,
+    , HostAddress6
+    , FlowInfo
+    , ScopeID
 #endif
-      PortNumber(..),
-      SockAddr(..),
+    , PortNumber(..)
+    , SockAddr(..)
 
-      peekSockAddr,
-      pokeSockAddr,
-      sizeOfSockAddr,
-      sizeOfSockAddrByFamily,
-      withSockAddr,
-      withNewSockAddr,
+    , peekSockAddr
+    , pokeSockAddr
+    , sizeOfSockAddr
+    , sizeOfSockAddrByFamily
+    , withSockAddr
+    , withNewSockAddr
 
-      -- * Protocol families
-      Family(..),
+    -- * Protocol families
+    , Family(..)
 
-      -- * Socket error functions
+    -- * Socket error functions
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
-      c_getLastError,
+    , c_getLastError
 #endif
-      throwSocketError,
+    , throwSocketError
 
-      -- * Guards for socket operations that may fail
-      throwSocketErrorIfMinus1_,
-      throwSocketErrorIfMinus1Retry,
-      throwSocketErrorIfMinus1RetryMayBlock,
+    -- * Guards for socket operations that may fail
+    , throwSocketErrorIfMinus1_
+    , throwSocketErrorIfMinus1Retry
+    , throwSocketErrorIfMinus1RetryMayBlock
 
-      -- * Initialization
-      withSocketsDo,
+    -- * Initialization
+    , withSocketsDo
 
-      -- * Low-level helpers
-      zeroMemory,
+    -- * Low-level helpers
+    , zeroMemory
     ) where
 
 import Data.Bits ( (.|.), shiftL, shiftR )
