@@ -28,8 +28,8 @@
 
 module Network.Socket (
     -- * Types
-    Socket(..),		-- instance Eq, Show
-    Family(..),		
+    Socket(..),         -- instance Eq, Show
+    Family(..),         
     SocketType(..),
     SockAddr(..),
     SocketStatus(..),
@@ -43,8 +43,8 @@ module Network.Socket (
     ProtocolNumber,
     defaultProtocol,        -- :: ProtocolNumber
     PortNumber(..),
-	-- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
-	-- this use and make the type abstract.
+    -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
+    -- this use and make the type abstract.
 
     -- * Address operations
 
@@ -67,50 +67,50 @@ module Network.Socket (
 #endif
 
     -- * Socket operations
-    socket,		-- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
+    socket,             -- :: Family -> SocketType -> ProtocolNumber -> IO Socket 
 #if defined(DOMAIN_SOCKET_SUPPORT)
     socketPair,         -- :: Family -> SocketType -> ProtocolNumber -> IO (Socket, Socket)
 #endif
-    connect,		-- :: Socket -> SockAddr -> IO ()
-    bindSocket,		-- :: Socket -> SockAddr -> IO ()
-    listen,		-- :: Socket -> Int -> IO ()
-    accept,		-- :: Socket -> IO (Socket, SockAddr)
-    getPeerName,	-- :: Socket -> IO SockAddr
-    getSocketName,	-- :: Socket -> IO SockAddr
+    connect,            -- :: Socket -> SockAddr -> IO ()
+    bindSocket,         -- :: Socket -> SockAddr -> IO ()
+    listen,             -- :: Socket -> Int -> IO ()
+    accept,             -- :: Socket -> IO (Socket, SockAddr)
+    getPeerName,        -- :: Socket -> IO SockAddr
+    getSocketName,      -- :: Socket -> IO SockAddr
 
 #ifdef HAVE_STRUCT_UCRED
-	-- get the credentials of our domain socket peer.
+    -- get the credentials of our domain socket peer.
     getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
 #endif
 
-    socketPort,		-- :: Socket -> IO PortNumber
+    socketPort,         -- :: Socket -> IO PortNumber
 
-    socketToHandle,	-- :: Socket -> IOMode -> IO Handle
+    socketToHandle,     -- :: Socket -> IOMode -> IO Handle
 
     -- ** Sending and receiving data
     -- $sendrecv
-    sendTo,		-- :: Socket -> String -> SockAddr -> IO Int
+    sendTo,             -- :: Socket -> String -> SockAddr -> IO Int
     sendBufTo,          -- :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
 
-    recvFrom,		-- :: Socket -> Int -> IO (String, Int, SockAddr)
+    recvFrom,           -- :: Socket -> Int -> IO (String, Int, SockAddr)
     recvBufFrom,        -- :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
     
-    send,		-- :: Socket -> String -> IO Int
-    recv,		-- :: Socket -> Int    -> IO String
+    send,               -- :: Socket -> String -> IO Int
+    recv,               -- :: Socket -> Int    -> IO String
     recvLen,            -- :: Socket -> Int    -> IO (String, Int)
 
-    inet_addr,		-- :: String -> IO HostAddress
-    inet_ntoa,		-- :: HostAddress -> IO String
+    inet_addr,          -- :: String -> IO HostAddress
+    inet_ntoa,          -- :: HostAddress -> IO String
 
-    shutdown,		-- :: Socket -> ShutdownCmd -> IO ()
-    sClose,		-- :: Socket -> IO ()
+    shutdown,           -- :: Socket -> ShutdownCmd -> IO ()
+    sClose,             -- :: Socket -> IO ()
 
     -- ** Predicates on sockets
-    sIsConnected,	-- :: Socket -> IO Bool
-    sIsBound,		-- :: Socket -> IO Bool
-    sIsListening,	-- :: Socket -> IO Bool 
-    sIsReadable,	-- :: Socket -> IO Bool
-    sIsWritable,	-- :: Socket -> IO Bool
+    sIsConnected,       -- :: Socket -> IO Bool
+    sIsBound,           -- :: Socket -> IO Bool
+    sIsListening,       -- :: Socket -> IO Bool 
+    sIsReadable,        -- :: Socket -> IO Bool
+    sIsWritable,        -- :: Socket -> IO Bool
 
     -- * Socket options
     SocketOption(..),
@@ -122,36 +122,36 @@ module Network.Socket (
     sendFd,              -- :: Socket -> CInt -> IO ()
     recvFd,              -- :: Socket -> IO CInt
 
-      -- Note: these two will disappear shortly
+    -- Note: these two will disappear shortly
     sendAncillary,       -- :: Socket -> Int -> Int -> Int -> Ptr a -> Int -> IO ()
     recvAncillary,       -- :: Socket -> Int -> Int -> IO (Int,Int,Int,Ptr a)
 
 #endif
 
     -- * Special constants
-    aNY_PORT,		-- :: PortNumber
-    iNADDR_ANY,		-- :: HostAddress
+    aNY_PORT,           -- :: PortNumber
+    iNADDR_ANY,         -- :: HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
-    iN6ADDR_ANY,	-- :: HostAddress6
+    iN6ADDR_ANY,        -- :: HostAddress6
 #endif
-    sOMAXCONN,		-- :: Int
+    sOMAXCONN,          -- :: Int
     sOL_SOCKET,         -- :: Int
 #ifdef SCM_RIGHTS
     sCM_RIGHTS,         -- :: Int
 #endif
-    maxListenQueue,	-- :: Int
+    maxListenQueue,     -- :: Int
 
     -- * Initialisation
-    withSocketsDo,	-- :: IO a -> IO a
+    withSocketsDo,      -- :: IO a -> IO a
     
     -- * Very low level operations
-     -- in case you ever want to get at the underlying file descriptor..
+    -- in case you ever want to get at the underlying file descriptor..
     fdSocket,           -- :: Socket -> CInt
     mkSocket,           -- :: CInt   -> Family 
-    			-- -> SocketType
-			-- -> ProtocolNumber
-			-- -> SocketStatus
-			-- -> IO Socket
+                        -- -> SocketType
+                        -- -> ProtocolNumber
+                        -- -> SocketStatus
+                        -- -> IO Socket
 
     -- * Internal
 
@@ -204,12 +204,12 @@ import Data.Typeable
 import System.IO.Error
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Conc		(threadWaitRead, threadWaitWrite)
+import GHC.Conc         (threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
-import GHC.Conc		(closeFdWith)
+import GHC.Conc         (closeFdWith)
 ##endif
 # if defined(mingw32_HOST_OS)
-import GHC.Conc		( asyncDoProc )
+import GHC.Conc         ( asyncDoProc )
 import Foreign( FunPtr )
 # endif
 # if __GLASGOW_HASKELL__ >= 611
@@ -223,7 +223,7 @@ import GHC.Handle
 # endif
 import qualified System.Posix.Internals
 #else
-import System.IO.Unsafe	(unsafePerformIO)
+import System.IO.Unsafe (unsafePerformIO)
 #endif
 
 # if __GLASGOW_HASKELL__ >= 611
@@ -276,22 +276,22 @@ type ServiceName    = String
 -- invalid operations on sockets.
 
 data SocketStatus
-  -- Returned Status	Function called
-  = NotConnected	-- socket
-  | Bound		-- bindSocket
-  | Listening		-- listen
-  | Connected		-- connect/accept
+  -- Returned Status    Function called
+  = NotConnected        -- socket
+  | Bound               -- bindSocket
+  | Listening           -- listen
+  | Connected           -- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
   | Closed		-- sClose 
     deriving (Eq, Show, Typeable)
 
 data Socket
   = MkSocket
-	    CInt	         -- File Descriptor
-	    Family				  
-	    SocketType				  
-	    ProtocolNumber	 -- Protocol Number
-	    (MVar SocketStatus)  -- Status Flag
+            CInt                 -- File Descriptor
+            Family                                
+            SocketType                            
+            ProtocolNumber       -- Protocol Number
+            (MVar SocketStatus)  -- Status Flag
   deriving Typeable
 
 #if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
@@ -301,11 +301,11 @@ socket2FD  (MkSocket fd _ _ _ _) =
 #endif
 
 mkSocket :: CInt
-	 -> Family
-	 -> SocketType
-	 -> ProtocolNumber
-	 -> SocketStatus
-	 -> IO Socket
+         -> Family
+         -> SocketType
+         -> ProtocolNumber
+         -> SocketStatus
+         -> IO Socket
 mkSocket fd fam sType pNum stat = do
    mStat <- newMVar stat
    return (MkSocket fd fam sType pNum mStat)
@@ -315,7 +315,7 @@ instance Eq Socket where
 
 instance Show Socket where
   showsPrec n (MkSocket fd _ _ _ _) = 
-	showString "<socket: " . shows fd . showString ">"
+        showString "<socket: " . shows fd . showString ">"
 
 
 fdSocket :: Socket -> CInt
@@ -363,7 +363,7 @@ instance Real PortNumber where
 
 instance Integral PortNumber where
     quotRem a b = let (c,d) = quotRem (portNumberToInt a) (portNumberToInt b) in
-		  (intToPortNumber c, intToPortNumber d)
+                  (intToPortNumber c, intToPortNumber d)
     toInteger a = toInteger (portNumberToInt a)
 
 instance Storable PortNumber where
@@ -412,10 +412,10 @@ instance Show SockAddr where
 socket :: Family 	 -- Family Name (usually AF_INET)
        -> SocketType 	 -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
-       -> IO Socket	 -- Unconnected Socket
+       -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "socket" $
-		c_socket (packFamily family) (packSocketType stype) protocol
+                c_socket (packFamily family) (packSocketType stype) protocol
 #if !defined(__HUGS__)
 # if __GLASGOW_HASKELL__ < 611
     System.Posix.Internals.setNonBlockingFD fd
@@ -435,16 +435,16 @@ socket family stype protocol = do
 -- type, and protocol number are as for the 'socket' function above.
 -- Availability: Unix.
 #if defined(DOMAIN_SOCKET_SUPPORT)
-socketPair :: Family 	          -- Family Name (usually AF_INET or AF_INET6)
-           -> SocketType 	  -- Socket Type (usually Stream)
+socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
+           -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
     rc <- throwSocketErrorIfMinus1Retry "socketpair" $
-		c_socketpair (packFamily family)
-			     (packSocketType stype)
-			     protocol fdArr
+                c_socketpair (packFamily family)
+                             (packSocketType stype)
+                             protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr 
     s1 <- mkSocket fd1
     s2 <- mkSocket fd2
@@ -473,7 +473,7 @@ foreign import ccall unsafe "socketpair"
 -- same as that passed to 'socket'.  If the special port number
 -- 'aNY_PORT' is passed then the system assigns the next available
 -- use port.
-bindSocket :: Socket	-- Unconnected Socket
+bindSocket :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
 bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
@@ -481,7 +481,7 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
  if status /= NotConnected 
   then
    ioError (userError ("bindSocket: can't peform bind on socket in status " ++
-	 show status))
+         show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
    status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
@@ -498,48 +498,48 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
-   ioError (userError ("connect: can't peform connect on socket in status " ++
-         show currentStatus))
+    ioError (userError ("connect: can't peform connect on socket in status " ++
+        show currentStatus))
   else do
-   withSockAddr addr $ \p_addr sz -> do
+    withSockAddr addr $ \p_addr sz -> do
 
-   let  connectLoop = do
-       	   r <- c_connect s p_addr (fromIntegral sz)
-       	   if r == -1
-       	       then do 
+    let connectLoop = do
+           r <- c_connect s p_addr (fromIntegral sz)
+           if r == -1
+               then do 
 #if !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
-	       	       err <- getErrno
-		       case () of
-			 _ | err == eINTR       -> connectLoop
-			 _ | err == eINPROGRESS -> connectBlocked
---			 _ | err == eAGAIN      -> connectBlocked
-			 otherwise              -> throwSocketError "connect"
+                   err <- getErrno
+                   case () of
+                     _ | err == eINTR       -> connectLoop
+                     _ | err == eINPROGRESS -> connectBlocked
+--                   _ | err == eAGAIN      -> connectBlocked
+                     otherwise              -> throwSocketError "connect"
 #else
-		       rc <- c_getLastError
-		       case rc of
-		         10093 -> do -- WSANOTINITIALISED
-			   withSocketsDo (return ())
-	       	           r <- c_connect s p_addr (fromIntegral sz)
-	       	           if r == -1
-			    then throwSocketError "connect"
-			    else return r
-			 _ -> throwSocketError "connect"
+                   rc <- c_getLastError
+                   case rc of
+                     10093 -> do -- WSANOTINITIALISED
+                       withSocketsDo (return ())
+                       r <- c_connect s p_addr (fromIntegral sz)
+                       if r == -1
+                         then throwSocketError "connect"
+                         else return r
+                     _ -> throwSocketError "connect"
 #endif
-       	       else return r
+               else return r
 
-	connectBlocked = do 
+        connectBlocked = do 
 #if !defined(__HUGS__)
-	   threadWaitWrite (fromIntegral s)
+           threadWaitWrite (fromIntegral s)
 #endif
-	   err <- getSocketOption sock SoError
-	   if (err == 0)
-	   	then return 0
-	   	else do ioError (errnoToIOError "connect" 
-	   			(Errno (fromIntegral err))
-	   			Nothing Nothing)
+           err <- getSocketOption sock SoError
+           if (err == 0)
+                then return 0
+                else do ioError (errnoToIOError "connect" 
+                                (Errno (fromIntegral err))
+                                Nothing Nothing)
 
-   connectLoop
-   return Connected
+    connectLoop
+    return Connected
 
 -----------------------------------------------------------------------------
 -- Listen
@@ -548,17 +548,17 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
 listen :: Socket  -- Connected & Bound Socket
-       -> Int 	  -- Queue Length
+       -> Int     -- Queue Length
        -> IO ()
 listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
  modifyMVar_ socketStatus $ \ status -> do
  if status /= Bound 
    then
-    ioError (userError ("listen: can't peform listen on socket in status " ++
-          show status))
+     ioError (userError ("listen: can't peform listen on socket in status " ++
+         show status))
    else do
-    throwSocketErrorIfMinus1Retry "listen" (c_listen s (fromIntegral backlog))
-    return Listening
+     throwSocketErrorIfMinus1Retry "listen" (c_listen s (fromIntegral backlog))
+     return Listening
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -574,9 +574,9 @@ listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
-accept :: Socket			-- Queue Socket
-       -> IO (Socket,			-- Readable Socket
-	      SockAddr)			-- Peer details
+accept :: Socket                        -- Queue Socket
+       -> IO (Socket,                   -- Readable Socket
+              SockAddr)                 -- Peer details
 
 accept sock@(MkSocket s family stype protocol status) = do
  currentStatus <- readMVar status
@@ -584,32 +584,32 @@ accept sock@(MkSocket s family stype protocol status) = do
  if not okay
    then
      ioError (userError ("accept: can't perform accept on socket (" ++ (show (family,stype,protocol)) ++") in status " ++
-	 show currentStatus))
+         show currentStatus))
    else do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
      new_sock <-
-	if threaded 
-	   then with (fromIntegral sz) $ \ ptr_len ->
-		  throwErrnoIfMinus1Retry "Network.Socket.accept" $
-		    c_accept_safe s sockaddr ptr_len
-	   else do
-     		paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
-     		rc        <- asyncDoProc c_acceptDoProc paramData
-     		new_sock  <- c_acceptNewSock    paramData
-     		c_free paramData
-     		when (rc /= 0)
-     		     (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
-		return new_sock
+        if threaded 
+           then with (fromIntegral sz) $ \ ptr_len ->
+                  throwErrnoIfMinus1Retry "Network.Socket.accept" $
+                    c_accept_safe s sockaddr ptr_len
+           else do
+                paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
+                rc        <- asyncDoProc c_acceptDoProc paramData
+                new_sock  <- c_acceptNewSock    paramData
+                c_free paramData
+                when (rc /= 0)
+                     (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
+                return new_sock
 #else 
      with (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
 # if !defined(__HUGS__)
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
-			(threadWaitRead (fromIntegral s))
+                        (threadWaitRead (fromIntegral s))
 # endif
-			(c_accept s sockaddr ptr_len)
+                        (c_accept s sockaddr ptr_len)
 # if !defined(__HUGS__)
 #  if __GLASGOW_HASKELL__ < 611
      System.Posix.Internals.setNonBlockingFD new_sock
@@ -654,10 +654,10 @@ foreign import ccall unsafe "free"
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
-sendTo :: Socket	-- (possibly) bound/connected Socket
-       -> String	-- Data to send
+sendTo :: Socket        -- (possibly) bound/connected Socket
+       -> String        -- Data to send
        -> SockAddr
-       -> IO Int	-- Number of Bytes sent
+       -> IO Int        -- Number of Bytes sent
 sendTo sock xs addr = do
  withCString xs $ \str -> do
    sendBufTo sock str (length xs) addr
@@ -666,19 +666,19 @@ sendTo sock xs addr = do
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent.  Applications are responsible for
 -- ensuring that all data has been sent.
-sendBufTo :: Socket	       -- (possibly) bound/connected Socket
+sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
-          -> IO Int	       -- Number of Bytes sent
+          -> IO Int            -- Number of Bytes sent
 sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
 #if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "sendTo"
-	(threadWaitWrite (fromIntegral s)) $
+        (threadWaitWrite (fromIntegral s)) $
 #endif
-	c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
-			p_addr (fromIntegral sz)
+        c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
+                        p_addr (fromIntegral sz)
 
 -- | Receive data from the socket. The socket need not be in a
 -- connected state. Returns @(bytes, nbytes, address)@ where @bytes@
@@ -709,27 +709,27 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
  | otherwise   = 
     withNewSockAddr family $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
-      	poke ptr_len (fromIntegral sz)
+        poke ptr_len (fromIntegral sz)
         len <- 
 #if !defined(__HUGS__)
-	       throwSocketErrorIfMinus1RetryMayBlock "recvFrom"
-        	   (threadWaitRead (fromIntegral s)) $
+               throwSocketErrorIfMinus1RetryMayBlock "recvFrom"
+                   (threadWaitRead (fromIntegral s)) $
 #endif
-        	   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
-				ptr_addr ptr_len
+                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
+                                ptr_addr ptr_len
         let len' = fromIntegral len
-	if len' == 0
-	 then ioError (mkEOFError "Network.Socket.recvFrom")
-	 else do
-   	   flg <- sIsConnected sock
-	     -- For at least one implementation (WinSock 2), recvfrom() ignores
-	     -- filling in the sockaddr for connected TCP sockets. Cope with 
-	     -- this by using getPeerName instead.
-	   sockaddr <- 
-		if flg then
-		   getPeerName sock
-		else
-		   peekSockAddr ptr_addr 
+        if len' == 0
+         then ioError (mkEOFError "Network.Socket.recvFrom")
+         else do
+           flg <- sIsConnected sock
+             -- For at least one implementation (WinSock 2), recvfrom() ignores
+             -- filling in the sockaddr for connected TCP sockets. Cope with 
+             -- this by using getPeerName instead.
+           sockaddr <- 
+                if flg then
+                   getPeerName sock
+                else
+                   peekSockAddr ptr_addr 
            return (len', sockaddr)
 
 -----------------------------------------------------------------------------
@@ -738,9 +738,9 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
 -- responsible for ensuring that all data has been sent.
-send :: Socket	-- Bound/Connected Socket
-     -> String	-- Data to send
-     -> IO Int	-- Number of Bytes sent
+send :: Socket  -- Bound/Connected Socket
+     -> String  -- Data to send
+     -> IO Int  -- Number of Bytes sent
 send sock@(MkSocket s _family _stype _protocol status) xs = do
  let len = length xs
  withCString xs $ \str -> do
@@ -766,9 +766,9 @@ send sock@(MkSocket s _family _stype _protocol status) xs = do
 #else
 # if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "send"
-	(threadWaitWrite (fromIntegral s)) $
+        (threadWaitWrite (fromIntegral s)) $
 # endif
-	c_send s str (fromIntegral len) 0{-flags-} 
+        c_send s str (fromIntegral len) 0{-flags-} 
 #endif
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -801,17 +801,17 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
 #endif
 #else
 # if !defined(__HUGS__)
-	       throwSocketErrorIfMinus1RetryMayBlock "recv"
-        	   (threadWaitRead (fromIntegral s)) $
+               throwSocketErrorIfMinus1RetryMayBlock "recv"
+                   (threadWaitRead (fromIntegral s)) $
 # endif
-        	   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
+                   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
 #endif
         let len' = fromIntegral len
-	if len' == 0
-	 then ioError (mkEOFError "Network.Socket.recv")
-	 else do
-	   s <- peekCStringLen (castPtr ptr,len')
-	   return (s, len')
+        if len' == 0
+         then ioError (mkEOFError "Network.Socket.recv")
+         else do
+           s <- peekCStringLen (castPtr ptr,len')
+           return (s, len')
 
 -- ---------------------------------------------------------------------------
 -- socketPort
@@ -820,8 +820,8 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
 -- determined by calling $port$, is generally only useful when bind
 -- was given $aNY\_PORT$.
 
-socketPort :: Socket		-- Connected & Bound Socket
-	   -> IO PortNumber	-- Port Number of Socket
+socketPort :: Socket            -- Connected & Bound Socket
+           -> IO PortNumber     -- Port Number of Socket
 socketPort sock@(MkSocket _ AF_INET _ _ _) = do
     (SockAddrInet port _) <- getSocketName sock
     return port
@@ -988,7 +988,7 @@ packSocketOption so =
     NoDelay       -> #const TCP_NODELAY
 #endif
 #ifdef SO_LINGER
-    Linger	  -> #const SO_LINGER
+    Linger        -> #const SO_LINGER
 #endif
 #ifdef SO_REUSEPORT
     ReusePort     -> #const SO_REUSEPORT
@@ -1013,25 +1013,25 @@ packSocketOption so =
 #endif
 
 setSocketOption :: Socket 
-		-> SocketOption -- Option Name
-		-> Int		-- Option Value
-		-> IO ()
+                -> SocketOption -- Option Name
+                -> Int          -- Option Value
+                -> IO ()
 setSocketOption (MkSocket s _ _ _ _) so v = do
    with (fromIntegral v) $ \ptr_v -> do
    throwErrnoIfMinus1_ "setSocketOption" $
        c_setsockopt s (socketOptLevel so) (packSocketOption so) ptr_v 
-	  (fromIntegral (sizeOf v))
+          (fromIntegral (sizeOf v))
    return ()
 
 
 getSocketOption :: Socket
-		-> SocketOption  -- Option Name
-		-> IO Int	 -- Option Value
+                -> SocketOption  -- Option Name
+                -> IO Int        -- Option Value
 getSocketOption (MkSocket s _ _ _ _) so = do
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwErrnoIfMinus1 "getSocketOption" $
-	 c_getsockopt s (socketOptLevel so) (packSocketOption so) ptr_v ptr_sz
+         c_getsockopt s (socketOptLevel so) (packSocketOption so) ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
 
@@ -1088,12 +1088,12 @@ recvFd sock = do
 
 
 sendAncillary :: Socket
-	      -> Int
-	      -> Int
-	      -> Int
-	      -> Ptr a
-	      -> Int
-	      -> IO ()
+              -> Int
+              -> Int
+              -> Int
+              -> Ptr a
+              -> Int
+              -> IO ()
 sendAncillary sock level ty flags datum len = do
   let fd = fdSocket sock
   _ <-
@@ -1102,13 +1102,13 @@ sendAncillary sock level ty flags datum len = do
      (threadWaitWrite (fromIntegral fd)) $
 #endif
      c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
-     			(fromIntegral flags) datum (fromIntegral len)
+                        (fromIntegral flags) datum (fromIntegral len)
   return ()
 
 recvAncillary :: Socket
-	      -> Int
-	      -> Int
-	      -> IO (Int,Int,Ptr a,Int)
+              -> Int
+              -> Int
+              -> IO (Int,Int,Ptr a,Int)
 recvAncillary sock flags len = do
   let fd = fdSocket sock
   alloca      $ \ ptr_len   ->
@@ -1121,7 +1121,7 @@ recvAncillary sock flags len = do
         throwSocketErrorIfMinus1RetryMayBlock "recvAncillary" 
             (threadWaitRead (fromIntegral fd)) $
 #endif
-	    c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
+            c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
       len <- fromIntegral `liftM` peek ptr_len
       lev <- fromIntegral `liftM` peek ptr_lev
       ty  <- fromIntegral `liftM` peek ptr_ty
@@ -1150,19 +1150,19 @@ A calling sequence table for the main functions is shown in the table below.
 \hline
 {\bf Precedes} & & & & & & & \\
 \hline 
-socket &	&	  &	       &	&	 &	& \\
+socket &        &         &            &        &        &      & \\
 \hline
-connect & +	&	  &	       &	&	 &	& \\
+connect & +     &         &            &        &        &      & \\
 \hline
-bindSocket & +	&	  &	       &	&	 &	& \\
+bindSocket & +  &         &            &        &        &      & \\
 \hline
-listen &	&	  & +	       &	&	 &	& \\
+listen &        &         & +          &        &        &      & \\
 \hline
-accept &	&	  &	       &  +	&	 &	& \\
+accept &        &         &            &  +     &        &      & \\
 \hline
-read   &	&   +	  &	       &  +	&  +	 &  +	& + \\
+read   &        &   +     &            &  +     &  +     &  +   & + \\
 \hline
-write  &	&   +	  &	       &  +	&  +	 &  +	& + \\
+write  &        &   +     &            &  +     &  +     &  +   & + \\
 \hline
 \end{tabular}
 \caption{Sequence Table for Major functions of Socket}
@@ -1174,120 +1174,120 @@ write  &	&   +	  &	       &  +	&  +	 &  +	& + \\
 -- ---------------------------------------------------------------------------
 -- OS Dependent Definitions
     
-unpackFamily	:: CInt -> Family
-packFamily	:: Family -> CInt
+unpackFamily    :: CInt -> Family
+packFamily      :: Family -> CInt
 
-packSocketType	:: SocketType -> CInt
+packSocketType  :: SocketType -> CInt
 unpackSocketType:: CInt -> SocketType
 
 ------ ------
-			
+                        
 packFamily f = case f of
-	AF_UNSPEC -> #const AF_UNSPEC
+        AF_UNSPEC -> #const AF_UNSPEC
 #ifdef AF_UNIX
-	AF_UNIX -> #const AF_UNIX
+        AF_UNIX -> #const AF_UNIX
 #endif
 #ifdef AF_INET
-	AF_INET -> #const AF_INET
+        AF_INET -> #const AF_INET
 #endif
 #ifdef AF_INET6
         AF_INET6 -> #const AF_INET6
 #endif
 #ifdef AF_IMPLINK
-	AF_IMPLINK -> #const AF_IMPLINK
+        AF_IMPLINK -> #const AF_IMPLINK
 #endif
 #ifdef AF_PUP
-	AF_PUP -> #const AF_PUP
+        AF_PUP -> #const AF_PUP
 #endif
 #ifdef AF_CHAOS
-	AF_CHAOS -> #const AF_CHAOS
+        AF_CHAOS -> #const AF_CHAOS
 #endif
 #ifdef AF_NS
-	AF_NS -> #const AF_NS
+        AF_NS -> #const AF_NS
 #endif
 #ifdef AF_NBS
-	AF_NBS -> #const AF_NBS
+        AF_NBS -> #const AF_NBS
 #endif
 #ifdef AF_ECMA
-	AF_ECMA -> #const AF_ECMA
+        AF_ECMA -> #const AF_ECMA
 #endif
 #ifdef AF_DATAKIT
-	AF_DATAKIT -> #const AF_DATAKIT
+        AF_DATAKIT -> #const AF_DATAKIT
 #endif
 #ifdef AF_CCITT
-	AF_CCITT -> #const AF_CCITT
+        AF_CCITT -> #const AF_CCITT
 #endif
 #ifdef AF_SNA
-	AF_SNA -> #const AF_SNA
+        AF_SNA -> #const AF_SNA
 #endif
 #ifdef AF_DECnet
-	AF_DECnet -> #const AF_DECnet
+        AF_DECnet -> #const AF_DECnet
 #endif
 #ifdef AF_DLI
-	AF_DLI -> #const AF_DLI
+        AF_DLI -> #const AF_DLI
 #endif
 #ifdef AF_LAT
-	AF_LAT -> #const AF_LAT
+        AF_LAT -> #const AF_LAT
 #endif
 #ifdef AF_HYLINK
-	AF_HYLINK -> #const AF_HYLINK
+        AF_HYLINK -> #const AF_HYLINK
 #endif
 #ifdef AF_APPLETALK
-	AF_APPLETALK -> #const AF_APPLETALK
+        AF_APPLETALK -> #const AF_APPLETALK
 #endif
 #ifdef AF_ROUTE
-	AF_ROUTE -> #const AF_ROUTE
+        AF_ROUTE -> #const AF_ROUTE
 #endif
 #ifdef AF_NETBIOS
-	AF_NETBIOS -> #const AF_NETBIOS
+        AF_NETBIOS -> #const AF_NETBIOS
 #endif
 #ifdef AF_NIT
-	AF_NIT -> #const AF_NIT
+        AF_NIT -> #const AF_NIT
 #endif
 #ifdef AF_802
-	AF_802 -> #const AF_802
+        AF_802 -> #const AF_802
 #endif
 #ifdef AF_ISO
-	AF_ISO -> #const AF_ISO
+        AF_ISO -> #const AF_ISO
 #endif
 #ifdef AF_OSI
-	AF_OSI -> #const AF_OSI
+        AF_OSI -> #const AF_OSI
 #endif
 #ifdef AF_NETMAN
-	AF_NETMAN -> #const AF_NETMAN
+        AF_NETMAN -> #const AF_NETMAN
 #endif
 #ifdef AF_X25
-	AF_X25 -> #const AF_X25
+        AF_X25 -> #const AF_X25
 #endif
 #ifdef AF_AX25
-	AF_AX25 -> #const AF_AX25
+        AF_AX25 -> #const AF_AX25
 #endif
 #ifdef AF_OSINET
-	AF_OSINET -> #const AF_OSINET
+        AF_OSINET -> #const AF_OSINET
 #endif
 #ifdef AF_GOSSIP
-	AF_GOSSIP -> #const AF_GOSSIP
+        AF_GOSSIP -> #const AF_GOSSIP
 #endif
 #ifdef AF_IPX
-	AF_IPX -> #const AF_IPX
+        AF_IPX -> #const AF_IPX
 #endif
 #ifdef Pseudo_AF_XTP
-	Pseudo_AF_XTP -> #const Pseudo_AF_XTP
+        Pseudo_AF_XTP -> #const Pseudo_AF_XTP
 #endif
 #ifdef AF_CTF
-	AF_CTF -> #const AF_CTF
+        AF_CTF -> #const AF_CTF
 #endif
 #ifdef AF_WAN
-	AF_WAN -> #const AF_WAN
+        AF_WAN -> #const AF_WAN
 #endif
 #ifdef AF_SDL
         AF_SDL -> #const AF_SDL
 #endif
 #ifdef AF_NETWARE
-        AF_NETWARE -> #const AF_NETWARE	
+        AF_NETWARE -> #const AF_NETWARE 
 #endif
 #ifdef AF_NDD
-        AF_NDD -> #const AF_NDD		
+        AF_NDD -> #const AF_NDD         
 #endif
 #ifdef AF_INTF
         AF_INTF -> #const AF_INTF
@@ -1326,7 +1326,7 @@ packFamily f = case f of
         AF_ENCAP -> #const AF_ENCAP 
 #endif
 #ifdef AF_LINK
-	AF_LINK -> #const AF_LINK
+        AF_LINK -> #const AF_LINK
 #endif
 #ifdef AF_RAW
         AF_RAW -> #const AF_RAW
@@ -1335,158 +1335,158 @@ packFamily f = case f of
         AF_RIF -> #const AF_RIF
 #endif
 #ifdef AF_NETROM
-	AF_NETROM -> #const AF_NETROM
+        AF_NETROM -> #const AF_NETROM
 #endif
 #ifdef AF_BRIDGE
-	AF_BRIDGE -> #const AF_BRIDGE
+        AF_BRIDGE -> #const AF_BRIDGE
 #endif
 #ifdef AF_ATMPVC
-	AF_ATMPVC -> #const AF_ATMPVC
+        AF_ATMPVC -> #const AF_ATMPVC
 #endif
 #ifdef AF_ROSE
-	AF_ROSE -> #const AF_ROSE
+        AF_ROSE -> #const AF_ROSE
 #endif
 #ifdef AF_NETBEUI
-	AF_NETBEUI -> #const AF_NETBEUI
+        AF_NETBEUI -> #const AF_NETBEUI
 #endif
 #ifdef AF_SECURITY
-	AF_SECURITY -> #const AF_SECURITY
+        AF_SECURITY -> #const AF_SECURITY
 #endif
 #ifdef AF_PACKET
-	AF_PACKET -> #const AF_PACKET
+        AF_PACKET -> #const AF_PACKET
 #endif
 #ifdef AF_ASH
-	AF_ASH -> #const AF_ASH
+        AF_ASH -> #const AF_ASH
 #endif
 #ifdef AF_ECONET
-	AF_ECONET -> #const AF_ECONET
+        AF_ECONET -> #const AF_ECONET
 #endif
 #ifdef AF_ATMSVC
-	AF_ATMSVC -> #const AF_ATMSVC
+        AF_ATMSVC -> #const AF_ATMSVC
 #endif
 #ifdef AF_IRDA
-	AF_IRDA -> #const AF_IRDA
+        AF_IRDA -> #const AF_IRDA
 #endif
 #ifdef AF_PPPOX
-	AF_PPPOX -> #const AF_PPPOX
+        AF_PPPOX -> #const AF_PPPOX
 #endif
 #ifdef AF_WANPIPE
-	AF_WANPIPE -> #const AF_WANPIPE
+        AF_WANPIPE -> #const AF_WANPIPE
 #endif
 #ifdef AF_BLUETOOTH
-	AF_BLUETOOTH -> #const AF_BLUETOOTH
+        AF_BLUETOOTH -> #const AF_BLUETOOTH
 #endif
 
 --------- ----------
 
 unpackFamily f = case f of
-	(#const AF_UNSPEC) -> AF_UNSPEC
+        (#const AF_UNSPEC) -> AF_UNSPEC
 #ifdef AF_UNIX
-	(#const AF_UNIX) -> AF_UNIX
+        (#const AF_UNIX) -> AF_UNIX
 #endif
 #ifdef AF_INET
-	(#const AF_INET) -> AF_INET
+        (#const AF_INET) -> AF_INET
 #endif
 #ifdef AF_INET6
         (#const AF_INET6) -> AF_INET6
 #endif
 #ifdef AF_IMPLINK
-	(#const AF_IMPLINK) -> AF_IMPLINK
+        (#const AF_IMPLINK) -> AF_IMPLINK
 #endif
 #ifdef AF_PUP
-	(#const AF_PUP) -> AF_PUP
+        (#const AF_PUP) -> AF_PUP
 #endif
 #ifdef AF_CHAOS
-	(#const AF_CHAOS) -> AF_CHAOS
+        (#const AF_CHAOS) -> AF_CHAOS
 #endif
 #ifdef AF_NS
-	(#const AF_NS) -> AF_NS
+        (#const AF_NS) -> AF_NS
 #endif
 #ifdef AF_NBS
-	(#const AF_NBS) -> AF_NBS
+        (#const AF_NBS) -> AF_NBS
 #endif
 #ifdef AF_ECMA
-	(#const AF_ECMA) -> AF_ECMA
+        (#const AF_ECMA) -> AF_ECMA
 #endif
 #ifdef AF_DATAKIT
-	(#const AF_DATAKIT) -> AF_DATAKIT
+        (#const AF_DATAKIT) -> AF_DATAKIT
 #endif
 #ifdef AF_CCITT
-	(#const AF_CCITT) -> AF_CCITT
+        (#const AF_CCITT) -> AF_CCITT
 #endif
 #ifdef AF_SNA
-	(#const AF_SNA) -> AF_SNA
+        (#const AF_SNA) -> AF_SNA
 #endif
 #ifdef AF_DECnet
-	(#const AF_DECnet) -> AF_DECnet
+        (#const AF_DECnet) -> AF_DECnet
 #endif
 #ifdef AF_DLI
-	(#const AF_DLI) -> AF_DLI
+        (#const AF_DLI) -> AF_DLI
 #endif
 #ifdef AF_LAT
-	(#const AF_LAT) -> AF_LAT
+        (#const AF_LAT) -> AF_LAT
 #endif
 #ifdef AF_HYLINK
-	(#const AF_HYLINK) -> AF_HYLINK
+        (#const AF_HYLINK) -> AF_HYLINK
 #endif
 #ifdef AF_APPLETALK
-	(#const AF_APPLETALK) -> AF_APPLETALK
+        (#const AF_APPLETALK) -> AF_APPLETALK
 #endif
 #ifdef AF_ROUTE
-	(#const AF_ROUTE) -> AF_ROUTE
+        (#const AF_ROUTE) -> AF_ROUTE
 #endif
 #ifdef AF_NETBIOS
-	(#const AF_NETBIOS) -> AF_NETBIOS
+        (#const AF_NETBIOS) -> AF_NETBIOS
 #endif
 #ifdef AF_NIT
-	(#const AF_NIT) -> AF_NIT
+        (#const AF_NIT) -> AF_NIT
 #endif
 #ifdef AF_802
-	(#const AF_802) -> AF_802
+        (#const AF_802) -> AF_802
 #endif
 #ifdef AF_ISO
-	(#const AF_ISO) -> AF_ISO
+        (#const AF_ISO) -> AF_ISO
 #endif
 #ifdef AF_OSI
 # if (!defined(AF_ISO)) || (defined(AF_ISO) && (AF_ISO != AF_OSI))
-	(#const AF_OSI) -> AF_OSI
+        (#const AF_OSI) -> AF_OSI
 # endif
 #endif
 #ifdef AF_NETMAN
-	(#const AF_NETMAN) -> AF_NETMAN
+        (#const AF_NETMAN) -> AF_NETMAN
 #endif
 #ifdef AF_X25
-	(#const AF_X25) -> AF_X25
+        (#const AF_X25) -> AF_X25
 #endif
 #ifdef AF_AX25
-	(#const AF_AX25) -> AF_AX25
+        (#const AF_AX25) -> AF_AX25
 #endif
 #ifdef AF_OSINET
-	(#const AF_OSINET) -> AF_OSINET
+        (#const AF_OSINET) -> AF_OSINET
 #endif
 #ifdef AF_GOSSIP
-	(#const AF_GOSSIP) -> AF_GOSSIP
+        (#const AF_GOSSIP) -> AF_GOSSIP
 #endif
 #if defined(AF_IPX) && (!defined(AF_NS) || AF_NS != AF_IPX)
-	(#const AF_IPX) -> AF_IPX
+        (#const AF_IPX) -> AF_IPX
 #endif
 #ifdef Pseudo_AF_XTP
-	(#const Pseudo_AF_XTP) -> Pseudo_AF_XTP
+        (#const Pseudo_AF_XTP) -> Pseudo_AF_XTP
 #endif
 #ifdef AF_CTF
-	(#const AF_CTF) -> AF_CTF
+        (#const AF_CTF) -> AF_CTF
 #endif
 #ifdef AF_WAN
-	(#const AF_WAN) -> AF_WAN
+        (#const AF_WAN) -> AF_WAN
 #endif
 #ifdef AF_SDL
         (#const AF_SDL) -> AF_SDL
 #endif
 #ifdef AF_NETWARE
-        (#const AF_NETWARE) -> AF_NETWARE	
+        (#const AF_NETWARE) -> AF_NETWARE       
 #endif
 #ifdef AF_NDD
-        (#const AF_NDD) -> AF_NDD		
+        (#const AF_NDD) -> AF_NDD               
 #endif
 #ifdef AF_INTF
         (#const AF_INTF) -> AF_INTF
@@ -1525,7 +1525,7 @@ unpackFamily f = case f of
         (#const AF_ENCAP) -> AF_ENCAP 
 #endif
 #ifdef AF_LINK
-	(#const AF_LINK) -> AF_LINK
+        (#const AF_LINK) -> AF_LINK
 #endif
 #ifdef AF_RAW
         (#const AF_RAW) -> AF_RAW
@@ -1534,48 +1534,48 @@ unpackFamily f = case f of
         (#const AF_RIF) -> AF_RIF
 #endif
 #ifdef AF_NETROM
-	(#const AF_NETROM) -> AF_NETROM
+        (#const AF_NETROM) -> AF_NETROM
 #endif
 #ifdef AF_BRIDGE
-	(#const AF_BRIDGE) -> AF_BRIDGE
+        (#const AF_BRIDGE) -> AF_BRIDGE
 #endif
 #ifdef AF_ATMPVC
-	(#const AF_ATMPVC) -> AF_ATMPVC
+        (#const AF_ATMPVC) -> AF_ATMPVC
 #endif
 #ifdef AF_ROSE
-	(#const AF_ROSE) -> AF_ROSE
+        (#const AF_ROSE) -> AF_ROSE
 #endif
 #ifdef AF_NETBEUI
-	(#const AF_NETBEUI) -> AF_NETBEUI
+        (#const AF_NETBEUI) -> AF_NETBEUI
 #endif
 #ifdef AF_SECURITY
-	(#const AF_SECURITY) -> AF_SECURITY
+        (#const AF_SECURITY) -> AF_SECURITY
 #endif
 #ifdef AF_PACKET
-	(#const AF_PACKET) -> AF_PACKET
+        (#const AF_PACKET) -> AF_PACKET
 #endif
 #ifdef AF_ASH
-	(#const AF_ASH) -> AF_ASH
+        (#const AF_ASH) -> AF_ASH
 #endif
 #ifdef AF_ECONET
-	(#const AF_ECONET) -> AF_ECONET
+        (#const AF_ECONET) -> AF_ECONET
 #endif
 #ifdef AF_ATMSVC
-	(#const AF_ATMSVC) -> AF_ATMSVC
+        (#const AF_ATMSVC) -> AF_ATMSVC
 #endif
 #ifdef AF_IRDA
-	(#const AF_IRDA) -> AF_IRDA
+        (#const AF_IRDA) -> AF_IRDA
 #endif
 #ifdef AF_PPPOX
-	(#const AF_PPPOX) -> AF_PPPOX
+        (#const AF_PPPOX) -> AF_PPPOX
 #endif
 #ifdef AF_WANPIPE
-	(#const AF_WANPIPE) -> AF_WANPIPE
+        (#const AF_WANPIPE) -> AF_WANPIPE
 #endif
 #ifdef AF_BLUETOOTH
-	(#const AF_BLUETOOTH) -> AF_BLUETOOTH
+        (#const AF_BLUETOOTH) -> AF_BLUETOOTH
 #endif
-	unknown -> error ("Network.Socket.unpackFamily: unknown address " ++
+        unknown -> error ("Network.Socket.unpackFamily: unknown address " ++
                           "family " ++ show unknown)
 
 -- Socket Types.
@@ -1585,58 +1585,58 @@ unpackFamily f = case f of
 -- This data type might have different constructors depending on what is
 -- supported by the operating system.
 data SocketType
-	= NoSocketType
+        = NoSocketType
 #ifdef SOCK_STREAM
-	| Stream 
+        | Stream 
 #endif
 #ifdef SOCK_DGRAM
-	| Datagram
+        | Datagram
 #endif
 #ifdef SOCK_RAW
-	| Raw 
+        | Raw 
 #endif
 #ifdef SOCK_RDM
-	| RDM 
+        | RDM 
 #endif
 #ifdef SOCK_SEQPACKET
-	| SeqPacket
+        | SeqPacket
 #endif
-	deriving (Eq, Ord, Read, Show, Typeable)
-	
+        deriving (Eq, Ord, Read, Show, Typeable)
+
 packSocketType stype = case stype of
-	NoSocketType -> 0
+        NoSocketType -> 0
 #ifdef SOCK_STREAM
-	Stream -> #const SOCK_STREAM
+        Stream -> #const SOCK_STREAM
 #endif
 #ifdef SOCK_DGRAM
-	Datagram -> #const SOCK_DGRAM
+        Datagram -> #const SOCK_DGRAM
 #endif
 #ifdef SOCK_RAW
-	Raw -> #const SOCK_RAW
+        Raw -> #const SOCK_RAW
 #endif
 #ifdef SOCK_RDM
-	RDM -> #const SOCK_RDM
+        RDM -> #const SOCK_RDM
 #endif
 #ifdef SOCK_SEQPACKET
-	SeqPacket -> #const SOCK_SEQPACKET
+        SeqPacket -> #const SOCK_SEQPACKET
 #endif
 
 unpackSocketType t = case t of
-	0 -> NoSocketType
+        0 -> NoSocketType
 #ifdef SOCK_STREAM
-	(#const SOCK_STREAM) -> Stream
+        (#const SOCK_STREAM) -> Stream
 #endif
 #ifdef SOCK_DGRAM
-	(#const SOCK_DGRAM) -> Datagram
+        (#const SOCK_DGRAM) -> Datagram
 #endif
 #ifdef SOCK_RAW
-	(#const SOCK_RAW) -> Raw
+        (#const SOCK_RAW) -> Raw
 #endif
 #ifdef SOCK_RDM
-	(#const SOCK_RDM) -> RDM
+        (#const SOCK_RDM) -> RDM
 #endif
 #ifdef SOCK_SEQPACKET
-	(#const SOCK_SEQPACKET) -> SeqPacket
+        (#const SOCK_SEQPACKET) -> SeqPacket
 #endif
 
 -- ---------------------------------------------------------------------------
@@ -1699,14 +1699,14 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Close the socket.  All future operations on the socket object
 -- will fail.  The remote end will receive no more data (after queued
 -- data is flushed).
-sClose	 :: Socket -> IO ()
+sClose   :: Socket -> IO ()
 sClose (MkSocket s _ _ _ socketStatus) = do 
  modifyMVar_ socketStatus $ \ status ->
    case status of
      ConvertedToHandle ->
-	 ioError (userError ("sClose: converted to a Handle, use hClose instead"))
+         ioError (userError ("sClose: converted to a Handle, use hClose instead"))
      Closed ->
-	 return status
+         return status
      _ -> closeFdWith (close . fromIntegral) (fromIntegral s) >> return Closed
 
 -- -----------------------------------------------------------------------------
@@ -1714,7 +1714,7 @@ sClose (MkSocket s _ _ _ socketStatus) = do
 sIsConnected :: Socket -> IO Bool
 sIsConnected (MkSocket _ _ _ _ status) = do
     value <- readMVar status
-    return (value == Connected)	
+    return (value == Connected) 
 
 -- -----------------------------------------------------------------------------
 -- Socket Predicates
@@ -1722,12 +1722,12 @@ sIsConnected (MkSocket _ _ _ _ status) = do
 sIsBound :: Socket -> IO Bool
 sIsBound (MkSocket _ _ _ _ status) = do
     value <- readMVar status
-    return (value == Bound)	
+    return (value == Bound)     
 
 sIsListening :: Socket -> IO Bool
 sIsListening (MkSocket _ _ _  _ status) = do
     value <- readMVar status
-    return (value == Listening)	
+    return (value == Listening) 
 
 sIsReadable  :: Socket -> IO Bool
 sIsReadable (MkSocket _ _ _ _ status) = do
@@ -1779,8 +1779,8 @@ socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
  modifyMVar socketStatus $ \ status ->
     if status == ConvertedToHandle
-	then ioError (userError ("socketToHandle: already a Handle"))
-	else do
+        then ioError (userError ("socketToHandle: already a Handle"))
+        else do
 # if __GLASGOW_HASKELL__ >= 611
     h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
 # elif __GLASGOW_HASKELL__ >= 608
@@ -1885,12 +1885,12 @@ instance Storable AddrInfo where
     alignment _ = alignment (undefined :: CInt)
 
     peek p = do
-	ai_flags <- (#peek struct addrinfo, ai_flags) p
-	ai_family <- (#peek struct addrinfo, ai_family) p
-	ai_socktype <- (#peek struct addrinfo, ai_socktype) p
-	ai_protocol <- (#peek struct addrinfo, ai_protocol) p
+        ai_flags <- (#peek struct addrinfo, ai_flags) p
+        ai_family <- (#peek struct addrinfo, ai_family) p
+        ai_socktype <- (#peek struct addrinfo, ai_socktype) p
+        ai_protocol <- (#peek struct addrinfo, ai_protocol) p
         ai_addr <- (#peek struct addrinfo, ai_addr) p >>= peekSockAddr
-	ai_canonname_ptr <- (#peek struct addrinfo, ai_canonname) p
+        ai_canonname_ptr <- (#peek struct addrinfo, ai_canonname) p
 
         ai_canonname <- if ai_canonname_ptr == nullPtr
                         then return Nothing
@@ -2159,9 +2159,9 @@ foreign import ccall safe "hsnet_getnameinfo"
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 #ifdef __GLASGOW_HASKELL__
-				    InvalidArgument
+                                    InvalidArgument
 #else
-				    IllegalOperation
+                                    IllegalOperation
 #endif
                                     loc Nothing Nothing) "non-positive length"
 
