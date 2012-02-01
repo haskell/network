@@ -1018,7 +1018,7 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
    with (fromIntegral v) $ \ptr_v -> do
    throwErrnoIfMinus1_ "setSocketOption" $
        c_setsockopt s (socketOptLevel so) (packSocketOption so) ptr_v 
-          (fromIntegral (sizeOf v))
+          (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
 
 
