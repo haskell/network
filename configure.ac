@@ -1,4 +1,4 @@
-AC_INIT([Haskell network package], [1.0], [libraries@haskell.org], [network])
+AC_INIT([Haskell network package], [2.3.0.9], [libraries@haskell.org], [network])
 
 ac_includes_default="$ac_includes_default
 #ifdef HAVE_NETDB_H
