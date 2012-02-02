@@ -1006,7 +1006,7 @@ packSocketOption so =
 #ifdef SO_USELOOPBACK
     UseLoopBack   -> #const SO_USELOOPBACK
 #endif
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     IPv6Only      -> #const IPV6_V6ONLY
 #endif
 
