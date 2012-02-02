@@ -27,10 +27,11 @@ module Network.Socket.ByteString.Lazy
     -- * Send data to a socket
       send
     , sendAll
+    ,
 #endif
 
     -- * Receive data from a socket
-    , getContents
+      getContents
     , recv
     ) where
 
