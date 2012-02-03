@@ -146,10 +146,10 @@ type ProtocolName = String
 
 data ServiceEntry  = 
   ServiceEntry  {
-     serviceName     :: ServiceName,	-- Official Name
-     serviceAliases  :: [ServiceName],	-- aliases
-     servicePort     :: PortNumber,	-- Port Number  ( network byte order )
-     serviceProtocol :: ProtocolName	-- Protocol
+     serviceName     :: ServiceName,    -- Official Name
+     serviceAliases  :: [ServiceName],  -- aliases
+     servicePort     :: PortNumber,     -- Port Number  ( network byte order )
+     serviceProtocol :: ProtocolName    -- Protocol
   } deriving (Show, Typeable)
 
 instance Storable ServiceEntry where
@@ -249,9 +249,9 @@ getServiceEntries stayOpen = do
 
 data ProtocolEntry = 
   ProtocolEntry  {
-     protoName    :: ProtocolName,	-- Official Name
-     protoAliases :: [ProtocolName],	-- aliases
-     protoNumber  :: ProtocolNumber	-- Protocol Number
+     protoName    :: ProtocolName,      -- Official Name
+     protoAliases :: [ProtocolName],    -- aliases
+     protoNumber  :: ProtocolNumber     -- Protocol Number
   } deriving (Read, Show, Typeable)
 
 instance Storable ProtocolEntry where
@@ -336,10 +336,10 @@ getProtocolEntries stayOpen = withLock $ do
 
 data HostEntry = 
   HostEntry  {
-     hostName      :: HostName,  	-- Official Name
-     hostAliases   :: [HostName],	-- aliases
-     hostFamily    :: Family,	        -- Host Type (currently AF_INET)
-     hostAddresses :: [HostAddress]	-- Set of Network Addresses  (in network byte order)
+     hostName      :: HostName,         -- Official Name
+     hostAliases   :: [HostName],       -- aliases
+     hostFamily    :: Family,           -- Host Type (currently AF_INET)
+     hostAddresses :: [HostAddress]     -- Set of Network Addresses  (in network byte order)
   } deriving (Read, Show, Typeable)
 
 instance Storable HostEntry where
@@ -443,10 +443,10 @@ type NetworkName = String
 
 data NetworkEntry =
   NetworkEntry {
-     networkName	:: NetworkName,   -- official name
-     networkAliases	:: [NetworkName], -- aliases
-     networkFamily	:: Family,	   -- type
-     networkAddress	:: NetworkAddr
+     networkName        :: NetworkName,   -- official name
+     networkAliases     :: [NetworkName], -- aliases
+     networkFamily      :: Family,         -- type
+     networkAddress     :: NetworkAddr
    } deriving (Read, Show, Typeable)
 
 instance Storable NetworkEntry where

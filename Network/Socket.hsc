@@ -280,7 +280,7 @@ data SocketStatus
   | Listening           -- listen
   | Connected           -- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
-  | Closed		-- sClose 
+  | Closed              -- sClose 
     deriving (Eq, Show, Typeable)
 
 data Socket
@@ -407,8 +407,8 @@ instance Show SockAddr where
 -- 'Datagram'.  The protocol number is usually 'defaultProtocol'.
 -- If 'AF_INET6' is used, the 'IPv6Only' socket option is set to 0
 -- so that both IPv4 and IPv6 can be handled with one socket.
-socket :: Family 	 -- Family Name (usually AF_INET)
-       -> SocketType 	 -- Socket Type (usually Stream)
+socket :: Family         -- Family Name (usually AF_INET)
+       -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
