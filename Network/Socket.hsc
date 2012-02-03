@@ -169,7 +169,7 @@ import Hugs.IO ( openFd )
 # if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
 {-# CFILES cbits/ancilData.c #-}
 # endif
-# if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+# if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
 {-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
 # endif
 #endif
@@ -505,7 +505,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
            r <- c_connect s p_addr (fromIntegral sz)
            if r == -1
                then do 
-#if !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
+#if !(defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS))
                    err <- getErrno
                    case () of
                      _ | err == eINTR       -> connectLoop

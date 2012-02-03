@@ -1,7 +1,7 @@
 #include "HsNet.h"
 #include "HsFFI.h"
 
-#if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
 #include <stdio.h>
 
 /* to the end */

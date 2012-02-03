@@ -174,7 +174,7 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 }
 #endif
 
-#if defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 # define WITH_WINSOCK  1
 #endif
 
