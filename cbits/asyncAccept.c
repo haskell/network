@@ -5,7 +5,8 @@
 #include "HsNet.h"
 #include "HsFFI.h"
 
-#if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__) && !defined(__HUGS__)
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__) && !defined(__HUGS__)
+
 /* all the way to the end */
 
 /*

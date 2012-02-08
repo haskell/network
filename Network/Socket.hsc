@@ -169,7 +169,7 @@ import Hugs.IO ( openFd )
 # if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
 {-# CFILES cbits/ancilData.c #-}
 # endif
-# if defined(HAVE_WINSOCK_H) && !defined(__CYGWIN__)
+# if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
 {-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
 # endif
 #endif
@@ -423,7 +423,7 @@ socket family stype protocol = do
 #endif
     socket_status <- newMVar NotConnected
     let sock = MkSocket fd family stype protocol socket_status
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     when (family == AF_INET6) $ setSocketOption sock IPv6Only 0
 #endif
     return sock
@@ -505,7 +505,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
            r <- c_connect s p_addr (fromIntegral sz)
            if r == -1
                then do 
-#if !(defined(HAVE_WINSOCK_H) && !defined(cygwin32_HOST_OS))
+#if !(defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS))
                    err <- getErrno
                    case () of
                      _ | err == eINTR       -> connectLoop
@@ -921,7 +921,7 @@ data SocketOption
 #ifdef SO_USELOOPBACK
     | UseLoopBack   {- SO_USELOOPBACK -}
 #endif
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     | IPv6Only      {- IPV6_V6ONLY -}
 #endif
     deriving Typeable
@@ -938,7 +938,7 @@ socketOptLevel so =
 #ifdef TCP_NODELAY
     NoDelay      -> #const IPPROTO_TCP
 #endif
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     IPv6Only     -> #const IPPROTO_IPV6
 #endif
     _            -> #const SOL_SOCKET
