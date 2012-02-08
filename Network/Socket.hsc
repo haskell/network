@@ -423,7 +423,7 @@ socket family stype protocol = do
 #endif
     socket_status <- newMVar NotConnected
     let sock = MkSocket fd family stype protocol socket_status
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     when (family == AF_INET6) $ setSocketOption sock IPv6Only 0
 #endif
     return sock
@@ -921,7 +921,7 @@ data SocketOption
 #ifdef SO_USELOOPBACK
     | UseLoopBack   {- SO_USELOOPBACK -}
 #endif
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     | IPv6Only      {- IPV6_V6ONLY -}
 #endif
     deriving Typeable
@@ -938,7 +938,7 @@ socketOptLevel so =
 #ifdef TCP_NODELAY
     NoDelay      -> #const IPPROTO_TCP
 #endif
-#ifdef HAVE_DECL_IPV6_V6ONLY
+#if HAVE_DECL_IPV6_V6ONLY
     IPv6Only     -> #const IPPROTO_IPV6
 #endif
     _            -> #const SOL_SOCKET
