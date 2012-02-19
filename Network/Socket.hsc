@@ -1519,7 +1519,7 @@ toHandle (MkSocket s family stype protocol status) m =
 -- that each value can cause exactly one bit to be set; unpackBits will
 -- break if this property is not true.
 
-packBits :: (Eq a, Bits b) => [(a, b)] -> [a] -> b
+packBits :: (Eq a, Num b, Bits b) => [(a, b)] -> [a] -> b
 
 packBits mapping xs = foldl' pack 0 mapping
     where pack acc (k, v) | k `elem` xs = acc .|. v
@@ -1527,7 +1527,7 @@ packBits mapping xs = foldl' pack 0 mapping
 
 -- | Unpack a bitmask into a list of values.
 
-unpackBits :: Bits b => [(a, b)] -> b -> [a]
+unpackBits :: (Num b, Bits b) => [(a, b)] -> b -> [a]
 
 -- Be permissive and ignore unknown bit values. At least on OS X,
 -- getaddrinfo returns an ai_flags field with bits set that have no
