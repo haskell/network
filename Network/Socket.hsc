@@ -177,12 +177,11 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
-import Data.Word (Word8, Word16, Word32)
-import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
+import Data.Word (Word16, Word32)
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
-import Foreign.C.String (CString, withCString, peekCString, peekCStringLen,
-                        castCharToCChar)
+import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types (CInt(..), CSize(..))
@@ -190,7 +189,7 @@ import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.C.Types (CInt, CSize)
 #endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
-import Foreign.Marshal.Array ( peekArray, pokeArray, pokeArray0 )
+import Foreign.Marshal.Array ( peekArray )
 import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO

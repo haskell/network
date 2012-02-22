@@ -113,16 +113,15 @@ module Network.URI
     ) where
 
 import Text.ParserCombinators.Parsec
-    ( GenParser(..), ParseError(..)
+    ( GenParser, ParseError
     , parse, (<|>), (<?>), try
-    , option, many, many1, count, notFollowedBy, lookAhead
-    , char, satisfy, oneOf, string, letter, digit, hexDigit, eof
+    , option, many, many1, count, notFollowedBy
+    , char, satisfy, oneOf, string, eof
     , unexpected
     )
 
 import Control.Monad (MonadPlus(..))
-import Data.Char (ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt)
-import Data.Maybe (isJust)
+import Data.Char (ord, chr, isHexDigit, toLower, toUpper, digitToInt)
 import Debug.Trace (trace)
 import Numeric (showIntAtBase)
 

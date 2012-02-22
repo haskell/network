@@ -98,9 +98,10 @@ import Network.Socket
 
 import Control.Concurrent (MVar, newMVar, withMVar)
 import Control.Exception (catch)
-import Foreign.C.Error (throwErrnoIfMinus1, throwErrnoIfMinus1_)
-import Foreign.C.String (CString, peekCString, peekCStringLen, withCString)
-import Foreign.C.Types ( CChar, CShort )
+import Foreign.C.String (CString, peekCString, withCString)
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+import Foreign.C.Types ( CShort )
+#endif
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types ( CInt(..), CULong(..), CSize(..) )
 #else
