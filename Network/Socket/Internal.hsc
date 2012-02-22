@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, FlexibleInstances, ForeignFunctionInterface #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket.Internal

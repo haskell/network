@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-unused-do-bind #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
