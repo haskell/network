@@ -2200,12 +2200,13 @@ foreign import CALLCONV unsafe "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
-#ifdef __GLASGOW_HASKELL__
+#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
+foreign import CALLCONV safe "accept"
+  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+
 foreign import ccall "rtsSupportsBoundThreads" threaded :: Bool
 #endif
 
