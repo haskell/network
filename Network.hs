@@ -396,7 +396,6 @@ socketPort s = do
 -- ---------------------------------------------------------------------------
 -- Utils
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 -- Like bracket, but only performs the final action if there was an 
 -- exception raised by the middle bit.
 bracketOnError
@@ -404,6 +403,7 @@ bracketOnError
         -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
         -> (a -> IO c)  -- ^ computation to run in-between
         -> IO c         -- returns the value from the in-between computation
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 bracketOnError before after thing =
   Exception.block (do
     a <- before

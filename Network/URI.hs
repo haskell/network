@@ -220,6 +220,7 @@ defaultUserInfoMap uinf = user++newpass
                         then pass
                         else ":...@"
 
+testDefaultUserInfoMap :: [Bool]
 testDefaultUserInfoMap =
      [ defaultUserInfoMap ""                == ""
      , defaultUserInfoMap "@"               == "@"
@@ -359,8 +360,10 @@ escaped =
 isReserved :: Char -> Bool
 isReserved c = isGenDelims c || isSubDelims c
 
+isGenDelims :: Char -> Bool
 isGenDelims c = c `elem` ":/?#[]@"
 
+isSubDelims :: Char -> Bool
 isSubDelims c = c `elem` "!$&'()*+,;="
 
 genDelims :: URIParser String
@@ -479,6 +482,7 @@ ipvFuture =
         ; return $ 'c':h:'.':a
         }
 
+isIpvFutureChar :: Char -> Bool
 isIpvFutureChar c = isUnreserved c || isSubDelims c || (c==';')
 
 ipv6address :: URIParser String
@@ -579,7 +583,7 @@ ipv4address =
 decOctet :: URIParser String
 decOctet =
     do  { a1 <- countMinMax 1 3 digitChar
-        ; if read a1 > 255 then
+        ; if (read a1 :: Integer) > 255 then
             fail "Decimal octet value too large"
           else
             return a1
@@ -787,14 +791,19 @@ absoluteURI =
     --    certainly be allowed.
     -- ]]]
 
+isAlphaChar :: Char -> Bool
 isAlphaChar c    = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 
+isDigitChar :: Char -> Bool
 isDigitChar c    = (c >= '0' && c <= '9')
 
+isAlphaNumChar :: Char -> Bool
 isAlphaNumChar c = isAlphaChar c || isDigitChar c
 
+isHexDigitChar :: Char -> Bool
 isHexDigitChar c = isHexDigit c
 
+isSchemeChar :: Char -> Bool
 isSchemeChar c   = (isAlphaNumChar c) || (c `elem` "+-.")
 
 alphaChar :: URIParser Char

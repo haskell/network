@@ -568,8 +568,10 @@ getEntries getOne atEnd = loop
 --   That failure may very well be due to WinSock not being initialised,
 --   so if NULL is seen try init'ing and repeat the call.
 #if !defined(mingw32_HOST_OS) && !defined(_WIN32)
+trySysCall :: IO a -> IO a
 trySysCall act = act
 #else
+trySysCall :: IO (Ptr a) -> IO (Ptr a)
 trySysCall act = do
   ptr <- act
   if (ptr == nullPtr)
