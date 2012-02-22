@@ -312,7 +312,7 @@ instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
 instance Show Socket where
-  showsPrec n (MkSocket fd _ _ _ _) = 
+  showsPrec _n (MkSocket fd _ _ _ _) =
         showString "<socket: " . shows fd . showString ">"
 
 
@@ -439,7 +439,7 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-    rc <- throwSocketErrorIfMinus1Retry "socketpair" $
+    _rc <- throwSocketErrorIfMinus1Retry "socketpair" $
                 c_socketpair (packFamily family)
                              (packSocketType stype)
                              protocol fdArr
@@ -482,7 +482,7 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
          show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
-   status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
+   _status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
@@ -511,7 +511,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                      _ | err == eINTR       -> connectLoop
                      _ | err == eINPROGRESS -> connectBlocked
 --                   _ | err == eAGAIN      -> connectBlocked
-                     otherwise              -> throwSocketError "connect"
+                     _otherwise             -> throwSocketError "connect"
 #else
                    rc <- c_getLastError
                    case rc of
@@ -668,7 +668,7 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
           -> IO Int            -- Number of Bytes sent
-sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
+sendBufTo (MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
 #if !defined(__HUGS__)
@@ -702,7 +702,7 @@ recvFrom sock nbytes =
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
+recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   = 
     withNewSockAddr family $ \ptr_addr sz -> do
@@ -739,7 +739,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
-send sock@(MkSocket s _family _stype _protocol status) xs = do
+send sock@(MkSocket s _family _stype _protocol _status) xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
@@ -784,7 +784,7 @@ recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
 recvLen :: Socket -> Int -> IO (String, Int)
-recvLen sock@(MkSocket s _family _stype _protocol status) nbytes 
+recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
@@ -846,7 +846,7 @@ getPeerName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
    throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
-   sz <- peek int_star
+   _sz <- peek int_star
    peekSockAddr ptr
     
 getSocketName :: Socket -> IO SockAddr

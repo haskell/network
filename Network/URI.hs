@@ -320,7 +320,7 @@ isValidParse :: URIParser a -> String -> Bool
 isValidParse parser uristr = case parseAll parser "" uristr of
         -- Left  e -> error (show e)
         Left  _ -> False
-        Right u -> True
+        Right _ -> True
 
 parseAll :: URIParser a -> String -> String -> Either ParseError a
 parseAll parser filename uristr = parse newparser filename uristr
@@ -1089,7 +1089,7 @@ relativeFrom uabs base
                 (p1,p2) = splitLast p
 
 relPathFrom :: String -> String -> String
-relPathFrom []   base = "/"
+relPathFrom []   _    = "/"
 relPathFrom pabs []   = pabs
 relPathFrom pabs base =                 -- Construct a relative path segments
     if sa1 == sb1                       -- if the paths share a leading segment

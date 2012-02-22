@@ -273,7 +273,7 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
              (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
              return peer
           )
-          (\e -> inet_ntoa haddr)
+          (\_e -> inet_ntoa haddr)
                 -- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
@@ -301,7 +301,7 @@ accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, path, -1)
 #endif
-accept sock@(MkSocket _ family _ _ _) =
+accept (MkSocket _ family _ _ _) =
   error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
 
 -- -----------------------------------------------------------------------------

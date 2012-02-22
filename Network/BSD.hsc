@@ -177,7 +177,7 @@ instance Storable ServiceEntry where
                         serviceProtocol = s_proto
                 })
 
-   poke p = error "Storable.poke(BSD.ServiceEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.ServiceEntry) not implemented"
 
 
 -- | Get service by name.
@@ -279,7 +279,7 @@ instance Storable ProtocolEntry where
                         protoNumber  = p_proto
                 })
 
-   poke p = error "Storable.poke(BSD.ProtocolEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.ProtocolEntry) not implemented"
 
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = withLock $ do
@@ -368,7 +368,7 @@ instance Storable HostEntry where
                         hostAddresses  = h_addr_list
                 })
 
-   poke p = error "Storable.poke(BSD.ServiceEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.ServiceEntry) not implemented"
 
 
 -- convenience function:
@@ -469,7 +469,7 @@ instance Storable NetworkEntry where
                         networkAddress   = n_net
                 })
 
-   poke p = error "Storable.poke(BSD.NetEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.NetEntry) not implemented"
 
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
