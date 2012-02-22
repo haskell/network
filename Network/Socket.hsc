@@ -924,7 +924,7 @@ data SocketOption
 #if HAVE_DECL_IPV6_V6ONLY
     | IPv6Only      {- IPV6_V6ONLY -}
 #endif
-    deriving Typeable
+    deriving (Show, Typeable)
 
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so = 
@@ -1009,6 +1009,8 @@ packSocketOption so =
 #if HAVE_DECL_IPV6_V6ONLY
     IPv6Only      -> #const IPV6_V6ONLY
 #endif
+    unknown       -> error ("Network.Socket.packSocketOption: unknown option " ++
+                            show unknown)
 
 setSocketOption :: Socket 
                 -> SocketOption -- Option Name
@@ -1636,6 +1638,7 @@ unpackSocketType t = case t of
 #ifdef SOCK_SEQPACKET
         (#const SOCK_SEQPACKET) -> SeqPacket
 #endif
+        _ -> NoSocketType
 
 -- ---------------------------------------------------------------------------
 -- Utility Functions

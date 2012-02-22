@@ -287,7 +287,6 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
 # if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
                  SockAddrUnix      a   -> return a
 # endif
-                 a                     -> return (show a)
  handle <- socketToHandle sock' ReadWriteMode
  let port = case addr of
               SockAddrInet  p _     -> p
