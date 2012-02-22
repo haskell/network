@@ -1009,16 +1009,11 @@ elimDots [] [] = ""
 elimDots [] rs = concat (reverse rs)
 elimDots (    '.':'/':ps)     rs = elimDots ps rs
 elimDots (    '.':[]    )     rs = elimDots [] rs
-elimDots (    '.':'.':'/':ps) rs = elimDots ps (dropHead rs)
-elimDots (    '.':'.':[]    ) rs = elimDots [] (dropHead rs)
+elimDots (    '.':'.':'/':ps) rs = elimDots ps (drop 1 rs)
+elimDots (    '.':'.':[]    ) rs = elimDots [] (drop 1 rs)
 elimDots ps rs = elimDots ps1 (r:rs)
     where
         (r,ps1) = nextSegment ps
-
---  Return tail of non-null list, otherwise return null list
-dropHead :: [a] -> [a]
-dropHead []     = []
-dropHead (r:rs) = rs
 
 --  Returns the next segment and the rest of the path from a path string.
 --  Each segment ends with the next '/' or the end of string.
