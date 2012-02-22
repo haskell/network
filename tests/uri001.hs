@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 --------------------------------------------------------------------------------
 --  $Id: URITest.hs,v 1.8 2005/07/19 22:01:27 gklyne Exp $
 --
@@ -40,9 +41,7 @@ import Network.URI
 
 import Test.HUnit
 
-import Control.Monad (when)
 import Data.Maybe (fromJust)
-import System.Exit (exitFailure)
 import System.IO (openFile, IOMode(WriteMode), hClose)
 import qualified Test.Framework as TF
 import qualified Test.Framework.Providers.HUnit as TF
@@ -1197,7 +1196,7 @@ main = TF.defaultMain allTests
 
 runTestFile t = do
     h <- openFile "a.tmp" WriteMode
-    runTestText (putTextToHandle h False) t
+    _ <- runTestText (putTextToHandle h False) t
     hClose h
 tf = runTestFile
 tt = runTestTT

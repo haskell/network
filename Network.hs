@@ -273,7 +273,7 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
              (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
              return peer
           )
-          (\e -> inet_ntoa haddr)
+          (\_e -> inet_ntoa haddr)
                 -- if getHostByName fails, we fall back to the IP address
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
@@ -287,7 +287,6 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
 # if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
                  SockAddrUnix      a   -> return a
 # endif
-                 a                     -> return (show a)
  handle <- socketToHandle sock' ReadWriteMode
  let port = case addr of
               SockAddrInet  p _     -> p
@@ -301,7 +300,7 @@ accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, path, -1)
 #endif
-accept sock@(MkSocket _ family _ _ _) =
+accept (MkSocket _ family _ _ _) =
   error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
 
 -- -----------------------------------------------------------------------------
@@ -396,7 +395,6 @@ socketPort s = do
 -- ---------------------------------------------------------------------------
 -- Utils
 
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 -- Like bracket, but only performs the final action if there was an 
 -- exception raised by the middle bit.
 bracketOnError
@@ -404,6 +402,7 @@ bracketOnError
         -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
         -> (a -> IO c)  -- ^ computation to run in-between
         -> IO c         -- returns the value from the in-between computation
+#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
 bracketOnError before after thing =
   Exception.block (do
     a <- before

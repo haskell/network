@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-unused-do-bind #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
@@ -176,12 +177,11 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
-import Data.Word (Word8, Word16, Word32)
-import Foreign.Ptr (Ptr, castPtr, nullPtr, plusPtr)
+import Data.Word (Word16, Word32)
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
-import Foreign.C.String (CString, withCString, peekCString, peekCStringLen,
-                        castCharToCChar)
+import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types (CInt(..), CSize(..))
@@ -189,7 +189,7 @@ import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.C.Types (CInt, CSize)
 #endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
-import Foreign.Marshal.Array ( peekArray, pokeArray, pokeArray0 )
+import Foreign.Marshal.Array ( peekArray )
 import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO
@@ -312,7 +312,7 @@ instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
 instance Show Socket where
-  showsPrec n (MkSocket fd _ _ _ _) = 
+  showsPrec _n (MkSocket fd _ _ _ _) =
         showString "<socket: " . shows fd . showString ">"
 
 
@@ -439,16 +439,16 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-    rc <- throwSocketErrorIfMinus1Retry "socketpair" $
+    _rc <- throwSocketErrorIfMinus1Retry "socketpair" $
                 c_socketpair (packFamily family)
                              (packSocketType stype)
                              protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr 
-    s1 <- mkSocket fd1
-    s2 <- mkSocket fd2
+    s1 <- mkNonBlockingSocket fd1
+    s2 <- mkNonBlockingSocket fd2
     return (s1,s2)
   where
-    mkSocket fd = do
+    mkNonBlockingSocket fd = do
 #if !defined(__HUGS__)
 # if __GLASGOW_HASKELL__ < 611
        System.Posix.Internals.setNonBlockingFD fd
@@ -482,7 +482,7 @@ bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
          show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
-   status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
+   _status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
@@ -511,7 +511,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                      _ | err == eINTR       -> connectLoop
                      _ | err == eINPROGRESS -> connectBlocked
 --                   _ | err == eAGAIN      -> connectBlocked
-                     otherwise              -> throwSocketError "connect"
+                     _otherwise             -> throwSocketError "connect"
 #else
                    rc <- c_getLastError
                    case rc of
@@ -668,7 +668,7 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
           -> IO Int            -- Number of Bytes sent
-sendBufTo (MkSocket s _family _stype _protocol status) ptr nbytes addr = do
+sendBufTo (MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
 #if !defined(__HUGS__)
@@ -702,7 +702,7 @@ recvFrom sock nbytes =
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
+recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   = 
     withNewSockAddr family $ \ptr_addr sz -> do
@@ -739,7 +739,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol status) ptr nbytes
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
-send sock@(MkSocket s _family _stype _protocol status) xs = do
+send sock@(MkSocket s _family _stype _protocol _status) xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
@@ -784,7 +784,7 @@ recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
 recvLen :: Socket -> Int -> IO (String, Int)
-recvLen sock@(MkSocket s _family _stype _protocol status) nbytes 
+recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
@@ -808,8 +808,8 @@ recvLen sock@(MkSocket s _family _stype _protocol status) nbytes
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recv")
          else do
-           s <- peekCStringLen (castPtr ptr,len')
-           return (s, len')
+           s' <- peekCStringLen (castPtr ptr,len')
+           return (s', len')
 
 -- ---------------------------------------------------------------------------
 -- socketPort
@@ -846,7 +846,7 @@ getPeerName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
    throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
-   sz <- peek int_star
+   _sz <- peek int_star
    peekSockAddr ptr
     
 getSocketName :: Socket -> IO SockAddr
@@ -924,7 +924,7 @@ data SocketOption
 #if HAVE_DECL_IPV6_V6ONLY
     | IPv6Only      {- IPV6_V6ONLY -}
 #endif
-    deriving Typeable
+    deriving (Show, Typeable)
 
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so = 
@@ -1009,6 +1009,8 @@ packSocketOption so =
 #if HAVE_DECL_IPV6_V6ONLY
     IPv6Only      -> #const IPV6_V6ONLY
 #endif
+    unknown       -> error ("Network.Socket.packSocketOption: unknown option " ++
+                            show unknown)
 
 setSocketOption :: Socket 
                 -> SocketOption -- Option Name
@@ -1120,11 +1122,11 @@ recvAncillary sock flags len = do
             (threadWaitRead (fromIntegral fd)) $
 #endif
             c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
-      len <- fromIntegral `liftM` peek ptr_len
+      rcvlen <- fromIntegral `liftM` peek ptr_len
       lev <- fromIntegral `liftM` peek ptr_lev
       ty  <- fromIntegral `liftM` peek ptr_ty
       pD  <- peek ptr_pData
-      return (lev,ty,pD, len)
+      return (lev,ty,pD, rcvlen)
 foreign import ccall SAFE_ON_WIN "sendAncillary"
   c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
 
@@ -1636,6 +1638,7 @@ unpackSocketType t = case t of
 #ifdef SOCK_SEQPACKET
         (#const SOCK_SEQPACKET) -> SeqPacket
 #endif
+        _ -> NoSocketType
 
 -- ---------------------------------------------------------------------------
 -- Utility Functions
@@ -2197,12 +2200,13 @@ foreign import CALLCONV unsafe "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
-#ifdef __GLASGOW_HASKELL__
+#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
+foreign import CALLCONV safe "accept"
+  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+
 foreign import ccall "rtsSupportsBoundThreads" threaded :: Bool
 #endif
 

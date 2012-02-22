@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Main where
 
@@ -7,7 +8,6 @@ import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Exception (SomeException, bracket, catch, throwTo)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy.Char8 as L
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
 import Prelude hiding (catch)
@@ -119,6 +119,7 @@ testOverFlowRecvFrom = tcpTest client server
 ------------------------------------------------------------------------
 -- List of all tests
 
+basicTests :: Test
 basicTests = testGroup "Basic socket operations"
     [
       -- Sending and receiving

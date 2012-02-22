@@ -98,9 +98,10 @@ import Network.Socket
 
 import Control.Concurrent (MVar, newMVar, withMVar)
 import Control.Exception (catch)
-import Foreign.C.Error (throwErrnoIfMinus1, throwErrnoIfMinus1_)
-import Foreign.C.String (CString, peekCString, peekCStringLen, withCString)
-import Foreign.C.Types ( CChar, CShort )
+import Foreign.C.String (CString, peekCString, withCString)
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+import Foreign.C.Types ( CShort )
+#endif
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types ( CInt(..), CULong(..), CSize(..) )
 #else
@@ -176,7 +177,7 @@ instance Storable ServiceEntry where
                         serviceProtocol = s_proto
                 })
 
-   poke p = error "Storable.poke(BSD.ServiceEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.ServiceEntry) not implemented"
 
 
 -- | Get service by name.
@@ -278,7 +279,7 @@ instance Storable ProtocolEntry where
                         protoNumber  = p_proto
                 })
 
-   poke p = error "Storable.poke(BSD.ProtocolEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.ProtocolEntry) not implemented"
 
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = withLock $ do
@@ -367,7 +368,7 @@ instance Storable HostEntry where
                         hostAddresses  = h_addr_list
                 })
 
-   poke p = error "Storable.poke(BSD.ServiceEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.ServiceEntry) not implemented"
 
 
 -- convenience function:
@@ -468,7 +469,7 @@ instance Storable NetworkEntry where
                         networkAddress   = n_net
                 })
 
-   poke p = error "Storable.poke(BSD.NetEntry) not implemented"
+   poke _p = error "Storable.poke(BSD.NetEntry) not implemented"
 
 
 #if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
@@ -567,8 +568,10 @@ getEntries getOne atEnd = loop
 --   That failure may very well be due to WinSock not being initialised,
 --   so if NULL is seen try init'ing and repeat the call.
 #if !defined(mingw32_HOST_OS) && !defined(_WIN32)
+trySysCall :: IO a -> IO a
 trySysCall act = act
 #else
+trySysCall :: IO (Ptr a) -> IO (Ptr a)
 trySysCall act = do
   ptr <- act
   if (ptr == nullPtr)

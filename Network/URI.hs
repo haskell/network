@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 --------------------------------------------------------------------------------
 -- |
 --  Module      :  Network.URI
@@ -112,16 +113,15 @@ module Network.URI
     ) where
 
 import Text.ParserCombinators.Parsec
-    ( GenParser(..), ParseError(..)
+    ( GenParser, ParseError
     , parse, (<|>), (<?>), try
-    , option, many, many1, count, notFollowedBy, lookAhead
-    , char, satisfy, oneOf, string, letter, digit, hexDigit, eof
+    , option, many, many1, count, notFollowedBy
+    , char, satisfy, oneOf, string, eof
     , unexpected
     )
 
 import Control.Monad (MonadPlus(..))
-import Data.Char (ord, chr, isHexDigit, isSpace, toLower, toUpper, digitToInt)
-import Data.Maybe (isJust)
+import Data.Char (ord, chr, isHexDigit, toLower, toUpper, digitToInt)
 import Debug.Trace (trace)
 import Numeric (showIntAtBase)
 
@@ -209,7 +209,7 @@ nullURI = URI
 --  data exposed by show.]]]
 --
 instance Show URI where
-    showsPrec _ uri = uriToString defaultUserInfoMap uri
+    showsPrec _ = uriToString defaultUserInfoMap
 
 defaultUserInfoMap :: String -> String
 defaultUserInfoMap uinf = user++newpass
@@ -220,6 +220,7 @@ defaultUserInfoMap uinf = user++newpass
                         then pass
                         else ":...@"
 
+testDefaultUserInfoMap :: [Bool]
 testDefaultUserInfoMap =
      [ defaultUserInfoMap ""                == ""
      , defaultUserInfoMap "@"               == "@"
@@ -319,7 +320,7 @@ isValidParse :: URIParser a -> String -> Bool
 isValidParse parser uristr = case parseAll parser "" uristr of
         -- Left  e -> error (show e)
         Left  _ -> False
-        Right u -> True
+        Right _ -> True
 
 parseAll :: URIParser a -> String -> String -> Either ParseError a
 parseAll parser filename uristr = parse newparser filename uristr
@@ -359,8 +360,10 @@ escaped =
 isReserved :: Char -> Bool
 isReserved c = isGenDelims c || isSubDelims c
 
+isGenDelims :: Char -> Bool
 isGenDelims c = c `elem` ":/?#[]@"
 
+isSubDelims :: Char -> Bool
 isSubDelims c = c `elem` "!$&'()*+,;="
 
 genDelims :: URIParser String
@@ -479,6 +482,7 @@ ipvFuture =
         ; return $ 'c':h:'.':a
         }
 
+isIpvFutureChar :: Char -> Bool
 isIpvFutureChar c = isUnreserved c || isSubDelims c || (c==';')
 
 ipv6address :: URIParser String
@@ -579,7 +583,7 @@ ipv4address =
 decOctet :: URIParser String
 decOctet =
     do  { a1 <- countMinMax 1 3 digitChar
-        ; if read a1 > 255 then
+        ; if (read a1 :: Integer) > 255 then
             fail "Decimal octet value too large"
           else
             return a1
@@ -787,14 +791,19 @@ absoluteURI =
     --    certainly be allowed.
     -- ]]]
 
+isAlphaChar :: Char -> Bool
 isAlphaChar c    = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 
+isDigitChar :: Char -> Bool
 isDigitChar c    = (c >= '0' && c <= '9')
 
+isAlphaNumChar :: Char -> Bool
 isAlphaNumChar c = isAlphaChar c || isDigitChar c
 
+isHexDigitChar :: Char -> Bool
 isHexDigitChar c = isHexDigit c
 
+isSchemeChar :: Char -> Bool
 isSchemeChar c   = (isAlphaNumChar c) || (c `elem` "+-.")
 
 alphaChar :: URIParser Char
@@ -847,25 +856,25 @@ notMatching p = do { a <- try p ; unexpected (show a) } <|> return ()
 --  to preserve the password in the formatted output.
 --
 uriToString :: (String->String) -> URI -> ShowS
-uriToString userinfomap URI { uriScheme=scheme
-                            , uriAuthority=authority
-                            , uriPath=path
-                            , uriQuery=query
-                            , uriFragment=fragment
+uriToString userinfomap URI { uriScheme=myscheme
+                            , uriAuthority=myauthority
+                            , uriPath=mypath
+                            , uriQuery=myquery
+                            , uriFragment=myfragment
                             } =
-    (scheme++) . (uriAuthToString userinfomap authority)
-               . (path++) . (query++) . (fragment++)
+    (myscheme++) . (uriAuthToString userinfomap myauthority)
+               . (mypath++) . (myquery++) . (myfragment++)
 
 uriAuthToString :: (String->String) -> (Maybe URIAuth) -> ShowS
 uriAuthToString _           Nothing   = id          -- shows ""
 uriAuthToString userinfomap
-        (Just URIAuth { uriUserInfo = uinfo
-                      , uriRegName  = regname
-                      , uriPort     = port
+        (Just URIAuth { uriUserInfo = myuinfo
+                      , uriRegName  = myregname
+                      , uriPort     = myport
                       } ) =
-    ("//"++) . (if null uinfo then id else ((userinfomap uinfo)++))
-             . (regname++)
-             . (port++)
+    ("//"++) . (if null myuinfo then id else ((userinfomap myuinfo)++))
+             . (myregname++)
+             . (myport++)
 
 ------------------------------------------------------------
 --  Character classes
@@ -896,7 +905,7 @@ escapeURIChar p c
         myShowHex :: Int -> ShowS
         myShowHex n r =  case showIntAtBase 16 (toChrHex) n r of
             []  -> "00"
-            [c] -> ['0',c]
+            [x] -> ['0',x]
             cs  -> cs
         toChrHex d
             | d < 10    = chr (ord '0' + fromIntegral d)
@@ -1000,16 +1009,11 @@ elimDots [] [] = ""
 elimDots [] rs = concat (reverse rs)
 elimDots (    '.':'/':ps)     rs = elimDots ps rs
 elimDots (    '.':[]    )     rs = elimDots [] rs
-elimDots (    '.':'.':'/':ps) rs = elimDots ps (dropHead rs)
-elimDots (    '.':'.':[]    ) rs = elimDots [] (dropHead rs)
+elimDots (    '.':'.':'/':ps) rs = elimDots ps (drop 1 rs)
+elimDots (    '.':'.':[]    ) rs = elimDots [] (drop 1 rs)
 elimDots ps rs = elimDots ps1 (r:rs)
     where
         (r,ps1) = nextSegment ps
-
---  Return tail of non-null list, otherwise return null list
-dropHead :: [a] -> [a]
-dropHead []     = []
-dropHead (r:rs) = rs
 
 --  Returns the next segment and the rest of the path from a path string.
 --  Each segment ends with the next '/' or the end of string.
@@ -1022,9 +1026,9 @@ nextSegment ps =
 
 --  Split last (name) segment from path, returning (path,name)
 splitLast :: String -> (String,String)
-splitLast path = (reverse revpath,reverse revname)
+splitLast p = (reverse revpath,reverse revname)
     where
-        (revname,revpath) = break (=='/') $ reverse path
+        (revname,revpath) = break (=='/') $ reverse p
 
 ------------------------------------------------------------
 -- Finding a URI relative to a base URI
@@ -1080,7 +1084,7 @@ relativeFrom uabs base
                 (p1,p2) = splitLast p
 
 relPathFrom :: String -> String -> String
-relPathFrom []   base = "/"
+relPathFrom []   _    = "/"
 relPathFrom pabs []   = pabs
 relPathFrom pabs base =                 -- Construct a relative path segments
     if sa1 == sb1                       -- if the paths share a leading segment
@@ -1112,7 +1116,7 @@ relPathFrom1 pabs base = relName
                   else
                       rp++na
         -- Precede name with some path if it is null or contains a ':'
-        protect na = null na || ':' `elem` na
+        protect s = null s || ':' `elem` s
 
 --  relSegsFrom discards any common leading segments from both paths,
 --  then invokes difSegsFrom to calculate a relative path from the end
