@@ -209,7 +209,7 @@ nullURI = URI
 --  data exposed by show.]]]
 --
 instance Show URI where
-    showsPrec _ uri = uriToString defaultUserInfoMap uri
+    showsPrec _ = uriToString defaultUserInfoMap
 
 defaultUserInfoMap :: String -> String
 defaultUserInfoMap uinf = user++newpass
@@ -856,25 +856,25 @@ notMatching p = do { a <- try p ; unexpected (show a) } <|> return ()
 --  to preserve the password in the formatted output.
 --
 uriToString :: (String->String) -> URI -> ShowS
-uriToString userinfomap URI { uriScheme=scheme
-                            , uriAuthority=authority
-                            , uriPath=path
-                            , uriQuery=query
-                            , uriFragment=fragment
+uriToString userinfomap URI { uriScheme=myscheme
+                            , uriAuthority=myauthority
+                            , uriPath=mypath
+                            , uriQuery=myquery
+                            , uriFragment=myfragment
                             } =
-    (scheme++) . (uriAuthToString userinfomap authority)
-               . (path++) . (query++) . (fragment++)
+    (myscheme++) . (uriAuthToString userinfomap myauthority)
+               . (mypath++) . (myquery++) . (myfragment++)
 
 uriAuthToString :: (String->String) -> (Maybe URIAuth) -> ShowS
 uriAuthToString _           Nothing   = id          -- shows ""
 uriAuthToString userinfomap
-        (Just URIAuth { uriUserInfo = uinfo
-                      , uriRegName  = regname
-                      , uriPort     = port
+        (Just URIAuth { uriUserInfo = myuinfo
+                      , uriRegName  = myregname
+                      , uriPort     = myport
                       } ) =
-    ("//"++) . (if null uinfo then id else ((userinfomap uinfo)++))
-             . (regname++)
-             . (port++)
+    ("//"++) . (if null myuinfo then id else ((userinfomap myuinfo)++))
+             . (myregname++)
+             . (myport++)
 
 ------------------------------------------------------------
 --  Character classes
@@ -905,7 +905,7 @@ escapeURIChar p c
         myShowHex :: Int -> ShowS
         myShowHex n r =  case showIntAtBase 16 (toChrHex) n r of
             []  -> "00"
-            [c] -> ['0',c]
+            [x] -> ['0',x]
             cs  -> cs
         toChrHex d
             | d < 10    = chr (ord '0' + fromIntegral d)
@@ -1031,9 +1031,9 @@ nextSegment ps =
 
 --  Split last (name) segment from path, returning (path,name)
 splitLast :: String -> (String,String)
-splitLast path = (reverse revpath,reverse revname)
+splitLast p = (reverse revpath,reverse revname)
     where
-        (revname,revpath) = break (=='/') $ reverse path
+        (revname,revpath) = break (=='/') $ reverse p
 
 ------------------------------------------------------------
 -- Finding a URI relative to a base URI
@@ -1121,7 +1121,7 @@ relPathFrom1 pabs base = relName
                   else
                       rp++na
         -- Precede name with some path if it is null or contains a ':'
-        protect na = null na || ':' `elem` na
+        protect s = null s || ':' `elem` s
 
 --  relSegsFrom discards any common leading segments from both paths,
 --  then invokes difSegsFrom to calculate a relative path from the end

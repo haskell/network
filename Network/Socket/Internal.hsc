@@ -101,8 +101,8 @@ s6_addr_offset :: Int
 s6_addr_offset = (#offset struct in6_addr, s6_addr)
 
 peek32 :: Ptr a -> Int -> IO Word32
-peek32 p i = do
-    let i' = i * 4
+peek32 p i0 = do
+    let i' = i0 * 4
         peekByte n = peekByteOff p (s6_addr_offset + i' + n) :: IO Word8
         a `sl` i = fromIntegral a `shiftL` i
     a0 <- peekByte 0
@@ -112,10 +112,10 @@ peek32 p i = do
     return ((a0 `sl` 24) .|. (a1 `sl` 16) .|. (a2 `sl` 8) .|. (a3 `sl` 0))
 
 poke32 :: Ptr a -> Int -> Word32 -> IO ()
-poke32 p i a = do
-    let i' = i * 4
+poke32 p i0 a = do
+    let i' = i0 * 4
         pokeByte n = pokeByteOff p (s6_addr_offset + i' + n)
-        a `sr` i = fromIntegral (a `shiftR` i) :: Word8
+        x `sr` i = fromIntegral (x `shiftR` i) :: Word8
     pokeByte 0 (a `sr` 24)
     pokeByte 1 (a `sr` 16)
     pokeByte 2 (a `sr`  8)

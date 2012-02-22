@@ -444,11 +444,11 @@ socketPair family stype protocol = do
                              (packSocketType stype)
                              protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr 
-    s1 <- mkSocket fd1
-    s2 <- mkSocket fd2
+    s1 <- mkNonBlockingSocket fd1
+    s2 <- mkNonBlockingSocket fd2
     return (s1,s2)
   where
-    mkSocket fd = do
+    mkNonBlockingSocket fd = do
 #if !defined(__HUGS__)
 # if __GLASGOW_HASKELL__ < 611
        System.Posix.Internals.setNonBlockingFD fd
@@ -808,8 +808,8 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recv")
          else do
-           s <- peekCStringLen (castPtr ptr,len')
-           return (s, len')
+           s' <- peekCStringLen (castPtr ptr,len')
+           return (s', len')
 
 -- ---------------------------------------------------------------------------
 -- socketPort
@@ -1120,11 +1120,11 @@ recvAncillary sock flags len = do
             (threadWaitRead (fromIntegral fd)) $
 #endif
             c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
-      len <- fromIntegral `liftM` peek ptr_len
+      rcvlen <- fromIntegral `liftM` peek ptr_len
       lev <- fromIntegral `liftM` peek ptr_lev
       ty  <- fromIntegral `liftM` peek ptr_ty
       pD  <- peek ptr_pData
-      return (lev,ty,pD, len)
+      return (lev,ty,pD, rcvlen)
 foreign import ccall SAFE_ON_WIN "sendAncillary"
   c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
 
