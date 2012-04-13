@@ -1,4 +1,5 @@
 ghc-options: -DCALLCONV=@CALLCONV@ @EXTRA_CPPFLAGS@
+ghc-prof-options: -DCALLCONV=@CALLCONV@ @EXTRA_CPPFLAGS@
 cc-options: -DCALLCONV=@CALLCONV@ @EXTRA_CPPFLAGS@
 c-sources: @EXTRA_SRCS@
 extra-libraries: @EXTRA_LIBS@
