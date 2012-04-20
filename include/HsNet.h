@@ -40,6 +40,8 @@
 #include <winsock2.h>
 # ifdef HAVE_WS2TCPIP_H
 #  include <ws2tcpip.h>
+// fix for MingW not defining IPV6_V6ONLY
+#  define IPV6_V6ONLY 27
 # endif
 # ifdef HAVE_WSPIAPI_H
 #  include <wspiapi.h>
