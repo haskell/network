@@ -424,7 +424,14 @@ socket family stype protocol = do
     socket_status <- newMVar NotConnected
     let sock = MkSocket fd family stype protocol socket_status
 #if HAVE_DECL_IPV6_V6ONLY
+# if defined(mingw32_HOST_OS)
+    -- the IPv6Only option is only supported on Windows Vista and later,
+    -- so trying to change it might throw an error
+    when (family == AF_INET6) $
+            catchIOError (setSocketOption sock IPv6Only 0) $ const $ return ()
+# else
     when (family == AF_INET6) $ setSocketOption sock IPv6Only 0
+# endif
 #endif
     return sock
 
