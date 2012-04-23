@@ -228,6 +228,12 @@ import System.IO.Unsafe (unsafePerformIO)
 import GHC.IO.FD
 #endif
 
+#if HAVE_DECL_IPV6_V6ONLY
+# if defined(mingw32_HOST_OS)
+import System.IO.Error (catchIOError)
+# endif
+#endif
+
 import Network.Socket.Internal
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
