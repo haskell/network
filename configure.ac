@@ -1,6 +1,12 @@
 AC_INIT([Haskell network package], [2.3.0.14], [libraries@haskell.org], [network])
 
 ac_includes_default="$ac_includes_default
+#ifdef HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+# include <netinet/in.h>
+#endif
 #ifdef HAVE_NETDB_H
 # include <netdb.h>
 #endif
