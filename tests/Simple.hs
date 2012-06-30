@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Main where
@@ -10,7 +10,9 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
+#if !MIN_VERSION_base(4,6,0)
 import Prelude hiding (catch)
+#endif
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
