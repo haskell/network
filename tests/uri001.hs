@@ -213,6 +213,11 @@ testURIRef114 = testURIRef InvRf "http://example.org/xxx/qwerty#a#b"
 testURIRef115 = testURIRef InvRf "dcp.tcp.pft://192.168.0.1:1002:3002?fec=1&crc=0"
 testURIRef116 = testURIRef AbsId "dcp.tcp.pft://192.168.0.1:1002?fec=1&crc=0"
 testURIRef117 = testURIRef AbsId "foo://"
+-- URIs prefixed with IPv4 addresses
+testURIRef118 = testURIRef AbsId "http://192.168.0.1.example.com/"
+testURIRef119 = testURIRef AbsId "http://192.168.0.1.example.com./"
+-- URI prefixed with 3 octets of an IPv4 address and a subdomain part with a leading digit.
+testURIRef120 = testURIRef AbsId "http://192.168.0.1test.example.com/"
 
 testURIRefSuite = TF.testGroup "Test URIrefs" testURIRefList
 testURIRefList =
@@ -333,6 +338,10 @@ testURIRefList =
   , TF.testCase "testURIRef115" testURIRef115
   , TF.testCase "testURIRef116" testURIRef116
   , TF.testCase "testURIRef117" testURIRef117
+    --
+  , TF.testCase "testURIRef118" testURIRef118
+  , TF.testCase "testURIRef119" testURIRef119
+  , TF.testCase "testURIRef120" testURIRef120
   ]
 
 -- test decomposition of URI into components
@@ -1256,6 +1265,9 @@ cu02 = ou02 `relativeTo` bu02
 -- $Author: gklyne $
 -- $Revision: 1.8 $
 -- $Log: URITest.hs,v $
+-- Revision 1.81 2012/08/01           aaronfriel
+-- Added additional test case for the "xip.io" service style URLs and absolute URLs prefixed with ipv4 addresses.
+--
 -- Revision 1.8  2005/07/19 22:01:27  gklyne
 -- Added some additional test cases raised by discussion on URI@w3.org mailing list about 2005-07-19.  The test p[roposed by this discussion exposed a subtle bug in relativeFrom not being an exact inverse of relativeTo.
 --
