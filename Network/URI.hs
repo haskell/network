@@ -577,8 +577,10 @@ ipv4address =
         ; a2 <- decOctet ; char '.'
         ; a3 <- decOctet ; char '.'
         ; a4 <- decOctet
+        ; notFollowedBy regName
         ; return $ a1++"."++a2++"."++a3++"."++a4
         }
+    <?> "IPv4 Address"
 
 decOctet :: URIParser String
 decOctet =
