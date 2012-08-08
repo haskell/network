@@ -158,6 +158,8 @@ AC_EGREP_HEADER(sendfile, sys/socket.h,
 
 AC_CHECK_FUNCS(gethostent)
 
+AC_CHECK_FUNCS(accept4)
+
 case "$host" in
 *-mingw32)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
