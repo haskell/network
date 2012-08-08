@@ -610,18 +610,24 @@ accept sock@(MkSocket s family stype protocol status) = do
 #else 
      with (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
-# if !defined(__HUGS__)
+# ifdef HAVE_ACCEPT4
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
                         (threadWaitRead (fromIntegral s))
-# endif
-                        (c_accept s sockaddr ptr_len)
-# if !defined(__HUGS__)
-#  if __GLASGOW_HASKELL__ < 611
-     System.Posix.Internals.setNonBlockingFD new_sock
-#  else
-     System.Posix.Internals.setNonBlockingFD new_sock True
+                        (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
+# else
+#  if !defined(__HUGS__)
+                 throwSocketErrorIfMinus1RetryMayBlock "accept"
+                        (threadWaitRead (fromIntegral s))
 #  endif
-# endif
+                        (c_accept s sockaddr ptr_len)
+#  if !defined(__HUGS__)
+#   if __GLASGOW_HASKELL__ < 611
+     System.Posix.Internals.setNonBlockingFD new_sock
+#   else
+     System.Posix.Internals.setNonBlockingFD new_sock True
+#   endif
+#  endif
+# endif /* HAVE_ACCEPT4 */
 #endif
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
@@ -2207,6 +2213,10 @@ foreign import CALLCONV unsafe "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+#ifdef HAVE_ACCEPT4
+foreign import CALLCONV unsafe "accept4"
+  c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+#endif
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
