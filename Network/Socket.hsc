@@ -913,6 +913,9 @@ data SocketOption
 #ifdef TCP_NODELAY
     | NoDelay       {- TCP_NODELAY  -}
 #endif
+#ifdef TCP_CORK
+    | Cork          {- TCP_CORK -}
+#endif
 #ifdef SO_LINGER
     | Linger        {- SO_LINGER    -}
 #endif
@@ -950,6 +953,9 @@ socketOptLevel so =
 #endif
 #ifdef TCP_NODELAY
     NoDelay      -> #const IPPROTO_TCP
+#endif
+#ifdef TCP_CORK
+    Cork         -> #const IPPROTO_TCP
 #endif
 #if HAVE_DECL_IPV6_V6ONLY
     IPv6Only     -> #const IPPROTO_IPV6
@@ -997,6 +1003,9 @@ packSocketOption so =
 #endif
 #ifdef TCP_NODELAY
     NoDelay       -> #const TCP_NODELAY
+#endif
+#ifdef TCP_CORK
+    Cork          -> #const TCP_CORK
 #endif
 #ifdef SO_LINGER
     Linger        -> #const SO_LINGER
