@@ -1,18 +1,15 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Main where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Exception (SomeException, bracket, catch, throwTo)
+import qualified Control.Exception as E
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
-#if !MIN_VERSION_base(4,6,0)
-import Prelude hiding (catch)
-#endif
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
@@ -197,7 +194,7 @@ test clientSetup clientAct serverSetup serverAct = do
     client tid barrier
   where
     server barrier = do
-        bracket serverSetup sClose $ \sock -> do
+        E.bracket serverSetup sClose $ \sock -> do
             serverReady
             serverAct sock
             putMVar barrier ()
@@ -216,8 +213,8 @@ test clientSetup clientAct serverSetup serverAct = do
 -- thread, specified by the first argument.
 bracketWithReraise :: ThreadId -> IO a -> (a -> IO b) -> (a -> IO ()) -> IO ()
 bracketWithReraise tid before after thing =
-    bracket before after thing
-    `catch` \ (e :: SomeException) -> throwTo tid e
+    E.bracket before after thing
+    `E.catch` \ (e :: E.SomeException) -> E.throwTo tid e
 
 ------------------------------------------------------------------------
 -- Test harness
