@@ -39,7 +39,7 @@ library
       Network.Socket.ByteString.MsgHdr
 
   build-depends:
-    base >= 3 && < 4.6,
+    base >= 3 && < 4.7,
     bytestring < 1.0,
     parsec >= 2.0 && < 3.2
 
@@ -62,11 +62,11 @@ test-suite simple
   type: exitcode-stdio-1.0
 
   build-depends:
-    base < 4.6,
-    bytestring < 0.10,
+    base < 4.7,
+    bytestring < 1.0,
     HUnit < 1.3,
     network,
-    test-framework < 0.6,
+    test-framework < 0.7,
     test-framework-hunit < 0.3
 
 test-suite uri
@@ -75,10 +75,10 @@ test-suite uri
   type: exitcode-stdio-1.0
 
   build-depends:
-    base < 4.6,
+    base < 4.7,
     HUnit < 1.3,
     network,
-    test-framework < 0.6,
+    test-framework < 0.7,
     test-framework-hunit < 0.3
 
 source-repository head

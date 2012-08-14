@@ -97,7 +97,7 @@ import Hugs.Prelude (IOException(..), IOErrorType(..))
 import Network.Socket
 
 import Control.Concurrent (MVar, newMVar, withMVar)
-import Control.Exception (catch)
+import qualified Control.Exception as E
 import Foreign.C.String (CString, peekCString, withCString)
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 import Foreign.C.Types ( CShort )
@@ -112,7 +112,6 @@ import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
 import Foreign.Marshal.Utils (with, fromBool)
 import Data.Typeable
-import Prelude hiding (catch)
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -555,7 +554,7 @@ getEntries :: IO a  -- read
 getEntries getOne atEnd = loop
   where
     loop = do
-      vv <- catch (liftM Just getOne)
+      vv <- E.catch (liftM Just getOne)
             (\ e -> let _types = e :: IOException in return Nothing)
       case vv of
         Nothing -> return []
