@@ -112,9 +112,7 @@ import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
 import Foreign.Marshal.Utils (with, fromBool)
 import Data.Typeable
-#if !MIN_VERSION_base(4,6,0)
 import Prelude hiding (catch)
-#endif
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
