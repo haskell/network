@@ -32,6 +32,7 @@ import Network.URI
     , parseURI, parseURIReference, parseRelativeReference, parseAbsoluteURI
     , parseAbsoluteURI
     , isURI, isURIReference, isRelativeReference, isAbsoluteURI
+    , uriIsAbsolute, uriIsRelative
     , relativeTo, nonStrictRelativeTo
     , relativeFrom
     , uriToString
@@ -1186,6 +1187,31 @@ testAltFn = TF.testGroup "testAltFn"
   , TF.testCase "testAltFn17" testAltFn17
   ]
 
+testUriIsAbsolute :: String -> Assertion
+testUriIsAbsolute str =
+    assertBool str (uriIsAbsolute uri)
+    where
+    Just uri = parseURIReference str
+
+testUriIsRelative :: String -> Assertion
+testUriIsRelative str =
+    assertBool str (uriIsRelative uri)
+    where
+    Just uri = parseURIReference str
+
+testIsAbsolute = TF.testGroup "testIsAbsolute"
+  [ TF.testCase "testIsAbsolute01" $ testUriIsAbsolute "http://google.com"
+  , TF.testCase "testIsAbsolute02" $ testUriIsAbsolute "ftp://p.x.ca/woo?hai=a"
+  , TF.testCase "testIsAbsolute03" $ testUriIsAbsolute "mailto:bob@example.com"
+  ]
+
+testIsRelative = TF.testGroup "testIsRelative"
+  [ TF.testCase "testIsRelative01" $ testUriIsRelative "//google.com"
+  , TF.testCase "testIsRelative02" $ testUriIsRelative "/hello"
+  , TF.testCase "testIsRelative03" $ testUriIsRelative "this/is/a/path"
+  , TF.testCase "testIsRelative04" $ testUriIsRelative "?what=that"
+  ]
+
 -- Full test suite
 allTests =
   [ testURIRefSuite
@@ -1199,6 +1225,8 @@ allTests =
   , testNormalizeURIString
   , testRelativeTo
   , testAltFn
+  , testIsAbsolute
+  , testIsRelative
   ]
 
 main = TF.defaultMain allTests

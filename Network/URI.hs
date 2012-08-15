@@ -80,6 +80,10 @@ module Network.URI
     , isIPv6address
     , isIPv4address
       
+    -- * Predicates
+    , uriIsAbsolute
+    , uriIsRelative
+      
     -- * Relative URIs
     , relativeTo
     , nonStrictRelativeTo
@@ -330,6 +334,16 @@ parseAll parser filename uristr = parse newparser filename uristr
                 ; eof
                 ; return res
                 }
+
+------------------------------------------------------------
+--  Predicates
+------------------------------------------------------------
+
+uriIsAbsolute :: URI -> Bool
+uriIsAbsolute (URI {uriScheme = scheme}) = scheme /= ""
+
+uriIsRelative :: URI -> Bool
+uriIsRelative = not . uriIsAbsolute
 
 ------------------------------------------------------------
 --  URI parser body based on Parsec elements and combinators
