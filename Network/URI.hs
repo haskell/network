@@ -100,6 +100,7 @@ module Network.URI
     , uriToString
     , isReserved, isUnreserved
     , isAllowedInURI, isUnescapedInURI
+    , isUnescapedInURIComponent
     , escapeURIChar
     , escapeURIString
     , unEscapeString
@@ -126,6 +127,7 @@ import Text.ParserCombinators.Parsec
 
 import Control.Monad (MonadPlus(..))
 import Data.Char (ord, chr, isHexDigit, toLower, toUpper, digitToInt)
+import Data.Bits ((.|.),(.&.),shiftL,shiftR)
 import Debug.Trace (trace)
 import Numeric (showIntAtBase)
 
@@ -906,6 +908,11 @@ isAllowedInURI c = isReserved c || isUnreserved c || c == '%' -- escape char
 isUnescapedInURI :: Char -> Bool
 isUnescapedInURI c = isReserved c || isUnreserved c
 
+-- | Returns 'True' if the character is allowed unescaped in a URI component.
+--
+isUnescapedInURIComponent :: Char -> Bool
+isUnescapedInURIComponent c = not (isReserved c || not (isUnescapedInURI c))
+
 ------------------------------------------------------------
 --  Escape sequence handling
 ------------------------------------------------------------
@@ -916,7 +923,7 @@ isUnescapedInURI c = isReserved c || isUnreserved c
 escapeURIChar :: (Char->Bool) -> Char -> String
 escapeURIChar p c
     | p c       = [c]
-    | otherwise = '%' : myShowHex (ord c) ""
+    | otherwise = concatMap (\i -> '%' : myShowHex i "") (utf8EncodeChar c)
     where
         myShowHex :: Int -> ShowS
         myShowHex n r =  case showIntAtBase 16 (toChrHex) n r of
@@ -926,6 +933,29 @@ escapeURIChar p c
         toChrHex d
             | d < 10    = chr (ord '0' + fromIntegral d)
             | otherwise = chr (ord 'A' + fromIntegral (d - 10))
+
+-- From http://hackage.haskell.org/package/utf8-string
+-- by Eric Mertens, BSD3
+-- Returns [Int] for use with showIntAtBase
+utf8EncodeChar :: Char -> [Int]
+utf8EncodeChar = map fromIntegral . go . ord
+ where
+  go oc
+   | oc <= 0x7f       = [oc]
+
+   | oc <= 0x7ff      = [ 0xc0 + (oc `shiftR` 6)
+                        , 0x80 + oc .&. 0x3f
+                        ]
+
+   | oc <= 0xffff     = [ 0xe0 + (oc `shiftR` 12)
+                        , 0x80 + ((oc `shiftR` 6) .&. 0x3f)
+                        , 0x80 + oc .&. 0x3f
+                        ]
+   | otherwise        = [ 0xf0 + (oc `shiftR` 18)
+                        , 0x80 + ((oc `shiftR` 12) .&. 0x3f)
+                        , 0x80 + ((oc `shiftR` 6) .&. 0x3f)
+                        , 0x80 + oc .&. 0x3f
+                        ]
 
 -- |Can be used to make a string valid for use in a URI.
 --
