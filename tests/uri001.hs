@@ -36,6 +36,7 @@ import Network.URI
     , relativeTo, nonStrictRelativeTo
     , relativeFrom
     , uriToString
+    , isUnescapedInURIComponent
     , isUnescapedInURI, escapeURIString, unEscapeString
     , normalizeCase, normalizeEscape, normalizePathSegments
     )
@@ -1065,12 +1066,21 @@ testEscapeURIString03 = testEq "testEscapeURIString03"
 testEscapeURIString04 = testEq "testEscapeURIString04"
     te02str (unEscapeString te02esc)
 
+testEscapeURIString05 = testEq "testEscapeURIString05"
+    "http%3A%2F%2Fexample.org%2Faz%2F09-_%2F.~%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D"
+    (escapeURIString isUnescapedInURIComponent te01str)
+
+testEscapeURIString06 = testEq "testEscapeURIString06"
+    "hello%C3%B8%C2%A9%E6%97%A5%E6%9C%AC"
+    (escapeURIString isUnescapedInURIComponent "helloø©日本")
 
 testEscapeURIString = TF.testGroup "testEscapeURIString"
   [ TF.testCase "testEscapeURIString01" testEscapeURIString01
   , TF.testCase "testEscapeURIString02" testEscapeURIString02
   , TF.testCase "testEscapeURIString03" testEscapeURIString03
   , TF.testCase "testEscapeURIString04" testEscapeURIString04
+  , TF.testCase "testEscapeURIString05" testEscapeURIString05
+  , TF.testCase "testEscapeURIString06" testEscapeURIString06
   ]
 
 -- URI string normalization tests
