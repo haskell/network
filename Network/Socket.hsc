@@ -1813,6 +1813,7 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
 # elif defined(__HUGS__)
     h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
 # endif
+    hSetBuffering h NoBuffering
     return (ConvertedToHandle, h)
 #else
 socketToHandle (MkSocket s family stype protocol status) m =
