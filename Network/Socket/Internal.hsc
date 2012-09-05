@@ -189,7 +189,7 @@ data SockAddr       -- C Names
   | SockAddrUnix
         String          -- sun_path
 #endif
-  deriving (Eq, Typeable)
+  deriving (Eq, Ord, Typeable)
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)
