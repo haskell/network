@@ -32,7 +32,9 @@ module Network.Socket
     -- * Types
       Socket(..)
     , Family(..)         
+    , isSupportedFamily
     , SocketType(..)
+    , isSupportedSocketType
     , SockAddr(..)
     , SocketStatus(..)
     , HostAddress
@@ -116,6 +118,7 @@ module Network.Socket
 
     -- * Socket options
     , SocketOption(..)
+    , isSupportedSocketOption
     , getSocketOption
     , setSocketOption
 
@@ -177,6 +180,7 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
+import Data.Maybe (isJust)
 import Data.Word (Word16, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
@@ -873,166 +877,119 @@ getSocketName (MkSocket s family _ _ _) = do
 -- Socket Properties
 
 data SocketOption
-    = DummySocketOption__
-#ifdef SO_DEBUG
-    | Debug         {- SO_DEBUG     -}
-#endif
-#ifdef SO_REUSEADDR
-    | ReuseAddr     {- SO_REUSEADDR -}
-#endif
-#ifdef SO_TYPE
-    | Type          {- SO_TYPE      -}
-#endif
-#ifdef SO_ERROR
-    | SoError       {- SO_ERROR     -}
-#endif
-#ifdef SO_DONTROUTE
-    | DontRoute     {- SO_DONTROUTE -}
-#endif
-#ifdef SO_BROADCAST
-    | Broadcast     {- SO_BROADCAST -}
-#endif
-#ifdef SO_SNDBUF
-    | SendBuffer    {- SO_SNDBUF    -}
-#endif
-#ifdef SO_RCVBUF
-    | RecvBuffer    {- SO_RCVBUF    -}
-#endif
-#ifdef SO_KEEPALIVE
-    | KeepAlive     {- SO_KEEPALIVE -}
-#endif
-#ifdef SO_OOBINLINE
-    | OOBInline     {- SO_OOBINLINE -}
-#endif
-#ifdef IP_TTL
-    | TimeToLive    {- IP_TTL       -}
-#endif
-#ifdef TCP_MAXSEG
-    | MaxSegment    {- TCP_MAXSEG   -}
-#endif
-#ifdef TCP_NODELAY
-    | NoDelay       {- TCP_NODELAY  -}
-#endif
-#ifdef TCP_CORK
-    | Cork          {- TCP_CORK -}
-#endif
-#ifdef SO_LINGER
-    | Linger        {- SO_LINGER    -}
-#endif
-#ifdef SO_REUSEPORT
-    | ReusePort     {- SO_REUSEPORT -}
-#endif
-#ifdef SO_RCVLOWAT
-    | RecvLowWater  {- SO_RCVLOWAT  -}
-#endif
-#ifdef SO_SNDLOWAT
-    | SendLowWater  {- SO_SNDLOWAT  -}
-#endif
-#ifdef SO_RCVTIMEO
-    | RecvTimeOut   {- SO_RCVTIMEO  -}
-#endif
-#ifdef SO_SNDTIMEO
-    | SendTimeOut   {- SO_SNDTIMEO  -}
-#endif
-#ifdef SO_USELOOPBACK
-    | UseLoopBack   {- SO_USELOOPBACK -}
-#endif
-#if HAVE_DECL_IPV6_V6ONLY
-    | IPv6Only      {- IPV6_V6ONLY -}
-#endif
+    = Debug         -- ^ SO_DEBUG
+    | ReuseAddr     -- ^ SO_REUSEADDR
+    | Type          -- ^ SO_TYPE
+    | SoError       -- ^ SO_ERROR
+    | DontRoute     -- ^ SO_DONTROUTE
+    | Broadcast     -- ^ SO_BROADCAST
+    | SendBuffer    -- ^ SO_SNDBUF
+    | RecvBuffer    -- ^ SO_RCVBUF
+    | KeepAlive     -- ^ SO_KEEPALIVE
+    | OOBInline     -- ^ SO_OOBINLINE
+    | TimeToLive    -- ^ IP_TTL
+    | MaxSegment    -- ^ TCP_MAXSEG
+    | NoDelay       -- ^ TCP_NODELAY
+    | Cork          -- ^ TCP_CORK
+    | Linger        -- ^ SO_LINGER
+    | ReusePort     -- ^ SO_REUSEPORT
+    | RecvLowWater  -- ^ SO_RCVLOWAT
+    | SendLowWater  -- ^ SO_SNDLOWAT
+    | RecvTimeOut   -- ^ SO_RCVTIMEO
+    | SendTimeOut   -- ^ SO_SNDTIMEO
+    | UseLoopBack   -- ^ SO_USELOOPBACK
+    | IPv6Only      -- ^ IPV6_V6ONLY
     deriving (Show, Typeable)
 
 socketOptLevel :: SocketOption -> CInt
 socketOptLevel so = 
   case so of
-#ifdef IP_TTL
     TimeToLive   -> #const IPPROTO_IP
-#endif
-#ifdef TCP_MAXSEG
     MaxSegment   -> #const IPPROTO_TCP
-#endif
-#ifdef TCP_NODELAY
     NoDelay      -> #const IPPROTO_TCP
-#endif
-#ifdef TCP_CORK
     Cork         -> #const IPPROTO_TCP
-#endif
-#if HAVE_DECL_IPV6_V6ONLY
     IPv6Only     -> #const IPPROTO_IPV6
-#endif
     _            -> #const SOL_SOCKET
 
+isSupportedSocketOption :: SocketOption -> Bool
+isSupportedSocketOption = isJust . packSocketOption'
+
 packSocketOption :: SocketOption -> CInt
-packSocketOption so =
+packSocketOption so = case packSocketOption' so of
+  Just v -> v
+  Nothing -> error $
+    "Network.Socket.packSocketOption: unsupported socket option: " ++ show so
+
+packSocketOption' :: SocketOption -> Maybe CInt
+packSocketOption' so =
   case so of
 #ifdef SO_DEBUG
-    Debug         -> #const SO_DEBUG
+    Debug         -> Just #const SO_DEBUG
 #endif
 #ifdef SO_REUSEADDR
-    ReuseAddr     -> #const SO_REUSEADDR
+    ReuseAddr     -> Just #const SO_REUSEADDR
 #endif
 #ifdef SO_TYPE
-    Type          -> #const SO_TYPE
+    Type          -> Just #const SO_TYPE
 #endif
 #ifdef SO_ERROR
-    SoError       -> #const SO_ERROR
+    SoError       -> Just #const SO_ERROR
 #endif
 #ifdef SO_DONTROUTE
-    DontRoute     -> #const SO_DONTROUTE
+    DontRoute     -> Just #const SO_DONTROUTE
 #endif
 #ifdef SO_BROADCAST
-    Broadcast     -> #const SO_BROADCAST
+    Broadcast     -> Just #const SO_BROADCAST
 #endif
 #ifdef SO_SNDBUF
-    SendBuffer    -> #const SO_SNDBUF
+    SendBuffer    -> Just #const SO_SNDBUF
 #endif
 #ifdef SO_RCVBUF
-    RecvBuffer    -> #const SO_RCVBUF
+    RecvBuffer    -> Just #const SO_RCVBUF
 #endif
 #ifdef SO_KEEPALIVE
-    KeepAlive     -> #const SO_KEEPALIVE
+    KeepAlive     -> Just #const SO_KEEPALIVE
 #endif
 #ifdef SO_OOBINLINE
-    OOBInline     -> #const SO_OOBINLINE
+    OOBInline     -> Just #const SO_OOBINLINE
 #endif
 #ifdef IP_TTL
-    TimeToLive    -> #const IP_TTL
+    TimeToLive    -> Just #const IP_TTL
 #endif
 #ifdef TCP_MAXSEG
-    MaxSegment    -> #const TCP_MAXSEG
+    MaxSegment    -> Just #const TCP_MAXSEG
 #endif
 #ifdef TCP_NODELAY
-    NoDelay       -> #const TCP_NODELAY
+    NoDelay       -> Just #const TCP_NODELAY
 #endif
 #ifdef TCP_CORK
-    Cork          -> #const TCP_CORK
+    Cork          -> Just #const TCP_CORK
 #endif
 #ifdef SO_LINGER
-    Linger        -> #const SO_LINGER
+    Linger        -> Just #const SO_LINGER
 #endif
 #ifdef SO_REUSEPORT
-    ReusePort     -> #const SO_REUSEPORT
+    ReusePort     -> Just #const SO_REUSEPORT
 #endif
 #ifdef SO_RCVLOWAT
-    RecvLowWater  -> #const SO_RCVLOWAT
+    RecvLowWater  -> Just #const SO_RCVLOWAT
 #endif
 #ifdef SO_SNDLOWAT
-    SendLowWater  -> #const SO_SNDLOWAT
+    SendLowWater  -> Just #const SO_SNDLOWAT
 #endif
 #ifdef SO_RCVTIMEO
-    RecvTimeOut   -> #const SO_RCVTIMEO
+    RecvTimeOut   -> Just #const SO_RCVTIMEO
 #endif
 #ifdef SO_SNDTIMEO
-    SendTimeOut   -> #const SO_SNDTIMEO
+    SendTimeOut   -> Just #const SO_SNDTIMEO
 #endif
 #ifdef SO_USELOOPBACK
-    UseLoopBack   -> #const SO_USELOOPBACK
+    UseLoopBack   -> Just #const SO_USELOOPBACK
 #endif
 #if HAVE_DECL_IPV6_V6ONLY
-    IPv6Only      -> #const IPV6_V6ONLY
+    IPv6Only      -> Just #const IPV6_V6ONLY
 #endif
-    unknown       -> error ("Network.Socket.packSocketOption: unknown option " ++
-                            show unknown)
+    _             -> Nothing
 
 setSocketOption :: Socket 
                 -> SocketOption -- Option Name
@@ -1203,201 +1160,213 @@ packSocketType  :: SocketType -> CInt
 unpackSocketType:: CInt -> SocketType
 
 ------ ------
-                        
-packFamily f = case f of
-        AF_UNSPEC -> #const AF_UNSPEC
+
+packFamily f = case packFamily' f of
+  Just fam -> fam
+  Nothing -> error $
+    "Network.Socket.packFamily: unsupported address family: " ++ show f
+
+-- | Does the AF_ constant corresponding to the given family exist on this 
+-- system?
+isSupportedFamily :: Family -> Bool
+isSupportedFamily = isJust . packFamily'
+
+packFamily' :: Family -> Maybe CInt
+packFamily' f = case f of
+        AF_UNSPEC -> Just #const AF_UNSPEC
 #ifdef AF_UNIX
-        AF_UNIX -> #const AF_UNIX
+        AF_UNIX -> Just #const AF_UNIX
 #endif
 #ifdef AF_INET
-        AF_INET -> #const AF_INET
+        AF_INET -> Just #const AF_INET
 #endif
 #ifdef AF_INET6
-        AF_INET6 -> #const AF_INET6
+        AF_INET6 -> Just #const AF_INET6
 #endif
 #ifdef AF_IMPLINK
-        AF_IMPLINK -> #const AF_IMPLINK
+        AF_IMPLINK -> Just #const AF_IMPLINK
 #endif
 #ifdef AF_PUP
-        AF_PUP -> #const AF_PUP
+        AF_PUP -> Just #const AF_PUP
 #endif
 #ifdef AF_CHAOS
-        AF_CHAOS -> #const AF_CHAOS
+        AF_CHAOS -> Just #const AF_CHAOS
 #endif
 #ifdef AF_NS
-        AF_NS -> #const AF_NS
+        AF_NS -> Just #const AF_NS
 #endif
 #ifdef AF_NBS
-        AF_NBS -> #const AF_NBS
+        AF_NBS -> Just #const AF_NBS
 #endif
 #ifdef AF_ECMA
-        AF_ECMA -> #const AF_ECMA
+        AF_ECMA -> Just #const AF_ECMA
 #endif
 #ifdef AF_DATAKIT
-        AF_DATAKIT -> #const AF_DATAKIT
+        AF_DATAKIT -> Just #const AF_DATAKIT
 #endif
 #ifdef AF_CCITT
-        AF_CCITT -> #const AF_CCITT
+        AF_CCITT -> Just #const AF_CCITT
 #endif
 #ifdef AF_SNA
-        AF_SNA -> #const AF_SNA
+        AF_SNA -> Just #const AF_SNA
 #endif
 #ifdef AF_DECnet
-        AF_DECnet -> #const AF_DECnet
+        AF_DECnet -> Just #const AF_DECnet
 #endif
 #ifdef AF_DLI
-        AF_DLI -> #const AF_DLI
+        AF_DLI -> Just #const AF_DLI
 #endif
 #ifdef AF_LAT
-        AF_LAT -> #const AF_LAT
+        AF_LAT -> Just #const AF_LAT
 #endif
 #ifdef AF_HYLINK
-        AF_HYLINK -> #const AF_HYLINK
+        AF_HYLINK -> Just #const AF_HYLINK
 #endif
 #ifdef AF_APPLETALK
-        AF_APPLETALK -> #const AF_APPLETALK
+        AF_APPLETALK -> Just #const AF_APPLETALK
 #endif
 #ifdef AF_ROUTE
-        AF_ROUTE -> #const AF_ROUTE
+        AF_ROUTE -> Just #const AF_ROUTE
 #endif
 #ifdef AF_NETBIOS
-        AF_NETBIOS -> #const AF_NETBIOS
+        AF_NETBIOS -> Just #const AF_NETBIOS
 #endif
 #ifdef AF_NIT
-        AF_NIT -> #const AF_NIT
+        AF_NIT -> Just #const AF_NIT
 #endif
 #ifdef AF_802
-        AF_802 -> #const AF_802
+        AF_802 -> Just #const AF_802
 #endif
 #ifdef AF_ISO
-        AF_ISO -> #const AF_ISO
+        AF_ISO -> Just #const AF_ISO
 #endif
 #ifdef AF_OSI
-        AF_OSI -> #const AF_OSI
+        AF_OSI -> Just #const AF_OSI
 #endif
 #ifdef AF_NETMAN
-        AF_NETMAN -> #const AF_NETMAN
+        AF_NETMAN -> Just #const AF_NETMAN
 #endif
 #ifdef AF_X25
-        AF_X25 -> #const AF_X25
+        AF_X25 -> Just #const AF_X25
 #endif
 #ifdef AF_AX25
-        AF_AX25 -> #const AF_AX25
+        AF_AX25 -> Just #const AF_AX25
 #endif
 #ifdef AF_OSINET
-        AF_OSINET -> #const AF_OSINET
+        AF_OSINET -> Just #const AF_OSINET
 #endif
 #ifdef AF_GOSSIP
-        AF_GOSSIP -> #const AF_GOSSIP
+        AF_GOSSIP -> Just #const AF_GOSSIP
 #endif
 #ifdef AF_IPX
-        AF_IPX -> #const AF_IPX
+        AF_IPX -> Just #const AF_IPX
 #endif
 #ifdef Pseudo_AF_XTP
-        Pseudo_AF_XTP -> #const Pseudo_AF_XTP
+        Pseudo_AF_XTP -> Just #const Pseudo_AF_XTP
 #endif
 #ifdef AF_CTF
-        AF_CTF -> #const AF_CTF
+        AF_CTF -> Just #const AF_CTF
 #endif
 #ifdef AF_WAN
-        AF_WAN -> #const AF_WAN
+        AF_WAN -> Just #const AF_WAN
 #endif
 #ifdef AF_SDL
-        AF_SDL -> #const AF_SDL
+        AF_SDL -> Just #const AF_SDL
 #endif
 #ifdef AF_NETWARE
-        AF_NETWARE -> #const AF_NETWARE 
+        AF_NETWARE -> Just #const AF_NETWARE
 #endif
 #ifdef AF_NDD
-        AF_NDD -> #const AF_NDD         
+        AF_NDD -> Just #const AF_NDD
 #endif
 #ifdef AF_INTF
-        AF_INTF -> #const AF_INTF
+        AF_INTF -> Just #const AF_INTF
 #endif
 #ifdef AF_COIP
-        AF_COIP -> #const AF_COIP
+        AF_COIP -> Just #const AF_COIP
 #endif
 #ifdef AF_CNT
-        AF_CNT -> #const AF_CNT
+        AF_CNT -> Just #const AF_CNT
 #endif
 #ifdef Pseudo_AF_RTIP
-        Pseudo_AF_RTIP -> #const Pseudo_AF_RTIP
+        Pseudo_AF_RTIP -> Just #const Pseudo_AF_RTIP
 #endif
 #ifdef Pseudo_AF_PIP
-        Pseudo_AF_PIP -> #const Pseudo_AF_PIP
+        Pseudo_AF_PIP -> Just #const Pseudo_AF_PIP
 #endif
 #ifdef AF_SIP
-        AF_SIP -> #const AF_SIP
+        AF_SIP -> Just #const AF_SIP
 #endif
 #ifdef AF_ISDN
-        AF_ISDN -> #const AF_ISDN
+        AF_ISDN -> Just #const AF_ISDN
 #endif
 #ifdef Pseudo_AF_KEY
-        Pseudo_AF_KEY -> #const Pseudo_AF_KEY
+        Pseudo_AF_KEY -> Just #const Pseudo_AF_KEY
 #endif
 #ifdef AF_NATM
-        AF_NATM -> #const AF_NATM
+        AF_NATM -> Just #const AF_NATM
 #endif
 #ifdef AF_ARP
-        AF_ARP -> #const AF_ARP
+        AF_ARP -> Just #const AF_ARP
 #endif
 #ifdef Pseudo_AF_HDRCMPLT
-        Pseudo_AF_HDRCMPLT -> #const Pseudo_AF_HDRCMPLT
+        Pseudo_AF_HDRCMPLT -> Just #const Pseudo_AF_HDRCMPLT
 #endif
 #ifdef AF_ENCAP
-        AF_ENCAP -> #const AF_ENCAP 
+        AF_ENCAP -> Just #const AF_ENCAP
 #endif
 #ifdef AF_LINK
-        AF_LINK -> #const AF_LINK
+        AF_LINK -> Just #const AF_LINK
 #endif
 #ifdef AF_RAW
-        AF_RAW -> #const AF_RAW
+        AF_RAW -> Just #const AF_RAW
 #endif
 #ifdef AF_RIF
-        AF_RIF -> #const AF_RIF
+        AF_RIF -> Just #const AF_RIF
 #endif
 #ifdef AF_NETROM
-        AF_NETROM -> #const AF_NETROM
+        AF_NETROM -> Just #const AF_NETROM
 #endif
 #ifdef AF_BRIDGE
-        AF_BRIDGE -> #const AF_BRIDGE
+        AF_BRIDGE -> Just #const AF_BRIDGE
 #endif
 #ifdef AF_ATMPVC
-        AF_ATMPVC -> #const AF_ATMPVC
+        AF_ATMPVC -> Just #const AF_ATMPVC
 #endif
 #ifdef AF_ROSE
-        AF_ROSE -> #const AF_ROSE
+        AF_ROSE -> Just #const AF_ROSE
 #endif
 #ifdef AF_NETBEUI
-        AF_NETBEUI -> #const AF_NETBEUI
+        AF_NETBEUI -> Just #const AF_NETBEUI
 #endif
 #ifdef AF_SECURITY
-        AF_SECURITY -> #const AF_SECURITY
+        AF_SECURITY -> Just #const AF_SECURITY
 #endif
 #ifdef AF_PACKET
-        AF_PACKET -> #const AF_PACKET
+        AF_PACKET -> Just #const AF_PACKET
 #endif
 #ifdef AF_ASH
-        AF_ASH -> #const AF_ASH
+        AF_ASH -> Just #const AF_ASH
 #endif
 #ifdef AF_ECONET
-        AF_ECONET -> #const AF_ECONET
+        AF_ECONET -> Just #const AF_ECONET
 #endif
 #ifdef AF_ATMSVC
-        AF_ATMSVC -> #const AF_ATMSVC
+        AF_ATMSVC -> Just #const AF_ATMSVC
 #endif
 #ifdef AF_IRDA
-        AF_IRDA -> #const AF_IRDA
+        AF_IRDA -> Just #const AF_IRDA
 #endif
 #ifdef AF_PPPOX
-        AF_PPPOX -> #const AF_PPPOX
+        AF_PPPOX -> Just #const AF_PPPOX
 #endif
 #ifdef AF_WANPIPE
-        AF_WANPIPE -> #const AF_WANPIPE
+        AF_WANPIPE -> Just #const AF_WANPIPE
 #endif
 #ifdef AF_BLUETOOTH
-        AF_BLUETOOTH -> #const AF_BLUETOOTH
+        AF_BLUETOOTH -> Just #const AF_BLUETOOTH
 #endif
+        _ -> Nothing
 
 --------- ----------
 
@@ -1604,44 +1573,46 @@ unpackFamily f = case f of
 
 -- | Socket Types.
 --
--- This data type might have different constructors depending on what is
--- supported by the operating system.
+-- The existence of a constructor does not necessarily imply that that
+-- socket type is supported on your system: see 'isSupportedSocketType'.
 data SocketType
-        = NoSocketType
-#ifdef SOCK_STREAM
-        | Stream 
-#endif
-#ifdef SOCK_DGRAM
-        | Datagram
-#endif
-#ifdef SOCK_RAW
-        | Raw 
-#endif
-#ifdef SOCK_RDM
-        | RDM 
-#endif
-#ifdef SOCK_SEQPACKET
-        | SeqPacket
-#endif
+        = NoSocketType -- ^ 0, used in getAddrInfo hints, for example
+        | Stream -- ^ SOCK_STREAM
+        | Datagram -- ^ SOCK_DGRAM
+        | Raw -- ^ SOCK_RAW
+        | RDM -- ^ SOCK_RDM
+        | SeqPacket -- ^ SOCK_SEQPACKET
         deriving (Eq, Ord, Read, Show, Typeable)
 
-packSocketType stype = case stype of
-        NoSocketType -> 0
+-- | Does the SOCK_ constant corresponding to the given SocketType exist on
+-- this system?
+isSupportedSocketType :: SocketType -> Bool
+isSupportedSocketType = isJust . packSocketType'
+
+packSocketType t = case packSocketType' t of
+  Just v -> v
+  Nothing -> error $
+    "Network.Socket.packSocketType: unsupported socket type " ++ show t
+
+packSocketType' :: SocketType -> Maybe CInt
+packSocketType' stype = case stype of
+        NoSocketType -> Just 0
 #ifdef SOCK_STREAM
-        Stream -> #const SOCK_STREAM
+        Stream -> Just #const SOCK_STREAM
 #endif
 #ifdef SOCK_DGRAM
-        Datagram -> #const SOCK_DGRAM
+        Datagram -> Just #const SOCK_DGRAM
 #endif
 #ifdef SOCK_RAW
-        Raw -> #const SOCK_RAW
+        Raw -> Just #const SOCK_RAW
 #endif
 #ifdef SOCK_RDM
-        RDM -> #const SOCK_RDM
+        RDM -> Just #const SOCK_RDM
 #endif
 #ifdef SOCK_SEQPACKET
-        SeqPacket -> #const SOCK_SEQPACKET
+        SeqPacket -> Just #const SOCK_SEQPACKET
 #endif
+        _ -> Nothing
 
 unpackSocketType t = case t of
         0 -> NoSocketType
@@ -1660,7 +1631,8 @@ unpackSocketType t = case t of
 #ifdef SOCK_SEQPACKET
         (#const SOCK_SEQPACKET) -> SeqPacket
 #endif
-        _ -> NoSocketType
+        _ -> error ("Network.Socket.unpackSocketType: unknown socket " ++
+                    "type " ++ show t)
 
 -- ---------------------------------------------------------------------------
 -- Utility Functions

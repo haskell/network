@@ -312,202 +312,74 @@ peekSockAddr p = do
 ------------------------------------------------------------------------
 -- Protocol Families.
 
--- | This data type might have different constructors depending on
--- what is supported by the operating system.
+-- | A constructor being present here does not mean it is supported by the
+-- operating system.
 data Family
     = AF_UNSPEC           -- unspecified
-#ifdef AF_UNIX
     | AF_UNIX             -- local to host (pipes, portals
-#endif
-#ifdef AF_INET
     | AF_INET             -- internetwork: UDP, TCP, etc
-#endif
-#ifdef AF_INET6
     | AF_INET6            -- Internet Protocol version 6
-#endif
-#ifdef AF_IMPLINK
     | AF_IMPLINK          -- arpanet imp addresses
-#endif
-#ifdef AF_PUP
     | AF_PUP              -- pup protocols: e.g. BSP
-#endif
-#ifdef AF_CHAOS
     | AF_CHAOS            -- mit CHAOS protocols
-#endif
-#ifdef AF_NS
     | AF_NS               -- XEROX NS protocols
-#endif
-#ifdef AF_NBS
     | AF_NBS              -- nbs protocols
-#endif
-#ifdef AF_ECMA
     | AF_ECMA             -- european computer manufacturers
-#endif
-#ifdef AF_DATAKIT
     | AF_DATAKIT          -- datakit protocols
-#endif
-#ifdef AF_CCITT
     | AF_CCITT            -- CCITT protocols, X.25 etc
-#endif
-#ifdef AF_SNA
     | AF_SNA              -- IBM SNA
-#endif
-#ifdef AF_DECnet
     | AF_DECnet           -- DECnet
-#endif
-#ifdef AF_DLI
     | AF_DLI              -- Direct data link interface
-#endif
-#ifdef AF_LAT
     | AF_LAT              -- LAT
-#endif
-#ifdef AF_HYLINK
     | AF_HYLINK           -- NSC Hyperchannel
-#endif
-#ifdef AF_APPLETALK
     | AF_APPLETALK        -- Apple Talk
-#endif
-#ifdef AF_ROUTE
     | AF_ROUTE            -- Internal Routing Protocol
-#endif
-#ifdef AF_NETBIOS
     | AF_NETBIOS          -- NetBios-style addresses
-#endif
-#ifdef AF_NIT
     | AF_NIT              -- Network Interface Tap
-#endif
-#ifdef AF_802
     | AF_802              -- IEEE 802.2, also ISO 8802
-#endif
-#ifdef AF_ISO
     | AF_ISO              -- ISO protocols
-#endif
-#ifdef AF_OSI
     | AF_OSI              -- umbrella of all families used by OSI
-#endif
-#ifdef AF_NETMAN
     | AF_NETMAN           -- DNA Network Management
-#endif
-#ifdef AF_X25
     | AF_X25              -- CCITT X.25
-#endif
-#ifdef AF_AX25
     | AF_AX25
-#endif
-#ifdef AF_OSINET
     | AF_OSINET           -- AFI
-#endif
-#ifdef AF_GOSSIP
     | AF_GOSSIP           -- US Government OSI
-#endif
-#ifdef AF_IPX
     | AF_IPX              -- Novell Internet Protocol
-#endif
-#ifdef Pseudo_AF_XTP
     | Pseudo_AF_XTP       -- eXpress Transfer Protocol (no AF)
-#endif
-#ifdef AF_CTF
     | AF_CTF              -- Common Trace Facility
-#endif
-#ifdef AF_WAN
     | AF_WAN              -- Wide Area Network protocols
-#endif
-#ifdef AF_SDL
     | AF_SDL              -- SGI Data Link for DLPI
-#endif
-#ifdef AF_NETWARE
     | AF_NETWARE
-#endif
-#ifdef AF_NDD
     | AF_NDD
-#endif
-#ifdef AF_INTF
     | AF_INTF             -- Debugging use only
-#endif
-#ifdef AF_COIP
     | AF_COIP             -- connection-oriented IP, aka ST II
-#endif
-#ifdef AF_CNT
     | AF_CNT              -- Computer Network Technology
-#endif
-#ifdef Pseudo_AF_RTIP
     | Pseudo_AF_RTIP      -- Help Identify RTIP packets
-#endif
-#ifdef Pseudo_AF_PIP
     | Pseudo_AF_PIP       -- Help Identify PIP packets
-#endif
-#ifdef AF_SIP
     | AF_SIP              -- Simple Internet Protocol
-#endif
-#ifdef AF_ISDN
     | AF_ISDN             -- Integrated Services Digital Network
-#endif
-#ifdef Pseudo_AF_KEY
     | Pseudo_AF_KEY       -- Internal key-management function
-#endif
-#ifdef AF_NATM
     | AF_NATM             -- native ATM access
-#endif
-#ifdef AF_ARP
     | AF_ARP              -- (rev.) addr. res. prot. (RFC 826)
-#endif
-#ifdef Pseudo_AF_HDRCMPLT
     | Pseudo_AF_HDRCMPLT  -- Used by BPF to not rewrite hdrs in iface output
-#endif
-#ifdef AF_ENCAP
     | AF_ENCAP
-#endif
-#ifdef AF_LINK
     | AF_LINK             -- Link layer interface
-#endif
-#ifdef AF_RAW
     | AF_RAW              -- Link layer interface
-#endif
-#ifdef AF_RIF
     | AF_RIF              -- raw interface
-#endif
-#ifdef AF_NETROM
     | AF_NETROM           -- Amateur radio NetROM
-#endif
-#ifdef AF_BRIDGE
     | AF_BRIDGE           -- multiprotocol bridge
-#endif
-#ifdef AF_ATMPVC
     | AF_ATMPVC           -- ATM PVCs
-#endif
-#ifdef AF_ROSE
     | AF_ROSE             -- Amateur Radio X.25 PLP
-#endif
-#ifdef AF_NETBEUI
     | AF_NETBEUI          -- 802.2LLC
-#endif
-#ifdef AF_SECURITY
     | AF_SECURITY         -- Security callback pseudo AF
-#endif
-#ifdef AF_PACKET
     | AF_PACKET           -- Packet family
-#endif
-#ifdef AF_ASH
     | AF_ASH              -- Ash
-#endif
-#ifdef AF_ECONET
     | AF_ECONET           -- Acorn Econet
-#endif
-#ifdef AF_ATMSVC
     | AF_ATMSVC           -- ATM SVCs
-#endif
-#ifdef AF_IRDA
     | AF_IRDA             -- IRDA sockets
-#endif
-#ifdef AF_PPPOX
     | AF_PPPOX            -- PPPoX sockets
-#endif
-#ifdef AF_WANPIPE
     | AF_WANPIPE          -- Wanpipe API sockets
-#endif
-#ifdef AF_BLUETOOTH
     | AF_BLUETOOTH        -- bluetooth sockets
-#endif
       deriving (Eq, Ord, Read, Show)
 
 -- ---------------------------------------------------------------------
