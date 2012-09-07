@@ -161,7 +161,6 @@ module Network.Socket
 
     , packFamily
     , unpackFamily
-    , packSocketType
     , throwSocketErrorIfMinus1_
     ) where
 
@@ -416,8 +415,9 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
+    c_stype <- packSocketType' "socket" stype
     fd <- throwSocketErrorIfMinus1Retry "socket" $
-                c_socket (packFamily family) (packSocketType stype) protocol
+                c_socket (packFamily family) c_stype protocol
 #if !defined(__HUGS__)
 # if __GLASGOW_HASKELL__ < 611
     System.Posix.Internals.setNonBlockingFD fd
@@ -450,10 +450,9 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
+    c_stype <- packSocketType' "socketPair" stype
     _rc <- throwSocketErrorIfMinus1Retry "socketpair" $
-                c_socketpair (packFamily family)
-                             (packSocketType stype)
-                             protocol fdArr
+                c_socketpair (packFamily family) c_stype protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr 
     s1 <- mkNonBlockingSocket fd1
     s2 <- mkNonBlockingSocket fd2
@@ -876,6 +875,10 @@ getSocketName (MkSocket s family _ _ _) = do
 -----------------------------------------------------------------------------
 -- Socket Properties
 
+-- | Socket options for use with 'setSocketOption' and 'getSocketOption'.
+--
+-- The existence of a constructor does not imply that the relevant option
+-- is supported on your system: see 'isSupportedSocketOption'
 data SocketOption
     = Debug         -- ^ SO_DEBUG
     | ReuseAddr     -- ^ SO_REUSEADDR
@@ -912,105 +915,126 @@ socketOptLevel so =
     _            -> #const SOL_SOCKET
 
 isSupportedSocketOption :: SocketOption -> Bool
-isSupportedSocketOption = isJust . packSocketOption'
+isSupportedSocketOption = isJust . packSocketOption
 
-packSocketOption :: SocketOption -> CInt
-packSocketOption so = case packSocketOption' so of
-  Just v -> v
-  Nothing -> error $
-    "Network.Socket.packSocketOption: unsupported socket option: " ++ show so
-
-packSocketOption' :: SocketOption -> Maybe CInt
-packSocketOption' so =
+-- | For a socket option, return Just (level, value) where level is the
+-- corresponding C option level constant (e.g. SOL_SOCKET) and value is
+-- the option constant itself (e.g. SO_DEBUG)
+-- If either constant does not exist, return Nothing.
+packSocketOption :: SocketOption -> Maybe (CInt, CInt)
+packSocketOption so =
   case so of
+#ifdef SOL_SOCKET
 #ifdef SO_DEBUG
-    Debug         -> Just #const SO_DEBUG
+    Debug         -> Just ((#const SOL_SOCKET), (#const SO_DEBUG))
 #endif
 #ifdef SO_REUSEADDR
-    ReuseAddr     -> Just #const SO_REUSEADDR
+    ReuseAddr     -> Just ((#const SOL_SOCKET), (#const SO_REUSEADDR))
 #endif
 #ifdef SO_TYPE
-    Type          -> Just #const SO_TYPE
+    Type          -> Just ((#const SOL_SOCKET), (#const SO_TYPE))
 #endif
 #ifdef SO_ERROR
-    SoError       -> Just #const SO_ERROR
+    SoError       -> Just ((#const SOL_SOCKET), (#const SO_ERROR))
 #endif
 #ifdef SO_DONTROUTE
-    DontRoute     -> Just #const SO_DONTROUTE
+    DontRoute     -> Just ((#const SOL_SOCKET), (#const SO_DONTROUTE))
 #endif
 #ifdef SO_BROADCAST
-    Broadcast     -> Just #const SO_BROADCAST
+    Broadcast     -> Just ((#const SOL_SOCKET), (#const SO_BROADCAST))
 #endif
 #ifdef SO_SNDBUF
-    SendBuffer    -> Just #const SO_SNDBUF
+    SendBuffer    -> Just ((#const SOL_SOCKET), (#const SO_SNDBUF))
 #endif
 #ifdef SO_RCVBUF
-    RecvBuffer    -> Just #const SO_RCVBUF
+    RecvBuffer    -> Just ((#const SOL_SOCKET), (#const SO_RCVBUF))
 #endif
 #ifdef SO_KEEPALIVE
-    KeepAlive     -> Just #const SO_KEEPALIVE
+    KeepAlive     -> Just ((#const SOL_SOCKET), (#const SO_KEEPALIVE))
 #endif
 #ifdef SO_OOBINLINE
-    OOBInline     -> Just #const SO_OOBINLINE
-#endif
-#ifdef IP_TTL
-    TimeToLive    -> Just #const IP_TTL
-#endif
-#ifdef TCP_MAXSEG
-    MaxSegment    -> Just #const TCP_MAXSEG
-#endif
-#ifdef TCP_NODELAY
-    NoDelay       -> Just #const TCP_NODELAY
-#endif
-#ifdef TCP_CORK
-    Cork          -> Just #const TCP_CORK
+    OOBInline     -> Just ((#const SOL_SOCKET), (#const SO_OOBINLINE))
 #endif
 #ifdef SO_LINGER
-    Linger        -> Just #const SO_LINGER
+    Linger        -> Just ((#const SOL_SOCKET), (#const SO_LINGER))
 #endif
 #ifdef SO_REUSEPORT
-    ReusePort     -> Just #const SO_REUSEPORT
+    ReusePort     -> Just ((#const SOL_SOCKET), (#const SO_REUSEPORT))
 #endif
 #ifdef SO_RCVLOWAT
-    RecvLowWater  -> Just #const SO_RCVLOWAT
+    RecvLowWater  -> Just ((#const SOL_SOCKET), (#const SO_RCVLOWAT))
 #endif
 #ifdef SO_SNDLOWAT
-    SendLowWater  -> Just #const SO_SNDLOWAT
+    SendLowWater  -> Just ((#const SOL_SOCKET), (#const SO_SNDLOWAT))
 #endif
 #ifdef SO_RCVTIMEO
-    RecvTimeOut   -> Just #const SO_RCVTIMEO
+    RecvTimeOut   -> Just ((#const SOL_SOCKET), (#const SO_RCVTIMEO))
 #endif
 #ifdef SO_SNDTIMEO
-    SendTimeOut   -> Just #const SO_SNDTIMEO
+    SendTimeOut   -> Just ((#const SOL_SOCKET), (#const SO_SNDTIMEO))
 #endif
 #ifdef SO_USELOOPBACK
-    UseLoopBack   -> Just #const SO_USELOOPBACK
+    UseLoopBack   -> Just ((#const SOL_SOCKET), (#const SO_USELOOPBACK))
 #endif
+#endif // SOL_SOCKET
+#ifdef IPPROTO_IP
+#ifdef IP_TTL
+    TimeToLive    -> Just ((#const IPPROTO_IP), (#const IP_TTL))
+#endif
+#endif // IPPROTO_IP
+#ifdef IPPROTO_TCP
+#ifdef TCP_MAXSEG
+    MaxSegment    -> Just ((#const IPPROTO_TCP), (#const TCP_MAXSEG))
+#endif
+#ifdef TCP_NODELAY
+    NoDelay       -> Just ((#const IPPROTO_TCP), (#const TCP_NODELAY))
+#endif
+#ifdef TCP_CORK
+    Cork          -> Just ((#const IPPROTO_TCP), (#const TCP_CORK))
+#endif
+#endif // IPPROTO_TCP
+#ifdef IPPROTO_IPV6
 #if HAVE_DECL_IPV6_V6ONLY
-    IPv6Only      -> Just #const IPV6_V6ONLY
+    IPv6Only      -> Just ((#const IPPROTO_IPV6), (#const IPV6_V6ONLY))
 #endif
+#endif // IPPROTO_IPV6
     _             -> Nothing
 
+-- | Return the option level and option value if they exist,
+-- otherwise throw an error that begins "Network.Socket." ++ the String
+-- parameter
+packSocketOption' :: String -> SocketOption -> IO (CInt, CInt)
+packSocketOption' caller so = maybe err return (packSocketOption so)
+ where
+  err = ioError . userError . concat $ ["Network.Socket.", caller,
+    ": socket option ", show so, " unsupported on this system"]
+
+-- | Set a socket option that expects an Int value.
+-- There is currently no API to set e.g. the timeval socket options
 setSocketOption :: Socket 
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
                 -> IO ()
 setSocketOption (MkSocket s _ _ _ _) so v = do
+   (level, opt) <- packSocketOption' "setSocketOption" so
    with (fromIntegral v) $ \ptr_v -> do
    throwErrnoIfMinus1_ "setSocketOption" $
-       c_setsockopt s (socketOptLevel so) (packSocketOption so) ptr_v 
+       c_setsockopt s level opt ptr_v
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
 
 
+-- | Get a socket option that gives an Int value.
+-- There is currently no API to get e.g. the timeval socket options
 getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
 getSocketOption (MkSocket s _ _ _ _) so = do
+   (level, opt) <- packSocketOption' "getSocketOption" so
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwErrnoIfMinus1 "getSocketOption" $
-         c_getsockopt s (socketOptLevel so) (packSocketOption so) ptr_v ptr_sz
+         c_getsockopt s level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
 
@@ -1153,14 +1177,11 @@ write  &        &   +     &            &  +     &  +     &  +   & + \\
 -- ---------------------------------------------------------------------------
 -- OS Dependent Definitions
     
-unpackFamily    :: CInt -> Family
-packFamily      :: Family -> CInt
 
-packSocketType  :: SocketType -> CInt
-unpackSocketType:: CInt -> SocketType
 
 ------ ------
 
+packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
   Just fam -> fam
   Nothing -> error $
@@ -1370,6 +1391,7 @@ packFamily' f = case f of
 
 --------- ----------
 
+unpackFamily :: CInt -> Family
 unpackFamily f = case f of
         (#const AF_UNSPEC) -> AF_UNSPEC
 #ifdef AF_UNIX
@@ -1587,15 +1609,11 @@ data SocketType
 -- | Does the SOCK_ constant corresponding to the given SocketType exist on
 -- this system?
 isSupportedSocketType :: SocketType -> Bool
-isSupportedSocketType = isJust . packSocketType'
+isSupportedSocketType = isJust . packSocketType
 
-packSocketType t = case packSocketType' t of
-  Just v -> v
-  Nothing -> error $
-    "Network.Socket.packSocketType: unsupported socket type " ++ show t
-
-packSocketType' :: SocketType -> Maybe CInt
-packSocketType' stype = case stype of
+-- | Find the SOCK_ constant corresponding to the SocketType value.
+packSocketType :: SocketType -> Maybe CInt
+packSocketType stype = case stype of
         NoSocketType -> Just 0
 #ifdef SOCK_STREAM
         Stream -> Just #const SOCK_STREAM
@@ -1614,25 +1632,43 @@ packSocketType' stype = case stype of
 #endif
         _ -> Nothing
 
+-- | Try packSocketType on the SocketType, if it fails throw an error with
+-- message starting "Network.Socket." ++ the String parameter
+packSocketType' :: String -> SocketType -> IO CInt
+packSocketType' caller stype = maybe err return (packSocketType stype)
+ where
+  err = ioError . userError . concat $ ["Network.Socket.", caller, ": ",
+    "socket type ", show stype, " unsupported on this system"]
+
+
+unpackSocketType:: CInt -> Maybe SocketType
 unpackSocketType t = case t of
-        0 -> NoSocketType
+        0 -> Just NoSocketType
 #ifdef SOCK_STREAM
-        (#const SOCK_STREAM) -> Stream
+        (#const SOCK_STREAM) -> Just Stream
 #endif
 #ifdef SOCK_DGRAM
-        (#const SOCK_DGRAM) -> Datagram
+        (#const SOCK_DGRAM) -> Just Datagram
 #endif
 #ifdef SOCK_RAW
-        (#const SOCK_RAW) -> Raw
+        (#const SOCK_RAW) -> Just Raw
 #endif
 #ifdef SOCK_RDM
-        (#const SOCK_RDM) -> RDM
+        (#const SOCK_RDM) -> Just RDM
 #endif
 #ifdef SOCK_SEQPACKET
-        (#const SOCK_SEQPACKET) -> SeqPacket
+        (#const SOCK_SEQPACKET) -> Just SeqPacket
 #endif
-        _ -> error ("Network.Socket.unpackSocketType: unknown socket " ++
-                    "type " ++ show t)
+        _ -> Nothing
+
+-- | Try unpackSocketType on the CInt, if it fails throw an error with
+-- message starting "Network.Socket." ++ the String parameter
+unpackSocketType' :: String -> CInt -> IO SocketType
+unpackSocketType' caller ty = maybe err return (unpackSocketType ty)
+ where
+  err = ioError . userError . concat $ ["Network.Socket.", caller, ": ",
+    "socket type ", show ty, " unsupported on this system"]
+
 
 -- ---------------------------------------------------------------------------
 -- Utility Functions
@@ -1892,20 +1928,23 @@ instance Storable AddrInfo where
                         then return Nothing
                         else liftM Just $ peekCString ai_canonname_ptr
                              
+        socktype <- unpackSocketType' "AddrInfo.peek" ai_socktype
         return (AddrInfo
                 {
                  addrFlags = unpackBits aiFlagMapping ai_flags,
                  addrFamily = unpackFamily ai_family,
-                 addrSocketType = unpackSocketType ai_socktype,
+                 addrSocketType = socktype,
                  addrProtocol = ai_protocol,
                  addrAddress = ai_addr,
                  addrCanonName = ai_canonname
                 })
 
     poke p (AddrInfo flags family socketType protocol _ _) = do
+        c_stype <- packSocketType' "AddrInfo.poke" socketType
+
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
         (#poke struct addrinfo, ai_family) p (packFamily family)
-        (#poke struct addrinfo, ai_socktype) p (packSocketType socketType)
+        (#poke struct addrinfo, ai_socktype) p c_stype
         (#poke struct addrinfo, ai_protocol) p protocol
 
         -- stuff below is probably not needed, but let's zero it for safety

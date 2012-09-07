@@ -312,8 +312,10 @@ peekSockAddr p = do
 ------------------------------------------------------------------------
 -- Protocol Families.
 
--- | A constructor being present here does not mean it is supported by the
--- operating system.
+-- | Address families.
+--
+-- A constructor being present here does not mean it is supported by the
+-- operating system: see 'isSupportedFamily'.
 data Family
     = AF_UNSPEC           -- unspecified
     | AF_UNIX             -- local to host (pipes, portals
