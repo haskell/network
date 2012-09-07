@@ -904,16 +904,6 @@ data SocketOption
     | IPv6Only      -- ^ IPV6_V6ONLY
     deriving (Show, Typeable)
 
-socketOptLevel :: SocketOption -> CInt
-socketOptLevel so = 
-  case so of
-    TimeToLive   -> #const IPPROTO_IP
-    MaxSegment   -> #const IPPROTO_TCP
-    NoDelay      -> #const IPPROTO_TCP
-    Cork         -> #const IPPROTO_TCP
-    IPv6Only     -> #const IPPROTO_IPV6
-    _            -> #const SOL_SOCKET
-
 isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption = isJust . packSocketOption
 
