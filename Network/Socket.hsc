@@ -904,16 +904,6 @@ data SocketOption
     | IPv6Only      -- ^ IPV6_V6ONLY
     deriving (Show, Typeable)
 
-socketOptLevel :: SocketOption -> CInt
-socketOptLevel so = 
-  case so of
-    TimeToLive   -> #const IPPROTO_IP
-    MaxSegment   -> #const IPPROTO_TCP
-    NoDelay      -> #const IPPROTO_TCP
-    Cork         -> #const IPPROTO_TCP
-    IPv6Only     -> #const IPPROTO_IPV6
-    _            -> #const SOL_SOCKET
-
 isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption = isJust . packSocketOption
 
@@ -1192,9 +1182,10 @@ write  &        &   +     &            &  +     &  +     &  +   & + \\
 
 packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
-  Just fam -> fam
-  Nothing -> error $
-    "Network.Socket.packFamily: unsupported address family: " ++ show f
+    Just fam -> fam
+    Nothing -> error $
+               "Network.Socket.packFamily: unsupported address family: " ++
+               show f
 
 -- | Does the AF_ constant corresponding to the given family exist on this 
 -- system?
@@ -1203,202 +1194,202 @@ isSupportedFamily = isJust . packFamily'
 
 packFamily' :: Family -> Maybe CInt
 packFamily' f = case Just f of
-  -- the Just above is to disable GHC's overlapping pattern detection:
-  -- see comments for packSocketOption
-  Just AF_UNSPEC -> Just #const AF_UNSPEC
+    -- the Just above is to disable GHC's overlapping pattern
+    -- detection: see comments for packSocketOption
+    Just AF_UNSPEC -> Just #const AF_UNSPEC
 #ifdef AF_UNIX
-  Just AF_UNIX -> Just #const AF_UNIX
+    Just AF_UNIX -> Just #const AF_UNIX
 #endif
 #ifdef AF_INET
-  Just AF_INET -> Just #const AF_INET
+    Just AF_INET -> Just #const AF_INET
 #endif
 #ifdef AF_INET6
-  Just AF_INET6 -> Just #const AF_INET6
+    Just AF_INET6 -> Just #const AF_INET6
 #endif
 #ifdef AF_IMPLINK
-  Just AF_IMPLINK -> Just #const AF_IMPLINK
+    Just AF_IMPLINK -> Just #const AF_IMPLINK
 #endif
 #ifdef AF_PUP
-  Just AF_PUP -> Just #const AF_PUP
+    Just AF_PUP -> Just #const AF_PUP
 #endif
 #ifdef AF_CHAOS
-  Just AF_CHAOS -> Just #const AF_CHAOS
+    Just AF_CHAOS -> Just #const AF_CHAOS
 #endif
 #ifdef AF_NS
-  Just AF_NS -> Just #const AF_NS
+    Just AF_NS -> Just #const AF_NS
 #endif
 #ifdef AF_NBS
-  Just AF_NBS -> Just #const AF_NBS
+    Just AF_NBS -> Just #const AF_NBS
 #endif
 #ifdef AF_ECMA
-  Just AF_ECMA -> Just #const AF_ECMA
+    Just AF_ECMA -> Just #const AF_ECMA
 #endif
 #ifdef AF_DATAKIT
-  Just AF_DATAKIT -> Just #const AF_DATAKIT
+    Just AF_DATAKIT -> Just #const AF_DATAKIT
 #endif
 #ifdef AF_CCITT
-  Just AF_CCITT -> Just #const AF_CCITT
+    Just AF_CCITT -> Just #const AF_CCITT
 #endif
 #ifdef AF_SNA
-  Just AF_SNA -> Just #const AF_SNA
+    Just AF_SNA -> Just #const AF_SNA
 #endif
 #ifdef AF_DECnet
-  Just AF_DECnet -> Just #const AF_DECnet
+    Just AF_DECnet -> Just #const AF_DECnet
 #endif
 #ifdef AF_DLI
-  Just AF_DLI -> Just #const AF_DLI
+    Just AF_DLI -> Just #const AF_DLI
 #endif
 #ifdef AF_LAT
-  Just AF_LAT -> Just #const AF_LAT
+    Just AF_LAT -> Just #const AF_LAT
 #endif
 #ifdef AF_HYLINK
-  Just AF_HYLINK -> Just #const AF_HYLINK
+    Just AF_HYLINK -> Just #const AF_HYLINK
 #endif
 #ifdef AF_APPLETALK
-  Just AF_APPLETALK -> Just #const AF_APPLETALK
+    Just AF_APPLETALK -> Just #const AF_APPLETALK
 #endif
 #ifdef AF_ROUTE
-  Just AF_ROUTE -> Just #const AF_ROUTE
+    Just AF_ROUTE -> Just #const AF_ROUTE
 #endif
 #ifdef AF_NETBIOS
-  Just AF_NETBIOS -> Just #const AF_NETBIOS
+    Just AF_NETBIOS -> Just #const AF_NETBIOS
 #endif
 #ifdef AF_NIT
-  Just AF_NIT -> Just #const AF_NIT
+    Just AF_NIT -> Just #const AF_NIT
 #endif
 #ifdef AF_802
-  Just AF_802 -> Just #const AF_802
+    Just AF_802 -> Just #const AF_802
 #endif
 #ifdef AF_ISO
-  Just AF_ISO -> Just #const AF_ISO
+    Just AF_ISO -> Just #const AF_ISO
 #endif
 #ifdef AF_OSI
-  Just AF_OSI -> Just #const AF_OSI
+    Just AF_OSI -> Just #const AF_OSI
 #endif
 #ifdef AF_NETMAN
-  Just AF_NETMAN -> Just #const AF_NETMAN
+    Just AF_NETMAN -> Just #const AF_NETMAN
 #endif
 #ifdef AF_X25
-  Just AF_X25 -> Just #const AF_X25
+    Just AF_X25 -> Just #const AF_X25
 #endif
 #ifdef AF_AX25
-  Just AF_AX25 -> Just #const AF_AX25
+    Just AF_AX25 -> Just #const AF_AX25
 #endif
 #ifdef AF_OSINET
-  Just AF_OSINET -> Just #const AF_OSINET
+    Just AF_OSINET -> Just #const AF_OSINET
 #endif
 #ifdef AF_GOSSIP
-  Just AF_GOSSIP -> Just #const AF_GOSSIP
+    Just AF_GOSSIP -> Just #const AF_GOSSIP
 #endif
 #ifdef AF_IPX
-  Just AF_IPX -> Just #const AF_IPX
+    Just AF_IPX -> Just #const AF_IPX
 #endif
 #ifdef Pseudo_AF_XTP
-  Just Pseudo_AF_XTP -> Just #const Pseudo_AF_XTP
+    Just Pseudo_AF_XTP -> Just #const Pseudo_AF_XTP
 #endif
 #ifdef AF_CTF
-  Just AF_CTF -> Just #const AF_CTF
+    Just AF_CTF -> Just #const AF_CTF
 #endif
 #ifdef AF_WAN
-  Just AF_WAN -> Just #const AF_WAN
+    Just AF_WAN -> Just #const AF_WAN
 #endif
 #ifdef AF_SDL
-  Just AF_SDL -> Just #const AF_SDL
+    Just AF_SDL -> Just #const AF_SDL
 #endif
 #ifdef AF_NETWARE
-  Just AF_NETWARE -> Just #const AF_NETWARE
+    Just AF_NETWARE -> Just #const AF_NETWARE
 #endif
 #ifdef AF_NDD
-  Just AF_NDD -> Just #const AF_NDD
+    Just AF_NDD -> Just #const AF_NDD
 #endif
 #ifdef AF_INTF
-  Just AF_INTF -> Just #const AF_INTF
+    Just AF_INTF -> Just #const AF_INTF
 #endif
 #ifdef AF_COIP
-  Just AF_COIP -> Just #const AF_COIP
+    Just AF_COIP -> Just #const AF_COIP
 #endif
 #ifdef AF_CNT
-  Just AF_CNT -> Just #const AF_CNT
+    Just AF_CNT -> Just #const AF_CNT
 #endif
 #ifdef Pseudo_AF_RTIP
-  Just Pseudo_AF_RTIP -> Just #const Pseudo_AF_RTIP
+    Just Pseudo_AF_RTIP -> Just #const Pseudo_AF_RTIP
 #endif
 #ifdef Pseudo_AF_PIP
-  Just Pseudo_AF_PIP -> Just #const Pseudo_AF_PIP
+    Just Pseudo_AF_PIP -> Just #const Pseudo_AF_PIP
 #endif
 #ifdef AF_SIP
-  Just AF_SIP -> Just #const AF_SIP
+    Just AF_SIP -> Just #const AF_SIP
 #endif
 #ifdef AF_ISDN
-  Just AF_ISDN -> Just #const AF_ISDN
+    Just AF_ISDN -> Just #const AF_ISDN
 #endif
 #ifdef Pseudo_AF_KEY
-  Just Pseudo_AF_KEY -> Just #const Pseudo_AF_KEY
+    Just Pseudo_AF_KEY -> Just #const Pseudo_AF_KEY
 #endif
 #ifdef AF_NATM
-  Just AF_NATM -> Just #const AF_NATM
+    Just AF_NATM -> Just #const AF_NATM
 #endif
 #ifdef AF_ARP
-  Just AF_ARP -> Just #const AF_ARP
+    Just AF_ARP -> Just #const AF_ARP
 #endif
 #ifdef Pseudo_AF_HDRCMPLT
-  Just Pseudo_AF_HDRCMPLT -> Just #const Pseudo_AF_HDRCMPLT
+    Just Pseudo_AF_HDRCMPLT -> Just #const Pseudo_AF_HDRCMPLT
 #endif
 #ifdef AF_ENCAP
-  Just AF_ENCAP -> Just #const AF_ENCAP
+    Just AF_ENCAP -> Just #const AF_ENCAP
 #endif
 #ifdef AF_LINK
-  Just AF_LINK -> Just #const AF_LINK
+    Just AF_LINK -> Just #const AF_LINK
 #endif
 #ifdef AF_RAW
-  Just AF_RAW -> Just #const AF_RAW
+    Just AF_RAW -> Just #const AF_RAW
 #endif
 #ifdef AF_RIF
-  Just AF_RIF -> Just #const AF_RIF
+    Just AF_RIF -> Just #const AF_RIF
 #endif
 #ifdef AF_NETROM
-  Just AF_NETROM -> Just #const AF_NETROM
+    Just AF_NETROM -> Just #const AF_NETROM
 #endif
 #ifdef AF_BRIDGE
-  Just AF_BRIDGE -> Just #const AF_BRIDGE
+    Just AF_BRIDGE -> Just #const AF_BRIDGE
 #endif
 #ifdef AF_ATMPVC
-  Just AF_ATMPVC -> Just #const AF_ATMPVC
+    Just AF_ATMPVC -> Just #const AF_ATMPVC
 #endif
 #ifdef AF_ROSE
-  Just AF_ROSE -> Just #const AF_ROSE
+    Just AF_ROSE -> Just #const AF_ROSE
 #endif
 #ifdef AF_NETBEUI
-  Just AF_NETBEUI -> Just #const AF_NETBEUI
+    Just AF_NETBEUI -> Just #const AF_NETBEUI
 #endif
 #ifdef AF_SECURITY
-  Just AF_SECURITY -> Just #const AF_SECURITY
+    Just AF_SECURITY -> Just #const AF_SECURITY
 #endif
 #ifdef AF_PACKET
-  Just AF_PACKET -> Just #const AF_PACKET
+    Just AF_PACKET -> Just #const AF_PACKET
 #endif
 #ifdef AF_ASH
-  Just AF_ASH -> Just #const AF_ASH
+    Just AF_ASH -> Just #const AF_ASH
 #endif
 #ifdef AF_ECONET
-  Just AF_ECONET -> Just #const AF_ECONET
+    Just AF_ECONET -> Just #const AF_ECONET
 #endif
 #ifdef AF_ATMSVC
-  Just AF_ATMSVC -> Just #const AF_ATMSVC
+    Just AF_ATMSVC -> Just #const AF_ATMSVC
 #endif
 #ifdef AF_IRDA
-  Just AF_IRDA -> Just #const AF_IRDA
+    Just AF_IRDA -> Just #const AF_IRDA
 #endif
 #ifdef AF_PPPOX
-  Just AF_PPPOX -> Just #const AF_PPPOX
+    Just AF_PPPOX -> Just #const AF_PPPOX
 #endif
 #ifdef AF_WANPIPE
-  Just AF_WANPIPE -> Just #const AF_WANPIPE
+    Just AF_WANPIPE -> Just #const AF_WANPIPE
 #endif
 #ifdef AF_BLUETOOTH
-  Just AF_BLUETOOTH -> Just #const AF_BLUETOOTH
+    Just AF_BLUETOOTH -> Just #const AF_BLUETOOTH
 #endif
-        _ -> Nothing
+    _ -> Nothing
 
 --------- ----------
 
@@ -1625,25 +1616,25 @@ isSupportedSocketType = isJust . packSocketType
 -- | Find the SOCK_ constant corresponding to the SocketType value.
 packSocketType :: SocketType -> Maybe CInt
 packSocketType stype = case Just stype of
-  -- the Just above is to disable GHC's overlapping pattern detection:
-  -- see comments for packSocketOption
-  Just NoSocketType -> Just 0
+    -- the Just above is to disable GHC's overlapping pattern
+    -- detection: see comments for packSocketOption
+    Just NoSocketType -> Just 0
 #ifdef SOCK_STREAM
-  Just Stream -> Just #const SOCK_STREAM
+    Just Stream -> Just #const SOCK_STREAM
 #endif
 #ifdef SOCK_DGRAM
-  Just Datagram -> Just #const SOCK_DGRAM
+    Just Datagram -> Just #const SOCK_DGRAM
 #endif
 #ifdef SOCK_RAW
-  Just Raw -> Just #const SOCK_RAW
+    Just Raw -> Just #const SOCK_RAW
 #endif
 #ifdef SOCK_RDM
-  Just RDM -> Just #const SOCK_RDM
+    Just RDM -> Just #const SOCK_RDM
 #endif
 #ifdef SOCK_SEQPACKET
-  Just SeqPacket -> Just #const SOCK_SEQPACKET
+    Just SeqPacket -> Just #const SOCK_SEQPACKET
 #endif
-        _ -> Nothing
+    _ -> Nothing
 
 -- | Try packSocketType on the SocketType, if it fails throw an error with
 -- message starting "Network.Socket." ++ the String parameter
