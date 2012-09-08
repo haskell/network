@@ -161,6 +161,7 @@ module Network.Socket
 
     , packFamily
     , unpackFamily
+    , packSocketType
     , throwSocketErrorIfMinus1_
     ) where
 
@@ -179,7 +180,7 @@ import Hugs.IO ( openFd )
 
 import Data.Bits
 import Data.List (foldl')
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Word (Word16, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
@@ -415,7 +416,7 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
-    c_stype <- packSocketType' "socket" stype
+    c_stype <- packSocketTypeOrThrow "socket" stype
     fd <- throwSocketErrorIfMinus1Retry "socket" $
                 c_socket (packFamily family) c_stype protocol
 #if !defined(__HUGS__)
@@ -450,7 +451,7 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> IO (Socket, Socket) -- unnamed and connected.
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-    c_stype <- packSocketType' "socketPair" stype
+    c_stype <- packSocketTypeOrThrow "socketPair" stype
     _rc <- throwSocketErrorIfMinus1Retry "socketpair" $
                 c_socketpair (packFamily family) c_stype protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr 
@@ -1611,11 +1612,11 @@ data SocketType
 -- | Does the SOCK_ constant corresponding to the given SocketType exist on
 -- this system?
 isSupportedSocketType :: SocketType -> Bool
-isSupportedSocketType = isJust . packSocketType
+isSupportedSocketType = isJust . packSocketType'
 
 -- | Find the SOCK_ constant corresponding to the SocketType value.
-packSocketType :: SocketType -> Maybe CInt
-packSocketType stype = case Just stype of
+packSocketType' :: SocketType -> Maybe CInt
+packSocketType' stype = case Just stype of
     -- the Just above is to disable GHC's overlapping pattern
     -- detection: see comments for packSocketOption
     Just NoSocketType -> Just 0
@@ -1636,10 +1637,16 @@ packSocketType stype = case Just stype of
 #endif
     _ -> Nothing
 
--- | Try packSocketType on the SocketType, if it fails throw an error with
+packSocketType :: SocketType -> CInt
+packSocketType stype = fromMaybe (error errMsg) (packSocketType' stype)
+  where
+    errMsg = concat ["Network.Socket.packSocketType: ",
+                     "socket type ", show stype, " unsupported on this system"]
+
+-- | Try packSocketType' on the SocketType, if it fails throw an error with
 -- message starting "Network.Socket." ++ the String parameter
-packSocketType' :: String -> SocketType -> IO CInt
-packSocketType' caller stype = maybe err return (packSocketType stype)
+packSocketTypeOrThrow :: String -> SocketType -> IO CInt
+packSocketTypeOrThrow caller stype = maybe err return (packSocketType' stype)
  where
   err = ioError . userError . concat $ ["Network.Socket.", caller, ": ",
     "socket type ", show stype, " unsupported on this system"]
@@ -1944,7 +1951,7 @@ instance Storable AddrInfo where
                 })
 
     poke p (AddrInfo flags family socketType protocol _ _) = do
-        c_stype <- packSocketType' "AddrInfo.poke" socketType
+        c_stype <- packSocketTypeOrThrow "AddrInfo.poke" socketType
 
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
         (#poke struct addrinfo, ai_family) p (packFamily family)
