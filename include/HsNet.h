@@ -113,23 +113,6 @@ sendFd(int sock, int outfd);
 extern int
 recvFd(int sock);
 
-/* The next two are scheduled for deletion */
-extern int
-sendAncillary(int sock,
-	      int level,
-	      int type,
-	      int flags,
-	      void* data,
-	      int len);
-
-extern int
-recvAncillary(int  sock,
-	      int* pLevel,
-	      int* pType,
-	      int  flags,
-	      void** pData,
-	      int* pLen);
-
 #endif /* HAVE_WINSOCK2_H && !__CYGWIN */
 
 INLINE char *

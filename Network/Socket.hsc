@@ -127,10 +127,6 @@ module Network.Socket
     , sendFd
     , recvFd
 
-    -- Note: these two will disappear shortly
-    , sendAncillary
-    , recvAncillary
-
 #endif
 
     -- * Special constants
@@ -1097,53 +1093,6 @@ recvFd sock = do
 #endif
          c_recvFd fd
   return theFd
-
-
-sendAncillary :: Socket
-              -> Int
-              -> Int
-              -> Int
-              -> Ptr a
-              -> Int
-              -> IO ()
-sendAncillary sock level ty flags datum len = do
-  let fd = fdSocket sock
-  _ <-
-#if !defined(__HUGS__)
-   throwSocketErrorIfMinus1RetryMayBlock "sendAncillary"
-     (threadWaitWrite (fromIntegral fd)) $
-#endif
-     c_sendAncillary fd (fromIntegral level) (fromIntegral ty)
-                        (fromIntegral flags) datum (fromIntegral len)
-  return ()
-
-recvAncillary :: Socket
-              -> Int
-              -> Int
-              -> IO (Int,Int,Ptr a,Int)
-recvAncillary sock flags len = do
-  let fd = fdSocket sock
-  alloca      $ \ ptr_len   ->
-   alloca      $ \ ptr_lev   ->
-    alloca      $ \ ptr_ty    ->
-     alloca      $ \ ptr_pData -> do
-      poke ptr_len (fromIntegral len)
-      _ <- 
-#if !defined(__HUGS__)
-        throwSocketErrorIfMinus1RetryMayBlock "recvAncillary" 
-            (threadWaitRead (fromIntegral fd)) $
-#endif
-            c_recvAncillary fd ptr_lev ptr_ty (fromIntegral flags) ptr_pData ptr_len
-      rcvlen <- fromIntegral `liftM` peek ptr_len
-      lev <- fromIntegral `liftM` peek ptr_lev
-      ty  <- fromIntegral `liftM` peek ptr_ty
-      pD  <- peek ptr_pData
-      return (lev,ty,pD, rcvlen)
-foreign import ccall SAFE_ON_WIN "sendAncillary"
-  c_sendAncillary :: CInt -> CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
-
-foreign import ccall SAFE_ON_WIN "recvAncillary"
-  c_recvAncillary :: CInt -> Ptr CInt -> Ptr CInt -> CInt -> Ptr (Ptr a) -> Ptr CInt -> IO CInt
 
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
