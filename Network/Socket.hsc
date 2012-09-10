@@ -910,6 +910,7 @@ data SocketOption
     | IPv6Only      -- ^ IPV6_V6ONLY
     deriving (Show, Typeable)
 
+-- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption = isJust . packSocketOption
 
