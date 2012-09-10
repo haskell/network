@@ -18,7 +18,7 @@ extra-source-files:
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
   cbits/winSockErr.c
-homepage:       http://github.com/haskell/network
+homepage:       https://github.com/haskell/network
 bug-reports:    https://github.com/haskell/network/issues
 
 library
