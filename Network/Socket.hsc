@@ -76,7 +76,7 @@ module Network.Socket
     , socketPair
 #endif
     , connect
-    , bindSocket
+    , bind
     , listen
     , accept
     , getPeerName
@@ -153,6 +153,10 @@ module Network.Socket
     -- in case you ever want to get at the underlying file descriptor..
     , fdSocket
     , mkSocket
+
+    -- * Deprecated aliases
+    -- $deprecated-aliases
+    , bindSocket
 
     -- * Internal
 
@@ -280,7 +284,7 @@ type ServiceName    = String
 data SocketStatus
   -- Returned Status    Function called
   = NotConnected        -- socket
-  | Bound               -- bindSocket
+  | Bound               -- bind
   | Listening           -- listen
   | Connected           -- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
@@ -478,18 +482,18 @@ foreign import ccall unsafe "socketpair"
 -- Binding a socket
 
 -- | Bind the socket to an address. The socket must not already be
--- bound.  The 'Family' passed to @bindSocket@ must be the
+-- bound.  The 'Family' passed to @bind@ must be the
 -- same as that passed to 'socket'.  If the special port number
 -- 'aNY_PORT' is passed then the system assigns the next available
 -- use port.
-bindSocket :: Socket    -- Unconnected Socket
+bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bindSocket (MkSocket s _family _stype _protocol socketStatus) addr = do
+bind (MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \ status -> do
  if status /= NotConnected 
   then
-   ioError (userError ("bindSocket: can't peform bind on socket in status " ++
+   ioError (userError ("bind: can't peform bind on socket in status " ++
          show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
@@ -1149,7 +1153,7 @@ A calling sequence table for the main functions is shown in the table below.
 \begin{center}
 \begin{tabular}{|l|c|c|c|c|c|c|c|}d
 \hline
-{\bf A Call to} & socket & connect & bindSocket & listen & accept & read & write \\
+{\bf A Call to} & socket & connect & bind & listen & accept & read & write \\
 \hline
 {\bf Precedes} & & & & & & & \\
 \hline 
@@ -1157,7 +1161,7 @@ socket &        &         &            &        &        &      & \\
 \hline
 connect & +     &         &            &        &        &      & \\
 \hline
-bindSocket & +  &         &            &        &        &      & \\
+bind & +  &         &            &        &        &      & \\
 \hline
 listen &        &         & +          &        &        &      & \\
 \hline
@@ -1999,7 +2003,7 @@ defaultHints = AddrInfo {
 -- | Resolve a host or service name to one or more addresses.
 -- The 'AddrInfo' values that this function returns contain 'SockAddr'
 -- values that you can pass directly to 'connect' or
--- 'bindSocket'.
+-- 'bind'.
 --
 -- This function is protocol independent.  It can return both IPv4 and
 -- IPv6 address information.
@@ -2276,3 +2280,17 @@ foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "setsockopt"
   c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
+
+-- ---------------------------------------------------------------------------
+-- * Deprecated aliases
+
+-- $deprecated-aliases
+--
+-- These aliases are deprecated and should not be used in new code.
+-- They will be removed in some future version of the package.
+
+-- | Deprecate alias for 'bind'.
+bindSocket :: Socket    -- Unconnected Socket
+           -> SockAddr  -- Address to Bind to
+           -> IO ()
+bindSocket = bind
