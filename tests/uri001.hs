@@ -440,11 +440,9 @@ testRelJoin  :: String -> String -> String -> String -> Assertion
 testRelJoin label base urel uabs =
     testEq label uabs (mkabs purel pubas)
     where
-        mkabs (Just u1) (Just u2) = shabs (u1 `relativeTo` u2)
+        mkabs (Just u1) (Just u2) = show (u1 `relativeTo` u2)
         mkabs Nothing   _         = "Invalid URI: "++urel
         mkabs _         Nothing   = "Invalid URI: "++uabs
-        shabs (Just u) = show u
-        shabs Nothing  = "No result"
         purel = parseURIReference urel
         pubas = parseURIReference base
 
@@ -1134,17 +1132,17 @@ trbase = fromJust $ parseURIReference "http://bar.org/"
 
 testRelativeTo01 = testEq "testRelativeTo01"
     "http://bar.org/foo"
-    (show . fromJust $
+    (show $
       (fromJust $ parseURIReference "foo") `relativeTo` trbase)
 
 testRelativeTo02 = testEq "testRelativeTo02"
     "http:foo"
-    (show . fromJust $
+    (show $
       (fromJust $ parseURIReference "http:foo") `relativeTo` trbase)
 
 testRelativeTo03 = testEq "testRelativeTo03"
     "http://bar.org/foo"
-    (show . fromJust $
+    (show $
       (fromJust $ parseURIReference "http:foo") `nonStrictRelativeTo` trbase)
 
 testRelativeTo = TF.testGroup "testRelativeTo"
