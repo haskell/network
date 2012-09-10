@@ -161,7 +161,7 @@ data URI = URI
     , uriPath       :: String           -- ^ @\/ghc@
     , uriQuery      :: String           -- ^ @?query@
     , uriFragment   :: String           -- ^ @#frag@
-    } deriving (Eq
+    } deriving (Eq, Ord
 #ifdef __GLASGOW_HASKELL__
     , Typeable, Data
 #endif
@@ -180,7 +180,7 @@ data URIAuth = URIAuth
     { uriUserInfo   :: String           -- ^ @anonymous\@@
     , uriRegName    :: String           -- ^ @www.haskell.org@
     , uriPort       :: String           -- ^ @:42@
-    } deriving (Eq
+    } deriving (Eq, Ord, Show
 #ifdef __GLASGOW_HASKELL__
     , Typeable, Data
 #endif
