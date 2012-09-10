@@ -989,7 +989,7 @@ unEscapeString (c:s) = c : unEscapeString s
 --  Algorithm from RFC3986 [3], section 5.2.2
 --
 
-nonStrictRelativeTo :: URI -> URI -> Maybe URI
+nonStrictRelativeTo :: URI -> URI -> URI
 nonStrictRelativeTo ref base = relativeTo ref' base
     where
         ref' = if uriScheme ref == uriScheme base
@@ -999,9 +999,11 @@ nonStrictRelativeTo ref base = relativeTo ref' base
 isDefined :: ( MonadPlus m, Eq (m a) ) => m a -> Bool
 isDefined a = a /= mzero
 
--- |Compute an absolute 'URI' for a supplied URI
---  relative to a given base.
-relativeTo :: URI -> URI -> Maybe URI
+-- | Returns a new 'URI' which represents the value of the first 'URI'
+-- interpreted as relative to the second 'URI'.
+--
+-- Algorithm from RFC3986 [3], section 5.2
+relativeTo :: URI -> URI -> URI
 relativeTo ref base
     | isDefined ( uriScheme ref ) =
         just_segments ref
@@ -1034,7 +1036,7 @@ relativeTo ref base
             }
     where
         just_segments u =
-            Just $ u { uriPath = removeDotSegments (uriPath u) }
+            u { uriPath = removeDotSegments (uriPath u) }
         mergePaths b r
             | isDefined (uriAuthority b) && null pb = '/':pr
             | otherwise                             = dropLast pb ++ pr
