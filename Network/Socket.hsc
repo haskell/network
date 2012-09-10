@@ -110,11 +110,11 @@ module Network.Socket
     , sClose
 
     -- ** Predicates on sockets
-    , sIsConnected
-    , sIsBound
-    , sIsListening
-    , sIsReadable
-    , sIsWritable
+    , isConnected
+    , isBound
+    , isListening
+    , isReadable
+    , isWritable
 
     -- * Socket options
     , SocketOption(..)
@@ -157,6 +157,11 @@ module Network.Socket
     -- * Deprecated aliases
     -- $deprecated-aliases
     , bindSocket
+    , sIsConnected
+    , sIsBound
+    , sIsListening
+    , sIsReadable
+    , sIsWritable
 
     -- * Internal
 
@@ -593,7 +598,7 @@ accept :: Socket                        -- Queue Socket
 
 accept sock@(MkSocket s family stype protocol status) = do
  currentStatus <- readMVar status
- okay <- sIsAcceptable sock
+ okay <- isAcceptable sock
  if not okay
    then
      ioError (userError ("accept: can't perform accept on socket (" ++ (show (family,stype,protocol)) ++") in status " ++
@@ -740,7 +745,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
          else do
-           flg <- sIsConnected sock
+           flg <- isConnected sock
              -- For at least one implementation (WinSock 2), recvfrom() ignores
              -- filling in the sockaddr for connected TCP sockets. Cope with 
              -- this by using getPeerName instead.
@@ -1757,41 +1762,41 @@ sClose (MkSocket s _ _ _ socketStatus) = do
 
 -- -----------------------------------------------------------------------------
 
-sIsConnected :: Socket -> IO Bool
-sIsConnected (MkSocket _ _ _ _ status) = do
+isConnected :: Socket -> IO Bool
+isConnected (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Connected) 
 
 -- -----------------------------------------------------------------------------
 -- Socket Predicates
 
-sIsBound :: Socket -> IO Bool
-sIsBound (MkSocket _ _ _ _ status) = do
+isBound :: Socket -> IO Bool
+isBound (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Bound)     
 
-sIsListening :: Socket -> IO Bool
-sIsListening (MkSocket _ _ _  _ status) = do
+isListening :: Socket -> IO Bool
+isListening (MkSocket _ _ _  _ status) = do
     value <- readMVar status
     return (value == Listening) 
 
-sIsReadable  :: Socket -> IO Bool
-sIsReadable (MkSocket _ _ _ _ status) = do
+isReadable  :: Socket -> IO Bool
+isReadable (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Listening || value == Connected)
 
-sIsWritable  :: Socket -> IO Bool
-sIsWritable = sIsReadable -- sort of.
+isWritable  :: Socket -> IO Bool
+isWritable = isReadable -- sort of.
 
-sIsAcceptable :: Socket -> IO Bool
+isAcceptable :: Socket -> IO Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sIsAcceptable (MkSocket _ AF_UNIX x _ status)
+isAcceptable (MkSocket _ AF_UNIX x _ status)
     | x == Stream || x == SeqPacket = do
         value <- readMVar status
         return (value == Connected || value == Bound || value == Listening)
-sIsAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
+isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
 #endif
-sIsAcceptable (MkSocket _ _ _ _ status) = do
+isAcceptable (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Connected || value == Listening)
     
@@ -2289,8 +2294,28 @@ foreign import CALLCONV unsafe "setsockopt"
 -- These aliases are deprecated and should not be used in new code.
 -- They will be removed in some future version of the package.
 
--- | Deprecate alias for 'bind'.
+-- | Deprecated alias for 'bind'.
 bindSocket :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
 bindSocket = bind
+
+-- | Deprecated alias for 'isConnected'.
+sIsConnected :: Socket -> IO Bool
+sIsConnected = isConnected
+
+-- | Deprecated alias for 'isBound'.
+sIsBound :: Socket -> IO Bool
+sIsBound = isBound
+
+-- | Deprecated alias for 'isListening'.
+sIsListening :: Socket -> IO Bool
+sIsListening = isListening
+
+-- | Deprecated alias for 'isReadable'.
+sIsReadable  :: Socket -> IO Bool
+sIsReadable = isReadable
+
+-- | Deprecated alias for 'isWritable'.
+sIsWritable  :: Socket -> IO Bool
+sIsWritable = isWritable
