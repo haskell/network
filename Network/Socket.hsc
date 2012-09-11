@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-unused-do-bind #-}
 -----------------------------------------------------------------------------
 -- |
@@ -196,7 +196,7 @@ import System.IO
 import Control.Monad (liftM, when)
 import Data.Ratio ((%))
 
-import qualified Control.Exception
+import qualified Control.Exception as E
 import Control.Concurrent.MVar
 import Data.Typeable
 import System.IO.Error
@@ -428,7 +428,7 @@ socket family stype protocol = do
     -- the IPv6Only option is only supported on Windows Vista and later,
     -- so trying to change it might throw an error
     when (family == AF_INET6) $
-            catch (setSocketOption sock IPv6Only 0) $ const $ return ()
+            E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
 # else
     when (family == AF_INET6) $ setSocketOption sock IPv6Only 0
 # endif
