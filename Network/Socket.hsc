@@ -107,7 +107,7 @@ module Network.Socket
     , inet_ntoa
 
     , shutdown
-    , sClose
+    , close
 
     -- ** Predicates on sockets
     , isConnected
@@ -153,6 +153,7 @@ module Network.Socket
     -- * Deprecated aliases
     -- $deprecated-aliases
     , bindSocket
+    , sClose
     , sIsConnected
     , sIsBound
     , sIsListening
@@ -289,7 +290,7 @@ data SocketStatus
   | Listening           -- listen
   | Connected           -- connect/accept
   | ConvertedToHandle   -- is now a Handle, don't touch
-  | Closed              -- sClose 
+  | Closed              -- close
     deriving (Eq, Show, Typeable)
 
 data Socket
@@ -1082,7 +1083,7 @@ sendFd sock outfd = do
 #endif
    -- Note: If Winsock supported FD-passing, thi would have been 
    -- incorrect (since socket FDs need to be closed via closesocket().)
-  close outfd
+  closeFd outfd
   
 recvFd :: Socket -> IO CInt
 recvFd sock = do
@@ -1700,15 +1701,15 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Close the socket.  All future operations on the socket object
 -- will fail.  The remote end will receive no more data (after queued
 -- data is flushed).
-sClose   :: Socket -> IO ()
-sClose (MkSocket s _ _ _ socketStatus) = do 
+close :: Socket -> IO ()
+close (MkSocket s _ _ _ socketStatus) = do
  modifyMVar_ socketStatus $ \ status ->
    case status of
      ConvertedToHandle ->
-         ioError (userError ("sClose: converted to a Handle, use hClose instead"))
+         ioError (userError ("close: converted to a Handle, use hClose instead"))
      Closed ->
          return status
-     _ -> closeFdWith (close . fromIntegral) (fromIntegral s) >> return Closed
+     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
 
 -- -----------------------------------------------------------------------------
 
@@ -2185,8 +2186,8 @@ foreign import CALLCONV unsafe "inet_addr"
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt 
 
-close :: CInt -> IO ()
-close fd = throwErrnoIfMinus1Retry_ "Network.Socket.close" $ c_close fd
+closeFd :: CInt -> IO ()
+closeFd fd = throwErrnoIfMinus1Retry_ "Network.Socket.close" $ c_close fd
 
 #if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
@@ -2249,6 +2250,10 @@ bindSocket :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
 bindSocket = bind
+
+-- | Deprecated alias for 'close'.
+sClose :: Socket -> IO ()
+sClose = close
 
 -- | Deprecated alias for 'isConnected'.
 sIsConnected :: Socket -> IO Bool
