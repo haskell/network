@@ -168,7 +168,6 @@ module Network.Socket
     , packFamily
     , unpackFamily
     , packSocketType
-    , throwSocketErrorIfMinus1_
     ) where
 
 #ifdef __HUGS__
