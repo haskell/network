@@ -1100,45 +1100,8 @@ foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 
 #endif
 
-
-{-
-A calling sequence table for the main functions is shown in the table below.
-
-\begin{figure}[h]
-\begin{center}
-\begin{tabular}{|l|c|c|c|c|c|c|c|}d
-\hline
-{\bf A Call to} & socket & connect & bind & listen & accept & read & write \\
-\hline
-{\bf Precedes} & & & & & & & \\
-\hline 
-socket &        &         &            &        &        &      & \\
-\hline
-connect & +     &         &            &        &        &      & \\
-\hline
-bind & +  &         &            &        &        &      & \\
-\hline
-listen &        &         & +          &        &        &      & \\
-\hline
-accept &        &         &            &  +     &        &      & \\
-\hline
-read   &        &   +     &            &  +     &  +     &  +   & + \\
-\hline
-write  &        &   +     &            &  +     &  +     &  +   & + \\
-\hline
-\end{tabular}
-\caption{Sequence Table for Major functions of Socket}
-\label{tab:api-seq}
-\end{center}
-\end{figure}
--}
-
 -- ---------------------------------------------------------------------------
 -- OS Dependent Definitions
-    
-
-
------- ------
 
 packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
