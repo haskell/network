@@ -125,6 +125,8 @@ import GHC.IOBase
 
 import Control.Monad (liftM)
 
+import Network.Socket.Internal (throwSocketErrorIfMinus1_)
+
 -- ---------------------------------------------------------------------------
 -- Basic Types
 
