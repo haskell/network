@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-unused-do-bind #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
