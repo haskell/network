@@ -464,5 +464,5 @@ firstSuccessful :: [IO a] -> IO a
 firstSuccessful [] = error "firstSuccessful: empty list"
 firstSuccessful (p:ps) = catchIO p $ \e ->
     case ps of
-        [] -> Exception.throw e
+        [] -> Exception.throwIO e
         _  -> firstSuccessful ps
