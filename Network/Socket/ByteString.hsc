@@ -204,7 +204,8 @@ sendMany sock@(MkSocket fd _ _ _ _) cs = do
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
           throwSocketErrorIfMinus1RetryMayBlock "writev"
               (threadWaitWrite (fromIntegral fd)) $
-              c_writev (fromIntegral fd) iovsPtr (fromIntegral iovsLen)
+              c_writev (fromIntegral fd) iovsPtr
+              (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
 sendMany sock = sendAll sock . B.concat
 #endif
