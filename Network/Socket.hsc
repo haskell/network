@@ -1632,6 +1632,9 @@ sCM_RIGHTS :: Int
 sCM_RIGHTS = #const SCM_RIGHTS
 #endif
 
+-- | This is the value of SOMAXCONN, typically 128.
+-- 128 is good enough for normal network servers but
+-- is too small for high performance servers.
 maxListenQueue :: Int
 maxListenQueue = sOMAXCONN
 
