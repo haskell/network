@@ -161,14 +161,18 @@ connect' host serv = do
 -- | Creates the server side socket which has been bound to the
 -- specified port.
 --
--- NOTE: To avoid the \"Address already in use\"
--- problems popped up several times on the GHC-Users mailing list we
--- set the 'ReuseAddr' socket option on the listening socket.  If you
--- don't want this behaviour, please use the lower level
--- 'Network.Socket.listen' instead.
+-- 'maxListenQueue' (typically 128) is specified to the listen queue.
+-- This is good enough for normal network servers but is too small
+-- for high performance servers.
+--
+-- To avoid the \"Address already in use\" problems,
+-- the 'ReuseAddr' socket option is set on the listening socket.
 --
 -- If available, the 'IPv6Only' socket option is set to 0
 -- so that both IPv4 and IPv6 can be accepted with this socket.
+--
+-- If you don't like the behavior above, please use the lower level
+-- 'Network.Socket.listen' instead.
 
 listenOn :: PortID      -- ^ Port Identifier
          -> IO Socket   -- ^ Connected Socket
