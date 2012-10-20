@@ -2166,7 +2166,7 @@ foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
 foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV unsafe "connect"
+foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
