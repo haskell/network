@@ -80,7 +80,7 @@ import GHC.Conc (threadWaitWrite)
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
-send (MkSocket fd _ _ _ _) s = do
+send MkSocket{sockFd = fd} s = do
   let cs  = take maxNumChunks (L.toChunks s)
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->

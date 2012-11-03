@@ -108,7 +108,7 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send (MkSocket s _ _ _ _) xs =
+send MkSocket{sockFd = s} xs =
     unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
@@ -196,7 +196,7 @@ sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendMany sock@(MkSocket fd _ _ _ _) cs = do
+sendMany sock@MkSocket{sockFd = fd} cs = do
     sent <- sendManyInner
     when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
   where
@@ -221,7 +221,7 @@ sendManyTo :: Socket        -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
+sendManyTo sock@MkSocket{sockFd = fd} cs addr = do
     sent <- liftM fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
@@ -256,7 +256,7 @@ sendManyTo sock cs = sendAllTo sock (B.concat cs)
 recv :: Socket         -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
-recv (MkSocket s _ _ _ _) nbytes
+recv MkSocket{sockFd = s} nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise  = createAndTrim nbytes $ recvInner s nbytes
 
