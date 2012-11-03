@@ -83,6 +83,7 @@ data PortID =
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
         | UnixSocket String             -- Unix family socket in file system
 #endif
+        deriving (Show, Eq)
 
 -- | Calling 'connectTo' creates a client side socket which is
 -- connected to the given host and port.  The Protocol and socket type is
