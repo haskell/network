@@ -102,6 +102,8 @@ module Network.Socket
     , send
     , recv
     , recvLen
+    , sendBuf
+    , recvBuf
 
     , inet_addr
     , inet_ntoa
@@ -186,7 +188,7 @@ import Hugs.IO ( openFd )
 import Data.Bits
 import Data.List (foldl')
 import Data.Maybe (fromMaybe, isJust)
-import Data.Word (Word16, Word32)
+import Data.Word (Word8, Word16, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
@@ -791,6 +793,41 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
         c_send s str (fromIntegral len) 0{-flags-} 
 #endif
 
+-- | Send data to the socket. The socket must be connected to a remote
+-- socket. Returns the number of bytes sent.  Applications are
+-- responsible for ensuring that all data has been sent.
+sendBuf :: Socket     -- Bound/Connected Socket
+        -> Ptr Word8  -- Pointer to the data to send
+        -> Int        -- Length of the buffer
+        -> IO Int     -- Number of Bytes sent
+sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
+   liftM fromIntegral $
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+# if __GLASGOW_HASKELL__ >= 611    
+    writeRawBufferPtr
+      "Network.Socket.sendBuf"
+      (socket2FD sock)
+      (castPtr str)
+      0
+      (fromIntegral len)
+# else      
+      writeRawBufferPtr
+        "Network.Socket.sendBuf"
+        (fromIntegral s)
+        True
+        str
+        0
+       (fromIntegral len)
+# endif    
+#else
+# if !defined(__HUGS__)
+     throwSocketErrorIfMinus1RetryMayBlock "sendBuf"
+        (threadWaitWrite (fromIntegral s)) $
+# endif
+        c_send s str (fromIntegral len) 0{-flags-}
+#endif
+
+
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
 -- message is longer than the specified length, it may be discarded
@@ -832,6 +869,46 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
          else do
            s' <- peekCStringLen (castPtr ptr,len')
            return (s', len')
+
+-- | Receive data from the socket.  The socket must be in a connected
+-- state. This function may return fewer bytes than specified.  If the
+-- message is longer than the specified length, it may be discarded
+-- depending on the type of socket.  This function may block until a
+-- message arrives.
+--
+-- Considering hardware and network realities, the maximum number of
+-- bytes to receive should be a small power of 2, e.g., 4096.
+--
+-- For TCP sockets, a zero length return value means the peer has
+-- closed its half side of the connection.
+recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
+recvBuf sock p l = recvLenBuf sock p l
+
+recvLenBuf :: Socket -> Ptr Word8 -> Int -> IO Int
+recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
+ | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
+ | otherwise   = do
+        len <-
+#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+# if __GLASGOW_HASKELL__ >= 611    
+          readRawBufferPtr "Network.Socket.recvLenBuf" (socket2FD sock) ptr 0
+                 (fromIntegral nbytes)
+#else          
+          readRawBufferPtr "Network.Socket.recvLenBuf" (fromIntegral s) True ptr 0
+                 (fromIntegral nbytes)
+#endif
+#else
+# if !defined(__HUGS__)
+               throwSocketErrorIfMinus1RetryMayBlock "recvBuf"
+                   (threadWaitRead (fromIntegral s)) $
+# endif
+                   c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+#endif
+        let len' = fromIntegral len
+        if len' == 0
+         then ioError (mkEOFError "Network.Socket.recvBuf")
+         else return len'
+
 
 -- ---------------------------------------------------------------------------
 -- socketPort
