@@ -78,7 +78,11 @@ import Foreign.Storable ( Storable(..) )
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 import Control.Exception ( finally )
 #  if __GLASGOW_HASKELL__
+#    if __GLASGOW_HASKELL__ >= 707
+import GHC.IO.Exception ( IOErrorType(..) )
+#    else
 import GHC.IOBase ( IOErrorType(..) )
+#    endif
 #  endif
 import Foreign.C.Types ( CChar )
 import System.IO.Error ( ioeSetErrorString, mkIOError )
