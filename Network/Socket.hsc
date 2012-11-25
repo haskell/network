@@ -294,19 +294,19 @@ data SocketStatus
   | Closed              -- close
     deriving (Eq, Show, Typeable)
 
-data Socket
-  = MkSocket
-            CInt                 -- File Descriptor
-            Family                                
-            SocketType                            
-            ProtocolNumber       -- Protocol Number
-            (MVar SocketStatus)  -- Status Flag
+data Socket = MkSocket
+    { sockFd       :: CInt              -- ^ File descriptor
+    , sockFamily   :: Family
+    , sockType     :: SocketType
+    , sockProtocol :: ProtocolNumber
+    , sockStatus   :: MVar SocketStatus
+    }
   deriving Typeable
 
 #if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
-socket2FD  (MkSocket fd _ _ _ _) = 
+socket2FD  sock =
   -- HACK, 1 means True 
-  FD{fdFD = fd,fdIsSocket_ = 1} 
+  FD{fdFD = sockFd sock,fdIsSocket_ = 1}
 #endif
 
 mkSocket :: CInt
@@ -320,15 +320,15 @@ mkSocket fd fam sType pNum stat = do
    return (MkSocket fd fam sType pNum mStat)
 
 instance Eq Socket where
-  (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
+  (==) a b = sockStatus a == sockStatus b
 
 instance Show Socket where
-  showsPrec _n (MkSocket fd _ _ _ _) =
-        showString "<socket: " . shows fd . showString ">"
+  showsPrec _n sock =
+        showString "<socket: " . shows (sockFd sock) . showString ">"
 
 
 fdSocket :: Socket -> CInt
-fdSocket (MkSocket fd _ _ _ _) = fd
+fdSocket = sockFd
 
 type ProtocolNumber = CInt
 
@@ -433,8 +433,7 @@ socket family stype protocol = do
     System.Posix.Internals.setNonBlockingFD fd True
 # endif
 #endif
-    socket_status <- newMVar NotConnected
-    let sock = MkSocket fd family stype protocol socket_status
+    sock <- mkSocket fd family stype protocol NotConnected
 #if HAVE_DECL_IPV6_V6ONLY
 # if defined(mingw32_HOST_OS)
     -- the IPv6Only option is only supported on Windows Vista and later,
@@ -474,8 +473,7 @@ socketPair family stype protocol = do
        System.Posix.Internals.setNonBlockingFD fd True
 # endif
 #endif
-       stat <- newMVar Connected
-       return (MkSocket fd family stype protocol stat)
+       mkSocket fd family stype protocol Connected
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
@@ -492,15 +490,15 @@ foreign import ccall unsafe "socketpair"
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bind (MkSocket s _family _stype _protocol socketStatus) addr = do
- modifyMVar_ socketStatus $ \ status -> do
+bind sock addr = do
+ modifyMVar_ (sockStatus sock) $ \ status -> do
  if status /= NotConnected 
   then
    ioError (userError ("bind: can't peform bind on socket in status " ++
          show status))
   else do
    withSockAddr addr $ \p_addr sz -> do
-   _status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
+   _status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind (sockFd sock) p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
@@ -510,8 +508,8 @@ bind (MkSocket s _family _stype _protocol socketStatus) addr = do
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
- modifyMVar_ socketStatus $ \currentStatus -> do
+connect sock addr = do
+ modifyMVar_ (sockStatus sock) $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
     ioError (userError ("connect: can't peform connect on socket in status " ++
@@ -520,7 +518,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
     withSockAddr addr $ \p_addr sz -> do
 
     let connectLoop = do
-           r <- c_connect s p_addr (fromIntegral sz)
+           r <- c_connect (sockFd sock) p_addr (fromIntegral sz)
            if r == -1
                then do 
 #if !(defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS))
@@ -535,7 +533,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                    case rc of
                      10093 -> do -- WSANOTINITIALISED
                        withSocketsDo (return ())
-                       r <- c_connect s p_addr (fromIntegral sz)
+                       r <- c_connect (sockFd sock) p_addr (fromIntegral sz)
                        if r == -1
                          then throwSocketError "connect"
                          else return r
@@ -545,7 +543,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 
         connectBlocked = do 
 #if !defined(__HUGS__)
-           threadWaitWrite (fromIntegral s)
+           threadWaitWrite (fromIntegral (sockFd sock))
 #endif
            err <- getSocketOption sock SoError
            if (err == 0)
@@ -566,14 +564,14 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 listen :: Socket  -- Connected & Bound Socket
        -> Int     -- Queue Length
        -> IO ()
-listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
- modifyMVar_ socketStatus $ \ status -> do
+listen sock backlog = do
+ modifyMVar_ (sockStatus sock) $ \ status -> do
  if status /= Bound 
    then
      ioError (userError ("listen: can't peform listen on socket in status " ++
          show status))
    else do
-     throwSocketErrorIfMinus1Retry "listen" (c_listen s (fromIntegral backlog))
+     throwSocketErrorIfMinus1Retry "listen" (c_listen (sockFd sock) (fromIntegral backlog))
      return Listening
 
 -----------------------------------------------------------------------------
@@ -594,24 +592,24 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept sock@(MkSocket s family stype protocol status) = do
- currentStatus <- readMVar status
+accept sock = do
+ currentStatus <- readMVar (sockStatus sock)
  okay <- isAcceptable sock
  if not okay
    then
-     ioError (userError ("accept: can't perform accept on socket (" ++ (show (family,stype,protocol)) ++") in status " ++
+     ioError (userError ("accept: can't perform accept on socket (" ++ (show (sockFamily sock,sockType sock,sockProtocol sock)) ++") in status " ++
          show currentStatus))
    else do
-     let sz = sizeOfSockAddrByFamily family
+     let sz = sizeOfSockAddrByFamily (sockFamily sock)
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
      new_sock <-
         if threaded 
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwErrnoIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe s sockaddr ptr_len
+                    c_accept_safe (sockFd sock) sockaddr ptr_len
            else do
-                paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
+                paramData <- c_newAcceptParams (sockFd sock) (fromIntegral sz) sockaddr
                 rc        <- asyncDoProc c_acceptDoProc paramData
                 new_sock  <- c_acceptNewSock    paramData
                 c_free paramData
@@ -623,14 +621,14 @@ accept sock@(MkSocket s family stype protocol status) = do
      new_sock <- 
 # ifdef HAVE_ACCEPT4
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
-                        (threadWaitRead (fromIntegral s))
-                        (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
+                        (threadWaitRead (fromIntegral (sockFd sock)))
+                        (c_accept4 (sockFd sock) sockaddr ptr_len (#const SOCK_NONBLOCK))
 # else
 #  if !defined(__HUGS__)
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
-                        (threadWaitRead (fromIntegral s))
+                        (threadWaitRead (fromIntegral (sockFd sock)))
 #  endif
-                        (c_accept s sockaddr ptr_len)
+                        (c_accept (sockFd sock) sockaddr ptr_len)
 #  if !defined(__HUGS__)
 #   if __GLASGOW_HASKELL__ < 611
      System.Posix.Internals.setNonBlockingFD new_sock
@@ -641,8 +639,8 @@ accept sock@(MkSocket s family stype protocol status) = do
 # endif /* HAVE_ACCEPT4 */
 #endif
      addr <- peekSockAddr sockaddr
-     new_status <- newMVar Connected
-     return ((MkSocket new_sock family stype protocol new_status), addr)
+     acceptedSock <- mkSocket new_sock (sockFamily sock) (sockType sock) (sockProtocol sock) Connected
+     return (acceptedSock, addr)
 
 #if defined(mingw32_HOST_OS) && !defined(__HUGS__)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
@@ -692,15 +690,15 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
           -> IO Int            -- Number of Bytes sent
-sendBufTo (MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
+sendBufTo sock ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
 #if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "sendTo"
-        (threadWaitWrite (fromIntegral s)) $
+        (threadWaitWrite (fromIntegral (sockFd sock))) $
 #endif
-        c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
-                        p_addr (fromIntegral sz)
+        c_sendto (sockFd sock) ptr (fromIntegral $ nbytes) 0{-flags-}
+                               p_addr (fromIntegral sz)
 
 -- | Receive data from the socket. The socket need not be in a
 -- connected state. Returns @(bytes, nbytes, address)@ where @bytes@
@@ -726,19 +724,19 @@ recvFrom sock nbytes =
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
+recvBufFrom sock ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
  | otherwise   = 
-    withNewSockAddr family $ \ptr_addr sz -> do
+    withNewSockAddr (sockFamily sock) $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
         len <- 
 #if !defined(__HUGS__)
                throwSocketErrorIfMinus1RetryMayBlock "recvFrom"
-                   (threadWaitRead (fromIntegral s)) $
+                   (threadWaitRead (fromIntegral (sockFd sock))) $
 #endif
-                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
-                                ptr_addr ptr_len
+                   c_recvfrom (sockFd sock) ptr (fromIntegral nbytes) 0{-flags-}
+                                            ptr_addr ptr_len
         let len' = fromIntegral len
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
@@ -763,7 +761,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
-send sock@(MkSocket s _family _stype _protocol _status) xs = do
+send sock xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
@@ -778,7 +776,7 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
 #else      
       writeRawBufferPtr 
         "Network.Socket.send" 
-        (fromIntegral s) 
+        (fromIntegral (sockFd sock))
         True 
         str 
         0 
@@ -788,9 +786,9 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
 #else
 # if !defined(__HUGS__)
      throwSocketErrorIfMinus1RetryMayBlock "send"
-        (threadWaitWrite (fromIntegral s)) $
+        (threadWaitWrite (fromIntegral (sockFd sock))) $
 # endif
-        c_send s str (fromIntegral len) 0{-flags-} 
+        c_send (sockFd sock) str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -843,7 +841,7 @@ recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
 recvLen :: Socket -> Int -> IO (String, Int)
-recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
+recvLen sock nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
@@ -853,15 +851,15 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
           readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
 #else          
-          readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
+          readRawBufferPtr "Network.Socket.recvLen" (fromIntegral (sockFd sock)) True ptr 0
                  (fromIntegral nbytes)
 #endif
 #else
 # if !defined(__HUGS__)
                throwSocketErrorIfMinus1RetryMayBlock "recv"
-                   (threadWaitRead (fromIntegral s)) $
+                   (threadWaitRead (fromIntegral (sockFd sock))) $
 # endif
-                   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
+                   c_recv (sockFd sock) ptr (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0
@@ -919,16 +917,18 @@ recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
 
 socketPort :: Socket            -- Connected & Bound Socket
            -> IO PortNumber     -- Port Number of Socket
-socketPort sock@(MkSocket _ AF_INET _ _ _) = do
+
+socketPort sock = case sockFamily sock of
+  AF_INET -> do
     (SockAddrInet port _) <- getSocketName sock
     return port
 #if defined(IPV6_SOCKET_SUPPORT)
-socketPort sock@(MkSocket _ AF_INET6 _ _ _) = do
+  AF_INET6 -> do
     (SockAddrInet6 port _ _ _) <- getSocketName sock
     return port
 #endif
-socketPort (MkSocket _ family _ _ _) =
-    ioError (userError ("socketPort: not supported for Family " ++ show family))
+  _ ->
+    ioError (userError ("socketPort: not supported for Family " ++ show (sockFamily sock)))
 
 
 -- ---------------------------------------------------------------------------
@@ -941,18 +941,18 @@ socketPort (MkSocket _ family _ _ _) =
 -- local machine is $getSocketName$.
 
 getPeerName   :: Socket -> IO SockAddr
-getPeerName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
+getPeerName sock = do
+ withNewSockAddr (sockFamily sock) $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
+   throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername (sockFd sock) ptr int_star
    _sz <- peek int_star
    peekSockAddr ptr
     
 getSocketName :: Socket -> IO SockAddr
-getSocketName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
+getSocketName sock = do
+ withNewSockAddr (sockFamily sock) $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry "getSocketName" $ c_getsockname s ptr int_star
+   throwSocketErrorIfMinus1Retry "getSocketName" $ c_getsockname (sockFd sock) ptr int_star
    peekSockAddr ptr
 
 -----------------------------------------------------------------------------
@@ -1098,11 +1098,11 @@ setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
                 -> IO ()
-setSocketOption (MkSocket s _ _ _ _) so v = do
+setSocketOption sock so v = do
    (level, opt) <- packSocketOption' "setSocketOption" so
    with (fromIntegral v) $ \ptr_v -> do
    throwErrnoIfMinus1_ "setSocketOption" $
-       c_setsockopt s level opt ptr_v
+       c_setsockopt (sockFd sock) level opt ptr_v
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
 
@@ -1112,12 +1112,12 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
 getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
-getSocketOption (MkSocket s _ _ _ _) so = do
+getSocketOption sock so = do
    (level, opt) <- packSocketOption' "getSocketOption" so
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwErrnoIfMinus1 "getSocketOption" $
-         c_getsockopt s level opt ptr_v ptr_sz
+         c_getsockopt (sockFd sock) level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
 
@@ -1734,8 +1734,8 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown (MkSocket s _ _ _ _) stype = do
-  throwSocketErrorIfMinus1Retry "shutdown" (c_shutdown s (sdownCmdToInt stype))
+shutdown sock stype = do
+  throwSocketErrorIfMinus1Retry "shutdown" (c_shutdown (sockFd sock) (sdownCmdToInt stype))
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -1744,38 +1744,38 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- will fail.  The remote end will receive no more data (after queued
 -- data is flushed).
 close :: Socket -> IO ()
-close (MkSocket s _ _ _ socketStatus) = do
- modifyMVar_ socketStatus $ \ status ->
+close sock = do
+ modifyMVar_ (sockStatus sock) $ \ status ->
    case status of
      ConvertedToHandle ->
          ioError (userError ("close: converted to a Handle, use hClose instead"))
      Closed ->
          return status
-     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
+     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral (sockFd sock)) >> return Closed
 
 -- -----------------------------------------------------------------------------
 
 isConnected :: Socket -> IO Bool
-isConnected (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isConnected sock = do
+    value <- readMVar (sockStatus sock)
     return (value == Connected) 
 
 -- -----------------------------------------------------------------------------
 -- Socket Predicates
 
 isBound :: Socket -> IO Bool
-isBound (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isBound sock = do
+    value <- readMVar (sockStatus sock)
     return (value == Bound)     
 
 isListening :: Socket -> IO Bool
-isListening (MkSocket _ _ _  _ status) = do
-    value <- readMVar status
+isListening sock = do
+    value <- readMVar (sockStatus sock)
     return (value == Listening) 
 
 isReadable  :: Socket -> IO Bool
-isReadable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isReadable sock = do
+    value <- readMVar (sockStatus sock)
     return (value == Listening || value == Connected)
 
 isWritable  :: Socket -> IO Bool
@@ -1783,14 +1783,14 @@ isWritable = isReadable -- sort of.
 
 isAcceptable :: Socket -> IO Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable (MkSocket _ AF_UNIX x _ status)
+isAcceptable sock@MkSocket{sockFamily = AF_UNIX, sockType = x}
     | x == Stream || x == SeqPacket = do
-        value <- readMVar status
+        value <- readMVar (sockStatus sock)
         return (value == Connected || value == Bound || value == Listening)
-isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
+isAcceptable MkSocket{sockFamily = AF_UNIX} = return False
 #endif
-isAcceptable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isAcceptable sock = do
+    value <- readMVar (sockStatus sock)
     return (value == Connected || value == Listening)
     
 -- -----------------------------------------------------------------------------
@@ -1820,8 +1820,8 @@ inet_ntoa haddr = do
 
 #ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
- modifyMVar socketStatus $ \ status ->
+socketToHandle s@MkSocket{sockFd = fd} mode = do
+ modifyMVar (sockStatus s) $ \ status ->
     if status == ConvertedToHandle
         then ioError (userError ("socketToHandle: already a Handle"))
         else do
@@ -1837,7 +1837,7 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
     hSetBuffering h NoBuffering
     return (ConvertedToHandle, h)
 #else
-socketToHandle (MkSocket s family stype protocol status) m =
+socketToHandle _sock _mode =
   error "socketToHandle not implemented in a parallel setup"
 #endif
 
