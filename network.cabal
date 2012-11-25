@@ -32,6 +32,7 @@ library
     Network.URI
   other-modules:
     Network.Socket.ByteString.Internal
+    Network.Socket.Types
 
   if !os(windows)
     other-modules:
