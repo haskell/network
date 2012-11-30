@@ -176,7 +176,7 @@ connect' host serv = do
 -- 'Network.Socket.listen' instead.
 
 listenOn :: PortID      -- ^ Port Identifier
-         -> IO Socket   -- ^ Connected Socket
+         -> IO Socket   -- ^ Listening Socket
 
 #if defined(IPV6_SOCKET_SUPPORT)
 -- IPv6 and IPv4.
