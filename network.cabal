@@ -17,7 +17,7 @@ extra-source-files:
   include/HsNetworkConfig.h.in include/HsNet.h
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
-  cbits/winSockErr.c
+  cbits/winSockErr.c cbits/winSelect.c
 homepage:       https://github.com/haskell/network
 bug-reports:    https://github.com/haskell/network/issues
 
@@ -38,6 +38,10 @@ library
     other-modules:
       Network.Socket.ByteString.IOVec
       Network.Socket.ByteString.MsgHdr
+
+  if os(windows)
+    other-modules:
+      Network.Socket.WinSelect
 
   build-depends:
     base >= 3 && < 5,

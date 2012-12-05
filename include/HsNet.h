@@ -8,6 +8,7 @@
 #define HSNET_H
 
 #include "HsNetworkConfig.h"
+#include "HsFFI.h"
 
 #ifdef NEED_WINVER
 # define WINVER 0x0501
@@ -58,6 +59,23 @@ extern void* newAcceptParams(int sock,
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
 # endif
+
+#define EVT_READ   1
+#define EVT_WRITE  2
+#define EVT_EXCEPT 4
+
+typedef struct Select1Data
+{
+    SOCKET sock;
+    int evtMask;
+    int lastError;
+    struct timeval *tv_ptr;
+    struct timeval tv;
+} Select1Data;
+
+void c_network_select1InitTimeout(Select1Data *sd, SOCKET sock, int evtMask,
+                                  long tv_sec, long tv_usec);
+HsInt c_network_select1(Select1Data *sd);
 
 #else
 
