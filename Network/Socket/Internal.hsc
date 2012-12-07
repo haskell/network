@@ -53,6 +53,7 @@ module Network.Socket.Internal
     , throwSocketErrorIfMinus1_
     , throwSocketErrorIfMinus1Retry
     , throwSocketErrorIfMinus1RetryMayBlock
+    , throwSocketErrorIfMinus1RetryNoBlock
 
     -- ** Guards that wait and retry if the operation would block
     -- | These guards are based on 'throwSocketErrorIfMinus1RetryMayBlock'.
@@ -81,9 +82,7 @@ module Network.Socket.Internal
 import Data.Bits ( (.|.), shiftL, shiftR )
 import Data.Word ( Word8, Word16, Word32 )
 import Data.Typeable (Typeable)
-import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
-                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
-                        Errno(..), errnoToIOError)
+import Foreign.C.Error
 import Foreign.C.String ( castCharToCChar, peekCString )
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types ( CInt(..), CSize(..) )
@@ -167,6 +166,27 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
+-- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
+-- @EWOULDBLOCK@ or similar, return 'Nothing'.
+throwSocketErrorIfMinus1RetryNoBlock
+    :: (Eq a, Num a) => String -> IO a -> IO (Maybe a)
+
+throwErrnoIfRetryNoBlock :: (a -> Bool) -> String -> IO a -> IO (Maybe a)
+throwErrnoIfRetryNoBlock pred loc act =
+    tryAgain
+  where
+    tryAgain = do
+        r <- act
+        if pred r
+          then do
+            err@(Errno n) <- getErrno
+            if err == eINTR
+              then tryAgain
+              else if err == eWOULDBLOCK || err == eAGAIN
+                     then return Nothing
+                     else throwSocketErrorCode loc n
+          else return (Just r)
+
 #if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK2_H) || defined(cygwin32_HOST_OS))
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
@@ -181,30 +201,66 @@ throwSocketError = throwErrno
 throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
 
-#else
+throwSocketErrorIfMinus1RetryNoBlock =
+    throwErrnoIfRetryNoBlock (== -1)
 
-throwSocketErrorIfMinus1RetryMayBlock name _ act
-  = throwSocketErrorIfMinus1Retry name act
+#else
 
 throwSocketErrorIfMinus1_ name act = do
   throwSocketErrorIfMinus1Retry name act
   return ()
 
 # if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
-throwSocketErrorIfMinus1Retry name act = do
-  r <- act
-  if (r == -1)
-   then do
-    rc   <- c_getLastError
-    case rc of
-      #{const WSANOTINITIALISED} -> do
-        withSocketsDo (return ())
+
+throwSocketErrorIfRetryOnError
+    :: (a -> b)                 -- ^ Maps the raw return value.  This allows
+                                --   the final return value to have a different
+                                --   type than that used for error checking.
+    -> (a -> Bool)              -- ^ Predicate returning 'True' on error
+    -> String                   -- ^ Textual description of the call site
+    -> (IO b -> CInt -> IO b)   -- ^ What to do on error.  Use
+                                --   'throwSocketErrorCode' to propagate the
+                                --   error, or call the continuation to
+                                --   try again.
+    -> IO a                     -- ^ The IO operation to execute
+    -> IO b
+throwSocketErrorIfRetryOnError rt pred loc onError act =
+    tryWith onError1
+  where
+    tryWith handler = do
         r <- act
-        if (r == -1)
-           then throwSocketError name
-           else return r
-      _ -> throwSocketError name
-   else return r
+        if pred r
+            then c_getLastError >>= handler
+            else return (rt r)
+
+    tryAgain = tryWith (onError tryAgain)
+
+    -- Only handle WSANOTINITIALISED one time.
+    onError1 #{const WSANOTINITIALISED} = do
+        withSocketsDo (return ())
+        tryAgain
+    onError1 err = onError tryAgain err
+
+throwSocketErrorIfMinus1Retry loc act =
+    throwSocketErrorIfRetryOnError id (== -1) loc onError act
+  where
+    onError _tryAgain = throwSocketErrorCode loc
+
+throwSocketErrorIfMinus1RetryMayBlock loc onBlock act =
+    throwSocketErrorIfRetryOnError id (== -1) loc onError act
+  where
+    onError tryAgain #{const WSAEWOULDBLOCK} =
+        onBlock >> tryAgain
+    onError _ err =
+        throwSocketErrorCode loc err
+
+throwSocketErrorIfMinus1RetryNoBlock loc act =
+    throwSocketErrorIfRetryOnError Just (== -1) loc onError act
+  where
+    onError _ #{const WSAEWOULDBLOCK} =
+        return Nothing
+    onError _ err =
+        throwSocketErrorCode loc err
 
 throwSocketErrorCode name rc = do
     pstr <- c_getWSError rc
@@ -226,10 +282,14 @@ foreign import ccall unsafe "getWSErrorDescr"
 
 
 # else
+throwSocketErrorIfMinus1RetryMayBlock name _ act
+  = throwSocketErrorIfMinus1Retry name act
 throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
 throwSocketError = throwErrno
 throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
+throwSocketErrorIfMinus1RetryNoBlock =
+    throwErrnoIfRetryNoBlock (== -1)
 # endif
 #endif /* __GLASGOW_HASKELL */
 
