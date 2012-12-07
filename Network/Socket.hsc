@@ -447,7 +447,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 #else
                    rc <- c_getLastError
                    case rc of
-                     10093 -> do -- WSANOTINITIALISED
+                     #{const WSANOTINITIALISED} -> do
                        withSocketsDo (return ())
                        r <- c_connect s p_addr (fromIntegral sz)
                        if r == -1

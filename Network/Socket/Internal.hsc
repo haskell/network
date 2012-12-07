@@ -162,7 +162,7 @@ throwSocketErrorIfMinus1Retry name act = do
    then do
     rc   <- c_getLastError
     case rc of
-      10093 -> do -- WSANOTINITIALISED
+      #{const WSANOTINITIALISED} -> do
         withSocketsDo (return ())
         r <- act
         if (r == -1)
