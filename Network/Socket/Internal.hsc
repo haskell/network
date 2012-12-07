@@ -47,6 +47,7 @@ module Network.Socket.Internal
     , c_getLastError
 #endif
     , throwSocketError
+    , throwSocketErrorCode
 
     -- * Guards for socket operations that may fail
     , throwSocketErrorIfMinus1_
@@ -64,7 +65,8 @@ import Data.Bits ( (.|.), shiftL, shiftR )
 import Data.Word ( Word8, Word16, Word32 )
 import Data.Typeable (Typeable)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
-                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_)
+                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
+                        Errno(..), errnoToIOError)
 import Foreign.C.String ( castCharToCChar, peekCString )
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types ( CInt(..), CSize(..) )
@@ -97,6 +99,11 @@ import Network.Socket.Types
 -- | Throw an 'IOError' corresponding to the current socket error.
 throwSocketError :: String  -- ^ textual description of the error location
                  -> IO a
+
+-- | Like 'throwSocketError', but the error code is supplied as an argument.
+--
+-- On Windows, do not use errno.  Use a system error code instead.
+throwSocketErrorCode :: String -> CInt -> IO a
 
 -- | Throw an 'IOError' corresponding to the current socket error if
 -- the IO action returns a result of @-1@.  Discards the result of the
@@ -146,6 +153,9 @@ throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
 
 throwSocketError = throwErrno
 
+throwSocketErrorCode loc errno =
+    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
+
 #else
 
 throwSocketErrorIfMinus1RetryMayBlock name _ act
@@ -171,8 +181,7 @@ throwSocketErrorIfMinus1Retry name act = do
       _ -> throwSocketError name
    else return r
 
-throwSocketError name = do
-    rc <- c_getLastError
+throwSocketErrorCode name rc = do
     pstr <- c_getWSError rc
     str  <- peekCString pstr
 #  if __GLASGOW_HASKELL__
@@ -180,6 +189,9 @@ throwSocketError name = do
 #  else
     ioError (userError (name ++ ": socket error - " ++ str))
 #  endif
+
+throwSocketError name =
+    c_getLastError >>= throwSocketErrorCode name
 
 foreign import CALLCONV unsafe "WSAGetLastError"
   c_getLastError :: IO CInt
@@ -191,6 +203,8 @@ foreign import ccall unsafe "getWSErrorDescr"
 # else
 throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
 throwSocketError = throwErrno
+throwSocketErrorCode loc errno =
+    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
 # endif
 #endif /* __GLASGOW_HASKELL */
 

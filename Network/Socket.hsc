@@ -463,9 +463,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return 0
-                else do ioError (errnoToIOError "connect" 
-                                (Errno (fromIntegral err))
-                                Nothing Nothing)
+                else throwSocketErrorCode "connect" (fromIntegral err)
 
     connectLoop
     return Connected
@@ -521,15 +519,15 @@ accept sock@(MkSocket s family stype protocol status) = do
      new_sock <-
         if threaded 
            then with (fromIntegral sz) $ \ ptr_len ->
-                  throwErrnoIfMinus1Retry "Network.Socket.accept" $
+                  throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                     c_accept_safe s sockaddr ptr_len
            else do
                 paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
                 rc        <- asyncDoProc c_acceptDoProc paramData
                 new_sock  <- c_acceptNewSock    paramData
                 c_free paramData
-                when (rc /= 0)
-                     (ioError (errnoToIOError "Network.Socket.accept" (Errno (fromIntegral rc)) Nothing Nothing))
+                when (rc /= 0) $
+                     throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
                 return new_sock
 #else 
      with (fromIntegral sz) $ \ ptr_len -> do
@@ -1008,7 +1006,7 @@ setSocketOption :: Socket
 setSocketOption (MkSocket s _ _ _ _) so v = do
    (level, opt) <- packSocketOption' "setSocketOption" so
    with (fromIntegral v) $ \ptr_v -> do
-   throwErrnoIfMinus1_ "setSocketOption" $
+   throwSocketErrorIfMinus1_ "setSocketOption" $
        c_setsockopt s level opt ptr_v
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
@@ -1023,7 +1021,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
    (level, opt) <- packSocketOption' "getSocketOption" so
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
-       throwErrnoIfMinus1 "getSocketOption" $
+       throwSocketErrorIfMinus1Retry "getSocketOption" $
          c_getsockopt s level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
@@ -1039,7 +1037,7 @@ getPeerCred sock = do
   with sz $ \ ptr_cr -> 
    alloca       $ \ ptr_sz -> do
      poke ptr_sz sz
-     throwErrnoIfMinus1 "getPeerCred" $
+     throwSocketErrorIfMinus1Retry "getPeerCred" $
        c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
      pid <- (#peek struct ucred, pid) ptr_cr
      uid <- (#peek struct ucred, uid) ptr_cr
@@ -1635,7 +1633,7 @@ foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt 
 
 closeFd :: CInt -> IO ()
-closeFd fd = throwErrnoIfMinus1Retry_ "Network.Socket.close" $ c_close fd
+closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
 
 #if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
