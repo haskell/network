@@ -1671,7 +1671,7 @@ foreign import CALLCONV unsafe "listen"
 foreign import CALLCONV safe "accept"
   c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 
-foreign import ccall "rtsSupportsBoundThreads" threaded :: Bool
+foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
 #endif
 
 foreign import CALLCONV unsafe "send"
