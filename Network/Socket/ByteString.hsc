@@ -60,6 +60,8 @@ import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
 import qualified Data.ByteString as B
 
 import Network.Socket.ByteString.Internal
+import Network.Socket.Internal
+import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
 import Control.Monad (zipWithM_)
@@ -73,8 +75,6 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(..))
-import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock,
-                                withSockAddr)
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
@@ -108,7 +108,7 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send (MkSocket s _ _ _ _) xs =
+send sock@(MkSocket s _ _ _ _) xs =
     unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
@@ -120,10 +120,7 @@ send (MkSocket s _ _ _ _) xs =
         (fromIntegral s) True str 0 (fromIntegral len)
 #  endif
 #else
-#  if !defined(__HUGS__)
-        throwSocketErrorIfMinus1RetryMayBlock "send"
-        (threadWaitWrite (fromIntegral s)) $
-#  endif
+        throwSocketErrorWaitWrite sock "send" $
         c_send s str (fromIntegral len) 0
 #endif
 
@@ -202,8 +199,7 @@ sendMany sock@(MkSocket fd _ _ _ _) cs = do
   where
     sendManyInner =
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-          throwSocketErrorIfMinus1RetryMayBlock "writev"
-              (threadWaitWrite (fromIntegral fd)) $
+          throwSocketErrorWaitWrite sock "writev" $
               c_writev (fromIntegral fd) iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
@@ -232,8 +228,7 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
                 addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorIfMinus1RetryMayBlock "sendmsg"
-              (threadWaitWrite (fromIntegral fd)) $
+            throwSocketErrorWaitWrite sock "sendmsg" $
               c_sendmsg (fromIntegral fd) msgHdrPtr 0
 #else
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
@@ -256,12 +251,12 @@ sendManyTo sock cs = sendAllTo sock (B.concat cs)
 recv :: Socket         -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
-recv (MkSocket s _ _ _ _) nbytes
+recv sock nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ recvInner s nbytes
+    | otherwise  = createAndTrim nbytes $ recvInner sock nbytes
 
-recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
-recvInner s nbytes ptr =
+recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
+recvInner sock nbytes ptr =
     fmap fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
 #  if __GLASGOW_HASKELL__ >= 611
@@ -271,12 +266,11 @@ recvInner s nbytes ptr =
         True (castPtr ptr) 0 (fromIntegral nbytes)
 #  endif
 #else
-#  if !defined(__HUGS__)
-        throwSocketErrorIfMinus1RetryMayBlock "recv"
-        (threadWaitRead (fromIntegral s)) $
-#  endif
+        throwSocketErrorWaitRead sock "recv" $
         c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
+  where
+    s = sockFd sock
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a

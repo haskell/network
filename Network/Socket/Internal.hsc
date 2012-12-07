@@ -54,6 +54,13 @@ module Network.Socket.Internal
     , throwSocketErrorIfMinus1Retry
     , throwSocketErrorIfMinus1RetryMayBlock
 
+    -- ** Guards that wait and retry if the operation would block
+    -- | These guards are based on 'throwSocketErrorIfMinus1RetryMayBlock'.
+    -- They wait for socket readiness if the action fails with @EWOULDBLOCK@
+    -- or similar.
+    , throwSocketErrorWaitRead
+    , throwSocketErrorWaitWrite
+
     -- * Initialization
     , withSocketsDo
 
@@ -77,6 +84,7 @@ import Foreign.Marshal.Alloc ( allocaBytes )
 import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
+import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 import Control.Exception ( finally )
@@ -207,6 +215,24 @@ throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
 # endif
 #endif /* __GLASGOW_HASKELL */
+
+-- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
+-- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
+-- and try again.
+throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
+throwSocketErrorWaitRead sock name io =
+    throwSocketErrorIfMinus1RetryMayBlock name
+        (threadWaitRead $ fromIntegral $ sockFd sock)
+        io
+
+-- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
+-- @EWOULDBLOCK@ or similar, wait for the socket to be write-ready,
+-- and try again.
+throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
+throwSocketErrorWaitWrite sock name io =
+    throwSocketErrorIfMinus1RetryMayBlock name
+        (threadWaitWrite $ fromIntegral $ sockFd sock)
+        io
 
 -- ---------------------------------------------------------------------------
 -- WinSock support

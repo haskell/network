@@ -537,10 +537,7 @@ accept sock@(MkSocket s family stype protocol status) = do
                         (threadWaitRead (fromIntegral s))
                         (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
 # else
-#  if !defined(__HUGS__)
-                 throwSocketErrorIfMinus1RetryMayBlock "accept"
-                        (threadWaitRead (fromIntegral s))
-#  endif
+                 throwSocketErrorWaitRead sock "accept"
                         (c_accept s sockaddr ptr_len)
 # endif /* HAVE_ACCEPT4 */
 #endif
@@ -597,13 +594,10 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
           -> IO Int            -- Number of Bytes sent
-sendBufTo (MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
+sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
-#if !defined(__HUGS__)
-     throwSocketErrorIfMinus1RetryMayBlock "sendTo"
-        (threadWaitWrite (fromIntegral s)) $
-#endif
+     throwSocketErrorWaitWrite sock "sendTo" $
         c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
                         p_addr (fromIntegral sz)
 
@@ -637,11 +631,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
     withNewSockAddr family $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- 
-#if !defined(__HUGS__)
-               throwSocketErrorIfMinus1RetryMayBlock "recvFrom"
-                   (threadWaitRead (fromIntegral s)) $
-#endif
+        len <- throwSocketErrorWaitRead sock "recvFrom" $
                    c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
                                 ptr_addr ptr_len
         let len' = fromIntegral len
@@ -691,10 +681,7 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
 #endif    
     
 #else
-# if !defined(__HUGS__)
-     throwSocketErrorIfMinus1RetryMayBlock "send"
-        (threadWaitWrite (fromIntegral s)) $
-# endif
+     throwSocketErrorWaitWrite sock "send" $
         c_send s str (fromIntegral len) 0{-flags-} 
 #endif
 
@@ -725,10 +712,7 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
        (fromIntegral len)
 # endif    
 #else
-# if !defined(__HUGS__)
-     throwSocketErrorIfMinus1RetryMayBlock "sendBuf"
-        (threadWaitWrite (fromIntegral s)) $
-# endif
+     throwSocketErrorWaitWrite sock "sendBuf" $
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
@@ -762,10 +746,7 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
                  (fromIntegral nbytes)
 #endif
 #else
-# if !defined(__HUGS__)
-               throwSocketErrorIfMinus1RetryMayBlock "recv"
-                   (threadWaitRead (fromIntegral s)) $
-# endif
+               throwSocketErrorWaitRead sock "recv" $
                    c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
 #endif
         let len' = fromIntegral len
@@ -803,10 +784,7 @@ recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
                  (fromIntegral nbytes)
 #endif
 #else
-# if !defined(__HUGS__)
-               throwSocketErrorIfMinus1RetryMayBlock "recvBuf"
-                   (threadWaitRead (fromIntegral s)) $
-# endif
+               throwSocketErrorWaitRead sock "recvBuf" $
                    c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
@@ -1054,27 +1032,16 @@ closeFdWith closer fd = closer fd
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
-  let fd = fdSocket sock
-#if !defined(__HUGS__)
-  throwSocketErrorIfMinus1RetryMayBlock "sendFd"
-     (threadWaitWrite (fromIntegral fd)) $
-     c_sendFd fd outfd
-#else
-  c_sendFd fd outfd
-#endif
+  throwSocketErrorWaitWrite sock "sendFd" $
+     c_sendFd (fdSocket sock) outfd
    -- Note: If Winsock supported FD-passing, thi would have been 
    -- incorrect (since socket FDs need to be closed via closesocket().)
   closeFd outfd
   
 recvFd :: Socket -> IO CInt
 recvFd sock = do
-  let fd = fdSocket sock
-  theFd <- 
-#if !defined(__HUGS__)
-    throwSocketErrorIfMinus1RetryMayBlock "recvFd" 
-        (threadWaitRead (fromIntegral fd)) $
-#endif
-         c_recvFd fd
+  theFd <- throwSocketErrorWaitRead sock "recvFd" $
+               c_recvFd (fdSocket sock)
   return theFd
 
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
