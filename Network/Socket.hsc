@@ -340,13 +340,7 @@ socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
     fd <- throwSocketErrorIfMinus1Retry "socket" $
                 c_socket (packFamily family) c_stype protocol
-#if !defined(__HUGS__)
-# if __GLASGOW_HASKELL__ < 611
-    System.Posix.Internals.setNonBlockingFD fd
-# else
-    System.Posix.Internals.setNonBlockingFD fd True
-# endif
-#endif
+    setNonBlockIfNeeded fd
     socket_status <- newMVar NotConnected
     let sock = MkSocket fd family stype protocol socket_status
 #if HAVE_DECL_IPV6_V6ONLY
@@ -381,18 +375,23 @@ socketPair family stype protocol = do
     return (s1,s2)
   where
     mkNonBlockingSocket fd = do
-#if !defined(__HUGS__)
-# if __GLASGOW_HASKELL__ < 611
-       System.Posix.Internals.setNonBlockingFD fd
-# else
-       System.Posix.Internals.setNonBlockingFD fd True
-# endif
-#endif
+       setNonBlockIfNeeded fd
        stat <- newMVar Connected
        return (MkSocket fd family stype protocol stat)
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
+#endif
+
+-- | Set the socket to nonblocking, if applicable to this platform.
+setNonBlockIfNeeded :: CInt -> IO ()
+setNonBlockIfNeeded fd =
+#if defined(__HUGS__)
+    return ()
+#elif __GLASGOW_HASKELL__ < 611
+    System.Posix.Internals.setNonBlockingFD fd
+#else
+    System.Posix.Internals.setNonBlockingFD fd True
 #endif
 
 -----------------------------------------------------------------------------
@@ -545,15 +544,9 @@ accept sock@(MkSocket s family stype protocol status) = do
                         (threadWaitRead (fromIntegral s))
 #  endif
                         (c_accept s sockaddr ptr_len)
-#  if !defined(__HUGS__)
-#   if __GLASGOW_HASKELL__ < 611
-     System.Posix.Internals.setNonBlockingFD new_sock
-#   else
-     System.Posix.Internals.setNonBlockingFD new_sock True
-#   endif
-#  endif
 # endif /* HAVE_ACCEPT4 */
 #endif
+     setNonBlockIfNeeded new_sock
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
