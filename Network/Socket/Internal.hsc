@@ -61,6 +61,16 @@ module Network.Socket.Internal
     , throwSocketErrorWaitRead
     , throwSocketErrorWaitWrite
 
+    -- * Polling sockets
+    -- | Like 'threadWaitRead' and 'threadWaitWrite', but these work for
+    -- sockets, even on Windows.
+    --
+    -- It is undefined behavior to close the socket during a call to one of
+    -- these functions.  This is because the socket descriptor may be reused by
+    -- another thread before the wait operation actually begins.
+    , sockWaitRead
+    , sockWaitWrite
+
     -- * Initialization
     , withSocketsDo
 
@@ -87,6 +97,7 @@ import Foreign.Storable ( Storable(..) )
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+
 import Control.Exception ( finally )
 #  if __GLASGOW_HASKELL__
 #    if __GLASGOW_HASKELL__ >= 707
@@ -97,6 +108,12 @@ import GHC.IOBase ( IOErrorType(..) )
 #  endif
 import Foreign.C.Types ( CChar )
 import System.IO.Error ( ioeSetErrorString, mkIOError )
+import Network.Socket.WinSelect
+
+#else
+
+import System.Posix.Types
+
 #endif
 
 import Network.Socket.Types
@@ -222,7 +239,7 @@ throwSocketErrorCode loc errno =
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitRead sock name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitRead $ fromIntegral $ sockFd sock)
+        (sockWaitRead $ sockFd sock)
         io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
@@ -231,8 +248,39 @@ throwSocketErrorWaitRead sock name io =
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitWrite sock name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitWrite $ fromIntegral $ sockFd sock)
+        (sockWaitWrite $ sockFd sock)
         io
+
+-- ---------------------------------------------------------------------------
+-- Polling sockets
+
+-- | Block until the socket is ready to be read.
+--
+-- If the socket is closed during the operation, 'sockWaitRead' will likely
+-- either throw an 'IOError', or return successfully.
+sockWaitRead :: CInt -> IO ()
+
+-- | Block until the socket is ready to be written to.
+--
+-- If the socket is closed during the operation, 'sockWaitWrite' will likely
+-- throw an 'IOError'.
+sockWaitWrite :: CInt -> IO ()
+
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+
+sockWaitRead  fd = select1 fd evtRead  >>= throwSelectError "sockWaitRead"
+sockWaitWrite fd = select1 fd evtWrite >>= throwSelectError "sockWaitWrite"
+
+throwSelectError :: String -> Either CInt Event -> IO ()
+throwSelectError name = either (throwSocketErrorCode name) (\_ -> return ())
+
+#else
+
+sockWaitRead  = threadWaitRead  . Fd
+sockWaitWrite = threadWaitWrite . Fd
+
+#endif
+
 
 -- ---------------------------------------------------------------------------
 -- WinSock support
