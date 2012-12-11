@@ -53,7 +53,7 @@ import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(..))
 import Network.Socket.ByteString.IOVec (IOVec(IOVec))
 import Network.Socket.ByteString.Internal (c_writev)
-import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock)
+import Network.Socket.Internal
 
 import qualified Data.ByteString.Lazy as L
 
@@ -80,15 +80,12 @@ import GHC.Conc (threadWaitWrite)
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
-send (MkSocket fd _ _ _ _) s = do
+send sock@(MkSocket fd _ _ _ _) s = do
   let cs  = take maxNumChunks (L.toChunks s)
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
-#  if !defined(__HUGS__)
-      throwSocketErrorIfMinus1RetryMayBlock "writev"
-        (threadWaitWrite (fromIntegral fd)) $
-#  endif
+      throwSocketErrorWaitWrite sock "writev" $
         c_writev (fromIntegral fd) ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
