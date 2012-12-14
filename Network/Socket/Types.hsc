@@ -45,6 +45,7 @@ module Network.Socket.Types
     -- * Unsorted
     , ProtocolNumber
     , PortNumber(..)
+    , SOCKET
 
     -- * Low-level helpers
     , zeroMemory
@@ -98,6 +99,11 @@ data SocketStatus
   | ConvertedToHandle   -- is now a Handle, don't touch
   | Closed              -- close
     deriving (Eq, Show, Typeable)
+
+-- | On Unix, socket descriptors are represented with @int@, but this is not
+-- the case on all systems (Winsock uses UINT_PTR).  For now, we just
+-- use 'CInt', for compatibility with existing code.
+type SOCKET = CInt
 
 -----------------------------------------------------------------------------
 -- Socket types

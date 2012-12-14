@@ -1597,58 +1597,58 @@ foreign import CALLCONV unsafe "inet_addr"
   c_inet_addr :: Ptr CChar -> IO HostAddress
 
 foreign import CALLCONV unsafe "shutdown"
-  c_shutdown :: CInt -> CInt -> IO CInt 
+  c_shutdown :: SOCKET -> CInt -> IO CInt
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
 
 #if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
-  c_close :: CInt -> IO CInt
+  c_close :: SOCKET -> IO CInt
 #else
 foreign import stdcall unsafe "closesocket"
-  c_close :: CInt -> IO CInt
+  c_close :: SOCKET -> IO CInt
 #endif
 
 foreign import CALLCONV unsafe "socket"
-  c_socket :: CInt -> CInt -> CInt -> IO CInt
+  c_socket :: CInt -> CInt -> CInt -> IO SOCKET
 foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
+  c_bind :: SOCKET -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
+  c_connect :: SOCKET -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept :: SOCKET -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO SOCKET
 #ifdef HAVE_ACCEPT4
 foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+  c_accept4 :: SOCKET -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO SOCKET
 #endif
 foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
+  c_listen :: SOCKET -> CInt -> IO CInt
 
 #if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
 foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept_safe :: SOCKET -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO SOCKET
 
 foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
 #endif
 
 foreign import CALLCONV unsafe "send"
-  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
+  c_send :: SOCKET -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "sendto"
-  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
+  c_sendto :: SOCKET -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
-  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+  c_recv :: SOCKET -> Ptr CChar -> CSize -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
-  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_recvfrom :: SOCKET -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getpeername"
-  c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_getpeername :: SOCKET -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getsockname"
-  c_getsockname :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_getsockname :: SOCKET -> Ptr SockAddr -> Ptr CInt -> IO CInt
 
 foreign import CALLCONV unsafe "getsockopt"
-  c_getsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
+  c_getsockopt :: SOCKET -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "setsockopt"
-  c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
+  c_setsockopt :: SOCKET -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
 
 -- ---------------------------------------------------------------------------
 -- * Deprecated aliases
