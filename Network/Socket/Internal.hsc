@@ -93,7 +93,6 @@ import Foreign.Marshal.Alloc ( allocaBytes )
 import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
 import Foreign.Ptr ( Ptr, castPtr, plusPtr )
 import Foreign.Storable ( Storable(..) )
-import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 
@@ -111,6 +110,7 @@ import Network.Socket.WinSelect
 
 #else
 
+import GHC.Conc (threadWaitRead, threadWaitWrite)
 import System.Posix.Types
 
 #endif

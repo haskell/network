@@ -48,11 +48,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
-#if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types (CInt(..))
-#else
-import Foreign.C.Types (CInt)
-#endif
+import Foreign.C.Types
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr)
 import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
@@ -65,12 +61,6 @@ import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
 import Control.Monad (zipWithM_)
-import Foreign.C.Types (CChar)
-# if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types (CSize(..))
-# else
-import Foreign.C.Types (CSize)
-# endif
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (plusPtr)
@@ -78,26 +68,12 @@ import Foreign.Storable (Storable(..))
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
-
-#  if defined(__GLASGOW_HASKELL__)
-import GHC.Conc (threadWaitRead, threadWaitWrite)
-#  endif
-#else
-#  if defined(__GLASGOW_HASKELL__)
-#    if __GLASGOW_HASKELL__ >= 611
-import GHC.IO.FD
-#    else
-import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
-#    endif
-#  endif
 #endif
 
-#if !defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-#endif
 
 -- ----------------------------------------------------------------------------
 -- Sending
@@ -111,18 +87,8 @@ send :: Socket      -- ^ Connected socket
 send sock@(MkSocket s _ _ _ _) xs =
     unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-#  if __GLASGOW_HASKELL__ >= 611
-        writeRawBufferPtr "Network.Socket.ByteString.send"
-        (FD s 1) (castPtr str) 0 (fromIntegral len)
-#  else
-        writeRawBufferPtr "Network.Socket.ByteString.send"
-        (fromIntegral s) True str 0 (fromIntegral len)
-#  endif
-#else
         throwSocketErrorWaitWrite sock "send" $
         c_send s str (fromIntegral len) 0
-#endif
 
 -- | Send data to the socket.  The socket must be connected to a
 -- remote socket.  Unlike 'send', this function continues to send data
@@ -258,17 +224,8 @@ recv sock nbytes
 recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
 recvInner sock nbytes ptr =
     fmap fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-#  if __GLASGOW_HASKELL__ >= 611
-        readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
-#  else
-        readRawBufferPtr "Network.Socket.ByteString.recv" (fromIntegral s)
-        True (castPtr ptr) 0 (fromIntegral nbytes)
-#  endif
-#else
         throwSocketErrorWaitRead sock "recv" $
         c_recv s (castPtr ptr) (fromIntegral nbytes) 0
-#endif
   where
     s = sockFd sock
 
