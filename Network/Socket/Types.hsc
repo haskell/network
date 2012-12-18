@@ -52,6 +52,9 @@ module Network.Socket.Types
 
 #include "HsNet.h"
 
+#define member_size(type, member) sizeof(((type *)0)->member)
+#define member_count(type, member) member_size(type, member) / member_size(type, member[0])
+
 import Control.Concurrent.MVar
 import Control.Monad
 import Data.Bits
@@ -906,6 +909,11 @@ peekSockAddr p = do
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
 #endif
+    _ -> do
+        let fam = unpackFamily $ fromIntegral $ toInteger family
+            data_ptr = (#ptr struct sockaddr, sa_data) p
+        raw_data <- peekArray (#const member_count(struct sockaddr, sa_data)) data_ptr
+        return (SockAddrRaw fam raw_data)
 
 ------------------------------------------------------------------------
 

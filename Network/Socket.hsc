@@ -315,6 +315,12 @@ instance Show SockAddr where
    . showString "]:"
    . shows port
 #endif
+  showsPrec _ (SockAddrRaw family raw_data)
+   = showString "{Raw("
+   . shows family
+   . showString ") "
+   . shows raw_data
+   . showString "}"
 
 -----------------------------------------------------------------------------
 -- Connection Functions
