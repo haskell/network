@@ -807,7 +807,8 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
-sizeOfSockAddr (SockAddrRaw _ bytes) = (#const sizeof(sa_family_t)) + length bytes
+sizeOfSockAddr (SockAddrRaw _ bytes) =
+    max (#const sizeof(struct sockaddr)) $ (#const sizeof(sa_family_t)) + length bytes
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
