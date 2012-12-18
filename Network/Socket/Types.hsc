@@ -777,6 +777,9 @@ data SockAddr       -- C Names
   | SockAddrUnix
         String          -- sun_path
 #endif
+  | SockAddrRaw
+        Family          -- socket family
+        [Word8]         -- raw bytes
   deriving (Eq, Ord, Typeable)
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
@@ -801,6 +804,7 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
+sizeOfSockAddr (SockAddrRaw _ bytes) = (#const sizeof(sa_family_t)) + length bytes
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -873,6 +877,12 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p addr
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
+pokeSockAddr p sa@(SockAddrRaw family bytes) = do
+#if defined(darwin_TARGET_OS)
+    zeroMemory p (sizeOfSockAddr sa)
+#endif
+    (#poke struct sockaddr, sa_family) p (fromIntegral (packFamily family) :: CSaFamily)
+    pokeArray ((#ptr struct sockaddr, sa_data) p) bytes
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
