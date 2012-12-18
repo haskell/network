@@ -39,6 +39,7 @@ module Network.Socket.Types
     , pokeSockAddr
     , sizeOfSockAddr
     , sizeOfSockAddrByFamily
+    , sizeOfSockAddrByFamily'
     , withSockAddr
     , withNewSockAddr
 
@@ -813,13 +814,21 @@ sizeOfSockAddr (SockAddrRaw _ bytes) =
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
 sizeOfSockAddrByFamily :: Family -> Int
+sizeOfSockAddrByFamily f = case sizeOfSockAddrByFamily' f of
+    Just size -> size
+    Nothing -> error $
+               "Network.Socket.Internal.sizeOfSockAddrByFamily: unsupported address family: " ++
+               show f
+
+sizeOfSockAddrByFamily' :: Family -> Maybe Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
+sizeOfSockAddrByFamily' AF_UNIX  = Just (#const sizeof(struct sockaddr_un))
 #endif
 #if defined(IPV6_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
+sizeOfSockAddrByFamily' AF_INET6 = Just (#const sizeof(struct sockaddr_in6))
 #endif
-sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
+sizeOfSockAddrByFamily' AF_INET  = Just (#const sizeof(struct sockaddr_in))
+sizeOfSockAddrByFamily' _ = Nothing
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
@@ -882,11 +891,19 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
 pokeSockAddr p sa@(SockAddrRaw family bytes) = do
+    let saSize = sizeOfSockAddr sa
+        minSize = fromMaybe 0 (sizeOfSockAddrByFamily' family)
+    if saSize < minSize
+     then
+       ioError (userError ("won't marshall badly sized SockAddrRaw of " ++
+             (show family) ++ ": " ++ (show minSize) ++ " bytes required but only "
+             ++ (show saSize) ++ " are available"))
+     else do
 #if defined(darwin_TARGET_OS)
-    zeroMemory p (sizeOfSockAddr sa)
+       zeroMemory p (sizeOfSockAddr sa)
 #endif
-    (#poke struct sockaddr, sa_family) p (fromIntegral (packFamily family) :: CSaFamily)
-    pokeArray ((#ptr struct sockaddr, sa_data) p) bytes
+       (#poke struct sockaddr, sa_family) p (fromIntegral (packFamily family) :: CSaFamily)
+       pokeArray ((#ptr struct sockaddr, sa_data) p) bytes
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
