@@ -378,6 +378,23 @@ setNonBlockingFd fd set =
 
 foreign import CALLCONV unsafe "winsock2.h ioctlsocket"
     c_ioctlsocket :: SOCKET -> CLong -> Ptr CULong -> IO CInt
+
+throwSelectError :: String -> IO (Either CInt Event) -> IO Event
+throwSelectError loc act = do
+    e <- act
+    case e of
+        Left #{const WSANOTINITIALISED} -> do
+            withSocketsDo (return ())
+            e2 <- act
+            case e2 of
+                Left err -> throwSocketErrorCode loc err
+                Right ev -> return ev
+        Left err -> throwSocketErrorCode loc err
+        Right ev -> return ev
+
+throwSelectError_ :: String -> IO (Either CInt Event) -> IO ()
+throwSelectError_ loc act =
+    throwSelectError loc act >> return ()
 #endif
 
 -----------------------------------------------------------------------------
@@ -465,14 +482,13 @@ instance GHC.IO.Device.RawIO SockFD where
         sock = sfdSocket sfd
 
 instance GHC.IO.Device.IODevice SockFD where
-    ready sfd write msecs = do
-        r <- select1WithTimeout
-                (sfdFD sfd)
-                (if write then evtWrite else evtRead)
-                msecs
-        case r of
-            Left err  -> throwSocketErrorCode "IODevice.ready (socket)" err
-            Right ev' -> return (ev' /= mempty)
+    ready sfd write msecs =
+        liftM (/= mempty) $
+        throwSelectError "IODevice.ready (socket)" $
+        select1WithTimeout
+            (sfdFD sfd)
+            (if write then evtWrite else evtRead)
+            msecs
 
     close = close . sfdSocket
 
@@ -594,8 +610,8 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
            return ()
 #elif defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
            -- NB: Winsock signals connect() failure in exceptfds
-           select1 s (evtWrite <> evtExcept)
-               >>= either (throwSocketErrorCode "connect") (\_ -> return ())
+           throwSelectError_ "connect" $
+               select1 s (evtWrite <> evtExcept)
 #else
            sockWaitWrite s
 #endif
@@ -1471,16 +1487,12 @@ getAddrInfo hints node service =
     maybeWith withCString service $ \c_service ->
       maybeWith with hints $ \c_hints ->
         alloca $ \ptr_ptr_addrs -> do
-          ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
-          case ret of
-            0 -> do ptr_addrs <- peek ptr_ptr_addrs
-                    ais <- followAddrInfo ptr_addrs
-                    c_freeaddrinfo ptr_addrs
-                    return ais
-            _ -> do err <- gai_strerror ret
-                    ioError (ioeSetErrorString
-                             (mkIOError NoSuchThing "getAddrInfo" Nothing
-                              Nothing) err)
+          throwGaiError "getAddrInfo" $
+            c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
+          ptr_addrs <- peek ptr_ptr_addrs
+          ais <- followAddrInfo ptr_addrs
+          c_freeaddrinfo ptr_addrs
+          return ais
 
 followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
 
@@ -1497,15 +1509,29 @@ foreign import ccall safe "hsnet_getaddrinfo"
 foreign import ccall safe "hsnet_freeaddrinfo"
     c_freeaddrinfo :: Ptr AddrInfo -> IO ()
 
+throwGaiError :: String -> IO CInt -> IO ()
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+throwGaiError loc act = do
+    _ <- throwSocketErrorIfRetry (/= 0) loc act
+    return ()
+#else
+throwGaiError loc act = do
+    ret <- act
+    case ret of
+        0 -> return ()
+        _ -> do err <- gai_strerror ret
+                ioError (ioeSetErrorString
+                         (mkIOError NoSuchThing loc Nothing
+                          Nothing) err)
+
 gai_strerror :: CInt -> IO String
-
-#ifdef HAVE_GAI_STRERROR
+# ifdef HAVE_GAI_STRERROR
 gai_strerror n = c_gai_strerror n >>= peekCString
-
 foreign import ccall safe "gai_strerror"
     c_gai_strerror :: CInt -> IO CString
-#else
+# else
 gai_strerror n = return ("error " ++ show n)
+# endif
 #endif
 
 withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
@@ -1564,20 +1590,15 @@ getNameInfo flags doHost doService addr =
   withCStringIf doHost (#const NI_MAXHOST) $ \c_hostlen c_host ->
     withCStringIf doService (#const NI_MAXSERV) $ \c_servlen c_serv -> do
       withSockAddr addr $ \ptr_addr sz -> do
-        ret <- c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
-                             c_serv c_servlen (packBits niFlagMapping flags)
-        case ret of
-          0 -> do
-            let peekIf doIf c_val = if doIf
-                                     then liftM Just $ peekCString c_val
-                                     else return Nothing
-            host <- peekIf doHost c_host
-            serv <- peekIf doService c_serv
-            return (host, serv)
-          _ -> do err <- gai_strerror ret
-                  ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing "getNameInfo" Nothing 
-                            Nothing) err)
+        throwGaiError "getNameInfo" $
+          c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
+                        c_serv c_servlen (packBits niFlagMapping flags)
+        let peekIf doIf c_val = if doIf
+                                 then liftM Just $ peekCString c_val
+                                 else return Nothing
+        host <- peekIf doHost c_host
+        serv <- peekIf doService c_serv
+        return (host, serv)
 
 foreign import ccall safe "hsnet_getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString

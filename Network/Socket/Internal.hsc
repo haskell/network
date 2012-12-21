@@ -54,6 +54,7 @@ module Network.Socket.Internal
     , throwSocketErrorIfMinus1Retry
     , throwSocketErrorIfMinus1RetryMayBlock
     , throwSocketErrorIfMinus1RetryNoBlock
+    , throwSocketErrorIfRetry
 
     -- ** Guards that wait and retry if the operation would block
     -- | These guards are based on 'throwSocketErrorIfMinus1RetryMayBlock'.
@@ -96,6 +97,7 @@ import Foreign.Storable ( Storable(..) )
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 
+import Control.Concurrent.MVar
 import Control.Exception ( finally )
 #  if __GLASGOW_HASKELL__
 #    if __GLASGOW_HASKELL__ >= 707
@@ -106,6 +108,7 @@ import GHC.IOBase ( IOErrorType(..) )
 #  endif
 import Foreign.C.Types ( CChar )
 import System.IO.Error ( ioeSetErrorString, mkIOError )
+import System.IO.Unsafe (unsafePerformIO)
 import Network.Socket.WinSelect
 
 #else
@@ -148,6 +151,7 @@ throwSocketErrorIfMinus1Retry
     => String  -- ^ textual description of the location
     -> IO a    -- ^ the 'IO' operation to be executed
     -> IO a
+throwSocketErrorIfMinus1Retry = throwSocketErrorIfRetry (== -1)
 
 {-# SPECIALIZE throwSocketErrorIfMinus1Retry :: String -> IO CInt -> IO CInt #-}
 
@@ -171,6 +175,16 @@ throwSocketErrorIfMinus1RetryMayBlock
 throwSocketErrorIfMinus1RetryNoBlock
     :: (Eq a, Num a) => String -> IO a -> IO (Maybe a)
 
+-- | Throw an 'IOError' corresponding to the current socket error if
+-- the IO action returns a result that matches the predicate.
+-- Retry in case of an interrupted operation.
+throwSocketErrorIfRetry
+    :: (a -> Bool) -- ^ Predicate that returns 'True' if the result
+                   --   indicates failure
+    -> String      -- ^ Textual description of the call site
+    -> IO a        -- ^ The action to perform
+    -> IO a
+
 throwErrnoIfRetryNoBlock :: (a -> Bool) -> String -> IO a -> IO (Maybe a)
 throwErrnoIfRetryNoBlock pred loc act =
     tryAgain
@@ -192,7 +206,7 @@ throwErrnoIfRetryNoBlock pred loc act =
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
 
-throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+throwSocketErrorIfRetry = throwErrnoIfRetry
 
 throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
 
@@ -241,8 +255,8 @@ throwSocketErrorIfRetryOnError rt pred loc onError act =
         tryAgain
     onError1 err = onError tryAgain err
 
-throwSocketErrorIfMinus1Retry loc act =
-    throwSocketErrorIfRetryOnError id (== -1) loc onError act
+throwSocketErrorIfRetry pred loc act =
+    throwSocketErrorIfRetryOnError id pred loc onError act
   where
     onError _tryAgain = throwSocketErrorCode loc
 
@@ -284,7 +298,7 @@ foreign import ccall unsafe "getWSErrorDescr"
 # else
 throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
-throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+throwSocketErrorIfRetry = throwErrnoIfRetry
 throwSocketError = throwErrno
 throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
@@ -328,11 +342,27 @@ sockWaitWrite :: CInt -> IO ()
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 
-sockWaitRead  fd = select1 fd evtRead  >>= throwSelectError "sockWaitRead"
-sockWaitWrite fd = select1 fd evtWrite >>= throwSelectError "sockWaitWrite"
+sockWaitRead  fd = throwSelectError_ "sockWaitRead"  $ select1 fd evtRead
+sockWaitWrite fd = throwSelectError_ "sockWaitWrite" $ select1 fd evtWrite
 
-throwSelectError :: String -> Either CInt Event -> IO ()
-throwSelectError name = either (throwSocketErrorCode name) (\_ -> return ())
+-- TODO: reuse the throwSelectError in Network.Socket, rather than
+-- duplicating code.
+throwSelectError :: String -> IO (Either CInt Event) -> IO Event
+throwSelectError loc act = do
+    e <- act
+    case e of
+        Left #{const WSANOTINITIALISED} -> do
+            withSocketsDo (return ())
+            e2 <- act
+            case e2 of
+                Left err -> throwSocketErrorCode loc err
+                Right ev -> return ev
+        Left err -> throwSocketErrorCode loc err
+        Right ev -> return ev
+
+throwSelectError_ :: String -> IO (Either CInt Event) -> IO ()
+throwSelectError_ loc act =
+    throwSelectError loc act >> return ()
 
 #else
 
@@ -345,25 +375,37 @@ sockWaitWrite = threadWaitWrite . Fd
 -- ---------------------------------------------------------------------------
 -- WinSock support
 
-{-| On Windows operating systems, the networking subsystem has to be
-initialised using 'withSocketsDo' before any networking operations can
-be used.  eg.
+{-| On Windows, the networking subsystem has to be initialised before any
+networking operations can be used.  This calls @WSAStartup@, runs the inner
+action, then queues @WSACleanup@ to be called before the process terminates.
+It is a harmless no-op on other systems.
+
+In versions of the network package before 2.5, it was mandatory to
+call 'withSocketsDo' explicitly:
 
 > main = withSocketsDo $ do {...}
 
-Although this is only strictly necessary on Windows platforms, it is
-harmless on other platforms, so for portability it is good practice to
-use it all the time.
+Now, the network package calls it automatically when needed.  However, it is a
+good idea to continue using 'withSocketsDo' at the top of @main@, in case
+another library requires Winsock to be initialized.
 -}
 withSocketsDo :: IO a -> IO a
 #if !defined(WITH_WINSOCK)
 withSocketsDo x = x
 #else
 withSocketsDo act = do
-    x <- initWinSock
+    x <- withWsaInitLock initWinSock
     if x /= 0
        then ioError (userError "Failed to initialise WinSock")
-       else act `finally` shutdownWinSock
+       else act `finally` withWsaInitLock shutdownWinSock
+
+wsaInitLock :: MVar ()
+wsaInitLock = unsafePerformIO $ newMVar ()
+{-# NOINLINE wsaInitLock #-}
+
+withWsaInitLock :: IO a -> IO a
+withWsaInitLock act = withMVar wsaInitLock $ \_ -> act
+{-# NOINLINE withWsaInitLock #-}
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
 foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()

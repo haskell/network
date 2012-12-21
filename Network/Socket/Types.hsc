@@ -711,6 +711,7 @@ intToPortNumber v = PortNum (htons (fromIntegral v))
 portNumberToInt :: PortNumber -> Int
 portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
+-- These functions do not require WSAStartup to be called first.
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
 --foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
