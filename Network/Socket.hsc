@@ -490,7 +490,9 @@ instance GHC.IO.Device.IODevice SockFD where
             (if write then evtWrite else evtRead)
             msecs
 
-    close = close . sfdSocket
+    -- NOTE: If we switch to SockFD for other systems besides Windows,
+    --       we'll need to use closeFdWith here.
+    close sfd = closeFd $ sfdFD sfd
 
     devType _ = return GHC.IO.Device.Stream
 
@@ -1179,7 +1181,13 @@ close (MkSocket s _ _ _ socketStatus) = do
          ioError (userError ("close: converted to a Handle, use hClose instead"))
      Closed ->
          return status
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+     -- Sockets are not file descriptors on Windows,
+     -- so don't use closeFdWith.
+     _ -> closeFd s >> return Closed
+#else
      _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
+#endif
 
 -- -----------------------------------------------------------------------------
 
