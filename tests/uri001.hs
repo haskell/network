@@ -220,6 +220,11 @@ testURIRef118 = testURIRef AbsId "http://192.168.0.1.example.com/"
 testURIRef119 = testURIRef AbsId "http://192.168.0.1.example.com./"
 -- URI prefixed with 3 octets of an IPv4 address and a subdomain part with a leading digit.
 testURIRef120 = testURIRef AbsId "http://192.168.0.1test.example.com/"
+-- URI with IPv(future) address
+testURIRef121 = testURIRef AbsId "http://[v9.123.abc;456.def]/"
+testURIRef122 = testEq "v.future authority" 
+                       (Just (URIAuth "" "[v9.123.abc;456.def]" ":42"))
+                       ((maybe Nothing uriAuthority) . parseURI $ "http://[v9.123.abc;456.def]:42/") 
 
 testURIRefSuite = TF.testGroup "Test URIrefs" testURIRefList
 testURIRefList =
@@ -344,6 +349,9 @@ testURIRefList =
   , TF.testCase "testURIRef118" testURIRef118
   , TF.testCase "testURIRef119" testURIRef119
   , TF.testCase "testURIRef120" testURIRef120
+    --
+  , TF.testCase "testURIRef121" testURIRef121
+  , TF.testCase "testURIRef122" testURIRef122
   ]
 
 -- test decomposition of URI into components
