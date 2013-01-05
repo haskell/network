@@ -16,6 +16,14 @@
 --
 --  This Module contains test cases for module URI.
 --
+--  To run this test (2013-01-05, instructions tested on MacOS):
+--  1. Install Haskell platform
+--  2. cabal install test-framework
+--  3. cabal install test-framework-hunit
+--  4. ghc -XDeriveDataTypeable ../Network/URI.hs uri001.hs
+--  5. ./uri001
+--
+--  Previous build instructions:
 --  Using GHC, I compile with this command line:
 --  ghc --make -fglasgow-exts
 --      -i..\;C:\Dev\Haskell\Lib\HUnit;C:\Dev\Haskell\Lib\Parsec
@@ -225,6 +233,17 @@ testURIRef121 = testURIRef AbsId "http://[v9.123.abc;456.def]/"
 testURIRef122 = testEq "v.future authority" 
                        (Just (URIAuth "" "[v9.123.abc;456.def]" ":42"))
                        ((maybe Nothing uriAuthority) . parseURI $ "http://[v9.123.abc;456.def]:42/") 
+-- URI with non-ASCII characters, fail with Network.HTTP escaping code (see below)
+-- Currently not supported by Network.URI, but captured here for possible future reference
+-- when IRI support may be added.
+testURIRef123 = testURIRef AbsId "http://example.com/test123/䡥汬漬⁗潲汤/index.html"
+testURIRef124 = testURIRef AbsId "http://example.com/test124/Москва/index.html"
+
+-- From report by Alexander Ivanov:
+-- should return " 䡥汬漬⁗潲汤", but returns "Hello, World" instead
+-- print $ urlDecode $ urlEncode " 䡥汬漬⁗潲汤"
+-- should return "Москва"
+-- print $ urlDecode $ urlEncode "Москва"
 
 testURIRefSuite = TF.testGroup "Test URIrefs" testURIRefList
 testURIRefList =
@@ -352,6 +371,9 @@ testURIRefList =
     --
   , TF.testCase "testURIRef121" testURIRef121
   , TF.testCase "testURIRef122" testURIRef122
+    -- IRI test cases not currently supported
+  -- , TF.testCase "testURIRef123" testURIRef123
+  -- , TF.testCase "testURIRef124" testURIRef124
   ]
 
 -- test decomposition of URI into components
