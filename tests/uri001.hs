@@ -16,7 +16,8 @@
 --
 --  This Module contains test cases for module URI.
 --
---  To run this test (2013-01-05, instructions tested on MacOS):
+--  To run this test without using Cabal to build the package
+--  (2013-01-05, instructions tested on MacOS):
 --  1. Install Haskell platform
 --  2. cabal install test-framework
 --  3. cabal install test-framework-hunit
