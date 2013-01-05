@@ -39,6 +39,7 @@ module Network.Socket.Types
     , pokeSockAddr
     , sizeOfSockAddr
     , sizeOfSockAddrByFamily
+    , sizeOfSockAddrByFamily'
     , withSockAddr
     , withNewSockAddr
 
@@ -51,6 +52,9 @@ module Network.Socket.Types
     ) where
 
 #include "HsNet.h"
+
+#define member_size(type, member) sizeof(((type *)0)->member)
+#define member_count(type, member) member_size(type, member) / member_size(type, member[0])
 
 import Control.Concurrent.MVar
 import Control.Monad
@@ -777,6 +781,9 @@ data SockAddr       -- C Names
   | SockAddrUnix
         String          -- sun_path
 #endif
+  | SockAddrRaw
+        Family          -- socket family
+        [Word8]         -- raw bytes
   deriving (Eq, Ord, Typeable)
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
@@ -801,17 +808,27 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
+sizeOfSockAddr (SockAddrRaw _ bytes) =
+    max (#const sizeof(struct sockaddr)) $ (#const sizeof(sa_family_t)) + length bytes
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
 sizeOfSockAddrByFamily :: Family -> Int
+sizeOfSockAddrByFamily f = case sizeOfSockAddrByFamily' f of
+    Just size -> size
+    Nothing -> error $
+               "Network.Socket.Internal.sizeOfSockAddrByFamily: unsupported address family: " ++
+               show f
+
+sizeOfSockAddrByFamily' :: Family -> Maybe Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
+sizeOfSockAddrByFamily' AF_UNIX  = Just (#const sizeof(struct sockaddr_un))
 #endif
 #if defined(IPV6_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
+sizeOfSockAddrByFamily' AF_INET6 = Just (#const sizeof(struct sockaddr_in6))
 #endif
-sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
+sizeOfSockAddrByFamily' AF_INET  = Just (#const sizeof(struct sockaddr_in))
+sizeOfSockAddrByFamily' _ = Nothing
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
@@ -873,6 +890,20 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p addr
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
+pokeSockAddr p sa@(SockAddrRaw family bytes) = do
+    let saSize = sizeOfSockAddr sa
+        minSize = fromMaybe 0 (sizeOfSockAddrByFamily' family)
+    if saSize < minSize
+     then
+       ioError (userError ("won't marshall badly sized SockAddrRaw of " ++
+             (show family) ++ ": " ++ (show minSize) ++ " bytes required but only "
+             ++ (show saSize) ++ " are available"))
+     else do
+#if defined(darwin_TARGET_OS)
+       zeroMemory p (sizeOfSockAddr sa)
+#endif
+       (#poke struct sockaddr, sa_family) p (fromIntegral (packFamily family) :: CSaFamily)
+       pokeArray ((#ptr struct sockaddr, sa_data) p) bytes
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
@@ -896,6 +927,11 @@ peekSockAddr p = do
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
 #endif
+    _ -> do
+        let fam = unpackFamily $ fromIntegral $ toInteger family
+            data_ptr = (#ptr struct sockaddr, sa_data) p
+        raw_data <- peekArray (#const member_count(struct sockaddr, sa_data)) data_ptr
+        return (SockAddrRaw fam raw_data)
 
 ------------------------------------------------------------------------
 
