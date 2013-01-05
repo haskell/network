@@ -494,7 +494,7 @@ ipvFuture =
         ; h <- hexDigitChar
         ; char '.'
         ; a <- many1 (satisfy isIpvFutureChar)
-        ; return $ 'c':h:'.':a
+        ; return $ 'v':h:'.':a
         }
 
 isIpvFutureChar :: Char -> Bool
