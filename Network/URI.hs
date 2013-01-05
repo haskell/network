@@ -132,12 +132,11 @@ import Numeric (showIntAtBase)
 
 #ifdef __GLASGOW_HASKELL__
 import Data.Typeable (Typeable)
--- @@FIXME [GK] this preprocessor test breaks the build when run under a standard Haskell Platform install
--- # if MIN_VERSION_base(4,0,0)
+# if MIN_VERSION_base(4,0,0)
 import Data.Data (Data)
--- # else
--- import Data.Generics (Data)
--- # endif
+# else
+import Data.Generics (Data)
+# endif
 #else
 import Data.Typeable (Typeable(..), TyCon, mkTyCon, mkTyConApp)
 #endif

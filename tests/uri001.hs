@@ -20,7 +20,7 @@
 --  1. Install Haskell platform
 --  2. cabal install test-framework
 --  3. cabal install test-framework-hunit
---  4. ghc -XDeriveDataTypeable ../Network/URI.hs uri001.hs
+--  4. ghc -XDeriveDataTypeable -D"MIN_VERSION_base(x,y,z)=1" ../Network/URI.hs uri001.hs
 --  5. ./uri001
 --
 --  Previous build instructions:
