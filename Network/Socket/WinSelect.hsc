@@ -54,6 +54,8 @@ select1WithTimeout fd ev msecs
 
 select1' :: TimeoutStep -> CInt -> Event -> IO (Either CInt Event)
 select1' ts0 sock ev =
+    -- Even under 'mask', interruptible operations (e.g. takeMVar,
+    -- threadDelay) can still receive asynchronous exceptions.
     mask_ $ do
         mv <- newEmptyMVar :: IO (MVar (Either CInt Event))
         canceledRef <- newIORef False
@@ -80,7 +82,8 @@ select1' ts0 sock ev =
 
 -- | Perform a blocking @select()@ call, using 'asyncDoProc' under the
 -- non-threaded RTS.  'select1Raw' must not be interrupted with an
--- asynchronous exception.
+-- asynchronous exception (i.e. call it from a 'forkIO' that you never
+-- throw an exception at).
 select1Raw :: CInt -> Event -> CLong -> CLong -> IO (Either CInt Event)
 select1Raw sock ev tv_sec tv_usec =
     withSelect1Data $ \sd -> do
