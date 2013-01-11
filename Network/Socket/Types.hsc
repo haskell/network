@@ -45,6 +45,7 @@ module Network.Socket.Types
     -- * Unsorted
     , ProtocolNumber
     , PortNumber(..)
+    , SOCKET
 
     -- * Low-level helpers
     , zeroMemory
@@ -98,6 +99,11 @@ data SocketStatus
   | ConvertedToHandle   -- is now a Handle, don't touch
   | Closed              -- close
     deriving (Eq, Show, Typeable)
+
+-- | On Unix, socket descriptors are represented with @int@, but this is not
+-- the case on all systems (Winsock uses UINT_PTR).  For now, we just
+-- use 'CInt', for compatibility with existing code.
+type SOCKET = CInt
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -705,6 +711,7 @@ intToPortNumber v = PortNum (htons (fromIntegral v))
 portNumberToInt :: PortNumber -> Int
 portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
+-- These functions do not require WSAStartup to be called first.
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
 --foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32

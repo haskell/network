@@ -162,7 +162,7 @@ AC_CHECK_FUNCS(accept4)
 
 case "$host" in
 *-mingw32)
-	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
+	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c, cbits/winSelect.c"
 	EXTRA_LIBS=ws2_32
 	CALLCONV=stdcall ;;
 *-solaris2*)

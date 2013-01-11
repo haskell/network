@@ -189,16 +189,11 @@ import Data.Bits
 import Data.List (foldl')
 import Data.Maybe (fromMaybe, isJust)
 import Data.Word (Word8, Word16, Word32)
-import Foreign.Ptr (Ptr, castPtr, nullPtr)
+import Foreign.Ptr
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
 import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
-import Foreign.C.Types (CUInt, CChar)
-#if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types (CInt(..), CSize(..))
-#else
-import Foreign.C.Types (CInt, CSize)
-#endif
+import Foreign.C.Types
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
 import Foreign.Marshal.Utils ( maybeWith, with )
@@ -213,14 +208,9 @@ import Data.Typeable
 import System.IO.Error
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.Conc (threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
 import GHC.Conc (closeFdWith)
 ##endif
-# if defined(mingw32_HOST_OS)
-import GHC.Conc (asyncDoProc)
-import Foreign (FunPtr)
-# endif
 # if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Device
 import GHC.IO.Handle.FD
@@ -239,6 +229,15 @@ import System.IO.Unsafe (unsafePerformIO)
 import GHC.IO.FD
 #endif
 
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+import GHC.IO.Buffer (newByteBuffer)
+import GHC.IO.BufferedIO (BufferedIO)
+import GHC.IO.Handle (mkFileHandle, mkDuplexHandle)
+import qualified GHC.IO.BufferedIO as BufferedIO
+
+import Network.Socket.WinSelect
+#endif
+
 import Network.Socket.Internal
 import Network.Socket.Types
 
@@ -248,34 +247,8 @@ import Network.Socket.Types
 type HostName       = String
 type ServiceName    = String
 
--- ----------------------------------------------------------------------------
--- On Windows, our sockets are not put in non-blocking mode (non-blocking
--- is not supported for regular file descriptors on Windows, and it would
--- be a pain to support it only for sockets).  So there are two cases:
---
---  - the threaded RTS uses safe calls for socket operations to get
---    non-blocking I/O, just like the rest of the I/O library
---
---  - with the non-threaded RTS, only some operations on sockets will be
---    non-blocking.  Reads and writes go through the normal async I/O
---    system.  accept() uses asyncDoProc so is non-blocking.  A handful
---    of others (recvFrom, sendFd, recvFd) will block all threads - if this
---    is a problem, -threaded is the workaround.
---
-##if defined(mingw32_HOST_OS)
-##define SAFE_ON_WIN safe
-##else
-##define SAFE_ON_WIN unsafe
-##endif
-
 -----------------------------------------------------------------------------
 -- Socket types
-
-#if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
-socket2FD  (MkSocket fd _ _ _ _) = 
-  -- HACK, 1 means True 
-  FD{fdFD = fd,fdIsSocket_ = 1} 
-#endif
 
 mkSocket :: CInt
          -> Family
@@ -388,10 +361,186 @@ setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
 #if defined(__HUGS__)
     return ()
+#elif defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+    setNonBlockingFd fd True
 #elif __GLASGOW_HASKELL__ < 611
     System.Posix.Internals.setNonBlockingFD fd
 #else
     System.Posix.Internals.setNonBlockingFD fd True
+#endif
+
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+setNonBlockingFd :: SOCKET -> Bool -> IO ()
+setNonBlockingFd fd set =
+    with (if set then 1 else 0) $ \argp ->
+    throwSocketErrorIfMinus1_ "ioctlsocket" $
+    c_ioctlsocket fd (#const FIONBIO) argp
+
+foreign import CALLCONV unsafe "winsock2.h ioctlsocket"
+    c_ioctlsocket :: SOCKET -> CLong -> Ptr CULong -> IO CInt
+
+throwSelectError :: String -> IO (Either CInt Event) -> IO Event
+throwSelectError loc act = do
+    e <- act
+    case e of
+        Left #{const WSANOTINITIALISED} -> do
+            withSocketsDo (return ())
+            e2 <- act
+            case e2 of
+                Left err -> throwSocketErrorCode loc err
+                Right ev -> return ev
+        Left err -> throwSocketErrorCode loc err
+        Right ev -> return ev
+
+throwSelectError_ :: String -> IO (Either CInt Event) -> IO ()
+throwSelectError_ loc act =
+    throwSelectError loc act >> return ()
+#endif
+
+-----------------------------------------------------------------------------
+-- Conversion to a 'Handle'
+
+-- | Turns a Socket into an 'Handle'. By default, the new handle is
+-- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
+--
+-- Note that since a 'Handle' is automatically closed by a finalizer
+-- when it is no longer referenced, you should avoid doing any more
+-- operations on the 'Socket' after calling 'socketToHandle'.  To
+-- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
+-- on the 'Handle'.
+socketToHandle :: Socket -> IOMode -> IO Handle
+
+#ifdef __PARALLEL_HASKELL__
+
+socketToHandle _sock _mode =
+  error "socketToHandle not implemented in a parallel setup"
+
+#elif defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+
+-- On Windows, make our own IODevice instance.
+-- TODO: Consider doing this for Unix, too.
+
+data SockFD = SockFD
+    { sfdSocket :: !Socket  -- ^ A socket in non-blocking mode
+    } deriving Typeable
+
+sfdFD :: SockFD -> CInt
+sfdFD = sockFd . sfdSocket
+
+instance GHC.IO.Device.RawIO SockFD where
+    read sfd ptr len
+      | len <= 0  = ioError (mkInvalidRecvArgError loc)
+      | otherwise = liftM fromIntegral $
+                    throwSocketErrorWaitRead sock loc $
+                    c_recv (sockFd sock) (castPtr ptr) (fromIntegral len) 0{-flags-}
+      where
+        loc  = "RawIO.read (socket)"
+        sock = sfdSocket sfd
+
+    write sfd ptr0 len0
+      | len0 <= 0 = ioError (mkInvalidSendArgError loc)
+      | otherwise = loop ptr0 len0
+      where
+        loc = "RawIO.write (socket)"
+        sock = sfdSocket sfd
+        loop ptr len = do
+            sent <- liftM fromIntegral $
+                    throwSocketErrorWaitWrite sock loc $
+                    c_send (sockFd sock) ptr (fromIntegral len) 0{-flags-}
+            if sent < len
+                then loop (ptr `plusPtr` sent) (len - sent)
+                else return ()
+
+    readNonBlocking sfd ptr len
+      | len <= 0  = ioError (mkInvalidRecvArgError loc)
+      | otherwise = do
+        m <- throwSocketErrorIfMinus1RetryNoBlock loc $
+             c_recv (sockFd sock) (castPtr ptr) (fromIntegral len) 0{-flags-}
+        case m of
+            Nothing -> -- would block
+                return $ Just 0
+            Just 0 -> -- EOF
+                return Nothing
+            Just n ->
+                return $ Just $ fromIntegral n
+      where
+        loc  = "RawIO.readNonBlocking (socket)"
+        sock = sfdSocket sfd
+
+    writeNonBlocking sfd ptr len
+      | len <= 0  = ioError (mkInvalidSendArgError loc)
+      | otherwise = do
+        m <- throwSocketErrorIfMinus1RetryNoBlock loc $
+             c_send (sockFd sock) ptr (fromIntegral len) 0{-flags-}
+        case m of
+            Nothing -> -- would block
+                return 0
+            Just n ->
+                return (fromIntegral n)
+      where
+        loc = "RawIO.writeNonBlocking (socket)"
+        sock = sfdSocket sfd
+
+instance GHC.IO.Device.IODevice SockFD where
+    ready sfd write msecs =
+        liftM (/= mempty) $
+        throwSelectError "IODevice.ready (socket)" $
+        select1WithTimeout
+            (sfdFD sfd)
+            (if write then evtWrite else evtRead)
+            msecs
+
+    -- NOTE: If we switch to SockFD for other systems besides Windows,
+    --       we'll need to use closeFdWith here.
+    close sfd = closeFd $ sfdFD sfd
+
+    devType _ = return GHC.IO.Device.Stream
+
+dEFAULT_FD_BUFFER_SIZE :: Int
+dEFAULT_FD_BUFFER_SIZE = 8096
+
+instance BufferedIO SockFD where
+  newBuffer _dev state = newByteBuffer dEFAULT_FD_BUFFER_SIZE state
+  fillReadBuffer    fd buf = BufferedIO.readBuf fd buf
+  fillReadBuffer0   fd buf = BufferedIO.readBufNonBlocking fd buf
+  flushWriteBuffer  fd buf = BufferedIO.writeBuf fd buf
+  flushWriteBuffer0 fd buf = BufferedIO.writeBufNonBlocking fd buf
+
+socketToHandle sock mode =
+ modifyMVar (sockStatus sock) $ \status ->
+    if status == ConvertedToHandle
+        then ioError (userError ("socketToHandle: already a Handle"))
+        else do
+    let dev      = SockFD sock
+        filepath = show sock
+        mb_codec = Nothing
+        nl       = noNewlineTranslation
+    setNonBlockingFd (sockFd sock) True
+    h <- case mode of
+        ReadWriteMode -> mkDuplexHandle dev filepath mb_codec nl
+        _             -> mkFileHandle dev filepath mode mb_codec nl
+    hSetBuffering h NoBuffering
+    return (ConvertedToHandle, h)
+
+#else
+
+socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
+ modifyMVar socketStatus $ \ status ->
+    if status == ConvertedToHandle
+        then ioError (userError ("socketToHandle: already a Handle"))
+        else do
+# if __GLASGOW_HASKELL__ >= 611
+    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
+# elif __GLASGOW_HASKELL__ >= 608
+    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
+# elif __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 608
+    h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
+# elif defined(__HUGS__)
+    h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
+# endif
+    hSetBuffering h NoBuffering
+    return (ConvertedToHandle, h)
+
 #endif
 
 -----------------------------------------------------------------------------
@@ -452,13 +601,21 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                        if r == -1
                          then throwSocketError "connect"
                          else return r
+                     #{const WSAEWOULDBLOCK} ->
+                       connectBlocked
                      _ -> throwSocketError "connect"
 #endif
                else return r
 
         connectBlocked = do 
-#if !defined(__HUGS__)
-           threadWaitWrite (fromIntegral s)
+#if defined(__HUGS__)
+           return ()
+#elif defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+           -- NB: Winsock signals connect() failure in exceptfds
+           throwSelectError_ "connect" $
+               select1 s (evtWrite <> evtExcept)
+#else
+           sockWaitWrite s
 #endif
            err <- getSocketOption sock SoError
            if (err == 0)
@@ -515,47 +672,19 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
-#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
-     new_sock <-
-        if threaded 
-           then with (fromIntegral sz) $ \ ptr_len ->
-                  throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe s sockaddr ptr_len
-           else do
-                paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
-                rc        <- asyncDoProc c_acceptDoProc paramData
-                new_sock  <- c_acceptNewSock    paramData
-                c_free paramData
-                when (rc /= 0) $
-                     throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                return new_sock
-#else 
      with (fromIntegral sz) $ \ ptr_len -> do
      new_sock <- 
 # ifdef HAVE_ACCEPT4
-                 throwSocketErrorIfMinus1RetryMayBlock "accept"
-                        (threadWaitRead (fromIntegral s))
+                 throwSocketErrorWaitRead sock "accept"
                         (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
 # else
                  throwSocketErrorWaitRead sock "accept"
                         (c_accept s sockaddr ptr_len)
 # endif /* HAVE_ACCEPT4 */
-#endif
      setNonBlockIfNeeded new_sock
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
-
-#if defined(mingw32_HOST_OS) && !defined(__HUGS__)
-foreign import ccall unsafe "HsNet.h acceptNewSock"
-  c_acceptNewSock :: Ptr () -> IO CInt
-foreign import ccall unsafe "HsNet.h newAcceptParams"
-  c_newAcceptParams :: CInt -> CInt -> Ptr a -> IO (Ptr ())
-foreign import ccall unsafe "HsNet.h &acceptDoProc"
-  c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
-foreign import ccall unsafe "free"
-  c_free:: Ptr a -> IO ()
-#endif
 
 -----------------------------------------------------------------------------
 -- ** Sending and reciving data
@@ -575,9 +704,6 @@ foreign import ccall unsafe "free"
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent.  Applications are responsible for
 -- ensuring that all data has been sent.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
 sendTo :: Socket        -- (possibly) bound/connected Socket
        -> String        -- Data to send
        -> SockAddr
@@ -606,9 +732,6 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
 -- is a @String@ of length @nbytes@ representing the data received and
 -- @address@ is a 'SockAddr' representing the address of the sending
 -- socket.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
 recvFrom sock nbytes =
   allocaBytes nbytes $ \ptr -> do
@@ -621,9 +744,6 @@ recvFrom sock nbytes =
 -- state. Returns @(nbytes, address)@ where @nbytes@ is the number of
 -- bytes received and @address@ is a 'SockAddr' representing the
 -- address of the sending socket.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
@@ -662,28 +782,8 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
-    writeRawBufferPtr 
-      "Network.Socket.send" 
-      (socket2FD sock)
-      (castPtr str)
-      0
-      (fromIntegral len)
-#else      
-      writeRawBufferPtr 
-        "Network.Socket.send" 
-        (fromIntegral s) 
-        True 
-        str 
-        0 
-       (fromIntegral len)
-#endif    
-    
-#else
      throwSocketErrorWaitWrite sock "send" $
         c_send s str (fromIntegral len) 0{-flags-} 
-#endif
 
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
@@ -694,27 +794,8 @@ sendBuf :: Socket     -- Bound/Connected Socket
         -> IO Int     -- Number of Bytes sent
 sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
    liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
-    writeRawBufferPtr
-      "Network.Socket.sendBuf"
-      (socket2FD sock)
-      (castPtr str)
-      0
-      (fromIntegral len)
-# else      
-      writeRawBufferPtr
-        "Network.Socket.sendBuf"
-        (fromIntegral s)
-        True
-        str
-        0
-       (fromIntegral len)
-# endif    
-#else
      throwSocketErrorWaitWrite sock "sendBuf" $
         c_send s str (fromIntegral len) 0{-flags-}
-#endif
 
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -737,18 +818,8 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
         len <- 
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
-          readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
-                 (fromIntegral nbytes)
-#else          
-          readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
-                 (fromIntegral nbytes)
-#endif
-#else
                throwSocketErrorWaitRead sock "recv" $
                    c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
-#endif
         let len' = fromIntegral len
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recv")
@@ -774,24 +845,12 @@ recvLenBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
-        len <-
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
-          readRawBufferPtr "Network.Socket.recvLenBuf" (socket2FD sock) ptr 0
-                 (fromIntegral nbytes)
-#else          
-          readRawBufferPtr "Network.Socket.recvLenBuf" (fromIntegral s) True ptr 0
-                 (fromIntegral nbytes)
-#endif
-#else
-               throwSocketErrorWaitRead sock "recvBuf" $
+        len <- throwSocketErrorWaitRead sock "recvBuf" $
                    c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
-#endif
         let len' = fromIntegral len
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvBuf")
          else return len'
-
 
 -- ---------------------------------------------------------------------------
 -- socketPort
@@ -1044,8 +1103,8 @@ recvFd sock = do
                c_recvFd (fdSocket sock)
   return theFd
 
-foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
-foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
+foreign import ccall unsafe "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
+foreign import ccall unsafe "recvFd" c_recvFd :: CInt -> IO CInt
 
 #endif
 
@@ -1122,7 +1181,13 @@ close (MkSocket s _ _ _ socketStatus) = do
          ioError (userError ("close: converted to a Handle, use hClose instead"))
      Closed ->
          return status
+#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+     -- Sockets are not file descriptors on Windows,
+     -- so don't use closeFdWith.
+     _ -> closeFd s >> return Closed
+#else
      _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
+#endif
 
 -- -----------------------------------------------------------------------------
 
@@ -1179,38 +1244,6 @@ inet_ntoa :: HostAddress -> IO String
 inet_ntoa haddr = do
   pstr <- c_inet_ntoa haddr
   peekCString pstr
-
--- | Turns a Socket into an 'Handle'. By default, the new handle is
--- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
---
--- Note that since a 'Handle' is automatically closed by a finalizer
--- when it is no longer referenced, you should avoid doing any more
--- operations on the 'Socket' after calling 'socketToHandle'.  To
--- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
--- on the 'Handle'.
-
-#ifndef __PARALLEL_HASKELL__
-socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
- modifyMVar socketStatus $ \ status ->
-    if status == ConvertedToHandle
-        then ioError (userError ("socketToHandle: already a Handle"))
-        else do
-# if __GLASGOW_HASKELL__ >= 611
-    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
-# elif __GLASGOW_HASKELL__ >= 608
-    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# elif __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 608
-    h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# elif defined(__HUGS__)
-    h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
-# endif
-    hSetBuffering h NoBuffering
-    return (ConvertedToHandle, h)
-#else
-socketToHandle (MkSocket s family stype protocol status) m =
-  error "socketToHandle not implemented in a parallel setup"
-#endif
 
 -- | Pack a list of values into a bitmask.  The possible mappings from
 -- value to bit-to-set are given as the first argument.  We assume
@@ -1462,16 +1495,12 @@ getAddrInfo hints node service =
     maybeWith withCString service $ \c_service ->
       maybeWith with hints $ \c_hints ->
         alloca $ \ptr_ptr_addrs -> do
-          ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
-          case ret of
-            0 -> do ptr_addrs <- peek ptr_ptr_addrs
-                    ais <- followAddrInfo ptr_addrs
-                    c_freeaddrinfo ptr_addrs
-                    return ais
-            _ -> do err <- gai_strerror ret
-                    ioError (ioeSetErrorString
-                             (mkIOError NoSuchThing "getAddrInfo" Nothing
-                              Nothing) err)
+          throwGaiError "getAddrInfo" $
+            c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
+          ptr_addrs <- peek ptr_ptr_addrs
+          ais <- followAddrInfo ptr_addrs
+          c_freeaddrinfo ptr_addrs
+          return ais
 
 followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
 
@@ -1488,15 +1517,29 @@ foreign import ccall safe "hsnet_getaddrinfo"
 foreign import ccall safe "hsnet_freeaddrinfo"
     c_freeaddrinfo :: Ptr AddrInfo -> IO ()
 
+throwGaiError :: String -> IO CInt -> IO ()
+#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+throwGaiError loc act = do
+    _ <- throwSocketErrorIfRetry (/= 0) loc act
+    return ()
+#else
+throwGaiError loc act = do
+    ret <- act
+    case ret of
+        0 -> return ()
+        _ -> do err <- gai_strerror ret
+                ioError (ioeSetErrorString
+                         (mkIOError NoSuchThing loc Nothing
+                          Nothing) err)
+
 gai_strerror :: CInt -> IO String
-
-#ifdef HAVE_GAI_STRERROR
+# ifdef HAVE_GAI_STRERROR
 gai_strerror n = c_gai_strerror n >>= peekCString
-
 foreign import ccall safe "gai_strerror"
     c_gai_strerror :: CInt -> IO CString
-#else
+# else
 gai_strerror n = return ("error " ++ show n)
+# endif
 #endif
 
 withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
@@ -1555,20 +1598,15 @@ getNameInfo flags doHost doService addr =
   withCStringIf doHost (#const NI_MAXHOST) $ \c_hostlen c_host ->
     withCStringIf doService (#const NI_MAXSERV) $ \c_servlen c_serv -> do
       withSockAddr addr $ \ptr_addr sz -> do
-        ret <- c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
-                             c_serv c_servlen (packBits niFlagMapping flags)
-        case ret of
-          0 -> do
-            let peekIf doIf c_val = if doIf
-                                     then liftM Just $ peekCString c_val
-                                     else return Nothing
-            host <- peekIf doHost c_host
-            serv <- peekIf doService c_serv
-            return (host, serv)
-          _ -> do err <- gai_strerror ret
-                  ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing "getNameInfo" Nothing 
-                            Nothing) err)
+        throwGaiError "getNameInfo" $
+          c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
+                        c_serv c_servlen (packBits niFlagMapping flags)
+        let peekIf doIf c_val = if doIf
+                                 then liftM Just $ peekCString c_val
+                                 else return Nothing
+        host <- peekIf doHost c_host
+        serv <- peekIf doService c_serv
+        return (host, serv)
 
 foreign import ccall safe "hsnet_getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
@@ -1584,6 +1622,9 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 #endif
                                     loc Nothing Nothing) "non-positive length"
 
+mkInvalidSendArgError :: String -> IOError
+mkInvalidSendArgError = mkInvalidRecvArgError
+
 mkEOFError :: String -> IOError
 mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
@@ -1597,58 +1638,51 @@ foreign import CALLCONV unsafe "inet_addr"
   c_inet_addr :: Ptr CChar -> IO HostAddress
 
 foreign import CALLCONV unsafe "shutdown"
-  c_shutdown :: CInt -> CInt -> IO CInt 
+  c_shutdown :: SOCKET -> CInt -> IO CInt
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
 
 #if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "close"
-  c_close :: CInt -> IO CInt
+  c_close :: SOCKET -> IO CInt
 #else
 foreign import stdcall unsafe "closesocket"
-  c_close :: CInt -> IO CInt
+  c_close :: SOCKET -> IO CInt
 #endif
 
 foreign import CALLCONV unsafe "socket"
-  c_socket :: CInt -> CInt -> CInt -> IO CInt
+  c_socket :: CInt -> CInt -> CInt -> IO SOCKET
 foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
+  c_bind :: SOCKET -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
+foreign import CALLCONV unsafe "connect"
+  c_connect :: SOCKET -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept :: SOCKET -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO SOCKET
 #ifdef HAVE_ACCEPT4
 foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+  c_accept4 :: SOCKET -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO SOCKET
 #endif
 foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
-
-#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
-foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
-
-foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
-#endif
+  c_listen :: SOCKET -> CInt -> IO CInt
 
 foreign import CALLCONV unsafe "send"
-  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "sendto"
-  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
+  c_send :: SOCKET -> Ptr a -> CSize -> CInt -> IO CInt
+foreign import CALLCONV unsafe "sendto"
+  c_sendto :: SOCKET -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
-  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "recvfrom"
-  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_recv :: SOCKET -> Ptr CChar -> CSize -> CInt -> IO CInt
+foreign import CALLCONV unsafe "recvfrom"
+  c_recvfrom :: SOCKET -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getpeername"
-  c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_getpeername :: SOCKET -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getsockname"
-  c_getsockname :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_getsockname :: SOCKET -> Ptr SockAddr -> Ptr CInt -> IO CInt
 
 foreign import CALLCONV unsafe "getsockopt"
-  c_getsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
+  c_getsockopt :: SOCKET -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "setsockopt"
-  c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
+  c_setsockopt :: SOCKET -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
 
 -- ---------------------------------------------------------------------------
 -- * Deprecated aliases

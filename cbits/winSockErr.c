@@ -12,6 +12,7 @@ getWSErrorDescr(int err)
   static char  otherErrMsg[256];
 
   switch (err) {
+  case WSA_NOT_ENOUGH_MEMORY: return "Memory allocation failure (WSA_NOT_ENOUGH_MEMORY)";
   case WSAEINTR:  return "Interrupted function call (WSAEINTR)";
   case WSAEBADF:  return "bad socket descriptor (WSAEBADF)";
   case WSAEACCES: return "Permission denied (WSAEACCESS)";
