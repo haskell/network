@@ -8,6 +8,7 @@ module Network.Socket.ByteString.MsgHdr
 #include <sys/types.h>
 #include <sys/socket.h>
 
+import Data.Word -- for used '#type's
 import Foreign.C.Types (CInt, CSize)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
@@ -20,7 +21,7 @@ import Network.Socket.ByteString.IOVec (IOVec)
 -- don't exist on OpenSolaris.
 data MsgHdr = MsgHdr
     { msgName    :: Ptr SockAddr
-    , msgNameLen :: CSize
+    , msgNameLen :: (#type socklen_t) {- 32 bits even on amd64 and ppc64 -}
     , msgIov     :: Ptr IOVec
     , msgIovLen  :: CSize
     }
