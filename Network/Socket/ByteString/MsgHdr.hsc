@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- | Support module for the POSIX 'sendmsg' system call.
 module Network.Socket.ByteString.MsgHdr
@@ -19,10 +20,10 @@ import Network.Socket.ByteString.IOVec (IOVec)
 -- We don't use msg_control, msg_controllen, and msg_flags as these
 -- don't exist on OpenSolaris.
 data MsgHdr = MsgHdr
-    { msgName    :: Ptr SockAddr
-    , msgNameLen :: CUInt
-    , msgIov     :: Ptr IOVec
-    , msgIovLen  :: CSize
+    { msgName    :: !(Ptr SockAddr)
+    , msgNameLen :: !CUInt
+    , msgIov     :: !(Ptr IOVec)
+    , msgIovLen  :: !CSize
     }
 
 instance Storable MsgHdr where

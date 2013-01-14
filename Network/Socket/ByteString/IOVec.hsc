@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -funbox-strict-fields #-}
+
 -- | Support module for the POSIX writev system call.
 module Network.Socket.ByteString.IOVec
     ( IOVec(..)
@@ -10,8 +12,8 @@ import Foreign.Storable (Storable(..))
 #include <sys/uio.h>
 
 data IOVec = IOVec
-    { iovBase :: Ptr CChar
-    , iovLen  :: CSize
+    { iovBase :: !(Ptr CChar)
+    , iovLen  :: !CSize
     }
 
 instance Storable IOVec where
