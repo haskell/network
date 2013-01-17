@@ -1,5 +1,5 @@
 name:           network
-version:        2.4.0.1
+version:        2.4.1.0
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
