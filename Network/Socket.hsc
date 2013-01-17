@@ -5,7 +5,7 @@
 -- Module      :  Network.Socket
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/network/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
@@ -31,7 +31,7 @@ module Network.Socket
     (
     -- * Types
       Socket(..)
-    , Family(..)         
+    , Family(..)
     , isSupportedFamily
     , SocketType(..)
     , isSupportedSocketType
@@ -98,7 +98,7 @@ module Network.Socket
 
     , recvFrom
     , recvBufFrom
-    
+
     , send
     , recv
     , recvLen
@@ -146,7 +146,7 @@ module Network.Socket
 
     -- * Initialisation
     , withSocketsDo
-    
+
     -- * Very low level operations
     -- in case you ever want to get at the underlying file descriptor..
     , fdSocket
@@ -259,9 +259,9 @@ type ServiceName    = String
 -- Socket types
 
 #if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
-socket2FD  (MkSocket fd _ _ _ _) = 
-  -- HACK, 1 means True 
-  FD{fdFD = fd,fdIsSocket_ = 1} 
+socket2FD  (MkSocket fd _ _ _ _) =
+  -- HACK, 1 means True
+  FD{fdFD = fd,fdIsSocket_ = 1}
 #endif
 
 mkSocket :: CInt
@@ -290,7 +290,7 @@ instance Show SockAddr where
   showsPrec _ (SockAddrUnix str) = showString str
 #endif
   showsPrec _ (SockAddrInet port ha)
-   = showString (unsafePerformIO (inet_ntoa ha)) 
+   = showString (unsafePerformIO (inet_ntoa ha))
    . showString ":"
    . shows port
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -356,7 +356,7 @@ socketPair family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socketPair" stype
     _rc <- throwSocketErrorIfMinus1Retry "socketpair" $
                 c_socketpair (packFamily family) c_stype protocol fdArr
-    [fd1,fd2] <- peekArray 2 fdArr 
+    [fd1,fd2] <- peekArray 2 fdArr
     s1 <- mkNonBlockingSocket fd1
     s2 <- mkNonBlockingSocket fd2
     return (s1,s2)
@@ -392,7 +392,7 @@ bind :: Socket    -- Unconnected Socket
            -> IO ()
 bind (MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \ status -> do
- if status /= NotConnected 
+ if status /= NotConnected
   then
    ioError (userError ("bind: can't peform bind on socket in status " ++
          show status))
@@ -420,7 +420,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
     let connectLoop = do
            r <- c_connect s p_addr (fromIntegral sz)
            if r == -1
-               then do 
+               then do
 #if !(defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS))
                    err <- getErrno
                    case () of
@@ -441,7 +441,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 #endif
                else return r
 
-        connectBlocked = do 
+        connectBlocked = do
            threadWaitWrite (fromIntegral s)
            err <- getSocketOption sock SoError
            if (err == 0)
@@ -462,7 +462,7 @@ listen :: Socket  -- Connected & Bound Socket
        -> IO ()
 listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
  modifyMVar_ socketStatus $ \ status -> do
- if status /= Bound 
+ if status /= Bound
    then
      ioError (userError ("listen: can't peform listen on socket in status " ++
          show status))
@@ -500,7 +500,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
      new_sock <-
-        if threaded 
+        if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                     c_accept_safe s sockaddr ptr_len
@@ -512,9 +512,9 @@ accept sock@(MkSocket s family stype protocol status) = do
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
                 return new_sock
-#else 
+#else
      with (fromIntegral sz) $ \ ptr_len -> do
-     new_sock <- 
+     new_sock <-
 # ifdef HAVE_ACCEPT4
                  throwSocketErrorIfMinus1RetryMayBlock "accept"
                         (threadWaitRead (fromIntegral s))
@@ -581,7 +581,7 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
      throwSocketErrorWaitWrite sock "sendTo" $
-        c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-} 
+        c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
 -- | Receive data from the socket. The socket need not be in a
@@ -610,12 +610,12 @@ recvFrom sock nbytes =
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
- | otherwise   = 
+ | otherwise   =
     withNewSockAddr family $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
         len <- throwSocketErrorWaitRead sock "recvFrom" $
-                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-} 
+                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
         if len' == 0
@@ -623,13 +623,13 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
          else do
            flg <- isConnected sock
              -- For at least one implementation (WinSock 2), recvfrom() ignores
-             -- filling in the sockaddr for connected TCP sockets. Cope with 
+             -- filling in the sockaddr for connected TCP sockets. Cope with
              -- this by using getPeerName instead.
-           sockaddr <- 
+           sockaddr <-
                 if flg then
                    getPeerName sock
                 else
-                   peekSockAddr ptr_addr 
+                   peekSockAddr ptr_addr
            return (len', sockaddr)
 
 -----------------------------------------------------------------------------
@@ -646,26 +646,26 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
  withCString xs $ \str -> do
    liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
-    writeRawBufferPtr 
-      "Network.Socket.send" 
+# if __GLASGOW_HASKELL__ >= 611
+    writeRawBufferPtr
+      "Network.Socket.send"
       (socket2FD sock)
       (castPtr str)
       0
       (fromIntegral len)
-#else      
-      writeRawBufferPtr 
-        "Network.Socket.send" 
-        (fromIntegral s) 
-        True 
-        str 
-        0 
+#else
+      writeRawBufferPtr
+        "Network.Socket.send"
+        (fromIntegral s)
+        True
+        str
+        0
        (fromIntegral len)
-#endif    
-    
+#endif
+
 #else
      throwSocketErrorWaitWrite sock "send" $
-        c_send s str (fromIntegral len) 0{-flags-} 
+        c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -678,14 +678,14 @@ sendBuf :: Socket     -- Bound/Connected Socket
 sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
    liftM fromIntegral $
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
+# if __GLASGOW_HASKELL__ >= 611
     writeRawBufferPtr
       "Network.Socket.sendBuf"
       (socket2FD sock)
       (castPtr str)
       0
       (fromIntegral len)
-# else      
+# else
       writeRawBufferPtr
         "Network.Socket.sendBuf"
         (fromIntegral s)
@@ -693,7 +693,7 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
         str
         0
        (fromIntegral len)
-# endif    
+# endif
 #else
      throwSocketErrorWaitWrite sock "sendBuf" $
         c_send s str (fromIntegral len) 0{-flags-}
@@ -719,18 +719,18 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
-        len <- 
+        len <-
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
+# if __GLASGOW_HASKELL__ >= 611
           readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
-#else          
+#else
           readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
                  (fromIntegral nbytes)
 #endif
 #else
                throwSocketErrorWaitRead sock "recv" $
-                   c_recv s ptr (fromIntegral nbytes) 0{-flags-} 
+                   c_recv s ptr (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0
@@ -759,10 +759,10 @@ recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
  | otherwise   = do
         len <-
 #if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611    
+# if __GLASGOW_HASKELL__ >= 611
           readRawBufferPtr "Network.Socket.recvLenBuf" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
-#else          
+#else
           readRawBufferPtr "Network.Socket.recvLenBuf" (fromIntegral s) True ptr 0
                  (fromIntegral nbytes)
 #endif
@@ -813,7 +813,7 @@ getPeerName (MkSocket s family _ _ _) = do
    throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
    _sz <- peek int_star
    peekSockAddr ptr
-    
+
 getSocketName :: Socket -> IO SockAddr
 getSocketName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
@@ -960,7 +960,7 @@ packSocketOption' caller so = maybe err return (packSocketOption so)
 
 -- | Set a socket option that expects an Int value.
 -- There is currently no API to set e.g. the timeval socket options
-setSocketOption :: Socket 
+setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
                 -> IO ()
@@ -995,7 +995,7 @@ getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
   let fd = fdSocket sock
   let sz = (fromIntegral (#const sizeof(struct ucred)))
-  with sz $ \ ptr_cr -> 
+  with sz $ \ ptr_cr ->
    alloca       $ \ ptr_sz -> do
      poke ptr_sz sz
      throwSocketErrorIfMinus1Retry "getPeerCred" $
@@ -1017,10 +1017,10 @@ sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
   throwSocketErrorWaitWrite sock "sendFd" $
      c_sendFd (fdSocket sock) outfd
-   -- Note: If Winsock supported FD-passing, thi would have been 
+   -- Note: If Winsock supported FD-passing, thi would have been
    -- incorrect (since socket FDs need to be closed via closesocket().)
   closeFd outfd
-  
+
 recvFd :: Socket -> IO CInt
 recvFd sock = do
   theFd <- throwSocketErrorWaitRead sock "recvFd" $
@@ -1035,7 +1035,7 @@ foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 -- ---------------------------------------------------------------------------
 -- Utility Functions
 
-aNY_PORT :: PortNumber 
+aNY_PORT :: PortNumber
 aNY_PORT = 0
 
 -- | The IPv4 wild card address.
@@ -1071,7 +1071,7 @@ maxListenQueue = sOMAXCONN
 
 -- -----------------------------------------------------------------------------
 
-data ShutdownCmd 
+data ShutdownCmd
  = ShutdownReceive
  | ShutdownSend
  | ShutdownBoth
@@ -1112,7 +1112,7 @@ close (MkSocket s _ _ _ socketStatus) = do
 isConnected :: Socket -> IO Bool
 isConnected (MkSocket _ _ _ _ status) = do
     value <- readMVar status
-    return (value == Connected) 
+    return (value == Connected)
 
 -- -----------------------------------------------------------------------------
 -- Socket Predicates
@@ -1120,12 +1120,12 @@ isConnected (MkSocket _ _ _ _ status) = do
 isBound :: Socket -> IO Bool
 isBound (MkSocket _ _ _ _ status) = do
     value <- readMVar status
-    return (value == Bound)     
+    return (value == Bound)
 
 isListening :: Socket -> IO Bool
 isListening (MkSocket _ _ _  _ status) = do
     value <- readMVar status
-    return (value == Listening) 
+    return (value == Listening)
 
 isReadable  :: Socket -> IO Bool
 isReadable (MkSocket _ _ _ _ status) = do
@@ -1146,7 +1146,7 @@ isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
 isAcceptable (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Connected || value == Listening)
-    
+
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:
 
@@ -1292,7 +1292,7 @@ instance Storable AddrInfo where
         ai_canonname <- if ai_canonname_ptr == nullPtr
                         then return Nothing
                         else liftM Just $ peekCString ai_canonname_ptr
-                             
+
         socktype <- unpackSocketType' "AddrInfo.peek" ai_socktype
         return (AddrInfo
                 {
@@ -1382,7 +1382,7 @@ defaultHints = AddrInfo {
 --   [@AI_NUMERICHOST@] The 'HostName' argument /must/ be a numeric
 --     address in string form, and network name lookups will not be
 --     attempted.
--- 
+--
 -- /Note/: Although the following flags are required by RFC 3493, they
 -- may not have an effect on all platforms, because the underlying
 -- network stack may not support them.  To see whether a flag from the
@@ -1402,7 +1402,7 @@ defaultHints = AddrInfo {
 --
 --   [@AI_ALL@] If 'AI_ALL' is specified, return all matching IPv6 and
 --     IPv4 addresses.  Otherwise, this flag has no effect.
---     
+--
 -- You must provide a 'Just' value for at least one of the 'HostName'
 -- or 'ServiceName' arguments.  'HostName' can be either a numeric
 -- network address (dotted quad for IPv4, colon-separated hex for
@@ -1483,7 +1483,7 @@ gai_strerror n = return ("error " ++ show n)
 withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
 withCStringIf False _ f = f 0 nullPtr
 withCStringIf True n f = allocaBytes n (f (fromIntegral n))
-                    
+
 -- | Resolve an address to a host or service name.
 -- This function is protocol independent.
 --
@@ -1548,7 +1548,7 @@ getNameInfo flags doHost doService addr =
             return (host, serv)
           _ -> do err <- gai_strerror ret
                   ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing "getNameInfo" Nothing 
+                           (mkIOError NoSuchThing "getNameInfo" Nothing
                             Nothing) err)
 
 foreign import ccall safe "hsnet_getnameinfo"
@@ -1578,7 +1578,7 @@ foreign import CALLCONV unsafe "inet_addr"
   c_inet_addr :: Ptr CChar -> IO HostAddress
 
 foreign import CALLCONV unsafe "shutdown"
-  c_shutdown :: CInt -> CInt -> IO CInt 
+  c_shutdown :: CInt -> CInt -> IO CInt
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
