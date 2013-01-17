@@ -40,8 +40,6 @@ import GHC.IOBase (IOErrorType(..))
 # else
 import GHC.IO.Exception (IOErrorType(..))
 # endif
-#elif __HUGS__
-import Hugs.Prelude (IOErrorType(..))
 #endif
 
 mkInvalidRecvArgError :: String -> IOError

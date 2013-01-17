@@ -91,9 +91,6 @@ module Network.BSD
 #endif
     ) where
 
-#ifdef __HUGS__
-import Hugs.Prelude (IOException(..), IOErrorType(..))
-#endif
 import Network.Socket
 
 import Control.Concurrent (MVar, newMVar, withMVar)

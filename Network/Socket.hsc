@@ -172,19 +172,6 @@ module Network.Socket
     , packSocketType
     ) where
 
-#ifdef __HUGS__
-import Hugs.Prelude ( IOException(..), IOErrorType(..) )
-import Hugs.IO ( openFd )
-
-{-# CFILES cbits/HsNet.c #-}
-# if HAVE_STRUCT_MSGHDR_MSG_CONTROL || HAVE_STRUCT_MSGHDR_MSG_ACCRIGHTS
-{-# CFILES cbits/ancilData.c #-}
-# endif
-# if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
-{-# CFILES cbits/initWinSock.c cbits/winSockErr.c #-}
-# endif
-#endif
-
 import Data.Bits
 import Data.List (foldl')
 import Data.Maybe (fromMaybe, isJust)
@@ -386,9 +373,7 @@ foreign import ccall unsafe "socketpair"
 -- | Set the socket to nonblocking, if applicable to this platform.
 setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
-#if defined(__HUGS__)
-    return ()
-#elif __GLASGOW_HASKELL__ < 611
+#if __GLASGOW_HASKELL__ < 611
     System.Posix.Internals.setNonBlockingFD fd
 #else
     System.Posix.Internals.setNonBlockingFD fd True
@@ -457,9 +442,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                else return r
 
         connectBlocked = do 
-#if !defined(__HUGS__)
            threadWaitWrite (fromIntegral s)
-#endif
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return 0
@@ -546,7 +529,7 @@ accept sock@(MkSocket s family stype protocol status) = do
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
 
-#if defined(mingw32_HOST_OS) && !defined(__HUGS__)
+#if defined(mingw32_HOST_OS)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"
@@ -1202,8 +1185,6 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
     h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
 # elif __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 608
     h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# elif defined(__HUGS__)
-    h <- openFd (fromIntegral fd) True{-is a socket-} mode True{-bin-}
 # endif
     hSetBuffering h NoBuffering
     return (ConvertedToHandle, h)
