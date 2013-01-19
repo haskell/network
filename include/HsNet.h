@@ -58,6 +58,10 @@ extern int   acceptDoProc(void* param);
 
 #else
 
+#ifndef __USE_XOPEN
+# define __USE_XOPEN
+#endif
+
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
 #endif
