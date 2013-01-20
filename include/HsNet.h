@@ -58,6 +58,14 @@ extern int   acceptDoProc(void* param);
 
 #else
 
+/*
+ To use IOV_MAX, "limits.h" is included. On old Linux,
+ __USE_XOPEN is necessary to use IOV_MAX in "limits.h".
+*/
+#ifndef __USE_XOPEN
+# define __USE_XOPEN
+#endif
+
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
 #endif
