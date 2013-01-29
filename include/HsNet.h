@@ -58,14 +58,6 @@ extern int   acceptDoProc(void* param);
 
 #else
 
-/*
- To use IOV_MAX, "limits.h" is included. On old Linux,
- __USE_XOPEN is necessary to use IOV_MAX in "limits.h".
-*/
-#ifndef __USE_XOPEN
-# define __USE_XOPEN
-#endif
-
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
 #endif
@@ -178,6 +170,10 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 # else
 #  define CALLCONV ccall
 # endif
+#endif
+
+#if !defined(IOV_MAX)
+# define IOV_MAX 1024
 #endif
 
 #endif /* HSNET_H */
