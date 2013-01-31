@@ -3,7 +3,7 @@
 module Main where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, readMVar)
 import qualified Control.Exception as E
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
@@ -14,9 +14,6 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
 
 ------------------------------------------------------------------------
-
-serverPort :: PortNumber
-serverPort = fromIntegral (3000 :: Int)
 
 serverAddr :: String
 serverAddr = "127.0.0.1"
@@ -46,15 +43,17 @@ testSendTo :: Assertion
 testSendTo = udpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock = do addr <- inet_addr serverAddr
-                       sendTo sock testMsg (SockAddrInet serverPort addr)
+      client sock serverPort = do
+          addr <- inet_addr serverAddr
+          sendTo sock testMsg (SockAddrInet serverPort addr)
 
 testSendAllTo :: Assertion
 testSendAllTo = udpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock = do addr <- inet_addr serverAddr
-                       sendAllTo sock testMsg (SockAddrInet serverPort addr)
+      client sock serverPort = do
+          addr <- inet_addr serverAddr
+          sendAllTo sock testMsg (SockAddrInet serverPort addr)
 
 testSendMany :: Assertion
 testSendMany = tcpTest client server
@@ -69,9 +68,9 @@ testSendManyTo :: Assertion
 testSendManyTo = udpTest client server
     where
       server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
-      client sock = do addr <- inet_addr serverAddr
-                       sendManyTo sock [seg1, seg2]
-                           (SockAddrInet serverPort addr)
+      client sock serverPort = do
+          addr <- inet_addr serverAddr
+          sendManyTo sock [seg1, seg2] (SockAddrInet serverPort addr)
 
       seg1 = C.pack "This is a "
       seg2 = C.pack "test message."
@@ -98,8 +97,10 @@ testRecvFrom = tcpTest client server
       server sock = do (msg, _) <- recvFrom sock 1024
                        testMsg @=? msg
 
-      client sock = do addr <- inet_addr serverAddr
-                       sendTo sock testMsg (SockAddrInet serverPort addr)
+      client sock = do
+          serverPort <- getPeerPort sock
+          addr <- inet_addr serverAddr
+          sendTo sock testMsg (SockAddrInet serverPort addr)
 
 testOverFlowRecvFrom :: Assertion
 testOverFlowRecvFrom = tcpTest client server
@@ -139,27 +140,41 @@ tests = [basicTests]
 ------------------------------------------------------------------------
 -- Test helpers
 
+-- | Returns the 'PortNumber' of the peer. Will throw an 'error' if
+-- used on a non-IP socket.
+getPeerPort :: Socket -> IO PortNumber
+getPeerPort sock = do
+    sockAddr <- getPeerName sock
+    case sockAddr of
+        (SockAddrInet port _) -> return port
+        (SockAddrInet6 port _ _ _) -> return port
+        _ -> error "getPeerPort: only works with IP sockets"
+
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions
 -- get passed a connected 'Socket', used for communicating between
 -- client and server.  'tcpTest' makes sure that the 'Socket' is
 -- closed after the actions have run.
 tcpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-tcpTest clientAct serverAct =
-    test clientSetup clientAct serverSetup server
+tcpTest clientAct serverAct = do
+    portVar <- newEmptyMVar
+    test (clientSetup portVar) clientAct (serverSetup portVar) server
   where
-    clientSetup = do
+    clientSetup portVar = do
         sock <- socket AF_INET Stream defaultProtocol
         addr <- inet_addr serverAddr
+        serverPort <- readMVar portVar
         connect sock $ SockAddrInet serverPort addr
         return sock
 
-    serverSetup = do
+    serverSetup portVar = do
         sock <- socket AF_INET Stream defaultProtocol
         setSocketOption sock ReuseAddr 1
         addr <- inet_addr serverAddr
-        bindSocket sock (SockAddrInet serverPort addr)
+        bindSocket sock (SockAddrInet aNY_PORT addr)
         listen sock 1
+        serverPort <- socketPort sock
+        putMVar portVar serverPort
         return sock
 
     server sock = do
@@ -169,17 +184,24 @@ tcpTest clientAct serverAct =
 
 -- | Create an unconnected 'Socket' for sending UDP and receiving
 -- datagrams and then run 'clientAct' and 'serverAct'.
-udpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-udpTest clientAct serverAct =
-    test clientSetup clientAct serverSetup serverAct
+udpTest :: (Socket -> PortNumber -> IO a) -> (Socket -> IO b) -> IO ()
+udpTest clientAct serverAct = do
+    portVar <- newEmptyMVar
+    test clientSetup (client portVar) (serverSetup portVar) serverAct
   where
     clientSetup = socket AF_INET Datagram defaultProtocol
 
-    serverSetup = do
+    client portVar sock = do
+        serverPort <- readMVar portVar
+        clientAct sock serverPort
+
+    serverSetup portVar = do
         sock <- socket AF_INET Datagram defaultProtocol
         setSocketOption sock ReuseAddr 1
         addr <- inet_addr serverAddr
-        bindSocket sock (SockAddrInet serverPort addr)
+        bindSocket sock (SockAddrInet aNY_PORT addr)
+        serverPort <- socketPort sock
+        putMVar portVar serverPort
         return sock
 
 -- | Run a client/server pair and synchronize them so that the server
