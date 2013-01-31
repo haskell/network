@@ -29,88 +29,88 @@ testMsg = C.pack "This is a test message."
 
 testSend :: Assertion
 testSend = tcpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock = send sock testMsg
+  where
+    server sock = recv sock 1024 >>= (@=?) testMsg
+    client sock = send sock testMsg
 
 testSendAll :: Assertion
 testSendAll = tcpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock = sendAll sock testMsg
+  where
+    server sock = recv sock 1024 >>= (@=?) testMsg
+    client sock = sendAll sock testMsg
 
 testSendTo :: Assertion
 testSendTo = udpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock serverPort = do
-          addr <- inet_addr serverAddr
-          sendTo sock testMsg (SockAddrInet serverPort addr)
+  where
+    server sock = recv sock 1024 >>= (@=?) testMsg
+    client sock serverPort = do
+        addr <- inet_addr serverAddr
+        sendTo sock testMsg (SockAddrInet serverPort addr)
 
 testSendAllTo :: Assertion
 testSendAllTo = udpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock serverPort = do
-          addr <- inet_addr serverAddr
-          sendAllTo sock testMsg (SockAddrInet serverPort addr)
+  where
+    server sock = recv sock 1024 >>= (@=?) testMsg
+    client sock serverPort = do
+        addr <- inet_addr serverAddr
+        sendAllTo sock testMsg (SockAddrInet serverPort addr)
 
 testSendMany :: Assertion
 testSendMany = tcpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
-      client sock = sendMany sock [seg1, seg2]
+  where
+    server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
+    client sock = sendMany sock [seg1, seg2]
 
-      seg1 = C.pack "This is a "
-      seg2 = C.pack "test message."
+    seg1 = C.pack "This is a "
+    seg2 = C.pack "test message."
 
 testSendManyTo :: Assertion
 testSendManyTo = udpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
-      client sock serverPort = do
-          addr <- inet_addr serverAddr
-          sendManyTo sock [seg1, seg2] (SockAddrInet serverPort addr)
+  where
+    server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
+    client sock serverPort = do
+        addr <- inet_addr serverAddr
+        sendManyTo sock [seg1, seg2] (SockAddrInet serverPort addr)
 
-      seg1 = C.pack "This is a "
-      seg2 = C.pack "test message."
+    seg1 = C.pack "This is a "
+    seg2 = C.pack "test message."
 
 testRecv :: Assertion
 testRecv = tcpTest client server
-    where
-      server sock = recv sock 1024 >>= (@=?) testMsg
-      client sock = send sock testMsg
+  where
+    server sock = recv sock 1024 >>= (@=?) testMsg
+    client sock = send sock testMsg
 
 testOverFlowRecv :: Assertion
 testOverFlowRecv = tcpTest client server
-    where
-      server sock = do seg1 <- recv sock (S.length testMsg - 3)
-                       seg2 <- recv sock 1024
-                       let msg = S.append seg1 seg2
-                       testMsg @=? msg
+  where
+    server sock = do seg1 <- recv sock (S.length testMsg - 3)
+                     seg2 <- recv sock 1024
+                     let msg = S.append seg1 seg2
+                     testMsg @=? msg
 
-      client sock = send sock testMsg
+    client sock = send sock testMsg
 
 testRecvFrom :: Assertion
 testRecvFrom = tcpTest client server
-    where
-      server sock = do (msg, _) <- recvFrom sock 1024
-                       testMsg @=? msg
+  where
+    server sock = do (msg, _) <- recvFrom sock 1024
+                     testMsg @=? msg
 
-      client sock = do
-          serverPort <- getPeerPort sock
-          addr <- inet_addr serverAddr
-          sendTo sock testMsg (SockAddrInet serverPort addr)
+    client sock = do
+        serverPort <- getPeerPort sock
+        addr <- inet_addr serverAddr
+        sendTo sock testMsg (SockAddrInet serverPort addr)
 
 testOverFlowRecvFrom :: Assertion
 testOverFlowRecvFrom = tcpTest client server
-    where
-      server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
-                       (seg2, _) <- recvFrom sock 1024
-                       let msg = S.append seg1 seg2
-                       testMsg @=? msg
+  where
+    server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
+                     (seg2, _) <- recvFrom sock 1024
+                     let msg = S.append seg1 seg2
+                     testMsg @=? msg
 
-      client sock = send sock testMsg
+    client sock = send sock testMsg
 
 ------------------------------------------------------------------------
 -- Other
