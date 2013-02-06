@@ -56,6 +56,7 @@ import Data.Maybe (fromJust)
 import System.IO (openFile, IOMode(WriteMode), hClose)
 import qualified Test.Framework as TF
 import qualified Test.Framework.Providers.HUnit as TF
+import qualified Test.Framework.Providers.QuickCheck2 as TF
 
 -- Test supplied string for valid URI reference syntax
 --   isValidURIRef :: String -> Bool
@@ -1103,6 +1104,12 @@ testEscapeURIString06 = testEq "testEscapeURIString06"
     "hello%C3%B8%C2%A9%E6%97%A5%E6%9C%AC"
     (escapeURIString isUnescapedInURIComponent "helloø©日本")
 
+propEscapeUnEscapeLoop :: String -> Bool
+propEscapeUnEscapeLoop s = s == (unEscapeString $! escaped)
+	where
+	escaped = escapeURIString (const False) s
+	{-# NOINLINE escaped #-}
+
 testEscapeURIString = TF.testGroup "testEscapeURIString"
   [ TF.testCase "testEscapeURIString01" testEscapeURIString01
   , TF.testCase "testEscapeURIString02" testEscapeURIString02
@@ -1110,6 +1117,7 @@ testEscapeURIString = TF.testGroup "testEscapeURIString"
   , TF.testCase "testEscapeURIString04" testEscapeURIString04
   , TF.testCase "testEscapeURIString05" testEscapeURIString05
   , TF.testCase "testEscapeURIString06" testEscapeURIString06
+  , TF.testProperty "propEscapeUnEscapeLoop" propEscapeUnEscapeLoop
   ]
 
 -- URI string normalization tests

@@ -970,9 +970,50 @@ escapeURIString p s = concatMap (escapeURIChar p) s
 --
 unEscapeString :: String -> String
 unEscapeString [] = ""
-unEscapeString ('%':x1:x2:s) | isHexDigit x1 && isHexDigit x2 =
-    chr (digitToInt x1 * 16 + digitToInt x2) : unEscapeString s
-unEscapeString (c:s) = c : unEscapeString s
+unEscapeString s@(c:cs) = case unEscapeByte s of
+    Just (byte, rest) -> unEscapeUtf8 byte rest
+    Nothing -> c : unEscapeString cs
+
+unEscapeByte :: String -> Maybe (Int, String)
+unEscapeByte ('%':x1:x2:s) | isHexDigit x1 && isHexDigit x2 =
+    Just (digitToInt x1 * 16 + digitToInt x2, s)
+unEscapeByte _ = Nothing
+
+-- Adapted from http://hackage.haskell.org/package/utf8-string
+-- by Eric Mertens, BSD3
+unEscapeUtf8 :: Int -> String -> String
+unEscapeUtf8 c rest
+    | c < 0x80 = chr c : unEscapeString rest
+    | c < 0xc0 = replacement_character : unEscapeString rest
+    | c < 0xe0 = multi1
+    | c < 0xf0 = multi_byte 2 0xf 0x800
+    | c < 0xf8 = multi_byte 3 0x7 0x10000
+    | c < 0xfc = multi_byte 4 0x3 0x200000
+    | c < 0xfe = multi_byte 5 0x1 0x4000000
+    | otherwise    = replacement_character : unEscapeString rest
+    where
+    replacement_character = '\xfffd'
+    multi1 = case unEscapeByte rest of
+      Just (c1, ds) | c1 .&. 0xc0 == 0x80 ->
+        let d = ((fromEnum c .&. 0x1f) `shiftL` 6) .|.  fromEnum (c1 .&. 0x3f)
+        in if d >= 0x000080 then toEnum d : unEscapeString ds
+                            else replacement_character : unEscapeString ds
+      _ -> replacement_character : unEscapeString rest
+
+    multi_byte i mask overlong =
+      aux i rest (unEscapeByte rest) (c .&. mask)
+      where
+        aux 0 rs _ acc
+          | overlong <= acc && acc <= 0x10ffff &&
+            (acc < 0xd800 || 0xdfff < acc)     &&
+            (acc < 0xfffe || 0xffff < acc)      = chr acc : unEscapeString rs
+          | otherwise = replacement_character : unEscapeString rs
+
+        aux n _ (Just (r, rs)) acc
+          | r .&. 0xc0 == 0x80 = aux (n-1) rs (unEscapeByte rs)
+                               $! shiftL acc 6 .|. (r .&. 0x3f)
+
+        aux _ rs _ _ = replacement_character : unEscapeString rs
 
 ------------------------------------------------------------
 -- Resolving a relative URI relative to a base URI
