@@ -80,7 +80,8 @@ test-suite uri
     HUnit,
     network,
     test-framework,
-    test-framework-hunit
+    test-framework-hunit,
+    test-framework-quickcheck2
 
 source-repository head
   type:     git
