@@ -1301,9 +1301,6 @@ instance Storable AddrInfo where
                 })
 
     poke p (AddrInfo flags family socketType protocol _ _) = do
-#if defined(darwin_HOST_OS)
-        zeroMemory p (#const sizeof(struct addrinfo))
-#endif
         c_stype <- packSocketTypeOrThrow "AddrInfo.poke" socketType
 
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
