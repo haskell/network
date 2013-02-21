@@ -8,7 +8,8 @@ import Test.Framework.Providers.HUnit (testCase)
 ------------------------------------------------------------------------
 -- Tests
 
--- Used to segfault on OS X 10.8.2
+-- Used to segfault on OS X 10.8.2 due to AI_NUMERICSERV being set
+-- without a service being set. This is a OS X bug.
 testGetAddrInfo :: IO ()
 testGetAddrInfo = do
     let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
