@@ -57,9 +57,7 @@ import Network.Socket.Internal
 
 import qualified Data.ByteString.Lazy as L
 
-#  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitWrite)
-#  endif
 #endif
 
 #if !defined(mingw32_HOST_OS)

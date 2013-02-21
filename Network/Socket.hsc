@@ -199,7 +199,6 @@ import Control.Concurrent.MVar
 import Data.Typeable
 import System.IO.Error
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 ##if MIN_VERSION_base(4,3,1)
 import GHC.Conc (closeFdWith)
@@ -218,9 +217,6 @@ import GHC.IOBase
 import GHC.Handle
 # endif
 import qualified System.Posix.Internals
-#else
-import System.IO.Unsafe (unsafePerformIO)
-#endif
 
 # if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.FD
@@ -498,7 +494,7 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
-#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
+#if defined(mingw32_HOST_OS)
      new_sock <-
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
@@ -645,7 +641,7 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
  let len = length xs
  withCString xs $ \str -> do
    liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 # if __GLASGOW_HASKELL__ >= 611
     writeRawBufferPtr
       "Network.Socket.send"
@@ -677,7 +673,7 @@ sendBuf :: Socket     -- Bound/Connected Socket
         -> IO Int     -- Number of Bytes sent
 sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
    liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 # if __GLASGOW_HASKELL__ >= 611
     writeRawBufferPtr
       "Network.Socket.sendBuf"
@@ -720,7 +716,7 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
         len <-
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 # if __GLASGOW_HASKELL__ >= 611
           readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
@@ -758,7 +754,7 @@ recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
         len <-
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 # if __GLASGOW_HASKELL__ >= 611
           readRawBufferPtr "Network.Socket.recvLenBuf" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
@@ -1183,7 +1179,7 @@ socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
     h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
 # elif __GLASGOW_HASKELL__ >= 608
     h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# elif __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 608
+# elif __GLASGOW_HASKELL__ < 608
     h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
 # endif
     hSetBuffering h NoBuffering
@@ -1561,11 +1557,7 @@ foreign import ccall safe "hsnet_getnameinfo"
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
-#ifdef __GLASGOW_HASKELL__
                                     InvalidArgument
-#else
-                                    IllegalOperation
-#endif
                                     loc Nothing Nothing) "non-positive length"
 
 mkEOFError :: String -> IOError
@@ -1609,7 +1601,7 @@ foreign import CALLCONV unsafe "accept4"
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
-#if defined(mingw32_HOST_OS) && defined(__GLASGOW_HASKELL__)
+#if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
   c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 

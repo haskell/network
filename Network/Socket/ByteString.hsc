@@ -79,16 +79,12 @@ import Foreign.Storable (Storable(..))
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
-#  if defined(__GLASGOW_HASKELL__)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
-#  endif
 #else
-#  if defined(__GLASGOW_HASKELL__)
-#    if __GLASGOW_HASKELL__ >= 611
+#  if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.FD
-#    else
+#  else
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
-#    endif
 #  endif
 #endif
 
@@ -111,7 +107,7 @@ send :: Socket      -- ^ Connected socket
 send sock@(MkSocket s _ _ _ _) xs =
     unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 #  if __GLASGOW_HASKELL__ >= 611
         writeRawBufferPtr "Network.Socket.ByteString.send"
         (FD s 1) (castPtr str) 0 (fromIntegral len)
@@ -258,7 +254,7 @@ recv sock nbytes
 recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
 recvInner sock nbytes ptr =
     fmap fromIntegral $
-#if defined(__GLASGOW_HASKELL__) && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 #  if __GLASGOW_HASKELL__ >= 611
         readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
 #  else
