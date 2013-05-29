@@ -60,6 +60,7 @@ import Data.Maybe
 import Data.Ratio
 import Data.Typeable
 import Data.Word
+import Data.Int
 import Foreign.C
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
@@ -288,6 +289,7 @@ data Family
     | AF_PPPOX            -- PPPoX sockets
     | AF_WANPIPE          -- Wanpipe API sockets
     | AF_BLUETOOTH        -- bluetooth sockets
+    | AF_CAN              -- Controller Area Network
       deriving (Eq, Ord, Read, Show)
 
 packFamily :: Family -> CInt
@@ -499,6 +501,9 @@ packFamily' f = case Just f of
 #ifdef AF_BLUETOOTH
     Just AF_BLUETOOTH -> Just #const AF_BLUETOOTH
 #endif
+#ifdef AF_CAN
+    Just AF_CAN -> Just #const AF_CAN
+#endif
     _ -> Nothing
 
 --------- ----------
@@ -700,6 +705,9 @@ unpackFamily f = case f of
 #ifdef AF_BLUETOOTH
         (#const AF_BLUETOOTH) -> AF_BLUETOOTH
 #endif
+#ifdef AF_CAN
+        (#const AF_CAN) -> AF_CAN
+#endif
         unknown -> error ("Network.Socket.unpackFamily: unknown address " ++
                           "family " ++ show unknown)
 
@@ -792,6 +800,11 @@ data SockAddr       -- C Names
   | SockAddrUnix
         String          -- sun_path
 #endif
+#if defined(AF_CAN)
+  | SockAddrCan
+        Int32           -- can_ifindex 
+        -- TODO: Extend this to include transport protocol information
+#endif
   deriving (Eq, Ord, Typeable)
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
@@ -816,6 +829,9 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
+#if defined(AF_CAN)
+sizeOfSockAddr (SockAddrCan _) = #const sizeof(struct sockaddr_can)
+#endif
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -827,6 +843,9 @@ sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
 sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
 #endif
 sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
+#if defined(AF_CAN)
+sizeOfSockAddrByFamily AF_CAN   = #const sizeof(struct sockaddr_can)
+#endif
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
@@ -888,6 +907,13 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p addr
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
+#if defined(AF_CAN)
+pokeSockAddr p (SockAddrCan ifIndex) = do
+#if defined(darwin_HOST_OS)
+    zeroMemory p (#const sizeof(struct sockaddr_can))
+#endif
+    (#poke struct sockaddr_can, can_ifindex) p ifIndex
+#endif
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
@@ -910,6 +936,11 @@ peekSockAddr p = do
         addr <- (#peek struct sockaddr_in6, sin6_addr) p
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
+#endif
+#if defined(AF_CAN)
+    (#const AF_CAN) -> do
+        ifidx <- (#peek struct sockaddr_can, can_ifindex) p
+        return (SockAddrCan ifidx)
 #endif
 
 ------------------------------------------------------------------------

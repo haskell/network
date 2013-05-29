@@ -91,6 +91,10 @@ extern int   acceptDoProc(void* param);
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
+#ifdef HAVE_LINUX_CAN_H
+# include <linux/can.h>
+#endif
+
 
 #ifdef HAVE_BSD_SENDFILE
 #include <sys/uio.h>
