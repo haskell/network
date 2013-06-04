@@ -112,6 +112,67 @@ testOverFlowRecvFrom = tcpTest client server
 
     client sock = send sock testMsg
 
+{-
+testGetPeerCred:: Assertion
+testGetPeerCred =
+    test clientSetup clientAct serverSetup server
+  where
+    clientSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        connect sock $ SockAddrUnix addr 
+        return sock
+
+    serverSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        bindSocket sock $ SockAddrUnix addr 
+        listen sock 1
+        return sock
+
+    server sock = do
+        (clientSock, _) <- accept sock
+        serverAct clientSock
+        sClose clientSock
+
+    addr = "/tmp/testAddr1"
+    clientAct sock = withSocketsDo $ do  
+                     sendAll sock testMsg
+                     (pid,uid,gid) <- getPeerCred sock
+                     putStrLn $ unwords ["pid=",show pid,"uid=",show uid, "gid=", show gid]
+    serverAct sock = withSocketsDo $ do
+                     msg <- recv sock 1024
+                     putStrLn $ C.unpack msg
+
+
+testGetPeerEid :: Assertion
+testGetPeerEid =  
+    test clientSetup clientAct serverSetup server
+  where
+    clientSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        connect sock $ SockAddrUnix addr 
+        return sock
+
+    serverSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        bindSocket sock $ SockAddrUnix addr 
+        listen sock 1
+        return sock
+
+    server sock = do
+        (clientSock, _) <- accept sock
+        serverAct clientSock
+        sClose clientSock
+
+    addr = "/tmp/testAddr2"
+    clientAct sock = withSocketsDo $ do  
+                     sendAll sock testMsg
+                     (uid,gid) <- getPeerEid sock
+                     putStrLn $ unwords ["uid=",show uid, "gid=", show gid]
+    serverAct sock = withSocketsDo $ do
+                     msg <- recv sock 1024
+                     putStrLn $ C.unpack msg
+-}
+
 ------------------------------------------------------------------------
 -- Other
 
@@ -132,6 +193,8 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testOverFlowRecv" testOverFlowRecv
     , testCase "testRecvFrom" testRecvFrom
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+--    , testCase "testGetPeerCred" testGetPeerCred
+--    , testCase "testGetPeerEid" testGetPeerEid
     ]
 
 tests :: [Test]

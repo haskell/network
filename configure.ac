@@ -103,6 +103,12 @@ else
 fi
 
 dnl --------------------------------------------------
+dnl * test for GETPEEREID(3) 
+dnl --------------------------------------------------
+AC_MSG_CHECKING(for getpeereid in unistd.h)
+AC_CHECK_FUNC( getpeereid, AC_DEFINE([HAVE_GETPEEREID], [1], [Define to 1 if you have getpeereid.] ))
+
+dnl --------------------------------------------------
 dnl * check for Windows networking libraries
 dnl --------------------------------------------------
 AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
