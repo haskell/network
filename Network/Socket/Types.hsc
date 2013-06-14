@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+
+#include "HsNet.h"
+
 module Network.Socket.Types
     (
     -- * Socket
@@ -49,8 +52,6 @@ module Network.Socket.Types
     -- * Low-level helpers
     , zeroMemory
     ) where
-
-#include "HsNet.h"
 
 import Control.Concurrent.MVar
 import Control.Monad
