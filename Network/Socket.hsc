@@ -520,7 +520,9 @@ accept sock@(MkSocket s family stype protocol status) = do
                         (c_accept s sockaddr ptr_len)
 # endif /* HAVE_ACCEPT4 */
 #endif
+#ifndef HAVE_ACCEPT4
      setNonBlockIfNeeded new_sock
+#endif /* HAVE_ACCEPT4 */
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
