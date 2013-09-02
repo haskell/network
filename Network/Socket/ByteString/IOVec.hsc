@@ -9,6 +9,7 @@ import Foreign.C.Types (CChar, CInt, CSize)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 
+#include <sys/types.h>
 #include <sys/uio.h>
 
 data IOVec = IOVec
