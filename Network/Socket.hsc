@@ -179,7 +179,7 @@ import Data.Word (Word8, Word16, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
-import Foreign.C.String (CString, withCString, peekCString, peekCStringLen)
+import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types (CInt(..), CSize(..))
@@ -562,8 +562,8 @@ sendTo :: Socket        -- (possibly) bound/connected Socket
        -> SockAddr
        -> IO Int        -- Number of Bytes sent
 sendTo sock xs addr = do
- withCString xs $ \str -> do
-   sendBufTo sock str (length xs) addr
+ withCStringLen xs $ \(str, len) -> do
+   sendBufTo sock str len addr
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -638,8 +638,7 @@ send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
 send sock@(MkSocket s _family _stype _protocol _status) xs = do
- let len = length xs
- withCString xs $ \str -> do
+ withCStringLen xs $ \(str, len) -> do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
 # if __GLASGOW_HASKELL__ >= 611
