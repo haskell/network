@@ -510,17 +510,16 @@ accept sock@(MkSocket s family stype protocol status) = do
                 return new_sock
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
-     new_sock <-
 # ifdef HAVE_ACCEPT4
-                 throwSocketErrorIfMinus1RetryMayBlock "accept"
+     new_sock <- throwSocketErrorIfMinus1RetryMayBlock "accept"
                         (threadWaitRead (fromIntegral s))
                         (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
 # else
-                 throwSocketErrorWaitRead sock "accept"
+     new_sock <- throwSocketErrorWaitRead sock "accept"
                         (c_accept s sockaddr ptr_len)
+     setNonBlockIfNeeded new_sock
 # endif /* HAVE_ACCEPT4 */
 #endif
-     setNonBlockIfNeeded new_sock
      addr <- peekSockAddr sockaddr
      new_status <- newMVar Connected
      return ((MkSocket new_sock family stype protocol new_status), addr)
