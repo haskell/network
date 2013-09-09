@@ -4,7 +4,7 @@
 -- Module      :  Network
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/network/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
@@ -32,7 +32,7 @@ module Network
 
     -- * Initialisation
     , withSocketsDo
-    
+
     -- * Server-side connections
     , listenOn
     , accept
@@ -78,7 +78,7 @@ import qualified Control.Exception as Exception
 -- raised. Alternatively an empty string may be given to @connectTo@
 -- signalling that the current hostname applies.
 
-data PortID = 
+data PortID =
           Service String                -- Service Name eg "ftp"
         | PortNumber PortNumber         -- User defined Port Number
 #if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
@@ -89,7 +89,7 @@ data PortID =
 -- | Calling 'connectTo' creates a client side socket which is
 -- connected to the given host and port.  The Protocol and socket type is
 -- derived from the given port identifier.  If a port number is given
--- then the result is always an internet family 'Stream' socket. 
+-- then the result is always an internet family 'Stream' socket.
 
 connectTo :: HostName           -- Hostname
           -> PortID             -- Port Identifier
@@ -268,14 +268,14 @@ listen' serv = do
 accept :: Socket                -- ^ Listening Socket
        -> IO (Handle,
               HostName,
-              PortNumber)       -- ^ Triple of: read\/write 'Handle' for 
+              PortNumber)       -- ^ Triple of: read\/write 'Handle' for
                                 -- communicating with the client,
                                 -- the 'HostName' of the peer socket, and
                                 -- the 'PortNumber' of the remote connection.
 accept sock@(MkSocket _ AF_INET _ _ _) = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
  peer <- catchIO
-          (do   
+          (do
              (HostEntry peer _ _ _) <- getHostByAddr AF_INET haddr
              return peer
           )
@@ -369,7 +369,7 @@ recvFrom host port = do
  ip  <- getHostByName host
  let ipHs = hostAddresses ip
  s   <- listenOn port
- let 
+ let
   waiting = do
      ~(s', SockAddrInet _ haddr)  <-  Socket.accept s
      he <- getHostByAddr AF_INET haddr
@@ -408,7 +408,7 @@ socketPort s = do
 -- ---------------------------------------------------------------------------
 -- Utils
 
--- Like bracket, but only performs the final action if there was an 
+-- Like bracket, but only performs the final action if there was an
 -- exception raised by the middle bit.
 bracketOnError
         :: IO a         -- ^ computation to run first (\"acquire resource\")

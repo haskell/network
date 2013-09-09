@@ -23,7 +23,7 @@
 -- > import Network.Socket.ByteString
 --
 module Network.Socket.ByteString
-    ( 
+    (
     -- * Send data to a socket
       send
     , sendAll
