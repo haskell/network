@@ -64,13 +64,13 @@ module Network.URI
       URI(..)
     , URIAuth(..)
     , nullURI
-      
+
     -- * Parsing
     , parseURI
     , parseURIReference
     , parseRelativeReference
     , parseAbsoluteURI
-      
+
     -- * Test for strings containing various kinds of URI
     , isURI
     , isURIReference
@@ -78,16 +78,16 @@ module Network.URI
     , isAbsoluteURI
     , isIPv6address
     , isIPv4address
-      
+
     -- * Predicates
     , uriIsAbsolute
     , uriIsRelative
-      
+
     -- * Relative URIs
     , relativeTo
     , nonStrictRelativeTo
     , relativeFrom
-      
+
     -- * Operations on URI strings
     -- | Support for putting strings into URI-friendly
     --   escaped format and getting them back again.
@@ -103,12 +103,12 @@ module Network.URI
     , escapeURIChar
     , escapeURIString
     , unEscapeString
-      
+
     -- * URI Normalization functions
     , normalizeCase
     , normalizeEscape
     , normalizePathSegments
-      
+
     -- * Deprecated functions
     , parseabsoluteURI
     , escapeString
