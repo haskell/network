@@ -63,7 +63,8 @@ module Network
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
-import Network.Socket hiding (accept, socketPort, recvFrom, sendTo, PortNumber)
+import Network.Socket hiding (accept, socketPort, recvFrom,
+                              sendTo, PortNumber, sClose)
 import qualified Network.Socket as Socket (accept)
 import System.IO
 import Prelude
@@ -307,6 +308,13 @@ accept sock@(MkSocket _ AF_UNIX _ _ _) = do
 #endif
 accept (MkSocket _ family _ _ _) =
   error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
+
+
+-- | Close the socket. All future operations on the socket object will fail.
+--   The remote end will receive no more data (after queued data is flushed).
+sClose :: Socket -> IO ()
+sClose = close -- Explicit redefinition because Network.sClose is deperecated,
+               -- hence the re-export would also be marked as such.
 
 -- -----------------------------------------------------------------------------
 -- sendTo/recvFrom
