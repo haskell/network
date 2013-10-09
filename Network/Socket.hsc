@@ -82,9 +82,12 @@ module Network.Socket
     , getPeerName
     , getSocketName
 
-#ifdef HAVE_STRUCT_UCRED
+#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
     -- get the credentials of our domain socket peer.
     , getPeerCred
+#if defined(HAVE_GETPEEREID) 
+    , getPeerEid
+#endif
 #endif
 
     , socketPort
@@ -981,12 +984,15 @@ getSocketOption (MkSocket s _ _ _ _) so = do
        fromIntegral `liftM` peek ptr_v
 
 
-#ifdef HAVE_STRUCT_UCRED
+#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
 -- | Returns the processID, userID and groupID of the socket's peer.
 --
--- Only available on platforms that support SO_PEERCRED on domain sockets.
+-- Only available on platforms that support SO_PEERCRED or GETPEEREID(3)
+-- on domain sockets.
+-- GETPEEREID(3) returns userID and groupID. processID is always 0.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
+#ifdef HAVE_STRUCT_UCRED
   let fd = fdSocket sock
   let sz = (fromIntegral (#const sizeof(struct ucred)))
   with sz $ \ ptr_cr ->
@@ -998,6 +1004,25 @@ getPeerCred sock = do
      uid <- (#peek struct ucred, uid) ptr_cr
      gid <- (#peek struct ucred, gid) ptr_cr
      return (pid, uid, gid)
+#else
+  (uid,gid) <- getPeerEid sock
+  return (0,uid,gid)
+#endif
+
+#ifdef HAVE_GETPEEREID
+-- | The getpeereid() function returns the effective user and group IDs of the
+-- peer connected to a UNIX-domain socket
+getPeerEid :: Socket -> IO (CUInt, CUInt)
+getPeerEid sock = do 
+  let fd = fdSocket sock
+  alloca $ \ ptr_uid ->
+    alloca $ \ ptr_gid -> do
+      throwSocketErrorIfMinus1Retry "getPeerEid" $
+        c_getpeereid fd ptr_uid ptr_gid
+      uid <- peek ptr_uid
+      gid <- peek ptr_gid
+      return (uid, gid)
+#endif
 #endif
 
 ##if !(MIN_VERSION_base(4,3,1))
@@ -1632,6 +1657,10 @@ foreign import CALLCONV unsafe "getsockopt"
 foreign import CALLCONV unsafe "setsockopt"
   c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
 
+#if defined(HAVE_GETPEEREID)
+foreign import CALLCONV unsafe "getpeereid"
+  c_getpeereid :: CInt -> Ptr CUInt -> Ptr CUInt -> IO CInt
+#endif
 -- ---------------------------------------------------------------------------
 -- * Deprecated aliases
 
