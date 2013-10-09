@@ -88,12 +88,10 @@ import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 import Control.Exception ( finally )
-#  if __GLASGOW_HASKELL__
-#    if __GLASGOW_HASKELL__ >= 707
+#  if __GLASGOW_HASKELL__ >= 707
 import GHC.IO.Exception ( IOErrorType(..) )
-#    else
+#  else
 import GHC.IOBase ( IOErrorType(..) )
-#    endif
 #  endif
 import Foreign.C.Types ( CChar )
 import System.IO.Error ( ioeSetErrorString, mkIOError )
@@ -150,7 +148,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if defined(__GLASGOW_HASKELL__) && (!defined(HAVE_WINSOCK2_H) || defined(cygwin32_HOST_OS))
+#if (!defined(HAVE_WINSOCK2_H) || defined(cygwin32_HOST_OS))
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -192,11 +190,7 @@ throwSocketErrorIfMinus1Retry name act = do
 throwSocketErrorCode name rc = do
     pstr <- c_getWSError rc
     str  <- peekCString pstr
-#  if __GLASGOW_HASKELL__
     ioError (ioeSetErrorString (mkIOError OtherError name Nothing Nothing) str)
-#  else
-    ioError (userError (name ++ ": socket error - " ++ str))
-#  endif
 
 throwSocketError name =
     c_getLastError >>= throwSocketErrorCode name
@@ -214,7 +208,7 @@ throwSocketError = throwErrno
 throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
 # endif
-#endif /* __GLASGOW_HASKELL */
+#endif
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,

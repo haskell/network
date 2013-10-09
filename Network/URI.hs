@@ -130,15 +130,11 @@ import Data.Bits ((.|.),(.&.),shiftL,shiftR)
 import Debug.Trace (trace)
 import Numeric (showIntAtBase)
 
-#ifdef __GLASGOW_HASKELL__
 import Data.Typeable (Typeable)
-# if MIN_VERSION_base(4,0,0)
+#if MIN_VERSION_base(4,0,0)
 import Data.Data (Data)
-# else
-import Data.Generics (Data)
-# endif
 #else
-import Data.Typeable (Typeable(..), TyCon, mkTyCon, mkTyConApp)
+import Data.Generics (Data)
 #endif
 
 ------------------------------------------------------------
@@ -160,38 +156,14 @@ data URI = URI
     , uriPath       :: String           -- ^ @\/ghc@
     , uriQuery      :: String           -- ^ @?query@
     , uriFragment   :: String           -- ^ @#frag@
-    } deriving (Eq, Ord
-#ifdef __GLASGOW_HASKELL__
-    , Typeable, Data
-#endif
-    )
-
-#ifndef __GLASGOW_HASKELL__
-uriTc :: TyCon
-uriTc = mkTyCon "URI"
-
-instance Typeable URI where
-  typeOf _ = mkTyConApp uriTc []
-#endif
+    } deriving (Eq, Ord, Typeable, Data)
 
 -- |Type for authority value within a URI
 data URIAuth = URIAuth
     { uriUserInfo   :: String           -- ^ @anonymous\@@
     , uriRegName    :: String           -- ^ @www.haskell.org@
     , uriPort       :: String           -- ^ @:42@
-    } deriving (Eq, Ord, Show
-#ifdef __GLASGOW_HASKELL__
-    , Typeable, Data
-#endif
-    )
-
-#ifndef __GLASGOW_HASKELL__
-uriAuthTc :: TyCon
-uriAuthTc = mkTyCon "URIAuth"
-
-instance Typeable URIAuth where
-  typeOf _ = mkTyConApp uriAuthTc []
-#endif
+    } deriving (Eq, Ord, Show, Typeable, Data)
 
 -- |Blank URI
 nullURI :: URI

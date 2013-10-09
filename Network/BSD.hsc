@@ -112,12 +112,10 @@ import Data.Typeable
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
-#ifdef __GLASGOW_HASKELL__
-# if __GLASGOW_HASKELL__ >= 611
+#if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Exception
-# else
+#else
 import GHC.IOBase
-# endif
 #endif
 
 import Control.Monad (liftM)

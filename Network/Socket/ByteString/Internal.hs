@@ -34,21 +34,15 @@ import Network.Socket.ByteString.IOVec (IOVec)
 import Network.Socket.ByteString.MsgHdr (MsgHdr)
 #endif
 
-#ifdef __GLASGOW_HASKELL__
-# if __GLASGOW_HASKELL__ < 611
+#if __GLASGOW_HASKELL__ < 611
 import GHC.IOBase (IOErrorType(..))
-# else
+#else
 import GHC.IO.Exception (IOErrorType(..))
-# endif
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
-#ifdef __GLASGOW_HASKELL__
                                     InvalidArgument
-#else
-                                    IllegalOperation
-#endif
                                     loc Nothing Nothing) "non-positive length"
 
 #if !defined(mingw32_HOST_OS)
