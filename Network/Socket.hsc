@@ -173,7 +173,7 @@ module Network.Socket
     ) where
 
 import Data.Bits
-import Data.List (foldl')
+import Data.List (delete, foldl')
 import Data.Maybe (fromMaybe, isJust)
 import Data.Word (Word8, Word16, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
@@ -1301,9 +1301,6 @@ instance Storable AddrInfo where
                 })
 
     poke p (AddrInfo flags family socketType protocol _ _) = do
-#if defined(darwin_HOST_OS)
-        zeroMemory p (#const sizeof(struct addrinfo))
-#endif
         c_stype <- packSocketTypeOrThrow "AddrInfo.poke" socketType
 
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
@@ -1440,7 +1437,7 @@ getAddrInfo :: Maybe AddrInfo -- ^ preferred socket type or protocol
 getAddrInfo hints node service =
   maybeWith withCString node $ \c_node ->
     maybeWith withCString service $ \c_service ->
-      maybeWith with hints $ \c_hints ->
+      maybeWith with filteredHints $ \c_hints ->
         alloca $ \ptr_ptr_addrs -> do
           ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
           case ret of
@@ -1452,6 +1449,17 @@ getAddrInfo hints node service =
                     ioError (ioeSetErrorString
                              (mkIOError NoSuchThing "getAddrInfo" Nothing
                               Nothing) err)
+    -- Leaving out the service and using AI_NUMERICSERV causes a
+    -- segfault on OS X 10.8.2. This code removes AI_NUMERICSERV
+    -- (which has no effect) in that case.
+  where
+#if defined(darwin_HOST_OS)
+    filteredHints = case service of
+        Nothing -> fmap (\ h -> h { addrFlags = delete AI_NUMERICSERV (addrFlags h) }) hints
+        _       -> hints
+#else
+    filteredHints = hints
+#endif
 
 followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
 

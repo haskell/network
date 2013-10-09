@@ -70,6 +70,21 @@ test-suite simple
     test-framework,
     test-framework-hunit
 
+test-suite regression
+  hs-source-dirs: tests
+  main-is: Regression.hs
+  type: exitcode-stdio-1.0
+
+  build-depends:
+    base < 5,
+    bytestring,
+    HUnit,
+    network,
+    test-framework,
+    test-framework-hunit
+
+  ghc-options: -Wall
+
 test-suite uri
   hs-source-dirs: tests
   main-is: uri001.hs
