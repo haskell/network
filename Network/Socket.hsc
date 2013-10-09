@@ -923,12 +923,12 @@ packSocketOption so =
     Just UseLoopBack   -> Just ((#const SOL_SOCKET), (#const SO_USELOOPBACK))
 #endif
 #endif // SOL_SOCKET
-#ifdef IPPROTO_IP
+#if HAVE_DECL_IPPROTO_IP
 #ifdef IP_TTL
     Just TimeToLive    -> Just ((#const IPPROTO_IP), (#const IP_TTL))
 #endif
-#endif // IPPROTO_IP
-#ifdef IPPROTO_TCP
+#endif // HAVE_DECL_IPPROTO_IP
+#if HAVE_DECL_IPPROTO_TCP
 #ifdef TCP_MAXSEG
     Just MaxSegment    -> Just ((#const IPPROTO_TCP), (#const TCP_MAXSEG))
 #endif
@@ -938,12 +938,12 @@ packSocketOption so =
 #ifdef TCP_CORK
     Just Cork          -> Just ((#const IPPROTO_TCP), (#const TCP_CORK))
 #endif
-#endif // IPPROTO_TCP
-#ifdef IPPROTO_IPV6
+#endif // HAVE_DECL_IPPROTO_TCP
+#if HAVE_DECL_IPPROTO_IPV6
 #if HAVE_DECL_IPV6_V6ONLY
     Just IPv6Only      -> Just ((#const IPPROTO_IPV6), (#const IPV6_V6ONLY))
 #endif
-#endif // IPPROTO_IPV6
+#endif // HAVE_DECL_IPPROTO_IPV6
     _             -> Nothing
 
 -- | Return the option level and option value if they exist,
