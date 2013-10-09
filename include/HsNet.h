@@ -176,4 +176,8 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 # define IOV_MAX 1024
 #endif
 
+#if !defined(SOCK_NONBLOCK) // Missing define in Bionic libc (Android)
+# define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
 #endif /* HSNET_H */
