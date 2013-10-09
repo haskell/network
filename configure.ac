@@ -140,6 +140,11 @@ dnl * test for IPV6_V6ONLY flags that not all implementations have
 dnl -------------------------------------------------------
 AC_CHECK_DECLS([IPV6_V6ONLY])
 
+dnl -------------------------------------------------------
+dnl * test for IPPROTO_* macros/constants
+dnl -------------------------------------------------------
+AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
+
 dnl --------------------------------------------------
 dnl * test for Linux sendfile(2)
 dnl --------------------------------------------------
