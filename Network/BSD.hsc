@@ -16,9 +16,6 @@
 
 #include "HsNet.h"
 
--- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
-##include "Typeable.h"
-
 module Network.BSD
     (
     -- * Host names

@@ -7,12 +7,7 @@ include $(TOP)/mk/boilerplate.mk
 H_FILES = $(wildcard *.h)
 
 includedir = $(libdir)/include
-
-# Typeable.h doesn't need to be installed, and in fact it'll clobber the
-# Typeable.h from package base (which arguably doesn't need to be installed
-# either, but apparently some people use it...).  See bug #1106.  The Cabal
-# description for network already does the right thing here.
-INSTALL_INCLUDES = $(filter-out Typeable.h,$(H_FILES))
+INSTALL_INCLUDES = $(H_FILES)
 
 DIST_CLEAN_FILES += HsNetworkConfig.h
 

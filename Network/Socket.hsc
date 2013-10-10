@@ -22,9 +22,6 @@
 
 #include "HsNet.h"
 
--- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
-##include "Typeable.h"
-
 -- In order to process this file, you need to have CALLCONV defined.
 
 module Network.Socket
