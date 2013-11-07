@@ -90,14 +90,19 @@ instance Show Socket where
 
 type ProtocolNumber = CInt
 
+-- | The status of the socket as /determined by this library/, not
+-- necessarily reflecting the state of the connection itself.
+--
+-- For example, the 'Closed' status is applied when the 'close'
+-- function is called.
 data SocketStatus
   -- Returned Status    Function called
-  = NotConnected        -- socket
-  | Bound               -- bind
-  | Listening           -- listen
-  | Connected           -- connect/accept
-  | ConvertedToHandle   -- is now a Handle, don't touch
-  | Closed              -- close
+  = NotConnected        -- ^ Newly created, unconnected socket
+  | Bound               -- ^ Bound, via 'bind'
+  | Listening           -- ^ Listening, via 'listen'
+  | Connected           -- ^ Connected or accepted, via 'connect' or 'accept'
+  | ConvertedToHandle   -- ^ Is now a 'Handle' (via 'socketToHandle'), don't touch
+  | Closed              -- ^ Closed was closed by 'close'
     deriving (Eq, Show, Typeable)
 
 -----------------------------------------------------------------------------
