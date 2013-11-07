@@ -1125,6 +1125,10 @@ close (MkSocket s _ _ _ socketStatus) = do
 
 -- -----------------------------------------------------------------------------
 
+-- | Determines whether 'close' has been used on the 'Socket'. This
+-- does /not/ indicate any status about the socket beyond this. If the
+-- socket has been closed remotely, this function can still return
+-- 'True'.
 isConnected :: Socket -> IO Bool
 isConnected (MkSocket _ _ _ _ status) = do
     value <- readMVar status
