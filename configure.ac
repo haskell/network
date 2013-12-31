@@ -29,7 +29,7 @@ AC_CONFIG_HEADERS([include/HsNetworkConfig.h])
 
 AC_CANONICAL_HOST
 
-AC_ARG_WITH([gcc],
+AC_ARG_WITH([cc],
             [C compiler],
             [CC=$withval])
 AC_PROG_CC()
