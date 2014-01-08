@@ -182,9 +182,9 @@ import Foreign.C.Error
 import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types (CInt(..), CSize(..))
+import Foreign.C.Types (CInt(..), CSize(..), CLong(..))
 #else
-import Foreign.C.Types (CInt, CSize)
+import Foreign.C.Types (CInt, CSize, CLong)
 #endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
@@ -965,6 +965,20 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
        c_setsockopt s level opt ptr_v
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
+
+
+setSocketRecvTimeOut :: Socket -> Float -> IO ()
+setSocketRecvTimeOut (MkSocket s _ _ _ _) timeout = do
+   (level, opt) <- packSocketOption' "setSocketRecvTimeOut" RecvTimeOut
+   let sz = (fromIntegral (#const sizeof(struct timeval)))
+       sec = (truncate timeout) :: CLong
+       usec = (round ((timeout - (fromIntegral sec)) * 1000000)) :: CLong
+   allocaBytes sz $ \p_timeval -> do
+        (#poke struct timeval, tv_sec) p_timeval sec
+        (#poke struct timeval, tv_usec) p_timeval usec
+        throwSocketErrorIfMinus1_ "setSocketRecvTimeOut" $
+            c_setsockopt s level opt p_timeval $ fromIntegral sz
+        return ()
 
 
 -- | Get a socket option that gives an Int value.
