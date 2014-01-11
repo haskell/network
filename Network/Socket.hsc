@@ -957,7 +957,7 @@ packSocketOption' caller so = maybe err return (packSocketOption so)
     ": socket option ", show so, " unsupported on this system"]
 
 -- | Set a socket option that expects an Int value.
--- There is currently no API to set e.g. the timeval socket options
+-- To set timeout values use 'setSocketSendTimeOut' or 'setSocketRecvTimeOut' functions
 setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
@@ -971,9 +971,9 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
    return ()
 
 
-_withTimeVal :: Float -> (Ptr a -> Int -> IO b) -> IO b
-_withTimeVal timeout f = do
-   let sz = (fromIntegral (#const sizeof(struct timeval)))
+withTimeVal :: Float -> (Ptr a -> Int -> IO b) -> IO b
+withTimeVal timeout f = do
+   let sz = fromIntegral (#const sizeof(struct timeval))
        sec = (truncate timeout) :: CLong
        usec = (round ((timeout - (fromIntegral sec)) * 1000000)) :: CLong
    allocaBytes sz $ \p_timeval -> do
@@ -982,60 +982,64 @@ _withTimeVal timeout f = do
         f p_timeval sz
 
 
-_withNewTimeVal :: (Ptr a -> Int -> IO b) -> IO b
-_withNewTimeVal f = do
+withNewTimeVal :: (Ptr a -> Int -> IO b) -> IO b
+withNewTimeVal f = do
    let sz = (fromIntegral (#const sizeof(struct timeval)))
    allocaBytes sz $ \p_timeval -> do
         f p_timeval sz
 
 
-_decodeTimeVal :: Ptr a -> IO Float
-_decodeTimeVal p_timeval = do
+peekTimeVal :: Ptr a -> IO Float
+peekTimeVal p_timeval = do
     sec <- (#peek struct timeval, tv_sec) p_timeval :: IO CLong
     usec <- (#peek struct timeval, tv_usec) p_timeval :: IO CLong
     return $ (fromIntegral sec) + (fromIntegral usec) / 1000000.0
 
 
+-- | Set a socket receive timeout in seconds
 setSocketRecvTimeOut :: Socket -> Float -> IO ()
 setSocketRecvTimeOut (MkSocket s _ _ _ _) timeout = do
    (level, opt) <- packSocketOption' "setSocketRecvTimeOut" RecvTimeOut
-   _withTimeVal timeout $ \p_timeval sz -> do
+   withTimeVal timeout $ \p_timeval sz -> do
         throwSocketErrorIfMinus1_ "setSocketRecvTimeOut" $
             c_setsockopt s level opt p_timeval $ fromIntegral sz
         return ()
 
 
+-- | Get a socket receive timeout in seconds
 getSocketRecvTimeOut :: Socket -> IO Float
 getSocketRecvTimeOut (MkSocket s _ _ _ _) = do
    (level, opt) <- packSocketOption' "getSocketRecvTimeOut" RecvTimeOut
-   _withNewTimeVal  $ \p_timeval sz ->
+   withNewTimeVal  $ \p_timeval sz ->
      with ((fromIntegral sz) :: CInt) $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry "getSocketRecvTimeOut" $
          c_getsockopt s level opt p_timeval ptr_sz
-       _decodeTimeVal p_timeval
+       peekTimeVal p_timeval
 
 
+-- | Set a socket send timeout in seconds
 setSocketSendTimeOut :: Socket -> Float -> IO ()
 setSocketSendTimeOut (MkSocket s _ _ _ _) timeout = do
    (level, opt) <- packSocketOption' "setSocketSendTimeOut" SendTimeOut
-   _withTimeVal timeout $ \p_timeval sz -> do
+   withTimeVal timeout $ \p_timeval sz -> do
      throwSocketErrorIfMinus1_ "setSocketSendTimeOut" $
        c_setsockopt s level opt p_timeval $ fromIntegral sz
      return ()
 
 
+-- | Get a socket send timeout in seconds
 getSocketSendTimeOut :: Socket -> IO Float
 getSocketSendTimeOut (MkSocket s _ _ _ _) = do
    (level, opt) <- packSocketOption' "getSocketSendTimeOut" SendTimeOut
-   _withNewTimeVal  $ \p_timeval sz ->
+   withNewTimeVal  $ \p_timeval sz ->
      with ((fromIntegral sz) :: CInt) $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry "getSocketSendTimeOut" $
          c_getsockopt s level opt p_timeval ptr_sz
-       _decodeTimeVal p_timeval
+       peekTimeVal p_timeval
 
 
 -- | Get a socket option that gives an Int value.
--- There is currently no API to get e.g. the timeval socket options
+-- To get timeout values use 'getSocketSendTimeOut' or 'getSocketRecvTimeOut' functions
 getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
