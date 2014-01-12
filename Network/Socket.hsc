@@ -186,9 +186,9 @@ import Foreign.C.Error
 import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types (CInt(..), CSize(..), CLong(..))
+import Foreign.C.Types (CInt(..), CSize(..), CTime(..), CSUSeconds(..))
 #else
-import Foreign.C.Types (CInt, CSize, CLong)
+import Foreign.C.Types (CInt, CSize, CTime, CSUSeconds)
 #endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
@@ -971,14 +971,14 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
    return ()
 
 
-withTimeVal :: Float -> (Ptr a -> Int -> IO b) -> IO b
+withTimeVal :: Double -> (Ptr a -> Int -> IO b) -> IO b
 withTimeVal timeout f = do
    let sz = fromIntegral (#const sizeof(struct timeval))
-       sec = (truncate timeout) :: CLong
-       usec = (round ((timeout - (fromIntegral sec)) * 1000000)) :: CLong
+       sec = truncate timeout
+       usec = round $ (timeout - (fromIntegral sec)) * 1000000
    allocaBytes sz $ \p_timeval -> do
-        (#poke struct timeval, tv_sec) p_timeval sec
-        (#poke struct timeval, tv_usec) p_timeval usec
+        (#poke struct timeval, tv_sec) p_timeval ((fromIntegral sec) :: CTime)
+        (#poke struct timeval, tv_usec) p_timeval ((fromIntegral usec) :: CSUSeconds)
         f p_timeval sz
 
 
@@ -989,15 +989,15 @@ withNewTimeVal f = do
         f p_timeval sz
 
 
-peekTimeVal :: Ptr a -> IO Float
+peekTimeVal :: Ptr a -> IO Double
 peekTimeVal p_timeval = do
-    sec <- (#peek struct timeval, tv_sec) p_timeval :: IO CLong
-    usec <- (#peek struct timeval, tv_usec) p_timeval :: IO CLong
-    return $ (fromIntegral sec) + (fromIntegral usec) / 1000000.0
+    sec <- (#peek struct timeval, tv_sec) p_timeval :: IO CTime
+    usec <- (#peek struct timeval, tv_usec) p_timeval :: IO CSUSeconds
+    return $ fromRational ((toRational sec) + (toRational usec) / 1000000)
 
 
 -- | Set a socket receive timeout in seconds
-setSocketRecvTimeOut :: Socket -> Float -> IO ()
+setSocketRecvTimeOut :: Socket -> Double -> IO ()
 setSocketRecvTimeOut (MkSocket s _ _ _ _) timeout = do
    (level, opt) <- packSocketOption' "setSocketRecvTimeOut" RecvTimeOut
    withTimeVal timeout $ \p_timeval sz -> do
@@ -1007,7 +1007,7 @@ setSocketRecvTimeOut (MkSocket s _ _ _ _) timeout = do
 
 
 -- | Get a socket receive timeout in seconds
-getSocketRecvTimeOut :: Socket -> IO Float
+getSocketRecvTimeOut :: Socket -> IO Double
 getSocketRecvTimeOut (MkSocket s _ _ _ _) = do
    (level, opt) <- packSocketOption' "getSocketRecvTimeOut" RecvTimeOut
    withNewTimeVal  $ \p_timeval sz ->
@@ -1018,7 +1018,7 @@ getSocketRecvTimeOut (MkSocket s _ _ _ _) = do
 
 
 -- | Set a socket send timeout in seconds
-setSocketSendTimeOut :: Socket -> Float -> IO ()
+setSocketSendTimeOut :: Socket -> Double -> IO ()
 setSocketSendTimeOut (MkSocket s _ _ _ _) timeout = do
    (level, opt) <- packSocketOption' "setSocketSendTimeOut" SendTimeOut
    withTimeVal timeout $ \p_timeval sz -> do
@@ -1028,7 +1028,7 @@ setSocketSendTimeOut (MkSocket s _ _ _ _) timeout = do
 
 
 -- | Get a socket send timeout in seconds
-getSocketSendTimeOut :: Socket -> IO Float
+getSocketSendTimeOut :: Socket -> IO Double
 getSocketSendTimeOut (MkSocket s _ _ _ _) = do
    (level, opt) <- packSocketOption' "getSocketSendTimeOut" SendTimeOut
    withNewTimeVal  $ \p_timeval sz ->
