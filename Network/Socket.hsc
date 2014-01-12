@@ -123,6 +123,10 @@ module Network.Socket
     , isSupportedSocketOption
     , getSocketOption
     , setSocketOption
+    , setSocketRecvTimeOut
+    , getSocketRecvTimeOut
+    , setSocketSendTimeOut
+    , getSocketSendTimeOut
 
     -- * File descriptor transmission
 #ifdef DOMAIN_SOCKET_SUPPORT
@@ -182,9 +186,9 @@ import Foreign.C.Error
 import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
 #if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types (CInt(..), CSize(..))
+import Foreign.C.Types (CInt(..), CSize(..), CTime(..), CSUSeconds(..))
 #else
-import Foreign.C.Types (CInt, CSize)
+import Foreign.C.Types (CInt, CSize, CTime, CSUSeconds)
 #endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
@@ -953,7 +957,7 @@ packSocketOption' caller so = maybe err return (packSocketOption so)
     ": socket option ", show so, " unsupported on this system"]
 
 -- | Set a socket option that expects an Int value.
--- There is currently no API to set e.g. the timeval socket options
+-- To set timeout values use 'setSocketSendTimeOut' or 'setSocketRecvTimeOut' functions
 setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
@@ -967,8 +971,75 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
    return ()
 
 
+withTimeVal :: Double -> (Ptr a -> Int -> IO b) -> IO b
+withTimeVal timeout f = do
+   let sz = fromIntegral (#const sizeof(struct timeval))
+       sec = truncate timeout
+       usec = round $ (timeout - (fromIntegral sec)) * 1000000
+   allocaBytes sz $ \p_timeval -> do
+        (#poke struct timeval, tv_sec) p_timeval ((fromIntegral sec) :: CTime)
+        (#poke struct timeval, tv_usec) p_timeval ((fromIntegral usec) :: CSUSeconds)
+        f p_timeval sz
+
+
+withNewTimeVal :: (Ptr a -> Int -> IO b) -> IO b
+withNewTimeVal f = do
+   let sz = (fromIntegral (#const sizeof(struct timeval)))
+   allocaBytes sz $ \p_timeval -> do
+        f p_timeval sz
+
+
+peekTimeVal :: Ptr a -> IO Double
+peekTimeVal p_timeval = do
+    sec <- (#peek struct timeval, tv_sec) p_timeval :: IO CTime
+    usec <- (#peek struct timeval, tv_usec) p_timeval :: IO CSUSeconds
+    return $ fromRational ((toRational sec) + (toRational usec) / 1000000)
+
+
+-- | Set a socket receive timeout in seconds
+setSocketRecvTimeOut :: Socket -> Double -> IO ()
+setSocketRecvTimeOut (MkSocket s _ _ _ _) timeout = do
+   (level, opt) <- packSocketOption' "setSocketRecvTimeOut" RecvTimeOut
+   withTimeVal timeout $ \p_timeval sz -> do
+        throwSocketErrorIfMinus1_ "setSocketRecvTimeOut" $
+            c_setsockopt s level opt p_timeval $ fromIntegral sz
+        return ()
+
+
+-- | Get a socket receive timeout in seconds
+getSocketRecvTimeOut :: Socket -> IO Double
+getSocketRecvTimeOut (MkSocket s _ _ _ _) = do
+   (level, opt) <- packSocketOption' "getSocketRecvTimeOut" RecvTimeOut
+   withNewTimeVal  $ \p_timeval sz ->
+     with ((fromIntegral sz) :: CInt) $ \ptr_sz -> do
+       throwSocketErrorIfMinus1Retry "getSocketRecvTimeOut" $
+         c_getsockopt s level opt p_timeval ptr_sz
+       peekTimeVal p_timeval
+
+
+-- | Set a socket send timeout in seconds
+setSocketSendTimeOut :: Socket -> Double -> IO ()
+setSocketSendTimeOut (MkSocket s _ _ _ _) timeout = do
+   (level, opt) <- packSocketOption' "setSocketSendTimeOut" SendTimeOut
+   withTimeVal timeout $ \p_timeval sz -> do
+     throwSocketErrorIfMinus1_ "setSocketSendTimeOut" $
+       c_setsockopt s level opt p_timeval $ fromIntegral sz
+     return ()
+
+
+-- | Get a socket send timeout in seconds
+getSocketSendTimeOut :: Socket -> IO Double
+getSocketSendTimeOut (MkSocket s _ _ _ _) = do
+   (level, opt) <- packSocketOption' "getSocketSendTimeOut" SendTimeOut
+   withNewTimeVal  $ \p_timeval sz ->
+     with ((fromIntegral sz) :: CInt) $ \ptr_sz -> do
+       throwSocketErrorIfMinus1Retry "getSocketSendTimeOut" $
+         c_getsockopt s level opt p_timeval ptr_sz
+       peekTimeVal p_timeval
+
+
 -- | Get a socket option that gives an Int value.
--- There is currently no API to get e.g. the timeval socket options
+-- To get timeout values use 'getSocketSendTimeOut' or 'getSocketRecvTimeOut' functions
 getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
