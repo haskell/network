@@ -845,6 +845,7 @@ data SocketOption
     | SendTimeOut   -- ^ SO_SNDTIMEO
     | UseLoopBack   -- ^ SO_USELOOPBACK
     | IPv6Only      -- ^ IPV6_V6ONLY
+    | CustomSockOpt (CInt, CInt)
     deriving (Show, Typeable)
 
 -- | Does the 'SocketOption' exist on this system?
@@ -941,6 +942,7 @@ packSocketOption so =
     Just IPv6Only      -> Just ((#const IPPROTO_IPV6), (#const IPV6_V6ONLY))
 #endif
 #endif // HAVE_DECL_IPPROTO_IPV6
+    Just (CustomSockOpt opt) -> Just opt
     _             -> Nothing
 
 -- | Return the option level and option value if they exist,
