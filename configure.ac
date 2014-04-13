@@ -17,9 +17,6 @@ ac_includes_default="$ac_includes_default
 # include <ws2tcpip.h>
 // fix for MingW not defining IPV6_V6ONLY
 # define IPV6_V6ONLY 27
-#endif
-#ifdef HAVE_WSPIAPI_H
-# include <wspiapi.h>
 #endif"
 
 # Safety check: Ensure that we are in the correct source directory.
@@ -37,7 +34,7 @@ AC_PROG_CC()
 AC_C_CONST
 
 dnl ** check for specific header (.h) files that we are interested in
-AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h sys/types.h unistd.h winsock2.h ws2tcpip.h wspiapi.h])
+AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h sys/types.h unistd.h winsock2.h ws2tcpip.h])
 AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h netinet/tcp.h sys/socket.h sys/uio.h sys/un.h])
 
 AC_CHECK_FUNCS([readlink symlink])
@@ -172,7 +169,7 @@ AC_CHECK_FUNCS(gethostent)
 AC_CHECK_FUNCS(accept4)
 
 case "$host" in
-*-mingw32)
+*-mingw*)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
 	EXTRA_LIBS=ws2_32
 	CALLCONV=stdcall ;;
