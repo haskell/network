@@ -43,9 +43,6 @@
 // fix for MingW not defining IPV6_V6ONLY
 #  define IPV6_V6ONLY 27
 # endif
-# ifdef HAVE_WSPIAPI_H
-#  include <wspiapi.h>
-# endif
 
 extern void  shutdownWinSock();
 extern int   initWinSock ();
