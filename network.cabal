@@ -12,7 +12,7 @@ extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
   include/HsNetworkConfig.h
 extra-source-files:
-  README examples/*.hs tests/*.hs config.guess config.sub install-sh
+  README.md examples/*.hs tests/*.hs config.guess config.sub install-sh
   configure.ac configure network.buildinfo.in
   include/HsNetworkConfig.h.in include/HsNet.h
   -- C sources only used on some systems
