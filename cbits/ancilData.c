@@ -84,6 +84,7 @@ recvFd(int sock)
 #else
   int* fdBuffer;
 #endif
+  int fd;
 
   iov[0].iov_base = duffBuf;
   iov[0].iov_len  = sizeof(duffBuf);
@@ -109,15 +110,23 @@ recvFd(int sock)
 #endif
 
   if ((rc = recvmsg(sock,&msg,0)) < 0) {
+#if HAVE_STRUCT_MSGHDR_MSG_CONTROL
+    free(cmsg);
+#else
+    free(fdBuffer);
+#endif
     return rc;
   }
   
 #if HAVE_STRUCT_MSGHDR_MSG_CONTROL
   cptr = (struct cmsghdr*)CMSG_FIRSTHDR(&msg);
-  return *(int*)CMSG_DATA(cptr);
+  fd = *(int*)CMSG_DATA(cptr);
+  free(cmsg);
 #else
-  return *(int*)fdBuffer;
+  fd = *(int*)fdBuffer;
+  free(fdBuffer);
 #endif
+  return fd;
 }
 
 #endif
