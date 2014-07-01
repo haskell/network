@@ -9,9 +9,11 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- The "Network" interface is a \"higher-level\" interface to
--- networking facilities, and it is recommended unless you need the
--- lower-level interface in "Network.Socket".
+-- This module is kept for backwards-compatibility. New users are
+-- encouraged to use "Network.Socket" instead.
+--
+-- "Network" was intended as a \"higher-level\" interface to networking
+-- facilities, and only supports TCP.
 --
 -----------------------------------------------------------------------------
 
