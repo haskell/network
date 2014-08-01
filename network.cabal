@@ -6,7 +6,7 @@ maintainer:     Johan Tibell <johan.tibell@gmail.com>
 synopsis:       Low-level networking interface
 description:    Low-level networking interface
 category:       Network
-build-type:     Configure
+build-type:     Custom
 cabal-version:  >=1.8
 extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
@@ -42,6 +42,12 @@ library
   if os(windows)
     other-modules:
       Network.Socket.ByteString.Lazy.Windows
+	-- fixed configuration on Windows without MSYS
+	-- todo: actually detect MSYS here
+    cpp-options: -DCALLCONV=stdcall -DWINVER=0x0501 
+    cc-options: -DCALLCONV=stdcall -DWINVER=0x0501 
+    c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
+    extra-libraries: ws2_32 	
 
   build-depends:
     base >= 3 && < 5,
@@ -103,4 +109,4 @@ test-suite uri
 
 source-repository head
   type:     git
-  location: git://github.com/haskell/network.git
+  location: git://github.com/tener/network.git
