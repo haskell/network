@@ -17,7 +17,11 @@
 --
 -----------------------------------------------------------------------------
 
+#ifndef BUILDING_ON_WINDOWS
 #include "HsNetworkConfig.h"
+#else
+#include "HsNetworkConfigWin.h"
+#endif
 
 #ifdef HAVE_GETADDRINFO
 -- Use IPv6-capable function definitions if the OS supports it.

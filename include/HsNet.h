@@ -7,7 +7,7 @@
 #ifndef HSNET_H
 #define HSNET_H
 
-#ifndef _WIN
+#ifndef BUILDING_ON_WINDOWS
 #include "HsNetworkConfig.h"
 #else
 #include "HsNetworkConfigWin.h"
