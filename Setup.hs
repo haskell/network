@@ -1,8 +1,8 @@
 module Main (main) where
 
 import Distribution.Simple
-import Distribution.System
-import System.Environment
+import Distribution.System (buildOS)
+import System.Environment (getEnvironment)
 
 main :: IO ()
 main = do
