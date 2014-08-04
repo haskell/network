@@ -6,7 +6,7 @@ import System.Environment
 
 main :: IO ()
 main = do
-  msys <- lookupEnv "MSYSTEM"
-  case (msys,buildOS) of
-    (Nothing, Windows) -> defaultMain -- on Windows without MSYS use preconfigured headers and params
+  msys'present <- (elem "MSYSTEM" . map fst) `fmap` getEnvironment
+  case (msys'present,buildOS) of
+    (False, Windows) -> defaultMain -- on Windows without MSYS use preconfigured headers and params
     _ -> defaultMainWithHooks autoconfUserHooks
