@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Distribution.Simple
-import Distribution.System (buildOS)
+import Distribution.System (buildOS,OS(..))
 import System.Environment (getEnvironment)
 
 main :: IO ()
