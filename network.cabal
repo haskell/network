@@ -111,4 +111,4 @@ test-suite uri
 
 source-repository head
   type:     git
-  location: git://github.com/tener/network.git
+  location: git://github.com/haskell/network.git
