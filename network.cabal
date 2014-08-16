@@ -44,7 +44,7 @@ library
 
   build-depends:
     base >= 3 && < 5,
-    bytestring
+    bytestring < 0.11
 
   if !os(windows)
     build-depends:
