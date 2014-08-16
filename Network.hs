@@ -417,18 +417,7 @@ bracketOnError
         -> (a -> IO b)  -- ^ computation to run last (\"release resource\")
         -> (a -> IO c)  -- ^ computation to run in-between
         -> IO c         -- returns the value from the in-between computation
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 606
-bracketOnError before after thing =
-  Exception.block (do
-    a <- before
-    r <- Exception.catch
-           (Exception.unblock (thing a))
-           (\e -> do { after a; Exception.throw e })
-    return r
- )
-#else
 bracketOnError = Exception.bracketOnError
-#endif
 
 -----------------------------------------------------------------------------
 -- Extra documentation

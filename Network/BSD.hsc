@@ -96,11 +96,7 @@ import Foreign.C.String (CString, peekCString, withCString)
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
 import Foreign.C.Types ( CShort )
 #endif
-#if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types ( CInt(..), CULong(..), CSize(..) )
-#else
-import Foreign.C.Types ( CInt, CULong, CSize )
-#endif
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
@@ -109,11 +105,7 @@ import Data.Typeable
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
-#if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Exception
-#else
-import GHC.IOBase
-#endif
 
 import Control.Monad (liftM)
 

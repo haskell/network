@@ -181,11 +181,7 @@ import Foreign.Storable (Storable(..))
 import Foreign.C.Error
 import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
 import Foreign.C.Types (CUInt, CChar)
-#if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types (CInt(..), CSize(..))
-#else
-import Foreign.C.Types (CInt, CSize)
-#endif
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
 import Foreign.Marshal.Utils ( maybeWith, with )
@@ -207,20 +203,13 @@ import GHC.Conc (closeFdWith)
 import GHC.Conc (asyncDoProc)
 import Foreign (FunPtr)
 # endif
-# if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Device
 import GHC.IO.Handle.FD
 import GHC.IO.Exception
 import GHC.IO
-# else
-import GHC.IOBase
-import GHC.Handle
-# endif
 import qualified System.Posix.Internals
 
-# if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.FD
-#endif
 
 import Network.Socket.Internal
 import Network.Socket.Types
@@ -254,7 +243,7 @@ type ServiceName    = String
 -----------------------------------------------------------------------------
 -- Socket types
 
-#if __GLASGOW_HASKELL__ >= 611 && defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 socket2FD  (MkSocket fd _ _ _ _) =
   -- HACK, 1 means True
   FD{fdFD = fd,fdIsSocket_ = 1}
@@ -369,11 +358,7 @@ foreign import ccall unsafe "socketpair"
 -- | Set the socket to nonblocking, if applicable to this platform.
 setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
-#if __GLASGOW_HASKELL__ < 611
-    System.Posix.Internals.setNonBlockingFD fd
-#else
     System.Posix.Internals.setNonBlockingFD fd True
-#endif
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -640,23 +625,12 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
  withCStringLen xs $ \(str, len) -> do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611
     writeRawBufferPtr
       "Network.Socket.send"
       (socket2FD sock)
       (castPtr str)
       0
       (fromIntegral len)
-#else
-      writeRawBufferPtr
-        "Network.Socket.send"
-        (fromIntegral s)
-        True
-        str
-        0
-       (fromIntegral len)
-#endif
-
 #else
      throwSocketErrorWaitWrite sock "send" $
         c_send s str (fromIntegral len) 0{-flags-}
@@ -672,22 +646,12 @@ sendBuf :: Socket     -- Bound/Connected Socket
 sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611
     writeRawBufferPtr
       "Network.Socket.sendBuf"
       (socket2FD sock)
       (castPtr str)
       0
       (fromIntegral len)
-# else
-      writeRawBufferPtr
-        "Network.Socket.sendBuf"
-        (fromIntegral s)
-        True
-        str
-        0
-       (fromIntegral len)
-# endif
 #else
      throwSocketErrorWaitWrite sock "sendBuf" $
         c_send s str (fromIntegral len) 0{-flags-}
@@ -715,13 +679,8 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
      allocaBytes nbytes $ \ptr -> do
         len <-
 #if defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611
           readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
-#else
-          readRawBufferPtr "Network.Socket.recvLen" (fromIntegral s) True ptr 0
-                 (fromIntegral nbytes)
-#endif
 #else
                throwSocketErrorWaitRead sock "recv" $
                    c_recv s ptr (fromIntegral nbytes) 0{-flags-}
@@ -753,13 +712,8 @@ recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
  | otherwise   = do
         len <-
 #if defined(mingw32_HOST_OS)
-# if __GLASGOW_HASKELL__ >= 611
           readRawBufferPtr "Network.Socket.recvLenBuf" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
-#else
-          readRawBufferPtr "Network.Socket.recvLenBuf" (fromIntegral s) True ptr 0
-                 (fromIntegral nbytes)
-#endif
 #else
                throwSocketErrorWaitRead sock "recvBuf" $
                    c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
@@ -1194,26 +1148,15 @@ inet_ntoa haddr = do
 -- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
 -- on the 'Handle'.
 
-#ifndef __PARALLEL_HASKELL__
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
  modifyMVar socketStatus $ \ status ->
     if status == ConvertedToHandle
         then ioError (userError ("socketToHandle: already a Handle"))
         else do
-# if __GLASGOW_HASKELL__ >= 611
     h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
-# elif __GLASGOW_HASKELL__ >= 608
-    h <- fdToHandle' (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# elif __GLASGOW_HASKELL__ < 608
-    h <- openFd (fromIntegral fd) (Just System.Posix.Internals.Stream) True (show s) mode True{-bin-}
-# endif
     hSetBuffering h NoBuffering
     return (ConvertedToHandle, h)
-#else
-socketToHandle (MkSocket s family stype protocol status) m =
-  error "socketToHandle not implemented in a parallel setup"
-#endif
 
 -- | Pack a list of values into a bitmask.  The possible mappings from
 -- value to bit-to-set are given as the first argument.  We assume

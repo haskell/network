@@ -72,11 +72,7 @@ import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
                         Errno(..), errnoToIOError)
 import Foreign.C.String (peekCString)
-#if __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types (CInt(..))
-#else
-import Foreign.C.Types (CInt)
-#endif
 import Foreign.Ptr (Ptr)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
