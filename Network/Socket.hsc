@@ -174,8 +174,8 @@ module Network.Socket
 
 import Data.Bits
 import Data.List (delete, foldl')
-import Data.Maybe (fromMaybe, isJust)
-import Data.Word (Word8, Word16, Word32)
+import Data.Maybe (isJust)
+import Data.Word (Word8, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
@@ -188,7 +188,6 @@ import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO
 import Control.Monad (liftM, when)
-import Data.Ratio ((%))
 
 import qualified Control.Exception as E
 import Control.Concurrent.MVar
@@ -417,16 +416,16 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
                        r <- c_connect s p_addr (fromIntegral sz)
                        if r == -1
                          then throwSocketError "connect"
-                         else return r
+                         else return ()
                      _ -> throwSocketError "connect"
 #endif
-               else return r
+               else return ()
 
         connectBlocked = do
            threadWaitWrite (fromIntegral s)
            err <- getSocketOption sock SoError
            if (err == 0)
-                then return 0
+                then return ()
                 else throwSocketErrorCode "connect" (fromIntegral err)
 
     connectLoop
@@ -448,7 +447,7 @@ listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
      ioError (userError ("listen: can't peform listen on socket in status " ++
          show status))
    else do
-     throwSocketErrorIfMinus1Retry "listen" (c_listen s (fromIntegral backlog))
+     throwSocketErrorIfMinus1Retry_ "listen" (c_listen s (fromIntegral backlog))
      return Listening
 
 -----------------------------------------------------------------------------
@@ -758,7 +757,7 @@ getPeerName   :: Socket -> IO SockAddr
 getPeerName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry "getPeerName" $ c_getpeername s ptr int_star
+   throwSocketErrorIfMinus1Retry_ "getPeerName" $ c_getpeername s ptr int_star
    _sz <- peek int_star
    peekSockAddr ptr
 
@@ -766,7 +765,7 @@ getSocketName :: Socket -> IO SockAddr
 getSocketName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry "getSocketName" $ c_getsockname s ptr int_star
+   throwSocketErrorIfMinus1Retry_ "getSocketName" $ c_getsockname s ptr int_star
    peekSockAddr ptr
 
 -----------------------------------------------------------------------------
@@ -932,7 +931,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
    (level, opt) <- packSocketOption' "getSocketOption" so
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
-       throwSocketErrorIfMinus1Retry "getSocketOption" $
+       throwSocketErrorIfMinus1Retry_ "getSocketOption" $
          c_getsockopt s level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
@@ -970,7 +969,7 @@ getPeerEid sock = do
   let fd = fdSocket sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
-      throwSocketErrorIfMinus1Retry "getPeerEid" $
+      throwSocketErrorIfMinus1Retry_ "getPeerEid" $
         c_getpeereid fd ptr_uid ptr_gid
       uid <- peek ptr_uid
       gid <- peek ptr_gid
@@ -1061,7 +1060,7 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown (MkSocket s _ _ _ _) stype = do
-  throwSocketErrorIfMinus1Retry "shutdown" (c_shutdown s (sdownCmdToInt stype))
+  throwSocketErrorIfMinus1Retry_ "shutdown" (c_shutdown s (sdownCmdToInt stype))
   return ()
 
 -- -----------------------------------------------------------------------------

@@ -52,6 +52,7 @@ module Network.Socket.Internal
     -- * Guards for socket operations that may fail
     , throwSocketErrorIfMinus1_
     , throwSocketErrorIfMinus1Retry
+    , throwSocketErrorIfMinus1Retry_
     , throwSocketErrorIfMinus1RetryMayBlock
 
     -- ** Guards that wait and retry if the operation would block
@@ -122,6 +123,19 @@ throwSocketErrorIfMinus1Retry
     -> IO a
 
 {-# SPECIALIZE throwSocketErrorIfMinus1Retry :: String -> IO CInt -> IO CInt #-}
+
+-- | Throw an 'IOError' corresponding to the current socket error if
+-- the IO action returns a result of @-1@, but retries in case of an
+-- interrupted operation. Discards the result of the IO action after
+-- error handling.
+throwSocketErrorIfMinus1Retry_
+    :: (Eq a, Num a)
+    => String  -- ^ textual description of the location
+    -> IO a    -- ^ the 'IO' operation to be executed
+    -> IO ()
+throwSocketErrorIfMinus1Retry_ loc m =
+    throwSocketErrorIfMinus1Retry loc m >> return ()
+{-# SPECIALIZE throwSocketErrorIfMinus1Retry_ :: String -> IO CInt -> IO () #-}
 
 -- | Throw an 'IOError' corresponding to the current socket error if
 -- the IO action returns a result of @-1@, but retries in case of an

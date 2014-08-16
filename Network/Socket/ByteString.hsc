@@ -71,7 +71,6 @@ import Foreign.Storable (Storable(..))
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
-import GHC.Conc (threadWaitRead, threadWaitWrite)
 #else
 import GHC.IO.FD
 import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
