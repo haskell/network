@@ -68,22 +68,16 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
-import Data.Bits ( (.|.), shiftL, shiftR )
-import Data.Word ( Word8, Word16, Word32 )
-import Data.Typeable (Typeable)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
                         Errno(..), errnoToIOError)
-import Foreign.C.String ( castCharToCChar, peekCString )
+import Foreign.C.String (peekCString)
 #if __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types ( CInt(..), CSize(..) )
+import Foreign.C.Types (CInt(..))
 #else
-import Foreign.C.Types ( CInt, CSize )
+import Foreign.C.Types (CInt)
 #endif
-import Foreign.Marshal.Alloc ( allocaBytes )
-import Foreign.Marshal.Array ( pokeArray, pokeArray0 )
-import Foreign.Ptr ( Ptr, castPtr, plusPtr )
-import Foreign.Storable ( Storable(..) )
+import Foreign.Ptr (Ptr)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)

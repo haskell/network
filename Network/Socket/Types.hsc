@@ -75,10 +75,19 @@ data Socket
             (MVar SocketStatus)  -- Status Flag
   deriving Typeable
 
+sockFd :: Socket -> CInt
 sockFd       (MkSocket n _ _ _ _) = n
+
+sockFamily :: Socket -> Family
 sockFamily   (MkSocket _ f _ _ _) = f
+
+sockType :: Socket -> SocketType
 sockType     (MkSocket _ _ t _ _) = t
+
+sockProtocol :: Socket -> ProtocolNumber
 sockProtocol (MkSocket _ _ _ p _) = p
+
+sockStatus :: Socket -> MVar SocketStatus
 sockStatus   (MkSocket _ _ _ _ s) = s
 
 instance Eq Socket where
