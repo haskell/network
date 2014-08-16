@@ -29,7 +29,6 @@ library
     Network.Socket.ByteString
     Network.Socket.ByteString.Lazy
     Network.Socket.Internal
-    Network.URI
   other-modules:
     Network.Socket.ByteString.Internal
     Network.Socket.Types
@@ -45,8 +44,7 @@ library
 
   build-depends:
     base >= 3 && < 5,
-    bytestring,
-    parsec >= 3.0
+    bytestring
 
   if !os(windows)
     build-depends:
@@ -87,19 +85,6 @@ test-suite regression
     test-framework-hunit
 
   ghc-options: -Wall
-
-test-suite uri
-  hs-source-dirs: tests
-  main-is: uri001.hs
-  type: exitcode-stdio-1.0
-
-  build-depends:
-    base < 5,
-    HUnit,
-    network,
-    test-framework,
-    test-framework-hunit,
-    test-framework-quickcheck2
 
 source-repository head
   type:     git
