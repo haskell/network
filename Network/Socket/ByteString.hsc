@@ -73,7 +73,6 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
 #else
 import GHC.IO.FD
-import GHC.Handle (readRawBufferPtr, writeRawBufferPtr)
 #endif
 
 #if !defined(mingw32_HOST_OS)
