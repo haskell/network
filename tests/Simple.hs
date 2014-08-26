@@ -1,14 +1,21 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 module Main where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, readMVar)
 import qualified Control.Exception as E
+import Control.Monad (liftM)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
+import Data.Maybe (fromJust)
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
+-- Define HAVE_LINUX_CAN to run CAN tests as well.
+-- #define HAVE_LINUX_CAN 1
+#if defined(HAVE_LINUX_CAN)
+import Network.BSD (ifNameToIndex)
+#endif
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?))
@@ -173,6 +180,33 @@ testGetPeerEid =
                      putStrLn $ C.unpack msg
 -}
 
+#if defined(HAVE_LINUX_CAN)
+canTestMsg = S.pack [ 0,0,0,0 -- can ID = 0
+                    , 4,0,0,0 -- data length counter = 2 (bytes)
+                    , 0x80,123,321,55 -- SYNC with some random extra bytes
+                    , 0, 0, 0, 0 -- padding
+                    ]
+
+testCanSend :: Assertion
+testCanSend = canTest "can1" client server
+  where
+    server sock = recv sock 1024 >>= (@=?) canTestMsg
+    client sock = send sock canTestMsg
+
+canTest :: String -> (Socket -> IO a) -> (Socket -> IO b) -> IO ()
+canTest ifname clientAct serverAct = do
+    ifIndex <- liftM fromJust $ ifNameToIndex ifname
+    test (clientSetup ifIndex) clientAct (serverSetup ifIndex) serverAct
+  where
+    clientSetup ifIndex = do
+      sock <- socket AF_CAN Raw 1 -- protocol 1 = raw CAN
+      -- bind the socket to the interface
+      bind sock (SockAddrCan $ fromIntegral $ ifIndex)
+      return sock
+    
+    serverSetup = clientSetup
+#endif
+
 ------------------------------------------------------------------------
 -- Other
 
@@ -195,6 +229,9 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
+#if defined(HAVE_LINUX_CAN)
+    , testCase "testCanSend" testCanSend  
+#endif
     ]
 
 tests :: [Test]
