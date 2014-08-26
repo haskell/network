@@ -36,8 +36,9 @@ AC_C_CONST
 dnl ** check for specific header (.h) files that we are interested in
 AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h sys/types.h unistd.h winsock2.h ws2tcpip.h])
 AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h netinet/tcp.h sys/socket.h sys/uio.h sys/un.h linux/can.h])
+AC_CHECK_HEADERS([net/if.h])
 
-AC_CHECK_FUNCS([readlink symlink])
+AC_CHECK_FUNCS([readlink symlink if_nametoindex])
 
 dnl ** check what fields struct msghdr contains
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#if HAVE_SYS_TYPES_H

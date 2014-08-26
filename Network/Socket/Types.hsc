@@ -802,7 +802,7 @@ data SockAddr       -- C Names
 #endif
 #if defined(AF_CAN)
   | SockAddrCan
-        Int32           -- can_ifindex 
+        Int32           -- can_ifindex (can be get by Network.BSD.ifNameToIndex "can0")
         -- TODO: Extend this to include transport protocol information
 #endif
   deriving (Eq, Ord, Typeable)

@@ -94,7 +94,9 @@ extern int   acceptDoProc(void* param);
 #ifdef HAVE_LINUX_CAN_H
 # include <linux/can.h>
 #endif
-
+#ifdef HAVE_NET_IF
+# include <net/if.h>
+#endif
 
 #ifdef HAVE_BSD_SENDFILE
 #include <sys/uio.h>
