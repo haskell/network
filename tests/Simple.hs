@@ -11,9 +11,9 @@ import qualified Data.ByteString.Char8 as C
 import Data.Maybe (fromJust)
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
--- Define HAVE_LINUX_CAN to run CAN tests as well.
--- #define HAVE_LINUX_CAN 1
-#if defined(HAVE_LINUX_CAN)
+
+#include "../include/HsNetworkConfig.h"
+#if defined(HAVE_LINUX_CAN_H)
 import Network.BSD (ifNameToIndex)
 #endif
 import Test.Framework (Test, defaultMain, testGroup)
@@ -180,7 +180,7 @@ testGetPeerEid =
                      putStrLn $ C.unpack msg
 -}
 
-#if defined(HAVE_LINUX_CAN)
+#if defined(HAVE_LINUX_CAN_H)
 canTestMsg = S.pack [ 0,0,0,0 -- can ID = 0
                     , 4,0,0,0 -- data length counter = 2 (bytes)
                     , 0x80,123,321,55 -- SYNC with some random extra bytes
@@ -229,7 +229,7 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
-#if defined(HAVE_LINUX_CAN)
+#if defined(HAVE_LINUX_CAN_H)
     , testCase "testCanSend" testCanSend  
 #endif
     ]
