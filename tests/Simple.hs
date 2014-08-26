@@ -12,7 +12,17 @@ import Data.Maybe (fromJust)
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
 
-#include "../include/HsNetworkConfig.h"
+--- To tests for AF_CAN on Linux, you need to bring up a virtual (or real can
+--- interface.). Run as root:
+--- # modprobe can
+--- # modprobe can_raw
+--- # modprobe vcan
+--- # sudo ip link add dev vcan0 type vcan
+--- # ip link show vcan0
+--- 3: can0: <NOARP,UP,LOWER_UP> mtu 16 qdisc noqueue state UNKNOWN link/can
+--- Define HAVE_LINUX_CAN to run CAN tests as well.
+--- #define HAVE_LINUX_CAN 1
+-- #include "../include/HsNetworkConfig.h"
 #if defined(HAVE_LINUX_CAN_H)
 import Network.BSD (ifNameToIndex)
 #endif
@@ -188,7 +198,7 @@ canTestMsg = S.pack [ 0,0,0,0 -- can ID = 0
                     ]
 
 testCanSend :: Assertion
-testCanSend = canTest "can1" client server
+testCanSend = canTest "vcan0" client server
   where
     server sock = recv sock 1024 >>= (@=?) canTestMsg
     client sock = send sock canTestMsg
