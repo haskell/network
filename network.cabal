@@ -1,5 +1,5 @@
 name:           network
-version:        2.6.0.1
+version:        2.6.0.2
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Johan Tibell <johan.tibell@gmail.com>
@@ -19,13 +19,12 @@ description:
   > library
   >   -- ...
   >   if flag(network-uri)
-  >     build-depends: network-uri >= 2.6
+  >     build-depends: network-uri >= 2.6, network >= 2.6
   >   else
-  >     build-depends: network < 2.6
+  >     build-depends: network-uri < 2.6, network < 2.6
   .
-  If you want to use other modules from the network package while
-  using the @Network.URI@ modules from the network-uri package, add a
-  @network > 2.6@ clause to the first @build-depends@ line.
+  That is, get the module from either network < 2.6 or from
+  network-uri >= 2.6.
 category:       Network
 build-type:     Configure
 cabal-version:  >=1.8
