@@ -714,10 +714,16 @@ unpackFamily f = case f of
 ------------------------------------------------------------------------
 -- Port Numbers
 
+-- | Use the @Num@ instance (i.e. use a literal) to create a
+-- @PortNumber@ value with the correct network-byte-ordering. You
+-- should not use the PortNum constructor. It will be removed in the
+-- next release.
 newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
 -- newtyped to prevent accidental use of sane-looking
 -- port numbers that haven't actually been converted to
 -- network-byte-order first.
+
+{-# DEPRECATED PortNum "Do not use the PortNum constructor. Use the Num instance. PortNum will be removed in the next release." #-}
 
 instance Show PortNumber where
   showsPrec p pn = showsPrec p (portNumberToInt pn)
