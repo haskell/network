@@ -67,6 +67,13 @@ import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 
+-- | Represents a socket.  The fields are, respectively:
+--
+--   * File descriptor
+--   * Socket family
+--   * Socket type
+--   * Protocol number
+--   * Status flag
 data Socket
   = MkSocket
             CInt                 -- File Descriptor
