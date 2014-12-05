@@ -461,12 +461,26 @@ catchIO = Exception.catch
 catchIO = Exception.catchJust Exception.ioErrors
 #endif
 
+-- Version of try implemented in terms of the locally defined catchIO
+tryIO :: IO a -> IO (Either Exception.IOException a)
+tryIO m = catchIO (liftM Right m) (return . Left)
+
 -- Returns the first action from a list which does not throw an exception.
 -- If all the actions throw exceptions (and the list of actions is not empty),
 -- the last exception is thrown.
+-- The operations are run outside of the catchIO cleanup handler because
+-- catchIO masks asynchronous exceptions in the cleanup handler.
+-- In the case of complete failure, the last exception is actually thrown.
 firstSuccessful :: [IO a] -> IO a
-firstSuccessful [] = error "firstSuccessful: empty list"
-firstSuccessful (p:ps) = catchIO p $ \e ->
-    case ps of
-        [] -> Exception.throwIO e
-        _  -> firstSuccessful ps
+firstSuccessful = go Nothing
+  where
+  -- Attempt the next operation, remember exception on failure
+  go _ (p:ps) =
+    do r <- tryIO p
+       case r of
+         Right x -> return x
+         Left  e -> go (Just e) ps
+
+  -- All operations failed, throw error if one exists
+  go Nothing  [] = error "firstSuccessful: empty list"
+  go (Just e) [] = Exception.throwIO e
