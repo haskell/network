@@ -170,7 +170,7 @@ AC_CHECK_FUNCS(gethostent)
 AC_CHECK_FUNCS(accept4)
 
 case "$host" in
-*-mingw*)
+*-mingw* | *-msys*)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
 	EXTRA_LIBS=ws2_32
 	CALLCONV=stdcall ;;
