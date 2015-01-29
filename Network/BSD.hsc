@@ -534,7 +534,7 @@ foreign import CALLCONV safe "if_nametoindex"
 
 {-# NOINLINE lock #-}
 lock :: MVar ()
-lock = unsafePerformIO $ newMVar ()
+lock = unsafePerformIO $ withSocketsDo $ newMVar ()
 
 withLock :: IO a -> IO a
 withLock act = withMVar lock (\_ -> act)
