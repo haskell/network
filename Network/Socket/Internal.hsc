@@ -78,7 +78,9 @@ import Foreign.Ptr (Ptr)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
-import Control.Exception ( finally )
+import Control.Exception ( evaluate )
+import System.IO.Unsafe ( unsafePerformIO )
+import Control.Monad ( when )
 #  if __GLASGOW_HASKELL__ >= 707
 import GHC.IO.Exception ( IOErrorType(..) )
 #  else
@@ -245,15 +247,20 @@ Although this is only strictly necessary on Windows platforms, it is
 harmless on other platforms, so for portability it is good practice to
 use it all the time.
 -}
+{-# INLINE withSocketsDo #-}
 withSocketsDo :: IO a -> IO a
 #if !defined(WITH_WINSOCK)
 withSocketsDo x = x
 #else
-withSocketsDo act = do
+withSocketsDo act = evaluate withSocketsInit >> act
+
+
+{-# NOINLINE withSocketsInit #-}
+withSocketsInit :: ()
+-- Use a CAF to make forcing it do initialisation once, but subsequent forces will be cheap
+withSocketsInit = unsafePerformIO $ do
     x <- initWinSock
-    if x /= 0
-       then ioError (userError "Failed to initialise WinSock")
-       else act
+    when (x /= 0) $ ioError $ userError "Failed to initialise WinSock"
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
 
