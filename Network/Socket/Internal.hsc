@@ -253,9 +253,8 @@ withSocketsDo act = do
     x <- initWinSock
     if x /= 0
        then ioError (userError "Failed to initialise WinSock")
-       else act `finally` shutdownWinSock
+       else act
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
-foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()
 
 #endif
