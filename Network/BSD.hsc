@@ -581,11 +581,7 @@ trySysCall :: IO a -> IO a
 trySysCall act = act
 #else
 trySysCall :: IO (Ptr a) -> IO (Ptr a)
-trySysCall act = do
-  ptr <- act
-  if (ptr == nullPtr)
-   then withSocketsDo act
-   else return ptr
+trySysCall act = act
 #endif
 
 throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
