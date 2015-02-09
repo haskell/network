@@ -391,7 +391,7 @@ bind (MkSocket s _family _stype _protocol socketStatus) addr = do
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
+connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocketsDo $ do
  modifyMVar_ socketStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
@@ -412,15 +412,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = do
 --                   _ | err == eAGAIN      -> connectBlocked
                      _otherwise             -> throwSocketError "connect"
 #else
-                   rc <- c_getLastError
-                   case rc of
-                     #{const WSANOTINITIALISED} -> do
-                       withSocketsDo (return ())
-                       r <- c_connect s p_addr (fromIntegral sz)
-                       if r == -1
-                         then throwSocketError "connect"
-                         else return ()
-                     _ -> throwSocketError "connect"
+                   throwSocketError "connect"
 #endif
                else return ()
 
