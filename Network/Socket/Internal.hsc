@@ -237,15 +237,19 @@ throwSocketErrorWaitWrite sock name io =
 -- ---------------------------------------------------------------------------
 -- WinSock support
 
-{-| On Windows operating systems, the networking subsystem has to be
-initialised using 'withSocketsDo' before any networking operations can
-be used.  eg.
+{-| With older versions of the @network@ library on Windows operating systems,
+the networking subsystem must be initialised using 'withSocketsDo' before
+any networking operations can be used. eg.
 
 > main = withSocketsDo $ do {...}
 
-Although this is only strictly necessary on Windows platforms, it is
-harmless on other platforms, so for portability it is good practice to
-use it all the time.
+It is fine to nest calls to 'withSocketsDo', and to perform networking operations
+after 'withSocketsDo' has returned.
+
+In newer versions of the @network@ library it is only necessary to call
+'withSocketsDo' if you are calling the 'MkSocket' constructor directly.
+However, for compatibility with older versions on Windows, it is good practice
+to always call 'withSocketsDo' (it's very cheap).
 -}
 {-# INLINE withSocketsDo #-}
 withSocketsDo :: IO a -> IO a
