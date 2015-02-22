@@ -179,7 +179,7 @@ getServiceByName name proto = withLock $ do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByName" "no such service entry"
-   $ (trySysCall (c_getservbyname cstr_name cstr_proto))
+   $ c_getservbyname cstr_name cstr_proto
  >>= peek
 
 foreign import CALLCONV unsafe "getservbyname"
@@ -190,7 +190,7 @@ getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
 getServiceByPort (PortNum port) proto = withLock $ do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
-   $ (trySysCall (c_getservbyport (fromIntegral port) cstr_proto))
+   $ c_getservbyport (fromIntegral port) cstr_proto
  >>= peek
 
 foreign import CALLCONV unsafe "getservbyport"
@@ -206,18 +206,18 @@ getServicePortNumber name = do
 getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
-   $ trySysCall c_getservent
+   $ c_getservent
  >>= peek
 
 foreign import ccall unsafe "getservent" c_getservent :: IO (Ptr ServiceEntry)
 
 setServiceEntry :: Bool -> IO ()
-setServiceEntry flg = withLock $ trySysCall $ c_setservent (fromBool flg)
+setServiceEntry flg = withLock $ c_setservent (fromBool flg)
 
 foreign import ccall unsafe  "setservent" c_setservent :: CInt -> IO ()
 
 endServiceEntry :: IO ()
-endServiceEntry = withLock $ trySysCall $ c_endservent
+endServiceEntry = withLock $ c_endservent
 
 foreign import ccall unsafe  "endservent" c_endservent :: IO ()
 
@@ -276,7 +276,7 @@ getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = withLock $ do
  withCString name $ \ name_cstr -> do
  throwNoSuchThingIfNull "getProtocolByName" ("no such protocol name: " ++ name)
-   $ (trySysCall.c_getprotobyname) name_cstr
+   $ c_getprotobyname name_cstr
  >>= peek
 
 foreign import  CALLCONV unsafe  "getprotobyname"
@@ -286,7 +286,7 @@ foreign import  CALLCONV unsafe  "getprotobyname"
 getProtocolByNumber :: ProtocolNumber -> IO ProtocolEntry
 getProtocolByNumber num = withLock $ do
  throwNoSuchThingIfNull "getProtocolByNumber" ("no such protocol number: " ++ show num)
-   $ (trySysCall.c_getprotobynumber) (fromIntegral num)
+   $ c_getprotobynumber (fromIntegral num)
  >>= peek
 
 foreign import CALLCONV unsafe  "getprotobynumber"
@@ -302,18 +302,18 @@ getProtocolNumber proto = do
 getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
-                $ trySysCall c_getprotoent
+                $ c_getprotoent
  peek ent
 
 foreign import ccall unsafe  "getprotoent" c_getprotoent :: IO (Ptr ProtocolEntry)
 
 setProtocolEntry :: Bool -> IO ()       -- Keep DB Open ?
-setProtocolEntry flg = withLock $ trySysCall $ c_setprotoent (fromBool flg)
+setProtocolEntry flg = withLock $ c_setprotoent (fromBool flg)
 
 foreign import ccall unsafe "setprotoent" c_setprotoent :: CInt -> IO ()
 
 endProtocolEntry :: IO ()
-endProtocolEntry = withLock $ trySysCall $ c_endprotoent
+endProtocolEntry = withLock $ c_endprotoent
 
 foreign import ccall unsafe "endprotoent" c_endprotoent :: IO ()
 
@@ -377,7 +377,7 @@ getHostByName :: HostName -> IO HostEntry
 getHostByName name = withLock $ do
   withCString name $ \ name_cstr -> do
    ent <- throwNoSuchThingIfNull "getHostByName" "no such host entry"
-                $ trySysCall $ c_gethostbyname name_cstr
+                $ c_gethostbyname name_cstr
    peek ent
 
 foreign import CALLCONV safe "gethostbyname"
@@ -391,7 +391,7 @@ getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
  with addr $ \ ptr_addr -> withLock $ do
  throwNoSuchThingIfNull         "getHostByAddr" "no such host entry"
-   $ trySysCall $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
+   $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 
 foreign import CALLCONV safe "gethostbyaddr"
@@ -401,13 +401,13 @@ foreign import CALLCONV safe "gethostbyaddr"
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
  throwNoSuchThingIfNull         "getHostEntry" "unable to retrieve host entry"
-   $ trySysCall $ c_gethostent
+   $ c_gethostent
  >>= peek
 
 foreign import ccall unsafe "gethostent" c_gethostent :: IO (Ptr HostEntry)
 
 setHostEntry :: Bool -> IO ()
-setHostEntry flg = withLock $ trySysCall $ c_sethostent (fromBool flg)
+setHostEntry flg = withLock $ c_sethostent (fromBool flg)
 
 foreign import ccall unsafe "sethostent" c_sethostent :: CInt -> IO ()
 
@@ -468,7 +468,7 @@ getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = withLock $ do
  withCString name $ \ name_cstr -> do
   throwNoSuchThingIfNull "getNetworkByName" "no such network entry"
-    $ trySysCall $ c_getnetbyname name_cstr
+    $ c_getnetbyname name_cstr
   >>= peek
 
 foreign import ccall unsafe "getnetbyname"
@@ -477,7 +477,7 @@ foreign import ccall unsafe "getnetbyname"
 getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
 getNetworkByAddr addr family = withLock $ do
  throwNoSuchThingIfNull "getNetworkByAddr" "no such network entry"
-   $ trySysCall $ c_getnetbyaddr addr (packFamily family)
+   $ c_getnetbyaddr addr (packFamily family)
  >>= peek
 
 foreign import ccall unsafe "getnetbyaddr"
@@ -486,7 +486,7 @@ foreign import ccall unsafe "getnetbyaddr"
 getNetworkEntry :: IO NetworkEntry
 getNetworkEntry = withLock $ do
  throwNoSuchThingIfNull "getNetworkEntry" "no more network entries"
-          $ trySysCall $ c_getnetent
+          $ c_getnetent
  >>= peek
 
 foreign import ccall unsafe "getnetent" c_getnetent :: IO (Ptr NetworkEntry)
@@ -495,13 +495,13 @@ foreign import ccall unsafe "getnetent" c_getnetent :: IO (Ptr NetworkEntry)
 -- whether a connection is maintained open between various
 -- networkEntry calls
 setNetworkEntry :: Bool -> IO ()
-setNetworkEntry flg = withLock $ trySysCall $ c_setnetent (fromBool flg)
+setNetworkEntry flg = withLock $ c_setnetent (fromBool flg)
 
 foreign import ccall unsafe "setnetent" c_setnetent :: CInt -> IO ()
 
 -- | Close the connection to the network name database.
 endNetworkEntry :: IO ()
-endNetworkEntry = withLock $ trySysCall $ c_endnetent
+endNetworkEntry = withLock $ c_endnetent
 
 foreign import ccall unsafe "endnetent" c_endnetent :: IO ()
 
@@ -534,7 +534,7 @@ foreign import CALLCONV safe "if_nametoindex"
 
 {-# NOINLINE lock #-}
 lock :: MVar ()
-lock = unsafePerformIO $ newMVar ()
+lock = unsafePerformIO $ withSocketsDo $ newMVar ()
 
 withLock :: IO a -> IO a
 withLock act = withMVar lock (\_ -> act)
@@ -570,23 +570,6 @@ getEntries getOne atEnd = loop
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)
 
-
--- ---------------------------------------------------------------------------
--- Winsock only:
---   The BSD API networking calls made locally return NULL upon failure.
---   That failure may very well be due to WinSock not being initialised,
---   so if NULL is seen try init'ing and repeat the call.
-#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
-trySysCall :: IO a -> IO a
-trySysCall act = act
-#else
-trySysCall :: IO (Ptr a) -> IO (Ptr a)
-trySysCall act = do
-  ptr <- act
-  if (ptr == nullPtr)
-   then withSocketsDo act
-   else return ptr
-#endif
 
 throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
 throwNoSuchThingIfNull loc desc act = do

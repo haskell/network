@@ -74,6 +74,9 @@ import Foreign.Storable
 --   * Socket type
 --   * Protocol number
 --   * Status flag
+--
+--   If you are calling the 'MkSocket' constructor directly you should ensure
+--   you have called 'Network.withSocketsDo'.
 data Socket
   = MkSocket
             CInt                 -- File Descriptor

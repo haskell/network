@@ -78,7 +78,9 @@ import Foreign.Ptr (Ptr)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
-import Control.Exception ( finally )
+import Control.Exception ( evaluate )
+import System.IO.Unsafe ( unsafePerformIO )
+import Control.Monad ( when )
 #  if __GLASGOW_HASKELL__ >= 707
 import GHC.IO.Exception ( IOErrorType(..) )
 #  else
@@ -235,27 +237,35 @@ throwSocketErrorWaitWrite sock name io =
 -- ---------------------------------------------------------------------------
 -- WinSock support
 
-{-| On Windows operating systems, the networking subsystem has to be
-initialised using 'withSocketsDo' before any networking operations can
-be used.  eg.
+{-| With older versions of the @network@ library on Windows operating systems,
+the networking subsystem must be initialised using 'withSocketsDo' before
+any networking operations can be used. eg.
 
 > main = withSocketsDo $ do {...}
 
-Although this is only strictly necessary on Windows platforms, it is
-harmless on other platforms, so for portability it is good practice to
-use it all the time.
+It is fine to nest calls to 'withSocketsDo', and to perform networking operations
+after 'withSocketsDo' has returned.
+
+In newer versions of the @network@ library it is only necessary to call
+'withSocketsDo' if you are calling the 'MkSocket' constructor directly.
+However, for compatibility with older versions on Windows, it is good practice
+to always call 'withSocketsDo' (it's very cheap).
 -}
+{-# INLINE withSocketsDo #-}
 withSocketsDo :: IO a -> IO a
 #if !defined(WITH_WINSOCK)
 withSocketsDo x = x
 #else
-withSocketsDo act = do
+withSocketsDo act = evaluate withSocketsInit >> act
+
+
+{-# NOINLINE withSocketsInit #-}
+withSocketsInit :: ()
+-- Use a CAF to make forcing it do initialisation once, but subsequent forces will be cheap
+withSocketsInit = unsafePerformIO $ do
     x <- initWinSock
-    if x /= 0
-       then ioError (userError "Failed to initialise WinSock")
-       else act `finally` shutdownWinSock
+    when (x /= 0) $ ioError $ userError "Failed to initialise WinSock"
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
-foreign import ccall unsafe "shutdownWinSock" shutdownWinSock :: IO ()
 
 #endif

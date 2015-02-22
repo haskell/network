@@ -4,7 +4,12 @@
 #if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
 
 static int winsock_inited = 0;
-static int winsock_uninited = 0;
+
+static void
+shutdownHandler(void)
+{
+  WSACleanup();
+}
 
 /* Initialising WinSock... */
 int
@@ -29,24 +34,10 @@ initWinSock ()
       return (-1);
     }
 
+    atexit(shutdownHandler);
     winsock_inited = 1;
   }
   return 0;
-}
-
-static void
-shutdownHandler(void)
-{
-  WSACleanup();
-}
-
-void
-shutdownWinSock()
-{
-    if (!winsock_uninited) {
-	atexit(shutdownHandler);
-	winsock_uninited = 1;
-    }
 }
 
 #endif

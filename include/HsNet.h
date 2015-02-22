@@ -44,7 +44,6 @@
 #  define IPV6_V6ONLY 27
 # endif
 
-extern void  shutdownWinSock();
 extern int   initWinSock ();
 extern const char* getWSErrorDescr(int err);
 extern void* newAcceptParams(int sock,
