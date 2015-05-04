@@ -75,7 +75,9 @@ extern int   acceptDoProc(void* param);
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
-#ifdef HAVE_NETINET_TCP_H
+#ifdef HAVE_LINUX_TCP_H
+# include <linux/tcp.h>
+#elif HAVE_NETINET_TCP_H
 # include <netinet/tcp.h>
 #endif
 #ifdef HAVE_NETINET_IN_H

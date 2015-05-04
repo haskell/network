@@ -792,6 +792,7 @@ data SocketOption
     | RecvTimeOut   -- ^ SO_RCVTIMEO
     | SendTimeOut   -- ^ SO_SNDTIMEO
     | UseLoopBack   -- ^ SO_USELOOPBACK
+    | UserTimeout   -- ^ TCP_USER_TIMEOUT
     | IPv6Only      -- ^ IPV6_V6ONLY
     | CustomSockOpt (CInt, CInt)
     deriving (Show, Typeable)
@@ -880,6 +881,9 @@ packSocketOption so =
 #endif
 #ifdef TCP_NODELAY
     Just NoDelay       -> Just ((#const IPPROTO_TCP), (#const TCP_NODELAY))
+#endif
+#ifdef TCP_USER_TIMEOUT
+    Just UserTimeout   -> Just ((#const IPPROTO_TCP), (#const TCP_USER_TIMEOUT))
 #endif
 #ifdef TCP_CORK
     Just Cork          -> Just ((#const IPPROTO_TCP), (#const TCP_CORK))
