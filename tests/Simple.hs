@@ -5,7 +5,7 @@ module Main where
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, readMVar)
 import qualified Control.Exception as E
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Data.Maybe (fromJust)
@@ -129,6 +129,16 @@ testOverFlowRecvFrom = tcpTest client server
 
     client sock = send sock testMsg
 
+testUserTimeout :: Assertion
+testUserTimeout = do
+    when (isSupportedSocketOption UserTimeout) $ do
+      sock <- socket AF_INET Stream defaultProtocol
+      setSocketOption sock UserTimeout 1000
+      getSocketOption sock UserTimeout >>= (@=?) 1000
+      setSocketOption sock UserTimeout 2000
+      getSocketOption sock UserTimeout >>= (@=?) 2000
+      sClose sock
+
 {-
 testGetPeerCred:: Assertion
 testGetPeerCred =
@@ -237,6 +247,7 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testOverFlowRecv" testOverFlowRecv
     , testCase "testRecvFrom" testRecvFrom
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
+    , testCase "testUserTimeout" testUserTimeout
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
 #if defined(HAVE_LINUX_CAN_H)
