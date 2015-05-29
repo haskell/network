@@ -32,6 +32,7 @@ module Network.Socket.Types
 
     -- * Socket addresses
     , SockAddr(..)
+    , isSupportedSockAddr
     , HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
     , HostAddress6
@@ -801,27 +802,39 @@ type FlowInfo = Word32
 type ScopeID = Word32
 #endif
 
+-- | The existence of a constructor does not necessarily imply that
+-- that socket address type is supported on your system: see
+-- 'isSupportedSockAddr'.
 data SockAddr       -- C Names
   = SockAddrInet
     PortNumber  -- sin_port  (network byte order)
     HostAddress -- sin_addr  (ditto)
-#if defined(IPV6_SOCKET_SUPPORT)
   | SockAddrInet6
         PortNumber      -- sin6_port (network byte order)
         FlowInfo        -- sin6_flowinfo (ditto)
         HostAddress6    -- sin6_addr (ditto)
         ScopeID         -- sin6_scope_id (ditto)
-#endif
-#if defined(DOMAIN_SOCKET_SUPPORT)
   | SockAddrUnix
         String          -- sun_path
-#endif
-#if defined(AF_CAN)
   | SockAddrCan
         Int32           -- can_ifindex (can be get by Network.BSD.ifNameToIndex "can0")
         -- TODO: Extend this to include transport protocol information
-#endif
   deriving (Eq, Ord, Typeable)
+
+-- | Is the socket address type supported on this system?
+isSupportedSockAddr :: SockAddr -> Bool
+isSupportedSockAddr addr = case addr of
+  SockAddrInet {} -> True
+#if defined(IPV6_SOCKET_SUPPORT)
+  SockAddrInet6 {} -> True
+#endif
+#if defined(DOMAIN_SOCKET_SUPPORT)
+  SockAddrUnix{} -> True
+#endif
+#if defined(AF_CAN)
+  SockAddrCan{} -> True
+#endif
+  _ -> False
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)

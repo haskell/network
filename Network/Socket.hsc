@@ -33,6 +33,7 @@ module Network.Socket
     , SocketType(..)
     , isSupportedSocketType
     , SockAddr(..)
+    , isSupportedSockAddr
     , SocketStatus(..)
     , HostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
