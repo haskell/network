@@ -94,6 +94,7 @@ extern int   acceptDoProc(void* param);
 #endif
 #ifdef HAVE_LINUX_CAN_H
 # include <linux/can.h>
+# define CAN_SOCKET_SUPPORT 1
 #endif
 #ifdef HAVE_NET_IF
 # include <net/if.h>

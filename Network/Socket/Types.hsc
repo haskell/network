@@ -831,7 +831,7 @@ isSupportedSockAddr addr = case addr of
 #if defined(DOMAIN_SOCKET_SUPPORT)
   SockAddrUnix{} -> True
 #endif
-#if defined(AF_CAN)
+#if defined(CAN_SOCKET_SUPPORT)
   SockAddrCan{} -> True
 #endif
   _ -> False
@@ -858,7 +858,7 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
-#if defined(AF_CAN)
+#if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrCan _) = #const sizeof(struct sockaddr_can)
 #endif
 
@@ -872,7 +872,7 @@ sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
 sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
 #endif
 sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
-#if defined(AF_CAN)
+#if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddrByFamily AF_CAN   = #const sizeof(struct sockaddr_can)
 #endif
 
@@ -936,7 +936,7 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p addr
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
-#if defined(AF_CAN)
+#if defined(CAN_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrCan ifIndex) = do
 #if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_can))
@@ -966,7 +966,7 @@ peekSockAddr p = do
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
 #endif
-#if defined(AF_CAN)
+#if defined(CAN_SOCKET_SUPPORT)
     (#const AF_CAN) -> do
         ifidx <- (#peek struct sockaddr_can, can_ifindex) p
         return (SockAddrCan ifidx)
