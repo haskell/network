@@ -70,6 +70,10 @@ library
   if !os(windows)
     build-depends:
       unix >= 2
+  if os(haiku)
+    extra-libraries:
+      network
+    c-sources: cbits/swapHaiku.c
 
   extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
