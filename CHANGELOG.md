@@ -1,3 +1,9 @@
+## Version 2.6.2.1
+
+ * Regenerate configure and HsNetworkConfig.h.in.
+
+ * Better detection of CAN sockets.
+
 ## Version 2.6.2.0
 
  * Add support for TCP_USER_TIMEOUT.
