@@ -57,9 +57,6 @@ module Network
 
     -- ** Improving I\/O Performance over sockets
     {-$performance-}
-
-    -- ** @SIGPIPE@
-    {-$sigpipe-}
     ) where
 
 import Control.Monad (liftM)
@@ -437,21 +434,6 @@ buffering mode on the 'Handle' to
 
 For really fast I\/O, it might be worth looking at the 'hGetBuf' and
 'hPutBuf' family of functions in "System.IO".
--}
-
-{-$sigpipe
-
-On Unix, when writing to a socket and the reading end is
-closed by the remote client, the program is normally sent a
-@SIGPIPE@ signal by the operating system.  The
-default behaviour when a @SIGPIPE@ is received is
-to terminate the program silently, which can be somewhat confusing
-if you haven't encountered this before.  The solution is to
-specify that @SIGPIPE@ is to be ignored, using
-the POSIX library:
-
->  import Posix
->  main = do installHandler sigPIPE Ignore Nothing; ...
 -}
 
 catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
