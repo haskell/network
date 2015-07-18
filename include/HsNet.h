@@ -7,7 +7,11 @@
 #ifndef HSNET_H
 #define HSNET_H
 
+#ifndef BUILDING_ON_WINDOWS
 #include "HsNetworkConfig.h"
+#else
+#include "HsNetworkConfigWin.h"
+#endif
 
 #ifdef NEED_WINVER
 # define WINVER 0x0501
