@@ -834,7 +834,10 @@ isSupportedSockAddr addr = case addr of
 #if defined(CAN_SOCKET_SUPPORT)
   SockAddrCan{} -> True
 #endif
+#if !(defined(IPV6_SOCKET_SUPPORT) \
+      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
   _ -> False
+#endif
 
 #if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
 type CSaFamily = (#type unsigned short)
