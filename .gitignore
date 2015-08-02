@@ -14,3 +14,4 @@ dist/*
 include/HsNetworkConfig.h
 include/HsNetworkConfig.h.in
 network.buildinfo
+cabal.sandbox.config
