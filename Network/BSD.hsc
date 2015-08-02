@@ -159,11 +159,11 @@ instance Storable ServiceEntry where
                         serviceName     = s_name,
                         serviceAliases  = s_aliases,
 #if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
-                        servicePort     = PortNum (fromIntegral (s_port :: CShort)),
+                        servicePort     = (fromIntegral (s_port :: CShort)),
 #else
                            -- s_port is already in network byte order, but it
                            -- might be the wrong size.
-                        servicePort     = PortNum (fromIntegral (s_port :: CInt)),
+                        servicePort     = (fromIntegral (s_port :: CInt)),
 #endif
                         serviceProtocol = s_proto
                 })
@@ -187,7 +187,7 @@ foreign import CALLCONV unsafe "getservbyname"
 
 -- | Get the service given a 'PortNumber' and 'ProtocolName'.
 getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
-getServiceByPort (PortNum port) proto = withLock $ do
+getServiceByPort port proto = withLock $ do
  withCString proto $ \ cstr_proto -> do
  throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
    $ c_getservbyport (fromIntegral port) cstr_proto
