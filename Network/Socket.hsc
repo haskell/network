@@ -947,9 +947,8 @@ getPeerCred sock = do
 #ifdef HAVE_STRUCT_UCRED
   let fd = fdSocket sock
   let sz = (fromIntegral (#const sizeof(struct ucred)))
-  with sz $ \ ptr_cr ->
-   alloca       $ \ ptr_sz -> do
-     poke ptr_sz sz
+  allocaBytes sz $ \ ptr_cr ->
+   with (fromIntegral sz) $ \ ptr_sz -> do
      throwSocketErrorIfMinus1Retry "getPeerCred" $
        c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
      pid <- (#peek struct ucred, pid) ptr_cr
