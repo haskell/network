@@ -1570,11 +1570,12 @@ foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 #ifdef HAVE_ACCEPT4
 foreign import CALLCONV unsafe "accept4"
   c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+#else
+foreign import CALLCONV unsafe "accept"
+  c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 #endif
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
