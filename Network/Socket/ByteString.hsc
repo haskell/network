@@ -51,7 +51,7 @@ import Data.Word (Word8)
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr)
-import Network.Socket (SockAddr, Socket(..), sendBufTo, recvBufFrom)
+import Network.Socket (sendBufTo, recvBufFrom)
 
 import qualified Data.ByteString as B
 
