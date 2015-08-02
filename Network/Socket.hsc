@@ -952,7 +952,7 @@ getPeerCred sock = do
   with sz $ \ ptr_cr ->
    alloca       $ \ ptr_sz -> do
      poke ptr_sz sz
-     throwSocketErrorIfMinus1Retry "getPeerCred" $
+     _ <- ($) throwSocketErrorIfMinus1Retry "getPeerCred" $
        c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
      pid <- (#peek struct ucred, pid) ptr_cr
      uid <- (#peek struct ucred, uid) ptr_cr
@@ -988,7 +988,7 @@ closeFdWith closer fd = closer fd
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
-  throwSocketErrorWaitWrite sock "sendFd" $
+  _ <- ($) throwSocketErrorWaitWrite sock "sendFd" $
      c_sendFd (fdSocket sock) outfd
    -- Note: If Winsock supported FD-passing, thi would have been
    -- incorrect (since socket FDs need to be closed via closesocket().)
