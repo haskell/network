@@ -174,7 +174,7 @@ module Network.Socket
     ) where
 
 import Data.Bits
-import Data.List (delete, foldl')
+import Data.List (foldl')
 import Data.Maybe (isJust)
 import Data.Word (Word8, Word32)
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
@@ -190,7 +190,6 @@ import Foreign.Marshal.Utils ( maybeWith, with )
 import System.IO
 import Control.Monad (liftM, when)
 
-import qualified Control.Exception as E
 import Control.Concurrent.MVar
 import Data.Typeable
 import System.IO.Error
@@ -200,16 +199,19 @@ import GHC.Conc (threadWaitRead, threadWaitWrite)
 import GHC.Conc (closeFdWith)
 ##endif
 # if defined(mingw32_HOST_OS)
+import qualified Control.Exception as E
 import GHC.Conc (asyncDoProc)
+import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
 import Foreign (FunPtr)
+# endif
+# if defined(darwin_HOST_OS)
+import Data.List (delete)
 # endif
 import qualified GHC.IO.Device
 import GHC.IO.Handle.FD
 import GHC.IO.Exception
 import GHC.IO
 import qualified System.Posix.Internals
-
-import GHC.IO.FD
 
 import Network.Socket.Internal
 import Network.Socket.Types
