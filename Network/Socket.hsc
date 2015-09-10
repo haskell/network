@@ -305,8 +305,9 @@ instance Show SockAddr where
 -- and protocol number.  The address family is usually 'AF_INET',
 -- 'AF_INET6', or 'AF_UNIX'.  The socket type is usually 'Stream' or
 -- 'Datagram'.  The protocol number is usually 'defaultProtocol'.
--- If 'AF_INET6' is used, the 'IPv6Only' socket option is set to 0
--- so that both IPv4 and IPv6 can be handled with one socket.
+-- If 'AF_INET6' is used and the socket type is 'Stream' or 'Datagram',
+-- the 'IPv6Only' socket option is set to 0 so that both IPv4 and IPv6
+-- can be handled with one socket.
 socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
