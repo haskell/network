@@ -320,11 +320,18 @@ socket family stype protocol = do
     socket_status <- newMVar NotConnected
     withSocketsDo $ return ()
     let sock = MkSocket fd family stype protocol socket_status
-#if HAVE_DECL_IPV6_V6ONLY && !defined(mingw32_HOST_OS)
-    -- unsetting the IPv6Only option does not work with raw sockets or
-    -- versions of Windows earlier than Vista
+#if HAVE_DECL_IPV6_V6ONLY
+    -- The default value of the IPv6Only option is platform specific,
+    -- so we explicitly set it to 0 to provide a common default.
+# if defined(mingw32_HOST_OS)
+    -- The IPv6Only option is only supported on Windows Vista and later,
+    -- so trying to change it might throw an error.
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
-      setSocketOption sock IPv6Only 0
+      E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
+# else
+    when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
+      setSocketOption sock IPv6Only 0 `onException` sClose sock
+# endif
 #endif
     return sock
 
