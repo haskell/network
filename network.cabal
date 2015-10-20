@@ -1,8 +1,8 @@
 name:           network
-version:        2.6.2.1
+version:        2.6.2.2
 license:        BSD3
 license-file:   LICENSE
-maintainer:     Johan Tibell <johan.tibell@gmail.com>
+maintainer:     Kazu Yamamoto, Evan Borden
 synopsis:       Low-level networking interface
 description:
   This package provides a low-level networking interface.
