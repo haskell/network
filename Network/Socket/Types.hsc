@@ -739,6 +739,9 @@ newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
 instance Show PortNumber where
   showsPrec p pn = showsPrec p (portNumberToInt pn)
 
+instance Read PortNumber where
+  readsPrec n = map (\(x,y) -> (intToPortNumber x, y)) . readsPrec n
+
 intToPortNumber :: Int -> PortNumber
 intToPortNumber v = PortNum (htons (fromIntegral v))
 
