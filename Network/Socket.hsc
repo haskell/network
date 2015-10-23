@@ -1332,9 +1332,7 @@ defaultHints = AddrInfo {
 -- using Haskell's record update syntax on 'defaultHints', for example
 -- as follows:
 --
--- @
---   myHints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_CANONNAME] }
--- @
+-- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Stream }
 --
 -- Values for 'addrFlags' control query behaviour.  The supported
 -- flags are as follows:
@@ -1393,14 +1391,8 @@ defaultHints = AddrInfo {
 -- for @getaddrinfo@ in RFC 2553.  The 'AddrInfo' parameter comes first
 -- to make partial application easier.
 --
--- Example:
--- @
---   let hints = defaultHints { addrFlags = [AI_ADDRCONFIG, AI_CANONNAME] }
---   addrs <- getAddrInfo (Just hints) (Just "www.haskell.org") (Just "http")
---   let addr = head addrs
---   sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
---   connect sock (addrAddress addr)
--- @
+-- >>> getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
+-- [AddrInfo {addrFlags = [], addrFamily = AF_INET, addrSocketType = Stream, addrProtocol = 6, addrAddress = 127.0.0.1:80, addrCanonName = Nothing}]
 
 getAddrInfo :: Maybe AddrInfo -- ^ preferred socket type or protocol
             -> Maybe HostName -- ^ host name to look up
