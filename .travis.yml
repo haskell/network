@@ -19,6 +19,8 @@ matrix:
     - env: GHCVER=head CABALVER=1.22
       addons: {apt: {packages: [ghc-head,cabal-install-1.22], sources: [hvr-ghc]}}
   allow_failures:
+   - env: GHCVER=7.0.4 CABALVER=1.16
+   - env: GHCVER=7.4.2 CABALVER=1.16
    - env: GHCVER=head CABALVER=1.22
 
 # Note: the distinction between `before_install` and `install` is not
