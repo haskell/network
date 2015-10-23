@@ -1202,6 +1202,7 @@ unpackBits ((k,v):xs) r
 #if defined(IPV6_SOCKET_SUPPORT)
 
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
+--   For more information, see <https://tools.ietf.org/html/rfc3493#page-25>
 data AddrInfoFlag
     = AI_ADDRCONFIG
     | AI_ALL
