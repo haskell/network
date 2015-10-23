@@ -13,5 +13,6 @@ main = doctest [
   , "-optPdist/build/autogen/cabal_macros.h"
   , "-DCALLCONV=ccall"
   , "-XCPP"
+  , "-package network"
   , "Network"
   ]
