@@ -1203,13 +1203,36 @@ unpackBits ((k,v):xs) r
 
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
 --   For more information, see <https://tools.ietf.org/html/rfc3493#page-25>
-data AddrInfoFlag
-    = AI_ADDRCONFIG
+data AddrInfoFlag =
+    -- | The list of returned 'AddrInfo' values will
+    --   only contain IPv4 addresses if the local system has at least
+    --   one IPv4 interface configured, and likewise for IPv6.
+    --   (Only some platforms support this.)
+      AI_ADDRCONFIG
+    -- | If 'AI_ALL' is specified, return all matching IPv6 and
+    --   IPv4 addresses.  Otherwise, this flag has no effect.
+    --   (Only some platforms support this.)
     | AI_ALL
+    -- | The 'addrCanonName' field of the first returned
+    --   'AddrInfo' will contain the "canonical name" of the host.
     | AI_CANONNAME
+    -- | The 'HostName' argument /must/ be a numeric
+    --   address in string form, and network name lookups will not be
+    --   attempted.
     | AI_NUMERICHOST
+    -- | The 'ServiceName' argument /must/ be a port
+    --   number in string form, and service name lookups will not be
+    --   attempted. (Only some platforms support this.)
     | AI_NUMERICSERV
+    -- | If no 'HostName' value is provided, the network
+    --   address in each 'SockAddr'
+    --   will be left as a "wild card", i.e. as either 'iNADDR_ANY'
+    --   or 'iN6ADDR_ANY'.  This is useful for server applications that
+    --   will accept connections from any client.
     | AI_PASSIVE
+    -- | If an IPv6 lookup is performed, and no IPv6
+    --   addresses are found, IPv6-mapped IPv4 addresses will be
+    --   returned. (Only some platforms support this.)
     | AI_V4MAPPED
     deriving (Eq, Read, Show, Typeable)
 
@@ -1369,42 +1392,6 @@ defaultHints = AddrInfo {
 -- as follows:
 --
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Stream }
---
--- Values for 'addrFlags' control query behaviour.  The supported
--- flags are as follows:
---
---   [@AI_PASSIVE@] If no 'HostName' value is provided, the network
---     address in each 'SockAddr'
---     will be left as a "wild card", i.e. as either 'iNADDR_ANY'
---     or 'iN6ADDR_ANY'.  This is useful for server applications that
---     will accept connections from any client.
---
---   [@AI_CANONNAME@] The 'addrCanonName' field of the first returned
---     'AddrInfo' will contain the "canonical name" of the host.
---
---   [@AI_NUMERICHOST@] The 'HostName' argument /must/ be a numeric
---     address in string form, and network name lookups will not be
---     attempted.
---
--- /Note/: Although the following flags are required by RFC 3493, they
--- may not have an effect on all platforms, because the underlying
--- network stack may not support them.  To see whether a flag from the
--- list below will have any effect, call 'addrInfoFlagImplemented'.
---
---   [@AI_NUMERICSERV@] The 'ServiceName' argument /must/ be a port
---     number in string form, and service name lookups will not be
---     attempted.
---
---   [@AI_ADDRCONFIG@] The list of returned 'AddrInfo' values will
---     only contain IPv4 addresses if the local system has at least
---     one IPv4 interface configured, and likewise for IPv6.
---
---   [@AI_V4MAPPED@] If an IPv6 lookup is performed, and no IPv6
---     addresses are found, IPv6-mapped IPv4 addresses will be
---     returned.
---
---   [@AI_ALL@] If 'AI_ALL' is specified, return all matching IPv6 and
---     IPv4 addresses.  Otherwise, this flag has no effect.
 --
 -- You must provide a 'Just' value for at least one of the 'HostName'
 -- or 'ServiceName' arguments.  'HostName' can be either a numeric
