@@ -308,6 +308,17 @@ instance Show SockAddr where
 -- If 'AF_INET6' is used and the socket type is 'Stream' or 'Datagram',
 -- the 'IPv6Only' socket option is set to 0 so that both IPv4 and IPv6
 -- can be handled with one socket.
+--
+-- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
+-- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
+-- >>> sock@(MkSocket _ fam stype _ _) <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+-- >>> fam
+-- AF_INET
+-- >>> stype
+-- Stream
+-- >>> bind sock (addrAddress addr)
+-- >>> getSocketName sock
+-- 127.0.0.1:5000
 socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
