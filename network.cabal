@@ -107,6 +107,17 @@ test-suite regression
 
   ghc-options: -Wall
 
+test-suite doctest
+  hs-source-dirs: tests
+  main-is: doctests.hs
+  type: exitcode-stdio-1.0
+
+  build-depends:
+    base < 5,
+    doctest >= 0.10.1
+
+  ghc-options: -Wall
+
 source-repository head
   type:     git
   location: git://github.com/haskell/network.git
