@@ -729,6 +729,9 @@ unpackFamily f = case f of
 -- @PortNumber@ value with the correct network-byte-ordering. You
 -- should not use the PortNum constructor. It will be removed in the
 -- next release.
+--
+-- >>> read "1" :: PortNumber
+-- 1
 newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
 -- newtyped to prevent accidental use of sane-looking
 -- port numbers that haven't actually been converted to
