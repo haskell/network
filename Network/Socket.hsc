@@ -1318,9 +1318,17 @@ niFlagMapping = [(NI_DGRAM, #const NI_DGRAM),
 -- | Default hints for address lookup with 'getAddrInfo'.  The values
 -- of the 'addrAddress' and 'addrCanonName' fields are 'undefined',
 -- and are never inspected by 'getAddrInfo'.
+--
+-- >>> addrFlags defaultHints
+-- []
+-- >>> addrFamily defaultHints
+-- AF_UNSPEC
+-- >>> addrSocketType defaultHints
+-- NoSocketType
+-- >>> addrProtocol defaultHints
+-- 0
 
 defaultHints :: AddrInfo
-
 defaultHints = AddrInfo {
                          addrFlags = [],
                          addrFamily = AF_UNSPEC,
