@@ -730,6 +730,8 @@ unpackFamily f = case f of
 -- should not use the PortNum constructor. It will be removed in the
 -- next release.
 --
+-- >>> 1 :: PortNumber
+-- 1
 -- >>> read "1" :: PortNumber
 -- 1
 newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
