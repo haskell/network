@@ -1411,8 +1411,9 @@ defaultHints = AddrInfo {
 -- for @getaddrinfo@ in RFC 2553.  The 'AddrInfo' parameter comes first
 -- to make partial application easier.
 --
--- >>> getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
--- [AddrInfo {addrFlags = [], addrFamily = AF_INET, addrSocketType = Stream, addrProtocol = 6, addrAddress = 127.0.0.1:80, addrCanonName = Nothing}]
+-- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
+-- >>> addrAddress addr
+-- 127.0.0.1:80
 
 getAddrInfo :: Maybe AddrInfo -- ^ preferred socket type or protocol
             -> Maybe HostName -- ^ host name to look up
