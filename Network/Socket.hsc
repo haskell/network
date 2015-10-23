@@ -1300,11 +1300,27 @@ instance Storable AddrInfo where
         (#poke struct addrinfo, ai_canonname) p nullPtr
         (#poke struct addrinfo, ai_next) p nullPtr
 
-data NameInfoFlag
-    = NI_DGRAM
+-- | Flags that control the querying behaviour of 'getNameInfo'.
+--   For more information, see <https://tools.ietf.org/html/rfc3493#page-30>
+data NameInfoFlag =
+    -- | Resolve a datagram-based service name.  This is
+    --   required only for the few protocols that have different port
+    --   numbers for their datagram-based versions than for their
+    --   stream-based versions.
+      NI_DGRAM
+    -- | If the hostname cannot be looked up, an IO error is thrown.
     | NI_NAMEREQD
+    -- | If a host is local, return only the hostname part of the FQDN.
     | NI_NOFQDN
+    -- | The name of the host is not looked up.
+    --   Instead, a numeric representation of the host's
+    --   address is returned.  For an IPv4 address, this will be a
+    --   dotted-quad string.  For IPv6, it will be colon-separated
+    --   hexadecimal.
     | NI_NUMERICHOST
+    -- | The name of the service is not
+    --   looked up.  Instead, a numeric representation of the
+    --   service is returned.
     | NI_NUMERICSERV
     deriving (Eq, Read, Show, Typeable)
 
@@ -1479,35 +1495,7 @@ withCStringIf True n f = allocaBytes n (f (fromIntegral n))
 
 -- | Resolve an address to a host or service name.
 -- This function is protocol independent.
---
--- The list of 'NameInfoFlag' values controls query behaviour.  The
--- supported flags are as follows:
---
---   [@NI_NOFQDN@] If a host is local, return only the
---     hostname part of the FQDN.
---
---   [@NI_NUMERICHOST@] The name of the host is not
---     looked up.  Instead, a numeric representation of the host's
---     address is returned.  For an IPv4 address, this will be a
---     dotted-quad string.  For IPv6, it will be colon-separated
---     hexadecimal.
---
---   [@NI_NUMERICSERV@] The name of the service is not
---     looked up.  Instead, a numeric representation of the
---     service is returned.
---
---   [@NI_NAMEREQD@] If the hostname cannot be looked up, an IO error
---     is thrown.
---
---   [@NI_DGRAM@] Resolve a datagram-based service name.  This is
---     required only for the few protocols that have different port
---     numbers for their datagram-based versions than for their
---     stream-based versions.
---
--- Hostname and service name lookups can be expensive.  You can
--- specify which lookups to perform via the two 'Bool' arguments.  If
--- one of these is 'False', the corresponding value in the returned
--- tuple will be 'Nothing', and no lookup will be performed.
+-- The list of 'NameInfoFlag' values controls query behaviour.
 --
 -- If a host or service's name cannot be looked up, then the numeric
 -- form of the address or service will be returned.
