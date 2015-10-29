@@ -93,19 +93,21 @@ module Network.Socket
     , socketToHandle
 
     -- ** Sending and receiving data
+    -- *** Sending and receiving with String
     -- $sendrecv
-    , sendTo
-    , sendBufTo
-
-    , recvFrom
-    , recvBufFrom
-
     , send
+    , sendTo
     , recv
+    , recvFrom
     , recvLen
+
+    -- *** Sending and receiving with a buffer
     , sendBuf
     , recvBuf
+    , sendBufTo
+    , recvBufFrom
 
+    -- ** Misc
     , inet_addr
     , inet_ntoa
 
