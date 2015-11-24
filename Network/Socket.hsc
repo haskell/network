@@ -93,19 +93,21 @@ module Network.Socket
     , socketToHandle
 
     -- ** Sending and receiving data
+    -- *** Sending and receiving with String
     -- $sendrecv
-    , sendTo
-    , sendBufTo
-
-    , recvFrom
-    , recvBufFrom
-
     , send
+    , sendTo
     , recv
+    , recvFrom
     , recvLen
+
+    -- *** Sending and receiving with a buffer
     , sendBuf
     , recvBuf
+    , sendBufTo
+    , recvBufFrom
 
+    -- ** Misc
     , inet_addr
     , inet_ntoa
 
@@ -537,11 +539,11 @@ foreign import ccall unsafe "free"
 
 -- $sendrecv
 --
--- Do not use the @send@ and @recv@ functions defined in this module
+-- Do not use the @send@ and @recv@ functions defined in this section
 -- in new code, as they incorrectly represent binary data as a Unicode
 -- string.  As a result, these functions are inefficient and may lead
 -- to bugs in the program.  Instead use the @send@ and @recv@
--- functions defined in the 'Network.Socket.ByteString' module.
+-- functions defined in the "Network.Socket.ByteString" module.
 
 -----------------------------------------------------------------------------
 -- sendTo & recvFrom
