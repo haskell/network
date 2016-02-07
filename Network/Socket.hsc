@@ -632,6 +632,8 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
 -- responsible for ensuring that all data has been sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
@@ -653,6 +655,8 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
 -- responsible for ensuring that all data has been sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendBuf :: Socket     -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
@@ -683,6 +687,8 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
 --
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
+--
+-- Receiving data from closed socket may lead to undefined behaviour.
 recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
@@ -717,6 +723,8 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
 --
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
+--
+-- Receiving data from closed socket may lead to undefined behaviour.
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBuf sock p l = recvLenBuf sock p l
 
@@ -1083,9 +1091,8 @@ shutdown (MkSocket s _ _ _ _) stype = do
 
 -- -----------------------------------------------------------------------------
 
--- | Close the socket.  All future operations on the socket object
--- will fail.  The remote end will receive no more data (after queued
--- data is flushed).
+-- | Close the socket. Sending data to or receiving data from closed socket
+-- may lead to undefined behaviour.
 close :: Socket -> IO ()
 close (MkSocket s _ _ _ socketStatus) = do
  modifyMVar_ socketStatus $ \ status ->
