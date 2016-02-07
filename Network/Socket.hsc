@@ -92,6 +92,8 @@ module Network.Socket
 
     , socketToHandle
 
+    , SocketClosed(..)
+
     -- ** Sending and receiving data
     -- *** Sending and receiving with String
     -- $sendrecv
@@ -635,7 +637,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
-send sock@(MkSocket s _family _stype _protocol _status) xs = do
+send sock@(MkSocket s _family _stype _protocol statusVar) xs = do
  withCStringLen xs $ \(str, len) -> do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
@@ -647,7 +649,10 @@ send sock@(MkSocket s _family _stype _protocol _status) xs = do
       (fromIntegral len)
 #else
      throwSocketErrorWaitWrite sock "send" $
-        c_send s str (fromIntegral len) 0{-flags-}
+        withMVar statusVar $ \status -> do
+           when (status == Closed) $
+              throwIO SocketClosed
+           c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -657,7 +662,7 @@ sendBuf :: Socket     -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
+sendBuf sock@(MkSocket s _family _stype _protocol statusVar) str len = do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
     writeRawBufferPtr
@@ -668,7 +673,10 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
       (fromIntegral len)
 #else
      throwSocketErrorWaitWrite sock "sendBuf" $
-        c_send s str (fromIntegral len) 0{-flags-}
+        withMVar statusVar $ \status -> do
+           when (status == Closed) $
+              throwIO SocketClosed
+           c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
 
@@ -687,7 +695,7 @@ recv :: Socket -> Int -> IO String
 recv sock l = recvLen sock l >>= \ (s,_) -> return s
 
 recvLen :: Socket -> Int -> IO (String, Int)
-recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
+recvLen sock@(MkSocket s _family _stype _protocol statusVar) nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
  | otherwise   = do
      allocaBytes nbytes $ \ptr -> do
@@ -697,7 +705,10 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
                  (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead sock "recv" $
-                   c_recv s ptr (fromIntegral nbytes) 0{-flags-}
+                 withMVar statusVar $ \status -> do
+                    when (status == Closed) $
+                       throwIO SocketClosed
+                    c_recv s ptr (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0
@@ -721,7 +732,7 @@ recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBuf sock p l = recvLenBuf sock p l
 
 recvLenBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
+recvLenBuf sock@(MkSocket s _family _stype _protocol statusVar) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
         len <-
@@ -730,7 +741,10 @@ recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
                  (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead sock "recvBuf" $
-                   c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+                  withMVar statusVar $ \status -> do
+                     when (status == Closed) $
+                        throwIO SocketClosed
+                     c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0

@@ -49,6 +49,7 @@ module Network.Socket.Types
     -- * Unsorted
     , ProtocolNumber
     , PortNumber(..)
+    , SocketClosed (..)
 
     -- * Low-level helpers
     , zeroMemory
@@ -56,6 +57,7 @@ module Network.Socket.Types
 
 import Control.Concurrent.MVar
 import Control.Monad
+import Control.Exception (Exception)
 import Data.Bits
 import Data.Maybe
 import Data.Ratio
@@ -125,6 +127,12 @@ data SocketStatus
   | ConvertedToHandle   -- ^ Is now a 'Handle' (via 'socketToHandle'), don't touch
   | Closed              -- ^ Closed was closed by 'close'
     deriving (Eq, Show, Typeable)
+
+-- | Exception thrown when reading from or writing to closed socket
+data SocketClosed = SocketClosed
+   deriving (Show, Eq, Typeable)
+
+instance Exception SocketClosed
 
 -----------------------------------------------------------------------------
 -- Socket types

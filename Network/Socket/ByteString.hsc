@@ -44,6 +44,8 @@ module Network.Socket.ByteString
     ) where
 
 import Control.Monad (liftM, when)
+import Control.Concurrent.MVar
+import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
@@ -91,7 +93,7 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send sock@(MkSocket s _ _ _ _) xs =
+send sock@(MkSocket s _ _ _ statusVar) xs =
     unsafeUseAsCStringLen xs $ \(str, len) ->
     liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
@@ -99,7 +101,10 @@ send sock@(MkSocket s _ _ _ _) xs =
         (FD s 1) (castPtr str) 0 (fromIntegral len)
 #else
         throwSocketErrorWaitWrite sock "send" $
-        c_send s str (fromIntegral len) 0
+           withMVar statusVar $ \status -> do
+              when (status == Closed) $
+                 throwIO SocketClosed
+              c_send s str (fromIntegral len) 0
 #endif
 
 -- | Send data to the socket.  The socket must be connected to a
@@ -171,15 +176,18 @@ sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendMany sock@(MkSocket fd _ _ _ _) cs = do
+sendMany sock@(MkSocket fd _ _ _ statusVar) cs = do
     sent <- sendManyInner
     when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
   where
     sendManyInner =
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
           throwSocketErrorWaitWrite sock "writev" $
-              c_writev (fromIntegral fd) iovsPtr
-              (fromIntegral (min iovsLen (#const IOV_MAX)))
+              withMVar statusVar $ \status -> do
+                 when (status == Closed) $
+                    throwIO SocketClosed
+                 c_writev (fromIntegral fd) iovsPtr
+                    (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
 sendMany sock = sendAll sock . B.concat
 #endif
@@ -195,7 +203,7 @@ sendManyTo :: Socket        -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
+sendManyTo sock@(MkSocket fd _ _ _ statusVar) cs addr = do
     sent <- liftM fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
@@ -207,7 +215,10 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
             throwSocketErrorWaitWrite sock "sendmsg" $
-              c_sendmsg (fromIntegral fd) msgHdrPtr 0
+              withMVar statusVar $ \status -> do
+                 when (status == Closed) $
+                    throwIO SocketClosed
+                 c_sendmsg (fromIntegral fd) msgHdrPtr 0
 #else
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
 #endif
@@ -240,10 +251,14 @@ recvInner sock nbytes ptr =
         readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
 #else
         throwSocketErrorWaitRead sock "recv" $
-        c_recv s (castPtr ptr) (fromIntegral nbytes) 0
+           withMVar statusVar $ \status -> do
+              when (status == Closed) $
+                 throwIO SocketClosed
+              c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
   where
     s = sockFd sock
+    statusVar = sockStatus sock
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a

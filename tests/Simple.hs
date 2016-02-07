@@ -5,7 +5,7 @@ module Main where
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, readMVar)
 import qualified Control.Exception as E
-import Control.Monad (liftM, when)
+import Control.Monad (liftM, when, void)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Data.Maybe (fromJust)
@@ -92,10 +92,30 @@ testSendManyTo = udpTest client server
     seg1 = C.pack "This is a "
     seg2 = C.pack "test message."
 
+-- send to closed socket should fail
+testSendClosed :: Assertion
+testSendClosed = tcpTest client server
+  where
+    server sock = recv sock 1024
+    client sock = do
+        close sock
+        void (send sock testMsg)
+            `E.catch` \SocketClosed -> return ()
+
 testRecv :: Assertion
 testRecv = tcpTest client server
   where
     server sock = recv sock 1024 >>= (@=?) testMsg
+    client sock = send sock testMsg
+
+-- recv from closed socket should fail
+testRecvClosed :: Assertion
+testRecvClosed = tcpTest client server
+  where
+    server sock = do
+        close sock
+        void (recv sock 1024)
+          `E.catch` \SocketClosed -> return ()
     client sock = send sock testMsg
 
 testOverFlowRecv :: Assertion
@@ -238,12 +258,14 @@ basicTests = testGroup "Basic socket operations"
     [
       -- Sending and receiving
       testCase "testSend" testSend
+    , testCase "testSendClosed" testSendClosed
     , testCase "testSendAll" testSendAll
     , testCase "testSendTo" testSendTo
     , testCase "testSendAllTo" testSendAllTo
     , testCase "testSendMany" testSendMany
     , testCase "testSendManyTo" testSendManyTo
     , testCase "testRecv" testRecv
+    , testCase "testRecvClose" testRecvClosed
     , testCase "testOverFlowRecv" testOverFlowRecv
     , testCase "testRecvFrom" testRecvFrom
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
