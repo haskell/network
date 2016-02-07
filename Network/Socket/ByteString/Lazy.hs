@@ -77,6 +77,8 @@ getContents sock = loop where
 -- until a message arrives.
 --
 -- If there is no more data to be received, returns an empty 'ByteString'.
+--
+-- Receiving data from closed socket may lead to undefined behaviour.
 recv :: Socket         -- ^ Connected socket
      -> Int64          -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
