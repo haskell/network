@@ -301,6 +301,7 @@ data Family
     | AF_WANPIPE          -- Wanpipe API sockets
     | AF_BLUETOOTH        -- bluetooth sockets
     | AF_CAN              -- Controller Area Network
+    | AF_NETLINK          -- Linux Netlink
       deriving (Eq, Ord, Read, Show)
 
 packFamily :: Family -> CInt
@@ -515,6 +516,9 @@ packFamily' f = case Just f of
 #ifdef AF_CAN
     Just AF_CAN -> Just #const AF_CAN
 #endif
+#ifdef AF_NETLINK
+    Just AF_NETLINK -> Just #const AF_NETLINK
+#endif
     _ -> Nothing
 
 --------- ----------
@@ -719,6 +723,9 @@ unpackFamily f = case f of
 #ifdef AF_CAN
         (#const AF_CAN) -> AF_CAN
 #endif
+#ifdef AF_NETLINK
+        (#const AF_NETLINK) -> AF_NETLINK
+#endif
         unknown -> error ("Network.Socket.unpackFamily: unknown address " ++
                           "family " ++ show unknown)
 
@@ -827,6 +834,9 @@ data SockAddr       -- C Names
   | SockAddrCan
         Int32           -- can_ifindex (can be get by Network.BSD.ifNameToIndex "can0")
         -- TODO: Extend this to include transport protocol information
+  | SockAddrNetlink
+        Int32  -- pid
+        Int32  -- multicast groups
   deriving (Eq, Ord, Typeable)
 
 -- | Is the socket address type supported on this system?
@@ -841,6 +851,9 @@ isSupportedSockAddr addr = case addr of
 #endif
 #if defined(CAN_SOCKET_SUPPORT)
   SockAddrCan{} -> True
+#endif
+#if defined(NETLINK_SOCKET_SUPPORT)
+  SockAddrNetlink {} -> True
 #endif
 #if !(defined(IPV6_SOCKET_SUPPORT) \
       && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
@@ -872,6 +885,9 @@ sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrCan _) = #const sizeof(struct sockaddr_can)
 #endif
+#if defined(NETLINK_SOCKET_SUPPORT)
+sizeOfSockAddr (SockAddrNetlink _ _) = #const sizeof(struct sockaddr_nl)
+#endif
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -885,6 +901,9 @@ sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
 sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
 #if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddrByFamily AF_CAN   = #const sizeof(struct sockaddr_can)
+#endif
+#if defined(NETLINK_SOCKET_SUPPORT)
+sizeOfSockAddrByFamily AF_NETLINK = #const sizeof(struct sockaddr_nl)
 #endif
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
@@ -954,6 +973,12 @@ pokeSockAddr p (SockAddrCan ifIndex) = do
 #endif
     (#poke struct sockaddr_can, can_ifindex) p ifIndex
 #endif
+#if defined(NETLINK_SOCKET_SUPPORT)
+pokeSockAddr p (SockAddrNetlink pid multicastgroup) = do
+    (#poke struct sockaddr_nl, nl_family) p ((#const AF_NETLINK) :: CSaFamily)
+    (#poke struct sockaddr_nl, nl_pid) p pid
+    (#poke struct sockaddr_nl, nl_groups) p multicastgroup
+#endif
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
@@ -981,6 +1006,12 @@ peekSockAddr p = do
     (#const AF_CAN) -> do
         ifidx <- (#peek struct sockaddr_can, can_ifindex) p
         return (SockAddrCan ifidx)
+#endif
+#if defined(NETLINK_SOCKET_SUPPORT)
+    (#const AF_NETLINK) -> do
+        pid <- (#peek struct sockaddr_nl, nl_pid) p
+        multicastgroup <- (#peek struct sockaddr_nl, nl_groups) p
+        return (SockAddrNetlink pid multicastgroup)
 #endif
 
 ------------------------------------------------------------------------
