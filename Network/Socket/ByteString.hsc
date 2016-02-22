@@ -34,6 +34,7 @@ module Network.Socket.ByteString
     -- $vectored
     , sendMany
     , sendManyTo
+    , recvManyFrom
 
     -- * Receive data from a socket
     , recv
@@ -50,7 +51,7 @@ import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (Ptr, castPtr)
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Network.Socket (sendBufTo, recvBufFrom)
 
 import qualified Data.ByteString as B
@@ -210,6 +211,26 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
               c_sendmsg (fromIntegral fd) msgHdrPtr 0
 #else
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
+#endif
+
+-- | Receive data from the socket.  The socket need not be in a
+-- connected state.  Returns @(bytes, address)@ where @bytes@ is a
+-- 'ByteString' representing the data received and @address@ is a
+-- 'SockAddr' representing the address of the sending socket.
+recvManyFrom :: Socket        -- ^ Socket
+           -> Int                        -- ^ Maximum number of bytes to receive
+           -> IO (ByteString)  -- ^ Data received and sender address
+#if !defined(mingw32_HOST_OS)
+recvManyFrom sock@(MkSocket fd _ _ _ _) nbytes = do
+    createAndTrim nbytes $ \ptr ->
+      with (IOVec (castPtr ptr) (fromIntegral nbytes)) $ \iovPtr ->
+        with (MsgHdr nullPtr (fromIntegral 0) iovPtr (fromIntegral 1)) $ \msg ->
+            fmap fromIntegral . throwSocketErrorIfMinus1Retry "recvmsg" $ do
+                  c_recvmsg fd (msg) (0::CInt)
+#else
+recvManyFrom sock n = do
+        (bs, sa) <- recvFrom sock n
+        return bs
 #endif
 
 -- ----------------------------------------------------------------------------
