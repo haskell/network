@@ -100,6 +100,16 @@ extern int   acceptDoProc(void* param);
 # include <net/if.h>
 #endif
 
+#ifdef HAVE_LINUX_NETLINK_H
+#  ifdef HAVE_LINUX_RTNETLINK_H
+#    include <linux/netlink.h>
+#    include <linux/rtnetlink.h>
+#    ifdef AF_NETLINK
+#       define NETLINK_SOCKET_SUPPORT 1
+#    endif
+#  endif
+#endif
+
 #ifdef HAVE_BSD_SENDFILE
 #include <sys/uio.h>
 #endif
