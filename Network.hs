@@ -64,7 +64,7 @@ import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
 import Network.Socket hiding (accept, socketPort, recvFrom,
-                              sendTo, PortNumber, sClose)
+                              sendTo, PortNumber)
 import qualified Network.Socket as Socket (accept)
 import System.IO
 import Prelude
