@@ -163,13 +163,6 @@ module Network.Socket
 
     -- * Deprecated aliases
     -- $deprecated-aliases
-    , bindSocket
-    , sClose
-    , sIsConnected
-    , sIsBound
-    , sIsListening
-    , sIsReadable
-    , sIsWritable
 
     -- * Internal
 
@@ -1613,48 +1606,6 @@ foreign import CALLCONV unsafe "getpeereid"
 -- $deprecated-aliases
 --
 -- These aliases are deprecated and should not be used in new code.
--- They will be removed in some future version of the package.
+-- There are currently none.
 
-{-# DEPRECATED bindSocket "use 'bind'" #-}
 
--- | Deprecated alias for 'bind'.
-bindSocket :: Socket    -- Unconnected Socket
-           -> SockAddr  -- Address to Bind to
-           -> IO ()
-bindSocket = bind
-
-{-# DEPRECATED sClose "use 'close'" #-}
-
--- | Deprecated alias for 'close'.
-sClose :: Socket -> IO ()
-sClose = close
-
-{-# DEPRECATED sIsConnected "use 'isConnected'" #-}
-
--- | Deprecated alias for 'isConnected'.
-sIsConnected :: Socket -> IO Bool
-sIsConnected = isConnected
-
-{-# DEPRECATED sIsBound "use 'isBound'" #-}
-
--- | Deprecated alias for 'isBound'.
-sIsBound :: Socket -> IO Bool
-sIsBound = isBound
-
-{-# DEPRECATED sIsListening "use 'isListening'" #-}
-
--- | Deprecated alias for 'isListening'.
-sIsListening :: Socket -> IO Bool
-sIsListening = isListening
-
-{-# DEPRECATED sIsReadable "use 'isReadable'" #-}
-
--- | Deprecated alias for 'isReadable'.
-sIsReadable  :: Socket -> IO Bool
-sIsReadable = isReadable
-
-{-# DEPRECATED sIsWritable "use 'isWritable'" #-}
-
--- | Deprecated alias for 'isWritable'.
-sIsWritable  :: Socket -> IO Bool
-sIsWritable = isWritable
