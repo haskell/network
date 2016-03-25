@@ -349,7 +349,7 @@ socket family stype protocol = do
       E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
 # else
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
-      setSocketOption sock IPv6Only 0 `onException` sClose sock
+      setSocketOption sock IPv6Only 0 `onException` close sock
 # endif
 #endif
     return sock
