@@ -43,15 +43,13 @@ module Network.Socket.ByteString
     -- $example
     ) where
 
-import Control.Monad (liftM, when)
+import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Data.Word (Word8)
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (Ptr, castPtr)
-import Network.Socket (sendBufTo, recvBufFrom)
+import Foreign.Ptr (castPtr)
+import Network.Socket (sendBuf, sendBufTo, recvBuf, recvBufFrom)
 
 import qualified Data.ByteString as B
 
@@ -60,19 +58,16 @@ import Network.Socket.Internal
 import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
-import Control.Monad (zipWithM_)
-import Foreign.C.Types (CChar)
-import Foreign.C.Types (CSize(..))
+import Control.Monad (liftM, zipWithM_)
+import Foreign.C.Types (CChar, CSize(..), CInt(..))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (plusPtr)
+import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.Storable (Storable(..))
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
-#else
-import GHC.IO.FD
 #endif
 
 #if !defined(mingw32_HOST_OS)
@@ -91,16 +86,8 @@ foreign import CALLCONV unsafe "recv"
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send sock@(MkSocket s _ _ _ _) xs =
-    unsafeUseAsCStringLen xs $ \(str, len) ->
-    liftM fromIntegral $
-#if defined(mingw32_HOST_OS)
-        writeRawBufferPtr "Network.Socket.ByteString.send"
-        (FD s 1) (castPtr str) 0 (fromIntegral len)
-#else
-        throwSocketErrorWaitWrite sock "send" $
-        c_send s str (fromIntegral len) 0
-#endif
+send sock xs = unsafeUseAsCStringLen xs $ \(str, len) ->
+    sendBuf sock (castPtr str) len
 
 -- | Send data to the socket.  The socket must be connected to a
 -- remote socket.  Unlike 'send', this function continues to send data
@@ -231,19 +218,8 @@ recv :: Socket         -- ^ Connected socket
      -> IO ByteString  -- ^ Data received
 recv sock nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ recvInner sock nbytes
-
-recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
-recvInner sock nbytes ptr =
-    fmap fromIntegral $
-#if defined(mingw32_HOST_OS)
-        readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
-#else
-        throwSocketErrorWaitRead sock "recv" $
-        c_recv s (castPtr ptr) (fromIntegral nbytes) 0
-#endif
-  where
-    s = sockFd sock
+    | otherwise  = createAndTrim nbytes $ \ptr ->
+        recvBuf sock ptr nbytes
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
