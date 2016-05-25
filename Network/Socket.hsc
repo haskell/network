@@ -176,6 +176,7 @@ module Network.Socket
     ) where
 
 import Data.Bits
+import Data.Functor ((<$>))
 import Data.List (foldl')
 import Data.Maybe (isJust)
 import Data.Word (Word8, Word32)
@@ -635,20 +636,8 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
-send sock@(MkSocket s _family _stype _protocol _status) xs = do
- withCStringLen xs $ \(str, len) -> do
-   liftM fromIntegral $
-#if defined(mingw32_HOST_OS)
-    writeRawBufferPtr
-      "Network.Socket.send"
-      (socket2FD sock)
-      (castPtr str)
-      0
-      (fromIntegral len)
-#else
-     throwSocketErrorWaitWrite sock "send" $
-        c_send s str (fromIntegral len) 0{-flags-}
-#endif
+send sock xs = withCStringLen xs $ \(str, len) ->
+    sendBuf sock (castPtr str) len
 
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
@@ -684,27 +673,14 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
 recv :: Socket -> Int -> IO String
-recv sock l = recvLen sock l >>= \ (s,_) -> return s
+recv sock l = fst <$> recvLen sock l
 
 recvLen :: Socket -> Int -> IO (String, Int)
-recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
- | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recv")
- | otherwise   = do
+recvLen sock nbytes =
      allocaBytes nbytes $ \ptr -> do
-        len <-
-#if defined(mingw32_HOST_OS)
-          readRawBufferPtr "Network.Socket.recvLen" (socket2FD sock) ptr 0
-                 (fromIntegral nbytes)
-#else
-               throwSocketErrorWaitRead sock "recv" $
-                   c_recv s ptr (fromIntegral nbytes) 0{-flags-}
-#endif
-        let len' = fromIntegral len
-        if len' == 0
-         then ioError (mkEOFError "Network.Socket.recv")
-         else do
-           s' <- peekCStringLen (castPtr ptr,len')
-           return (s', len')
+        len <- recvBuf sock ptr nbytes
+        s <- peekCStringLen (castPtr ptr,len)
+        return (s, len)
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -718,15 +694,12 @@ recvLen sock@(MkSocket s _family _stype _protocol _status) nbytes
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBuf sock p l = recvLenBuf sock p l
-
-recvLenBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvLenBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
+recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
         len <-
 #if defined(mingw32_HOST_OS)
-          readRawBufferPtr "Network.Socket.recvLenBuf" (socket2FD sock) ptr 0
+          readRawBufferPtr "Network.Socket.recvBuf" (socket2FD sock) ptr 0
                  (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead sock "recvBuf" $
