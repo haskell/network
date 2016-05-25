@@ -105,8 +105,8 @@ test-suite regression
     network,
     test-framework,
     test-framework-hunit
-
-  ghc-options: -Wall
+  -- Some of the bugs only occur in the threaded RTS
+  ghc-options: -Wall -threaded
 
 test-suite doctest
   hs-source-dirs: tests
