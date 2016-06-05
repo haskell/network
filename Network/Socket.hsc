@@ -424,7 +424,7 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocke
            r <- c_connect s p_addr (fromIntegral sz)
            if r == -1
                then do
-#if !(defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS))
+#if !(defined(HAVE_WINSOCK2_H))
                    err <- getErrno
                    case () of
                      _ | err == eINTR       -> connectLoop

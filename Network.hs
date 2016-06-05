@@ -80,7 +80,7 @@ import qualified Control.Exception as Exception
 data PortID =
           Service String                -- Service Name eg "ftp"
         | PortNumber PortNumber         -- User defined Port Number
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
         | UnixSocket String             -- Unix family socket in file system
 #endif
         deriving (Show, Eq)
@@ -127,7 +127,7 @@ connectTo hostname (PortNumber port) = do
         )
 #endif
 
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
 connectTo _ (UnixSocket path) = do
     bracketOnError
         (socket AF_UNIX Stream 0)
@@ -213,7 +213,7 @@ listenOn (PortNumber port) = do
         )
 #endif
 
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
 listenOn (UnixSocket path) =
     bracketOnError
         (socket AF_UNIX Stream 0)
@@ -289,7 +289,7 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
          \_ -> case addr of
                  SockAddrInet  _   a   -> inet_ntoa a
                  SockAddrInet6 _ _ a _ -> return (show a)
-# if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+# if !defined(mingw32_HOST_OS)
                  SockAddrUnix      a   -> return a
 # endif
  handle <- socketToHandle sock' ReadWriteMode
@@ -299,7 +299,7 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
               _                     -> -1
  return (handle, peer, port)
 #endif
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
 accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  ~(sock', (SockAddrUnix path)) <- Socket.accept sock
  handle <- socketToHandle sock' ReadWriteMode
@@ -400,7 +400,7 @@ socketPort s = do
 #if defined(IPV6_SOCKET_SUPPORT)
      SockAddrInet6 port _ _ _ -> PortNumber port
 #endif
-#if !defined(mingw32_HOST_OS) && !defined(cygwin32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
      SockAddrUnix path        -> UnixSocket path
 #endif
 

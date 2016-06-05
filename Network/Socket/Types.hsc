@@ -847,7 +847,7 @@ isSupportedSockAddr addr = case addr of
   _ -> False
 #endif
 
-#if defined(WITH_WINSOCK) || defined(cygwin32_HOST_OS)
+#if defined(WITH_WINSOCK)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_HOST_OS)
 type CSaFamily = (#type u_char)

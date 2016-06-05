@@ -36,7 +36,7 @@
 # undef IPV6_SOCKET_SUPPORT
 #endif
 
-#if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+#if defined(HAVE_WINSOCK2_H)
 #include <winsock2.h>
 # ifdef HAVE_WS2TCPIP_H
 #  include <ws2tcpip.h>
@@ -115,7 +115,7 @@ sendFd(int sock, int outfd);
 extern int
 recvFd(int sock);
 
-#endif /* HAVE_WINSOCK2_H && !__CYGWIN */
+#endif /* HAVE_WINSOCK2_H */
 
 INLINE char *
 my_inet_ntoa(
@@ -138,7 +138,7 @@ my_inet_ntoa(
 #ifdef HAVE_GETADDRINFO
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
-# if defined(HAVE_WINSOCK2_H) && !defined(__CYGWIN__)
+# if defined(HAVE_WINSOCK2_H)
                   DWORD d, char* e, DWORD f, int g)
 # else
                   socklen_t d, char* e, socklen_t f, int g)
@@ -161,7 +161,7 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 }
 #endif
 
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
 # define WITH_WINSOCK  1
 #endif
 
