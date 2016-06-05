@@ -23,7 +23,7 @@
 #ifndef INLINE
 # if defined(_MSC_VER)
 #  define INLINE extern __inline
-# elif defined(__GNUC__)
+# elif defined(__GNUC_GNU_INLINE__)
 #  define INLINE extern inline
 # else
 #  define INLINE inline

@@ -22,8 +22,10 @@
 
 #include "HsNet.h"
 
+#if __GLASGOW_HASKELL__ < 708
 -- NOTE: ##, we want this interpreted when compiling the .hs, not by hsc2hs.
 ##include "Typeable.h"
+#endif
 
 -- In order to process this file, you need to have CALLCONV defined.
 
