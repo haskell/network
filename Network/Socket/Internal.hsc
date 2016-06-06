@@ -72,9 +72,11 @@ module Network.Socket.Internal
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
                         Errno(..), errnoToIOError)
+#if defined(HAVE_WINSOCK2_H)
 import Foreign.C.String (peekCString)
-import Foreign.C.Types (CInt(..))
 import Foreign.Ptr (Ptr)
+#endif
+import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(HAVE_WINSOCK2_H)

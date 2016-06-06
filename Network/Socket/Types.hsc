@@ -55,6 +55,7 @@ module Network.Socket.Types
     ) where
 
 import Control.Concurrent.MVar
+import Control.Exception (throwIO)
 import Control.Monad
 import Data.Bits
 import Data.Maybe
@@ -886,6 +887,8 @@ sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
 #if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddrByFamily AF_CAN   = #const sizeof(struct sockaddr_can)
 #endif
+sizeOfSockAddrByFamily family =
+    error $ "sizeOfSockAddrByFamily: " ++ show family ++ " not supported."
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
@@ -982,6 +985,7 @@ peekSockAddr p = do
         ifidx <- (#peek struct sockaddr_can, can_ifindex) p
         return (SockAddrCan ifidx)
 #endif
+    _ -> throwIO $ userError $ "peekSockAddr: " ++ show family ++ " not supported on this platform."
 
 ------------------------------------------------------------------------
 

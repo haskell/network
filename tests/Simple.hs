@@ -5,10 +5,12 @@ module Main where
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, readMVar)
 import qualified Control.Exception as E
-import Control.Monad (liftM, when)
+import Control.Monad
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
+#if defined(HAVE_LINUX_CAN_H)
 import Data.Maybe (fromJust)
+#endif
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
 
@@ -146,22 +148,22 @@ testGetPeerCred =
   where
     clientSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        connect sock $ SockAddrUnix addr 
+        connect sock $ SockAddrUnix addr
         return sock
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        bindSocket sock $ SockAddrUnix addr 
+        bindSocket sock $ SockAddrUnix addr
         listen sock 1
         return sock
 
     server sock = do
         (clientSock, _) <- accept sock
-        serverAct clientSock
+        _ <- serverAct clientSock
         sClose clientSock
 
     addr = "/tmp/testAddr1"
-    clientAct sock = withSocketsDo $ do  
+    clientAct sock = withSocketsDo $ do
                      sendAll sock testMsg
                      (pid,uid,gid) <- getPeerCred sock
                      putStrLn $ unwords ["pid=",show pid,"uid=",show uid, "gid=", show gid]
@@ -171,27 +173,27 @@ testGetPeerCred =
 
 
 testGetPeerEid :: Assertion
-testGetPeerEid =  
+testGetPeerEid =
     test clientSetup clientAct serverSetup server
   where
     clientSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        connect sock $ SockAddrUnix addr 
+        connect sock $ SockAddrUnix addr
         return sock
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        bindSocket sock $ SockAddrUnix addr 
+        bindSocket sock $ SockAddrUnix addr
         listen sock 1
         return sock
 
     server sock = do
         (clientSock, _) <- accept sock
-        serverAct clientSock
+        _ <- serverAct clientSock
         sClose clientSock
 
     addr = "/tmp/testAddr2"
-    clientAct sock = withSocketsDo $ do  
+    clientAct sock = withSocketsDo $ do
                      sendAll sock testMsg
                      (uid,gid) <- getPeerEid sock
                      putStrLn $ unwords ["uid=",show uid, "gid=", show gid]
@@ -300,7 +302,7 @@ tcpTest clientAct serverAct = do
 
     server sock = do
         (clientSock, _) <- accept sock
-        serverAct clientSock
+        _ <- serverAct clientSock
         sClose clientSock
 
 -- | Create an unconnected 'Socket' for sending UDP and receiving
@@ -332,13 +334,13 @@ test :: IO Socket -> (Socket -> IO b) -> IO Socket -> (Socket -> IO c) -> IO ()
 test clientSetup clientAct serverSetup serverAct = do
     tid <- myThreadId
     barrier <- newEmptyMVar
-    forkIO $ server barrier
+    _ <- forkIO $ server barrier
     client tid barrier
   where
     server barrier = do
         E.bracket serverSetup sClose $ \sock -> do
             serverReady
-            serverAct sock
+            _ <- serverAct sock
             putMVar barrier ()
       where
         -- | Signal to the client that it can proceed.
@@ -348,7 +350,7 @@ test clientSetup clientAct serverSetup serverAct = do
         takeMVar barrier
         -- Transfer exceptions to the main thread.
         bracketWithReraise tid clientSetup sClose $ \res -> do
-            clientAct res
+            _ <- clientAct res
             takeMVar barrier
 
 -- | Like 'bracket' but catches and reraises the exception in another

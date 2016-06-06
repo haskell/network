@@ -176,7 +176,7 @@ module Network.Socket
     ) where
 
 import Data.Bits
-import Data.Functor ((<$>))
+import Data.Functor
 import Data.List (foldl')
 import Data.Maybe (isJust)
 import Data.Word (Word8, Word32)
@@ -218,6 +218,8 @@ import qualified System.Posix.Internals
 
 import Network.Socket.Internal
 import Network.Socket.Types
+
+import Prelude -- Silence AMP warnings
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
@@ -292,6 +294,9 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
+#endif
+#if defined(CAN_SOCKET_SUPPORT)
+  showsPrec _ (SockAddrCan ifidx) = shows ifidx
 #endif
 
 -----------------------------------------------------------------------------
