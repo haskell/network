@@ -944,7 +944,7 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_family) p ((#const AF_INET6) :: CSaFamily)
     (#poke struct sockaddr_in6, sin6_port) p port
     (#poke struct sockaddr_in6, sin6_flowinfo) p flow
-    (#poke struct sockaddr_in6, sin6_addr) p addr
+    (#poke struct sockaddr_in6, sin6_addr) p (In6Addr addr)
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
 #if defined(CAN_SOCKET_SUPPORT)
@@ -973,7 +973,7 @@ peekSockAddr p = do
     (#const AF_INET6) -> do
         port <- (#peek struct sockaddr_in6, sin6_port) p
         flow <- (#peek struct sockaddr_in6, sin6_flowinfo) p
-        addr <- (#peek struct sockaddr_in6, sin6_addr) p
+        In6Addr addr <- (#peek struct sockaddr_in6, sin6_addr) p
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
 #endif
@@ -1020,18 +1020,25 @@ poke32 p i0 a = do
     pokeByte 2 (a `sr`  8)
     pokeByte 3 (a `sr`  0)
 
-instance Storable HostAddress6 where
-    sizeOf _    = (#const sizeof(struct in6_addr))
-    alignment _ = alignment (undefined :: CInt)
+-- | Private newtype proxy for the Storable instance. To avoid orphan instances.
+newtype In6Addr = In6Addr HostAddress6
+
+#if __GLASGOW_HASKELL__ < 800
+#let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
+#endif
+
+instance Storable In6Addr where
+    sizeOf _    = #const sizeof(struct in6_addr)
+    alignment _ = #alignment struct in6_addr
 
     peek p = do
         a <- peek32 p 0
         b <- peek32 p 1
         c <- peek32 p 2
         d <- peek32 p 3
-        return (a, b, c, d)
+        return $ In6Addr (a, b, c, d)
 
-    poke p (a, b, c, d) = do
+    poke p (In6Addr (a, b, c, d)) = do
         poke32 p 0 a
         poke32 p 1 b
         poke32 p 2 c
