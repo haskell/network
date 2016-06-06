@@ -223,7 +223,7 @@ canTest ifname clientAct serverAct = do
       -- bind the socket to the interface
       bind sock (SockAddrCan $ fromIntegral $ ifIndex)
       return sock
-    
+
     serverSetup = clientSetup
 #endif
 
@@ -251,7 +251,7 @@ basicTests = testGroup "Basic socket operations"
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
 #if defined(HAVE_LINUX_CAN_H)
-    , testCase "testCanSend" testCanSend  
+    , testCase "testCanSend" testCanSend
 #endif
     ]
 

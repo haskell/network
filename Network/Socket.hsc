@@ -83,7 +83,7 @@ module Network.Socket
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
     -- get the credentials of our domain socket peer.
     , getPeerCred
-#if defined(HAVE_GETPEEREID) 
+#if defined(HAVE_GETPEEREID)
     , getPeerEid
 #endif
 #endif
@@ -956,7 +956,7 @@ getPeerCred sock = do
 -- | The getpeereid() function returns the effective user and group IDs of the
 -- peer connected to a UNIX-domain socket
 getPeerEid :: Socket -> IO (CUInt, CUInt)
-getPeerEid sock = do 
+getPeerEid sock = do
   let fd = fdSocket sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
