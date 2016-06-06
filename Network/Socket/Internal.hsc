@@ -43,7 +43,7 @@ module Network.Socket.Internal
     , Family(..)
 
     -- * Socket error functions
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
     , c_getLastError
 #endif
     , throwSocketError
@@ -77,7 +77,7 @@ import Foreign.C.Types (CInt(..))
 import Foreign.Ptr (Ptr)
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
 import Control.Exception ( evaluate )
 import System.IO.Unsafe ( unsafePerformIO )
 import Control.Monad ( when )
@@ -154,7 +154,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if (!defined(HAVE_WINSOCK2_H) || defined(cygwin32_HOST_OS))
+#if (!defined(HAVE_WINSOCK2_H))
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -177,7 +177,7 @@ throwSocketErrorIfMinus1_ name act = do
   throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+# if defined(HAVE_WINSOCK2_H)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)

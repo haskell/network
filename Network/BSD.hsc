@@ -27,7 +27,7 @@ module Network.BSD
     , getHostByAddr
     , hostAddress
 
-#if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
     , getHostEntries
 
     -- ** Low level functionality
@@ -43,7 +43,7 @@ module Network.BSD
     , getServiceByPort
     , getServicePortNumber
 
-#if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
     , getServiceEntries
 
     -- ** Low level functionality
@@ -61,7 +61,7 @@ module Network.BSD
     , getProtocolNumber
     , defaultProtocol
 
-#if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
     , getProtocolEntries
     -- ** Low level functionality
     , setProtocolEntry
@@ -77,7 +77,7 @@ module Network.BSD
     , NetworkAddr
     , NetworkEntry(..)
 
-#if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
     , getNetworkByName
     , getNetworkByAddr
     , getNetworkEntries
@@ -99,7 +99,7 @@ import Network.Socket
 import Control.Concurrent (MVar, newMVar, withMVar)
 import qualified Control.Exception as E
 import Foreign.C.String (CString, peekCString, withCString)
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
 import Foreign.C.Types ( CShort )
 #endif
 import Foreign.C.Types ( CInt(..), CUInt(..), CULong(..), CSize(..) )
@@ -158,7 +158,7 @@ instance Storable ServiceEntry where
         return (ServiceEntry {
                         serviceName     = s_name,
                         serviceAliases  = s_aliases,
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
                         servicePort     = (fromIntegral (s_port :: CShort)),
 #else
                            -- s_port is already in network byte order, but it
@@ -202,7 +202,7 @@ getServicePortNumber name = do
     (ServiceEntry _ _ port _) <- getServiceByName name "tcp"
     return port
 
-#if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
 getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
@@ -255,7 +255,7 @@ instance Storable ProtocolEntry where
         p_aliases <- (#peek struct protoent, p_aliases) p
                            >>= peekArray0 nullPtr
                            >>= mapM peekCString
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
          -- With WinSock, the protocol number is only a short;
          -- hoist it in as such, but represent it on the Haskell side
          -- as a CInt.
@@ -298,7 +298,7 @@ getProtocolNumber proto = do
  (ProtocolEntry _ _ num) <- getProtocolByName proto
  return num
 
-#if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
 getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
@@ -351,7 +351,7 @@ instance Storable HostEntry where
         return (HostEntry {
                         hostName       = h_name,
                         hostAliases    = h_aliases,
-#if defined(HAVE_WINSOCK2_H) && !defined(cygwin32_HOST_OS)
+#if defined(HAVE_WINSOCK2_H)
                         hostFamily     = unpackFamily (fromIntegral (h_addrtype :: CShort)),
 #else
                         hostFamily     = unpackFamily h_addrtype,
@@ -397,7 +397,7 @@ getHostByAddr family addr = do
 foreign import CALLCONV safe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
-#if defined(HAVE_GETHOSTENT) && !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
  throwNoSuchThingIfNull         "getHostEntry" "unable to retrieve host entry"
@@ -463,7 +463,7 @@ instance Storable NetworkEntry where
    poke _p = error "Storable.poke(BSD.NetEntry) not implemented"
 
 
-#if !defined(cygwin32_HOST_OS) && !defined(mingw32_HOST_OS) && !defined(_WIN32)
+#if !defined(mingw32_HOST_OS)
 getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = withLock $ do
  withCString name $ \ name_cstr -> do
