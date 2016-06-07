@@ -59,6 +59,7 @@ module Network
     {-$performance-}
     ) where
 
+import Control.Exception (throwIO)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
@@ -289,9 +290,16 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
          \_ -> case addr of
                  SockAddrInet  _   a   -> inet_ntoa a
                  SockAddrInet6 _ _ a _ -> return (show a)
-# if !defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
+                 SockAddrUnix {}       -> throwIO $ userError "accept: socket address not supported on this platform."
+#else
                  SockAddrUnix      a   -> return a
-# endif
+#endif
+#if defined(CAN_SOCKET_SUPPORT)
+                 SockAddrCan {}        -> throwIO $ userError "accept: unsupported for CAN peer."
+#else
+                 SockAddrCan {}        -> throwIO $ userError "accept: socket address not supported on this platform."
+#endif
  handle <- socketToHandle sock' ReadWriteMode
  let port = case addr of
               SockAddrInet  p _     -> p
@@ -392,17 +400,19 @@ recvFrom host port = do
 socketPort :: Socket -> IO PortID
 socketPort s = do
     sockaddr <- getSocketName s
-    return (portID sockaddr)
-  where
-   portID sa =
-    case sa of
-     SockAddrInet port _      -> PortNumber port
+    case sockaddr of
+      SockAddrInet port _      -> return $ PortNumber port
 #if defined(IPV6_SOCKET_SUPPORT)
-     SockAddrInet6 port _ _ _ -> PortNumber port
+      SockAddrInet6 port _ _ _ -> return $ PortNumber port
+#else
+      SockAddrInet6 {}         -> throwIO $ userError "socketPort: socket address not supported on this platform."
 #endif
-#if !defined(mingw32_HOST_OS)
-     SockAddrUnix path        -> UnixSocket path
+#if defined(mingw32_HOST_OS)
+      SockAddrUnix {}          -> throwIO $ userError "socketPort: socket address not supported on this platform."
+#else
+      SockAddrUnix path        -> return $ UnixSocket path
 #endif
+      SockAddrCan {}           -> throwIO $ userError "socketPort: CAN address not supported."
 
 -- ---------------------------------------------------------------------------
 -- Utils

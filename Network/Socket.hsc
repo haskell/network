@@ -83,7 +83,7 @@ module Network.Socket
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
     -- get the credentials of our domain socket peer.
     , getPeerCred
-#if defined(HAVE_GETPEEREID) 
+#if defined(HAVE_GETPEEREID)
     , getPeerEid
 #endif
 #endif
@@ -176,7 +176,7 @@ module Network.Socket
     ) where
 
 import Data.Bits
-import Data.Functor ((<$>))
+import Data.Functor
 import Data.List (foldl')
 import Data.Maybe (isJust)
 import Data.Word (Word8, Word32)
@@ -218,6 +218,8 @@ import qualified System.Posix.Internals
 
 import Network.Socket.Internal
 import Network.Socket.Types
+
+import Prelude -- Silence AMP warnings
 
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
@@ -292,6 +294,9 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
+#endif
+#if defined(CAN_SOCKET_SUPPORT)
+  showsPrec _ (SockAddrCan ifidx) = shows ifidx
 #endif
 
 -----------------------------------------------------------------------------
@@ -956,7 +961,7 @@ getPeerCred sock = do
 -- | The getpeereid() function returns the effective user and group IDs of the
 -- peer connected to a UNIX-domain socket
 getPeerEid :: Socket -> IO (CUInt, CUInt)
-getPeerEid sock = do 
+getPeerEid sock = do
   let fd = fdSocket sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do

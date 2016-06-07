@@ -59,7 +59,6 @@ import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
 import Control.Monad (liftM, zipWithM_)
-import Foreign.C.Types (CChar, CSize(..), CInt(..))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, plusPtr)
@@ -68,13 +67,6 @@ import Foreign.Storable (Storable(..))
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
-#endif
-
-#if !defined(mingw32_HOST_OS)
-foreign import CALLCONV unsafe "send"
-  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV unsafe "recv"
-  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 
 -- ----------------------------------------------------------------------------

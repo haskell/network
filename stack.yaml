@@ -1,0 +1,11 @@
+resolver: lts-5.17
+packages:
+- '.'
+ghc-options:
+  "*": -DCALLCONV=ccall
+nix:
+  packages: [ ncurses ]
+
+# XXX workaround
+# https://github.com/commercialhaskell/stack/issues/2245
+hide-th-loading: false
