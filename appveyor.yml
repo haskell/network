@@ -27,6 +27,6 @@ test_script:
 # Run all test suites except doctests, because that one assumes
 # cabal-install. TODO reenable it:
 # https://github.com/haskell/network/issues/196.
-  - stack --no-terminal test --resolver %stack_lts% --reconfigure network:test:simple network:test:regression
+- stack --no-terminal test --resolver %stack_lts% --reconfigure network:test:simple network:test:regression
 
 deploy: off
