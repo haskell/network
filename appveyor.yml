@@ -1,0 +1,25 @@
+cache:
+- c:\sr -> stack.yaml # stack root, short paths == fewer problems
+- C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows -> stack.yaml
+
+clone_folder: "c:\\network"
+environment:
+  global:
+    STACK_ROOT: "c:\\sr"
+
+install:
+- curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-x86_64
+- 7z x stack.zip stack.exe
+- stack --no-terminal setup > nul
+- C:\msys64\usr\bin\bash -lc "cd $APPVEYOR_BUILD_FOLDER; autoreconf -i"
+
+build_script:
+- stack --no-terminal build
+
+test_script:
+# Run all test suites except doctests, because that one assumes
+# cabal-install. TODO reenable it:
+# https://github.com/haskell/network/issues/196.
+- stack --no-terminal test network:test:simple network:test:regression
+
+deploy: off
