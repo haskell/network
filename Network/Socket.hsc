@@ -654,7 +654,11 @@ sendBuf :: Socket     -- Bound/Connected Socket
 sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
-    writeRawBufferPtr
+-- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
+-- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
+-- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
+-- bug is supported.
+    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $ writeRawBufferPtr
       "Network.Socket.sendBuf"
       (socket2FD sock)
       (castPtr str)
@@ -704,8 +708,10 @@ recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
  | otherwise   = do
         len <-
 #if defined(mingw32_HOST_OS)
-          readRawBufferPtr "Network.Socket.recvBuf" (socket2FD sock) ptr 0
-                 (fromIntegral nbytes)
+-- see comment in sendBuf above.
+            throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
+                readRawBufferPtr "Network.Socket.recvBuf"
+                (socket2FD sock) ptr 0 (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead sock "recvBuf" $
                    c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
