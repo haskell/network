@@ -75,6 +75,8 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 -- | Send data to the socket.  The socket must be connected to a
 -- remote socket.  Returns the number of bytes sent. Applications are
 -- responsible for ensuring that all data has been sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
@@ -86,6 +88,8 @@ send sock xs = unsafeUseAsCStringLen xs $ \(str, len) ->
 -- until either all data has been sent or an error occurs.  On error,
 -- an exception is raised, and there is no way to determine how much
 -- data, if any, was successfully sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
@@ -97,6 +101,8 @@ sendAll sock bs = do
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent. Applications are responsible for
 -- ensuring that all data has been sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendTo :: Socket      -- ^ Socket
        -> ByteString  -- ^ Data to send
        -> SockAddr    -- ^ Recipient address
@@ -110,6 +116,8 @@ sendTo sock xs addr =
 -- data has been sent or an error occurs.  On error, an exception is
 -- raised, and there is no way to determine how much data, if any, was
 -- successfully sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendAllTo :: Socket      -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> SockAddr    -- ^ Recipient address
@@ -146,6 +154,8 @@ sendAllTo sock xs addr = do
 -- sent or an error occurs.  On error, an exception is raised, and
 -- there is no way to determine how much data, if any, was
 -- successfully sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
@@ -169,6 +179,8 @@ sendMany sock = sendAll sock . B.concat
 -- continues to send data until either all data has been sent or an
 -- error occurs.  On error, an exception is raised, and there is no
 -- way to determine how much data, if any, was successfully sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
@@ -205,6 +217,8 @@ sendManyTo sock cs = sendAllTo sock (B.concat cs)
 --
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
+--
+-- Receiving data from closed socket may lead to undefined behaviour.
 recv :: Socket         -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
@@ -217,6 +231,8 @@ recv sock nbytes
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
 -- 'ByteString' representing the data received and @address@ is a
 -- 'SockAddr' representing the address of the sending socket.
+--
+-- Receiving data from closed socket may lead to undefined behaviour.
 recvFrom :: Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
          -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
