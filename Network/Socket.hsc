@@ -561,6 +561,7 @@ foreign import ccall unsafe "free"
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
+{-# WARNING sendTo "Use sendTo defined in \"Network.Socket.ByteString\"" #-}
 sendTo :: Socket        -- (possibly) bound/connected Socket
        -> String        -- Data to send
        -> SockAddr
@@ -592,6 +593,7 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
+{-# WARNING recvFrom "Use recvFrom defined in \"Network.Socket.ByteString\"" #-}
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
 recvFrom sock nbytes =
   allocaBytes nbytes $ \ptr -> do
@@ -638,6 +640,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
 -- responsible for ensuring that all data has been sent.
+{-# WARNING send "Use send defined in \"Network.Socket.ByteString\"" #-}
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
@@ -681,9 +684,11 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
 --
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
+{-# WARNING recv "Use recv defined in \"Network.Socket.ByteString\"" #-}
 recv :: Socket -> Int -> IO String
 recv sock l = fst <$> recvLen sock l
 
+{-# WARNING recvLen "Use recvLen defined in \"Network.Socket.ByteString\"" #-}
 recvLen :: Socket -> Int -> IO (String, Int)
 recvLen sock nbytes =
      allocaBytes nbytes $ \ptr -> do
