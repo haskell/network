@@ -36,8 +36,12 @@ module Network.Socket
     , isSupportedSockAddr
     , SocketStatus(..)
     , HostAddress
+    , hostAddressToTuple
+    , tupleToHostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
     , HostAddress6
+    , hostAddress6ToTuple
+    , tupleToHostAddress6
     , FlowInfo
     , ScopeID
 #endif
