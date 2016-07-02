@@ -38,6 +38,8 @@ module Network.Socket.Types
     , tupleToHostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
     , HostAddress6
+    , hostAddress6ToTuple
+    , tupleToHostAddress6
     , FlowInfo
     , ScopeID
 #endif
@@ -1018,7 +1020,25 @@ tupleToHostAddress (b3, b2, b1, b0) =
 
 #if defined(IPV6_SOCKET_SUPPORT)
 -- | Independent of endianness. For example @::1@ is stored as @(0, 0, 0, 1)@.
+--
+-- For direct manipulation prefer 'hostAddress6ToTuple' and
+-- 'tupleToHostAddress6'.
 type HostAddress6 = (Word32, Word32, Word32, Word32)
+
+hostAddress6ToTuple :: HostAddress6 -> (Word16, Word16, Word16, Word16,
+                                        Word16, Word16, Word16, Word16)
+hostAddress6ToTuple (w3, w2, w1, w0) =
+    let high, low :: Word32 -> Word16
+        high w = fromIntegral (w `shiftR` 16)
+        low w = fromIntegral w
+    in (high w3, low w3, high w2, low w2, high w1, low w1, high w0, low w0)
+
+tupleToHostAddress6 :: (Word16, Word16, Word16, Word16,
+                        Word16, Word16, Word16, Word16) -> HostAddress6
+tupleToHostAddress6 (w7, w6, w5, w4, w3, w2, w1, w0) =
+    let add :: Word16 -> Word16 -> Word32
+        high `add` low = (fromIntegral high `shiftL` 16) .|. (fromIntegral low)
+    in (w7 `add` w6, w5 `add` w4, w3 `add` w2, w1 `add` w0)
 
 -- The peek32 and poke32 functions work around the fact that the RFCs
 -- don't require 32-bit-wide address fields to be present.  We can
