@@ -1,3 +1,16 @@
+## Unreleased version
+
+ * Added a Read instance for PortNumber.
+ 
+ * We only set the IPV6_V6ONLY flag to 0 for stream and datagram socket types,
+   as opposed to all of them. This makes it possible to use ICMPv6.
+
+ * Socket errors no longer cause segfaults or hangs on Windows.
+ 
+ * Various documentation improvements.
+
+ * Various internal improvements.
+ 
 ## Version 2.6.2.1
 
  * Regenerate configure and HsNetworkConfig.h.in.
