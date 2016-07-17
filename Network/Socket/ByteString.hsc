@@ -76,7 +76,9 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 -- remote socket.  Returns the number of bytes sent. Applications are
 -- responsible for ensuring that all data has been sent.
 --
--- Sending data to closed socket may lead to undefined behaviour.
+-- Sending data to a closed socket causes undefined behaviour. To always get
+-- an exception, use the verion in "Network.Socket.ByteString.Safe".
+
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
@@ -89,7 +91,9 @@ send sock xs = unsafeUseAsCStringLen xs $ \(str, len) ->
 -- an exception is raised, and there is no way to determine how much
 -- data, if any, was successfully sent.
 --
--- Sending data to closed socket may lead to undefined behaviour.
+-- Sending data to a closed socket causes undefined behaviour. To always get an
+-- exception, use the verion in "Network.Socket.ByteString.Safe".
+
 sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
@@ -102,7 +106,9 @@ sendAll sock bs = do
 -- Returns the number of bytes sent. Applications are responsible for
 -- ensuring that all data has been sent.
 --
--- Sending data to closed socket may lead to undefined behaviour.
+-- Sending data to a closed socket causes undefined behaviour. To always get an
+-- exception, use the verion in "Network.Socket.ByteString.Safe".
+
 sendTo :: Socket      -- ^ Socket
        -> ByteString  -- ^ Data to send
        -> SockAddr    -- ^ Recipient address
@@ -117,7 +123,9 @@ sendTo sock xs addr =
 -- raised, and there is no way to determine how much data, if any, was
 -- successfully sent.
 --
--- Sending data to closed socket may lead to undefined behaviour.
+-- Sending data to a closed socket causes undefined behaviour. To always get an
+-- exception, use the verion in "Network.Socket.ByteString.Safe".
+
 sendAllTo :: Socket      -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> SockAddr    -- ^ Recipient address
@@ -155,7 +163,9 @@ sendAllTo sock xs addr = do
 -- there is no way to determine how much data, if any, was
 -- successfully sent.
 --
--- Sending data to closed socket may lead to undefined behaviour.
+-- Sending data to a closed socket causes undefined behaviour. To always get an
+-- exception, use the verion in "Network.Socket.ByteString.Safe".
+
 sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
@@ -180,7 +190,9 @@ sendMany sock = sendAll sock . B.concat
 -- error occurs.  On error, an exception is raised, and there is no
 -- way to determine how much data, if any, was successfully sent.
 --
--- Sending data to closed socket may lead to undefined behaviour.
+-- Sending data to a closed socket causes undefined behaviour. To always get an
+-- exception, use the verion in "Network.Socket.ByteString.Safe".
+
 sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
@@ -218,7 +230,9 @@ sendManyTo sock cs = sendAllTo sock (B.concat cs)
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
 --
--- Receiving data from closed socket may lead to undefined behaviour.
+-- Receiving data from a closed socket causes undefined behaviour. To
+-- always get an exception, use the verion in "Network.Socket.ByteString.Safe".
+
 recv :: Socket         -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
@@ -232,7 +246,9 @@ recv sock nbytes
 -- 'ByteString' representing the data received and @address@ is a
 -- 'SockAddr' representing the address of the sending socket.
 --
--- Receiving data from closed socket may lead to undefined behaviour.
+-- Receiving data from a closed socket causes undefined behaviour. To always get
+-- an exception, use the verion in "Network.Socket.ByteString.Safe".
+
 recvFrom :: Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
          -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
