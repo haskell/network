@@ -196,7 +196,7 @@ listenOn (Service serv) = do
         (\sock -> do
             port    <- getServicePortNumber serv
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            bind sock (SockAddrInet port iNADDR_ANY)
             listen sock maxListenQueue
             return sock
         )
@@ -208,7 +208,7 @@ listenOn (PortNumber port) = do
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            bind sock (SockAddrInet port iNADDR_ANY)
             listen sock maxListenQueue
             return sock
         )
@@ -221,7 +221,7 @@ listenOn (UnixSocket path) =
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrUnix path)
+            bind sock (SockAddrUnix path)
             listen sock maxListenQueue
             return sock
         )
@@ -248,7 +248,7 @@ listen' serv = do
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (addrAddress addr)
+            bind sock (addrAddress addr)
             listen sock maxListenQueue
             return sock
         )

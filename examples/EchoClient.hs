@@ -13,6 +13,6 @@ main = withSocketsDo $
        connect sock (addrAddress serveraddr)
        sendAll sock $ C.pack "Hello, world!"
        msg <- recv sock 1024
-       sClose sock
+       close sock
        putStr "Received "
        C.putStrLn msg

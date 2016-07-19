@@ -349,7 +349,7 @@ socket family stype protocol = do
       E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
 # else
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
-      setSocketOption sock IPv6Only 0 `onException` sClose sock
+      setSocketOption sock IPv6Only 0 `onException` close sock
 # endif
 #endif
     return sock
@@ -1599,31 +1599,45 @@ foreign import CALLCONV unsafe "getpeereid"
 -- These aliases are deprecated and should not be used in new code.
 -- They will be removed in some future version of the package.
 
+{-# DEPRECATED bindSocket "use 'bind'" #-}
+
 -- | Deprecated alias for 'bind'.
 bindSocket :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
 bindSocket = bind
 
+{-# DEPRECATED sClose "use 'close'" #-}
+
 -- | Deprecated alias for 'close'.
 sClose :: Socket -> IO ()
 sClose = close
+
+{-# DEPRECATED sIsConnected "use 'isConnected'" #-}
 
 -- | Deprecated alias for 'isConnected'.
 sIsConnected :: Socket -> IO Bool
 sIsConnected = isConnected
 
+{-# DEPRECATED sIsBound "use 'isBound'" #-}
+
 -- | Deprecated alias for 'isBound'.
 sIsBound :: Socket -> IO Bool
 sIsBound = isBound
+
+{-# DEPRECATED sIsListening "use 'isListening'" #-}
 
 -- | Deprecated alias for 'isListening'.
 sIsListening :: Socket -> IO Bool
 sIsListening = isListening
 
+{-# DEPRECATED sIsReadable "use 'isReadable'" #-}
+
 -- | Deprecated alias for 'isReadable'.
 sIsReadable  :: Socket -> IO Bool
 sIsReadable = isReadable
+
+{-# DEPRECATED sIsWritable "use 'isWritable'" #-}
 
 -- | Deprecated alias for 'isWritable'.
 sIsWritable  :: Socket -> IO Bool

@@ -13,12 +13,12 @@ main = withSocketsDo $
                     Nothing (Just "3000")
        let serveraddr = head addrinfos
        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
-       bindSocket sock (addrAddress serveraddr)
+       bind sock (addrAddress serveraddr)
        listen sock 1
        (conn, _) <- accept sock
        talk conn
-       sClose conn
-       sClose sock
+       close conn
+       close sock
 
     where
       talk :: Socket -> IO ()
