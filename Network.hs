@@ -320,7 +320,7 @@ accept (MkSocket _ family _ _ _) =
 -- | Close the socket. All future operations on the socket object will fail.
 --   The remote end will receive no more data (after queued data is flushed).
 sClose :: Socket -> IO ()
-sClose = close -- Explicit redefinition because Network.sClose is deperecated,
+sClose = close -- Explicit redefinition because Network.sClose is deprecated,
                -- hence the re-export would also be marked as such.
 
 -- -----------------------------------------------------------------------------
