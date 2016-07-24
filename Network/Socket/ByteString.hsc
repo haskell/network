@@ -286,12 +286,12 @@ withIOVec cs f =
 -- >                     Nothing (Just "3000")
 -- >        let serveraddr = head addrinfos
 -- >        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
--- >        bindSocket sock (addrAddress serveraddr)
+-- >        bind sock (addrAddress serveraddr)
 -- >        listen sock 1
 -- >        (conn, _) <- accept sock
 -- >        talk conn
--- >        sClose conn
--- >        sClose sock
+-- >        close conn
+-- >        close sock
 -- >
 -- >     where
 -- >       talk :: Socket -> IO ()
@@ -314,6 +314,6 @@ withIOVec cs f =
 -- >        connect sock (addrAddress serveraddr)
 -- >        sendAll sock $ C.pack "Hello, world!"
 -- >        msg <- recv sock 1024
--- >        sClose sock
+-- >        close sock
 -- >        putStr "Received "
 -- >        C.putStrLn msg

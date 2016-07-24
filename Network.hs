@@ -196,7 +196,7 @@ listenOn (Service serv) = do
         (\sock -> do
             port    <- getServicePortNumber serv
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            bind sock (SockAddrInet port iNADDR_ANY)
             listen sock maxListenQueue
             return sock
         )
@@ -208,7 +208,7 @@ listenOn (PortNumber port) = do
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrInet port iNADDR_ANY)
+            bind sock (SockAddrInet port iNADDR_ANY)
             listen sock maxListenQueue
             return sock
         )
@@ -221,7 +221,7 @@ listenOn (UnixSocket path) =
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (SockAddrUnix path)
+            bind sock (SockAddrUnix path)
             listen sock maxListenQueue
             return sock
         )
@@ -248,7 +248,7 @@ listen' serv = do
         (sClose)
         (\sock -> do
             setSocketOption sock ReuseAddr 1
-            bindSocket sock (addrAddress addr)
+            bind sock (addrAddress addr)
             listen sock maxListenQueue
             return sock
         )
@@ -320,7 +320,7 @@ accept (MkSocket _ family _ _ _) =
 -- | Close the socket. All future operations on the socket object will fail.
 --   The remote end will receive no more data (after queued data is flushed).
 sClose :: Socket -> IO ()
-sClose = close -- Explicit redefinition because Network.sClose is deperecated,
+sClose = close -- Explicit redefinition because Network.sClose is deprecated,
                -- hence the re-export would also be marked as such.
 
 -- -----------------------------------------------------------------------------
