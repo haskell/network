@@ -230,6 +230,41 @@ canTest ifname clientAct serverAct = do
 #endif
 
 ------------------------------------------------------------------------
+-- Conversions of IP addresses
+
+testHostAddressToTuple :: Assertion
+testHostAddressToTuple = do
+    -- Look up a numeric IPv4 host
+    let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
+    (AddrInfo{addrAddress = (SockAddrInet _ hostAddr)} : _) <-
+        getAddrInfo (Just hints) (Just "127.128.129.130") Nothing
+    -- and check that the decoded address matches the expected representation
+    (0x7f, 0x80, 0x81, 0x82) @=? hostAddressToTuple hostAddr
+
+testHostAddressToTupleInv :: Assertion
+testHostAddressToTupleInv = do
+    let addr = (0x7f, 0x80, 0x81, 0x82)
+    addr @=? (hostAddressToTuple . tupleToHostAddress) addr
+
+#if defined(IPV6_SOCKET_SUPPORT)
+testHostAddress6ToTuple :: Assertion
+testHostAddress6ToTuple = do
+    -- Look up a numeric IPv6 host
+    let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
+        host = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    (AddrInfo{addrAddress = (SockAddrInet6 _ _ hostAddr _)} : _) <-
+        getAddrInfo (Just hints) (Just host) Nothing
+    -- and check that the decoded address matches the expected representation
+    (0x2001, 0x0db8, 0x85a3, 0x0000, 0x0000, 0x8a2e, 0x0370, 0x7334)
+        @=? hostAddress6ToTuple hostAddr
+
+testHostAddress6ToTupleInv :: Assertion
+testHostAddress6ToTupleInv = do
+    let addr = (0x2001, 0x0db8, 0x85a3, 0x0000, 0x0000, 0x8a2e, 0x0370, 0x7334)
+    addr @=? (hostAddress6ToTuple . tupleToHostAddress6) addr
+#endif
+
+------------------------------------------------------------------------
 -- Other
 
 ------------------------------------------------------------------------
@@ -255,6 +290,14 @@ basicTests = testGroup "Basic socket operations"
 #if defined(HAVE_LINUX_CAN_H)
     , testCase "testCanSend" testCanSend
 #endif
+      -- conversions of IP addresses
+    , testCase "testHostAddressToTuple" testHostAddressToTuple
+    , testCase "testHostAddressToTupleInv" testHostAddressToTupleInv
+#if defined(IPV6_SOCKET_SUPPORT)
+    , testCase "testHostAddress6ToTuple" testHostAddress6ToTuple
+    , testCase "testHostAddress6ToTupleInv" testHostAddress6ToTupleInv
+#endif
+      -- other
     ]
 
 tests :: [Test]
