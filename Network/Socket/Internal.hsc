@@ -67,6 +67,12 @@ module Network.Socket.Internal
 
     -- * Low-level helpers
     , zeroMemory
+
+    -- * Helpers for Network.Socket.Safe
+    , wrapCheckStatus
+    , wrapCheckStatus2
+    , wrapCheckStatus3
+    , wrapCheckStatus4
     ) where
 
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
@@ -91,6 +97,9 @@ import GHC.IOBase ( IOErrorType(..) )
 import Foreign.C.Types ( CChar )
 import System.IO.Error ( ioeSetErrorString, mkIOError )
 #endif
+
+import Control.Concurrent (withMVar)
+import Control.Exception (throwIO)
 
 import Network.Socket.Types
 
@@ -271,3 +280,26 @@ withSocketsInit = unsafePerformIO $ do
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
 
 #endif
+
+wrapCheckStatus :: (Socket -> IO a) -> String -> Socket -> IO a
+wrapCheckStatus act fnName sock@(MkSocket _ _ _ _ statusVar) =
+  withMVar statusVar $ \status ->
+    case status of
+      Closed -> throwIO $ userError $
+        fnName ++ ": attempted to use a closed socket"
+      _ -> act sock
+
+wrapCheckStatus2 :: (Socket -> a -> IO b) ->
+                    String -> Socket -> a -> IO b
+wrapCheckStatus2 act fnName sock a =
+  wrapCheckStatus (\s -> act s a) fnName sock
+
+wrapCheckStatus3 :: (Socket -> a -> b -> IO c) ->
+                    String -> Socket -> a -> b -> IO c
+wrapCheckStatus3 act fnName sock a b =
+  wrapCheckStatus (\s -> act s a b) fnName sock
+
+wrapCheckStatus4 :: (Socket -> a -> b -> c -> IO d) ->
+                    String -> Socket -> a -> b -> c -> IO d
+wrapCheckStatus4 act fnName sock a b c =
+  wrapCheckStatus (\s -> act s a b c) fnName sock

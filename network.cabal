@@ -48,8 +48,11 @@ library
     Network
     Network.BSD
     Network.Socket
+    Network.Socket.Safe
     Network.Socket.ByteString
+    Network.Socket.ByteString.Safe
     Network.Socket.ByteString.Lazy
+    Network.Socket.ByteString.Lazy.Safe
     Network.Socket.Internal
   other-modules:
     Network.Socket.ByteString.Internal

@@ -61,6 +61,9 @@ import Network.Socket.ByteString.Lazy.Posix (send, sendAll)
 -- more data to be received, the receiving side of the socket is shut
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
+--
+-- Receiving data from a closed socket causes undefined behaviour. To always get
+-- an exception, use the verion in "Network.Socket.ByteString.Lazy.Safe".
 getContents :: Socket         -- ^ Connected socket
             -> IO ByteString  -- ^ Data received
 getContents sock = loop where
@@ -77,6 +80,9 @@ getContents sock = loop where
 -- until a message arrives.
 --
 -- If there is no more data to be received, returns an empty 'ByteString'.
+--
+-- Receiving data from a closed socket causes undefined behaviour. To always get
+-- an exception, use the verion in "Network.Socket.ByteString.Lazy.Safe".
 recv :: Socket         -- ^ Connected socket
      -> Int64          -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received

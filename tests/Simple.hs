@@ -12,6 +12,7 @@ import qualified Data.ByteString.Char8 as C
 import Data.Maybe (fromJust)
 #endif
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
+import qualified Network.Socket.ByteString.Safe as Safe
 import Network.Socket.ByteString
 
 --- To tests for AF_CAN on Linux, you need to bring up a virtual (or real can
@@ -30,7 +31,7 @@ import Network.BSD (ifNameToIndex)
 #endif
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion, (@=?))
+import Test.HUnit (Assertion, (@=?), assertFailure)
 
 ------------------------------------------------------------------------
 
@@ -141,6 +142,29 @@ testUserTimeout = do
       getSocketOption sock UserTimeout >>= (@=?) 2000
       close sock
 
+testSafeSend :: Assertion
+testSafeSend = tcpTest client server
+  where
+    server sock = do
+      close sock
+      res :: Either E.IOException Int <- E.try (Safe.send sock testMsg)
+      case res of
+        Left ex -> show ex @=?
+          "user error (Network.Socket.ByteString.Safe.send: attempted to use a closed socket)"
+        Right _ -> assertFailure "send didn't throw an exception on a closed socket"
+    client sock = return ()
+
+testSafeRecv :: Assertion
+testSafeRecv = tcpTest client server
+  where
+    server sock = do
+      close sock
+      res :: Either E.IOException S.ByteString <- E.try (Safe.recv sock 1024)
+      case res of
+        Left ex -> show ex @=?
+          "user error (Network.Socket.ByteString.Safe.recv: attempted to use a closed socket)"
+        Right _ -> assertFailure "recv didn't throw an exception on a closed socket"
+    client sock = return ()
 {-
 testGetPeerCred:: Assertion
 testGetPeerCred =
@@ -287,6 +311,8 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testUserTimeout" testUserTimeout
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
+    , testCase "testSafeSend" testSafeSend
+    , testCase "testSafeRecv" testSafeRecv
 #if defined(HAVE_LINUX_CAN_H)
     , testCase "testCanSend" testCanSend
 #endif

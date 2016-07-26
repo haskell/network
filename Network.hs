@@ -317,8 +317,8 @@ accept (MkSocket _ family _ _ _) =
   error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
 
 
--- | Close the socket. All future operations on the socket object will fail.
---   The remote end will receive no more data (after queued data is flushed).
+-- | Close the socket. Sending data to or receiving data from a closed socket
+--   causes undefined behaviour.
 sClose :: Socket -> IO ()
 sClose = close -- Explicit redefinition because Network.sClose is deprecated,
                -- hence the re-export would also be marked as such.
