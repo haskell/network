@@ -4,6 +4,8 @@
 
  * We only set the IPV6_V6ONLY flag to 0 for stream and datagram socket types,
    as opposed to all of them. This makes it possible to use ICMPv6.
+   [#180](https://github.com/haskell/network/pull/180)
+   [#181](https://github.com/haskell/network/pull/181)
 
  * Socket errors no longer cause segfaults or hangs on Windows.
 
