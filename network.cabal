@@ -1,5 +1,5 @@
 name:           network
-version:        2.6.2.2
+version:        2.6.3.0
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Kazu Yamamoto, Evan Borden
