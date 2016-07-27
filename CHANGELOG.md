@@ -1,4 +1,8 @@
-## Unreleased version
+## Version 2.6.3.0
+
+ * New maintainers: Evan Borden (@eborden) and Kazu Yamamoto (@kazu-yamamoto).
+   The maintainer for a long period, Johan Tibell (@tibbe) stepped down.
+   Thank you, Johan, for your hard work for a long time.
 
  * Added a Read instance for PortNumber. [#145](https://github.com/haskell/network/pull/145)
 
