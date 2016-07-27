@@ -24,7 +24,9 @@
    [#206](https://github.com/haskell/network/pull/206)
    [#211](https://github.com/haskell/network/issues/211)
 
- * Various internal improvements. [#200](https://github.com/haskell/network/pull/200)
+ * Various internal improvements.
+   [#193](https://github.com/haskell/network/pull/193)
+   [#200](https://github.com/haskell/network/pull/200)
 
 ## Version 2.6.2.1
 
