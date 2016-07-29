@@ -47,9 +47,11 @@ import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Data.Word (Word8)
+import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr)
-import Network.Socket (sendBuf, sendBufTo, recvBuf, recvBufFrom)
+import Network.Socket (c_recv, recvBuf, sendBuf, sendBufTo, recvBufFrom)
 
 import qualified Data.ByteString as B
 
@@ -224,8 +226,19 @@ recv :: Socket         -- ^ Connected socket
      -> IO ByteString  -- ^ Data received
 recv sock nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ \ptr ->
-        recvBuf sock ptr nbytes
+    | otherwise  = createAndTrim nbytes $ recvInner sock nbytes
+
+recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
+recvInner sock nbytes ptr =
+    fmap fromIntegral $
+#if defined(mingw32_HOST_OS)
+        readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
+#else
+        throwSocketErrorWaitRead sock "recv" $
+        c_recv s (castPtr ptr) (fromIntegral nbytes) 0
+#endif
+  where
+    s = sockFd sock
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a

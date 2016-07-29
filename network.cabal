@@ -108,6 +108,21 @@ test-suite regression
   -- Some of the bugs only occur in the threaded RTS
   ghc-options: -Wall -threaded
 
+test-suite issue215
+  hs-source-dirs: tests
+  main-is: Issue215.hs
+  type: exitcode-stdio-1.0
+
+  build-depends:
+    base < 5,
+    bytestring,
+    HUnit,
+    network,
+    test-framework,
+    test-framework-hunit
+  -- Some of the bugs only occur in the threaded RTS
+  ghc-options: -Wall -threaded
+
 test-suite doctest
   hs-source-dirs: tests
   main-is: doctests.hs
