@@ -51,7 +51,7 @@ tests =
     [ testCase "testGetAddrInfo" testGetAddrInfo
     , testCase "badRecvShouldThrow" badRecvShouldThrow
     , testCase "badSendShouldThrow" badSendShouldThrow
-    , testCase "recvThrowsOnLen0" Issue215.main
+    , testCase "recvShouldntThrowOnLen0" Issue215.main
     ]
 
 ------------------------------------------------------------------------

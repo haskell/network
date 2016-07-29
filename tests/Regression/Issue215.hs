@@ -24,7 +24,7 @@ main = bracket (listenOn (PortNumber 0)) sClose $ \listener -> do
       (const . return $ Left ())
     case e of
       Right _ -> return ()
-      Left _ -> assertFailure "Socket threw an IOError"
+      Left _ -> assertFailure "client threw an IOError"
 
 server :: Socket -> IO ()
 server listener = forever $ bracket
