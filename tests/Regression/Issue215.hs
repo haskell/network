@@ -1,3 +1,7 @@
+{-
+- Network.ByteString.recv should not throw an error when its peer closes the
+- socket, but should return an empty ByteString.
+-}
 {-# LANGUAGE OverloadedStrings #-}
 module Regression.Issue215 (main) where
 
