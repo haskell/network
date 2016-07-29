@@ -239,9 +239,10 @@ recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
 recvInner sock nbytes ptr =
     fmap fromIntegral $
 #if defined(mingw32_HOST_OS)
+      throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
         readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
 #else
-        throwSocketErrorWaitRead sock "recv" $
+      throwSocketErrorWaitRead sock "recv" $
         c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 #endif
   where
