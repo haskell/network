@@ -49,7 +49,7 @@ import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (castPtr)
+import Foreign.Ptr (Ptr, castPtr)
 import Network.Socket (sendBuf, sendBufTo, recvBufFrom)
 
 import qualified Data.ByteString as B
@@ -62,13 +62,15 @@ import Network.Socket.Types
 import Control.Monad (liftM, zipWithM_)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr, plusPtr)
+import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Types (CChar, CSize(..), CInt(..))
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
+#else
+import GHC.IO.FD (FD(..), readRawBufferPtr)
 #endif
 
 #if !defined(mingw32_HOST_OS)
