@@ -9,6 +9,8 @@ import Test.Framework (Test, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (assertFailure)
 
+import qualified Regression.Issue215 as Issue215
+
 ------------------------------------------------------------------------
 -- Tests
 
@@ -46,9 +48,10 @@ badSendShouldThrow = do
 
 tests :: [Test]
 tests =
-    [ testCase "testGetAddrInfo" testGetAddrInfo,
-      testCase "badRecvShouldThrow" badRecvShouldThrow,
-      testCase "badSendShouldThrow" badSendShouldThrow
+    [ testCase "testGetAddrInfo" testGetAddrInfo
+    , testCase "badRecvShouldThrow" badRecvShouldThrow
+    , testCase "badSendShouldThrow" badSendShouldThrow
+    , testCase "recvThrowsOnLen0" Issue215.main
     ]
 
 ------------------------------------------------------------------------

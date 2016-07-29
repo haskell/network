@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+module Regression.Issue215 (main) where
+
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket, bracketOnError)
 import Control.Monad (void, forever, unless)
+import qualified Data.ByteString as S
 import Data.Function (fix)
 import Network (listenOn, sClose, PortID(..), socketPort)
 import Network.Socket
@@ -9,13 +12,19 @@ import Network.Socket
         SocketType(Stream), connect)
 import Network.BSD (getProtocolNumber, getHostByName, hostAddress)
 import Network.Socket.ByteString (recv, send)
-import qualified Data.ByteString as S
+import System.IO.Error (catchIOError)
+import Test.HUnit (assertFailure)
 
 main :: IO ()
 main = bracket (listenOn (PortNumber 0)) sClose $ \listener -> do
     port <- socketPort listener
-    forkIO $ server listener
-    client port
+    void . forkIO $ server listener
+    e <- catchIOError
+      (client port >> return (Right ()))
+      (const . return $ Left ())
+    case e of
+      Right _ -> return ()
+      Left _ -> assertFailure "Socket threw an IOError"
 
 server :: Socket -> IO ()
 server listener = forever $ bracket
@@ -28,9 +37,7 @@ client (PortNumber port) = do
     s <- connectTo "localhost" port
     fix $ \loop -> do
         bs <- recv s 1024
-        unless (S.null bs) $ do
-            print bs
-            loop
+        unless (S.null bs) loop
 client p = error $ "Invalid PortID: " ++ show p
 
 connectTo :: String -> PortNumber -> IO Socket
