@@ -19,12 +19,9 @@ main :: IO ()
 main = bracket (listenOn (PortNumber 0)) sClose $ \listener -> do
     port <- socketPort listener
     void . forkIO $ server listener
-    e <- catchIOError
-      (client port >> return (Right ()))
-      (const . return $ Left ())
-    case e of
-      Right _ -> return ()
-      Left _ -> assertFailure "client threw an IOError"
+    catchIOError
+      (client port)
+      (\e -> assertFailure $ "client threw an IOError: " ++ show e)
 
 server :: Socket -> IO ()
 server listener = forever $ bracket
