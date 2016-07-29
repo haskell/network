@@ -48,10 +48,9 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Data.Word (Word8)
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr)
-import Network.Socket (c_recv, recvBuf, sendBuf, sendBufTo, recvBufFrom)
+import Network.Socket (sendBuf, sendBufTo, recvBufFrom)
 
 import qualified Data.ByteString as B
 
@@ -65,10 +64,16 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.Storable (Storable(..))
+import Foreign.C.Types (CChar, CSize(..), CInt(..))
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 
+#endif
+
+#if !defined(mingw32_HOST_OS)
+foreign import CALLCONV unsafe "recv"
+  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 
 -- ----------------------------------------------------------------------------

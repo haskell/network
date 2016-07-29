@@ -106,7 +106,6 @@ module Network.Socket
     , recv
     , recvFrom
     , recvLen
-    , c_recv
 
     -- *** Sending and receiving with a buffer
     , sendBuf

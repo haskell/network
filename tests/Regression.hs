@@ -2,7 +2,6 @@
 module Main where
 
 import Network.Socket
-import qualified Network.Socket.ByteString as BS
 
 import Control.Exception
 
