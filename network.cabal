@@ -96,6 +96,7 @@ test-suite simple
 test-suite regression
   hs-source-dirs: tests
   main-is: Regression.hs
+  other-modules: Regression.Issue215
   type: exitcode-stdio-1.0
 
   build-depends:
