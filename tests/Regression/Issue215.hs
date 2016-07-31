@@ -12,7 +12,7 @@ import Test.HUnit                (assertFailure)
 
 main :: IO ()
 main = do
-  s <- listenOn $ PortNumber 5000
+  s <- listenOn $ PortNumber 0
   addr <- getSocketName s
   let MkSocket _ family _ _ _ = s
 
