@@ -4,21 +4,20 @@
 -}
 module Regression.Issue215 (main) where
 
-import Network.Socket hiding (recv)
+import Network                   (listenOn, PortID(..))
+import Network.Socket     hiding (recv)
 import Network.Socket.ByteString (recv)
-import System.IO.Error (catchIOError)
-import Test.HUnit (assertFailure)
+import System.IO.Error           (catchIOError)
+import Test.HUnit                (assertFailure)
 
 main :: IO ()
 main = do
-  addr:_ <- getAddrInfo Nothing (Just "127.0.0.1") (Just "5000")
-  s <- socket AF_INET Stream 0
-  setSocketOption s ReusePort 1
-  bind s $ addrAddress addr
-  listen s maxListenQueue
+  s <- listenOn $ PortNumber 5000
+  addr <- getSocketName s
+  let MkSocket _ family _ _ _ = s
 
-  cli <- socket AF_INET Stream 0
-  connect cli $ addrAddress addr
+  cli <- socket family Stream 0
+  connect cli addr
 
   (serv, _) <- accept s
   close s
