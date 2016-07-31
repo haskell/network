@@ -5,6 +5,7 @@
 module Regression.Issue215 (main) where
 
 import Network                   (listenOn, PortID(..))
+import Network.BSD               (getHostByName, hostAddress)
 import Network.Socket     hiding (recv)
 import Network.Socket.ByteString (recv)
 import System.IO.Error           (catchIOError)
@@ -13,11 +14,11 @@ import Test.HUnit                (assertFailure)
 main :: IO ()
 main = do
   s <- listenOn $ PortNumber 0
-  addr <- getSocketName s
-  let MkSocket _ family _ _ _ = s
+  he <- getHostByName "localhost"
+  p <- socketPort s
 
-  cli <- socket family Stream 0
-  connect cli addr
+  cli <- socket AF_INET Stream 0
+  connect cli (SockAddrInet p (hostAddress he))
 
   (serv, _) <- accept s
   close s
