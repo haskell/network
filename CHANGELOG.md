@@ -1,3 +1,8 @@
+## Version 2.6.3.1
+
+ * Reverse breaking exception change in `Network.Socket.ByteString.recv`
+   [#215](https://github.com/haskell/network/issues/215)
+
 ## Version 2.6.3.0
 
  * New maintainers: Evan Borden (@eborden) and Kazu Yamamoto (@kazu-yamamoto).
