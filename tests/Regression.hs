@@ -2,13 +2,14 @@
 module Main where
 
 import Network.Socket
-import qualified Network.Socket.ByteString as BS
 
 import Control.Exception
 
 import Test.Framework (Test, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (assertFailure)
+
+import qualified Regression.Issue215 as Issue215
 
 ------------------------------------------------------------------------
 -- Tests
@@ -47,9 +48,10 @@ badSendShouldThrow = do
 
 tests :: [Test]
 tests =
-    [ testCase "testGetAddrInfo" testGetAddrInfo,
-      testCase "badRecvShouldThrow" badRecvShouldThrow,
-      testCase "badSendShouldThrow" badSendShouldThrow
+    [ testCase "testGetAddrInfo" testGetAddrInfo
+    , testCase "badRecvShouldThrow" badRecvShouldThrow
+    , testCase "badSendShouldThrow" badSendShouldThrow
+    , testCase "recvShouldntThrowOnClosedSocket" Issue215.main
     ]
 
 ------------------------------------------------------------------------
