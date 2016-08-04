@@ -43,14 +43,15 @@ module Network.Socket.ByteString
     -- $example
     ) where
 
+import Control.Exception (catch, throwIO)
 import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
-import Data.Word (Word8)
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (Ptr, castPtr)
-import Network.Socket (sendBuf, sendBufTo, recvBufFrom)
+import Foreign.Ptr (castPtr)
+import Network.Socket (sendBuf, sendBufTo, recvBuf, recvBufFrom)
+import System.IO.Error (isEOFError)
 
 import qualified Data.ByteString as B
 
@@ -62,20 +63,11 @@ import Network.Socket.Types
 import Control.Monad (liftM, zipWithM_)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (plusPtr)
+import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.Storable (Storable(..))
-import Foreign.C.Types (CChar, CSize(..), CInt(..))
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
-
-#else
-import GHC.IO.FD (FD(..), readRawBufferPtr)
-#endif
-
-#if !defined(mingw32_HOST_OS)
-foreign import CALLCONV unsafe "recv"
-  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -233,20 +225,10 @@ recv :: Socket         -- ^ Connected socket
      -> IO ByteString  -- ^ Data received
 recv sock nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ recvInner sock nbytes
-
-recvInner :: Socket -> Int -> Ptr Word8 -> IO Int
-recvInner sock nbytes ptr =
-    fmap fromIntegral $
-#if defined(mingw32_HOST_OS)
-      throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
-        readRawBufferPtr "Network.Socket.ByteString.recv" (FD s 1) ptr 0 (fromIntegral nbytes)
-#else
-      throwSocketErrorWaitRead sock "recv" $
-        c_recv s (castPtr ptr) (fromIntegral nbytes) 0
-#endif
-  where
-    s = sockFd sock
+    | otherwise  = createAndTrim nbytes $ \ptr ->
+        catch
+          (recvBuf sock ptr nbytes)
+          (\e -> if isEOFError e then return 0 else throwIO e)
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a

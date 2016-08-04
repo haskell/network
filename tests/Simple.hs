@@ -12,6 +12,7 @@ import qualified Data.ByteString.Char8 as C
 import Data.Maybe (fromJust)
 #endif
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
+import qualified Network.Socket (recv)
 import Network.Socket.ByteString
 
 --- To tests for AF_CAN on Linux, you need to bring up a virtual (or real can
@@ -30,7 +31,7 @@ import Network.BSD (ifNameToIndex)
 #endif
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion, (@=?))
+import Test.HUnit (Assertion, (@=?), assertFailure)
 
 ------------------------------------------------------------------------
 
@@ -229,6 +230,24 @@ canTest ifname clientAct serverAct = do
     serverSetup = clientSetup
 #endif
 
+-- The String version of 'recv' should throw an exception when the remote end
+-- has closed the connection, the ByteString version should return an empty
+-- ByteString.
+testStringEol :: Assertion
+testStringEol = tcpTest client close
+  where client s = do
+          res <- E.try $ Network.Socket.recv s 4096
+          case res of
+            Left (_ :: IOError) -> return ()
+            Right _ -> assertFailure
+              "String recv didn't throw an exception on a closed socket"
+
+testByteStringEol :: Assertion
+testByteStringEol = tcpTest client close
+  where client s = do
+          res :: Either IOError C.ByteString <- E.try $ recv s 4096
+          res @=? Right S.empty
+
 ------------------------------------------------------------------------
 -- Conversions of IP addresses
 
@@ -287,6 +306,8 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testUserTimeout" testUserTimeout
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
+    , testCase "testStringEol" testStringEol
+    , testCase "testByteStringEol" testByteStringEol
 #if defined(HAVE_LINUX_CAN_H)
     , testCase "testCanSend" testCanSend
 #endif

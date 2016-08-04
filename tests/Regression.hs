@@ -9,8 +9,6 @@ import Test.Framework (Test, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (assertFailure)
 
-import qualified Regression.Issue215 as Issue215
-
 ------------------------------------------------------------------------
 -- Tests
 
@@ -51,7 +49,6 @@ tests =
     [ testCase "testGetAddrInfo" testGetAddrInfo
     , testCase "badRecvShouldThrow" badRecvShouldThrow
     , testCase "badSendShouldThrow" badSendShouldThrow
-    , testCase "recvShouldntThrowOnClosedSocket" Issue215.main
     ]
 
 ------------------------------------------------------------------------
