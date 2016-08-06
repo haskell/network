@@ -31,7 +31,7 @@ import Network.BSD (ifNameToIndex)
 #endif
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion, (@=?), assertFailure)
+import Test.HUnit (Assertion, (@=?), assertBool, assertFailure)
 
 ------------------------------------------------------------------------
 
@@ -251,6 +251,14 @@ testByteStringEol = tcpTest client close
 ------------------------------------------------------------------------
 -- Conversions of IP addresses
 
+testHtonlNtohl :: Assertion
+testHtonlNtohl = do
+    let addrl = 0xCafeBabe
+    addrl @=? (htonl . ntohl) addrl
+    addrl @=? (ntohl . htonl) addrl
+    assertBool "BE or LE byte order" $
+        ntohl addrl `elem` [0xCafeBabe, 0xbebafeca]
+
 testHostAddressToTuple :: Assertion
 testHostAddressToTuple = do
     -- Look up a numeric IPv4 host
@@ -312,6 +320,7 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testCanSend" testCanSend
 #endif
       -- conversions of IP addresses
+    , testCase "testHtonlNtohl" testHtonlNtohl
     , testCase "testHostAddressToTuple" testHostAddressToTuple
     , testCase "testHostAddressToTupleInv" testHostAddressToTupleInv
 #if defined(IPV6_SOCKET_SUPPORT)
