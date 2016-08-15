@@ -922,6 +922,10 @@ pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 pokeSockAddr p (SockAddrUnix path) = do
 #if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_un))
+#else
+    case path of
+      ('\0':_) -> zeroMemory p (#const sizeof(struct sockaddr_un))
+      _        -> return ()
 #endif
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
