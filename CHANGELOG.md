@@ -1,3 +1,8 @@
+## Version 2.6.3.2
+
+ * Zero memory of sockaddr_un if abstract socket
+   [#220](https://github.com/haskell/network/pull/220)
+
 ## Version 2.6.3.1
 
  * Reverse breaking exception change in `Network.Socket.ByteString.recv`
