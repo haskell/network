@@ -1542,7 +1542,7 @@ mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of f
 -- ---------------------------------------------------------------------------
 -- foreign imports from the C library
 
-foreign import ccall unsafe "my_inet_ntoa"
+foreign import ccall unsafe "hsnet_inet_ntoa"
   c_inet_ntoa :: HostAddress -> IO (Ptr CChar)
 
 foreign import CALLCONV unsafe "inet_addr"
