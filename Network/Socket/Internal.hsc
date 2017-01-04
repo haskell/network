@@ -266,7 +266,8 @@ withSocketsInit :: ()
 -- Use a CAF to make forcing it do initialisation once, but subsequent forces will be cheap
 withSocketsInit = unsafePerformIO $ do
     x <- initWinSock
-    when (x /= 0) $ ioError $ userError "Failed to initialise WinSock"
+    when (x /= 0) $ ioError $
+      userError "Network.Socket.Internal.withSocketsDo: Failed to initialise WinSock"
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
 
