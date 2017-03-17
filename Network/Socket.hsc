@@ -339,7 +339,7 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
-    fd <- throwSocketErrorIfMinus1Retry "socket" $
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
     setNonBlockIfNeeded fd
     socket_status <- newMVar NotConnected
@@ -372,7 +372,7 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
     c_stype <- packSocketTypeOrThrow "socketPair" stype
-    _rc <- throwSocketErrorIfMinus1Retry "socketpair" $
+    _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
                 c_socketpair (packFamily family) c_stype protocol fdArr
     [fd1,fd2] <- peekArray 2 fdArr
     s1 <- mkNonBlockingSocket fd1
@@ -409,11 +409,12 @@ bind (MkSocket s _family _stype _protocol socketStatus) addr = do
  modifyMVar_ socketStatus $ \ status -> do
  if status /= NotConnected
   then
-   ioError (userError ("bind: can't peform bind on socket in status " ++
-         show status))
+   ioError $ userError $
+     "Network.Socket.bind: can't bind to socket with status " ++ show status
   else do
    withSockAddr addr $ \p_addr sz -> do
-   _status <- throwSocketErrorIfMinus1Retry "bind" $ c_bind s p_addr (fromIntegral sz)
+   _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
+     c_bind s p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
@@ -427,8 +428,8 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocke
  modifyMVar_ socketStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
-    ioError (userError ("connect: can't peform connect on socket in status " ++
-        show currentStatus))
+    ioError $ userError $
+      errLoc ++ ": can't connect to socket with status " ++ show currentStatus
   else do
     withSockAddr addr $ \p_addr sz -> do
 
@@ -442,9 +443,9 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocke
                      _ | err == eINTR       -> connectLoop
                      _ | err == eINPROGRESS -> connectBlocked
 --                   _ | err == eAGAIN      -> connectBlocked
-                     _otherwise             -> throwSocketError "connect"
+                     _otherwise             -> throwSocketError errLoc
 #else
-                   throwSocketError "connect"
+                   throwSocketError errLoc
 #endif
                else return ()
 
@@ -453,10 +454,12 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocke
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return ()
-                else throwSocketErrorCode "connect" (fromIntegral err)
+                else throwSocketErrorCode errLoc (fromIntegral err)
 
     connectLoop
     return Connected
+ where
+   errLoc = "Network.Socket.connect: " ++ show sock
 
 -----------------------------------------------------------------------------
 -- Listen
@@ -471,10 +474,11 @@ listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
  modifyMVar_ socketStatus $ \ status -> do
  if status /= Bound
    then
-     ioError (userError ("listen: can't peform listen on socket in status " ++
-         show status))
+     ioError $ userError $
+       "Network.Socket.listen: can't listen on socket with status " ++ show status
    else do
-     throwSocketErrorIfMinus1Retry_ "listen" (c_listen s (fromIntegral backlog))
+     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
+       c_listen s (fromIntegral backlog)
      return Listening
 
 -----------------------------------------------------------------------------
@@ -500,8 +504,10 @@ accept sock@(MkSocket s family stype protocol status) = do
  okay <- isAcceptable sock
  if not okay
    then
-     ioError (userError ("accept: can't perform accept on socket (" ++ (show (family,stype,protocol)) ++") in status " ++
-         show currentStatus))
+     ioError $ userError $
+       "Network.Socket.accept: can't accept socket (" ++
+         show (family, stype, protocol) ++ ") with status " ++
+         show currentStatus
    else do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
@@ -522,11 +528,11 @@ accept sock@(MkSocket s family stype protocol status) = do
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ACCEPT4
-     new_sock <- throwSocketErrorIfMinus1RetryMayBlock "accept"
+     new_sock <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
                         (threadWaitRead (fromIntegral s))
                         (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
 # else
-     new_sock <- throwSocketErrorWaitRead sock "accept"
+     new_sock <- throwSocketErrorWaitRead sock "Network.Socket.accept"
                         (c_accept s sockaddr ptr_len)
      setNonBlockIfNeeded new_sock
 # endif /* HAVE_ACCEPT4 */
@@ -587,7 +593,7 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
 sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
-     throwSocketErrorWaitWrite sock "sendTo" $
+     throwSocketErrorWaitWrite sock "Network.Socket.sendTo" $
         c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
@@ -622,7 +628,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
     withNewSockAddr family $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead sock "recvFrom" $
+        len <- throwSocketErrorWaitRead sock "Network.Socket.recvFrom" $
                    c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
@@ -678,7 +684,7 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
       0
       (fromIntegral len)
 #else
-     throwSocketErrorWaitWrite sock "sendBuf" $
+     throwSocketErrorWaitWrite sock "Network.Socket.sendBuf" $
         c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
@@ -732,7 +738,7 @@ recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
                 readRawBufferPtr "Network.Socket.recvBuf"
                 (socket2FD sock) ptr 0 (fromIntegral nbytes)
 #else
-               throwSocketErrorWaitRead sock "recvBuf" $
+               throwSocketErrorWaitRead sock "Network.Socket.recvBuf" $
                    c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
@@ -759,7 +765,9 @@ socketPort sock@(MkSocket _ AF_INET6 _ _ _) = do
     return port
 #endif
 socketPort (MkSocket _ family _ _ _) =
-    ioError (userError ("socketPort: not supported for Family " ++ show family))
+    ioError $ userError $
+      "Network.Socket.socketPort: address family '" ++ show family ++
+      "' not supported."
 
 
 -- ---------------------------------------------------------------------------
@@ -775,7 +783,8 @@ getPeerName   :: Socket -> IO SockAddr
 getPeerName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry_ "getPeerName" $ c_getpeername s ptr int_star
+   throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
+     c_getpeername s ptr int_star
    _sz <- peek int_star
    peekSockAddr ptr
 
@@ -783,7 +792,8 @@ getSocketName :: Socket -> IO SockAddr
 getSocketName (MkSocket s family _ _ _) = do
  withNewSockAddr family $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry_ "getSocketName" $ c_getsockname s ptr int_star
+   throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
+     c_getsockname s ptr int_star
    peekSockAddr ptr
 
 -----------------------------------------------------------------------------
@@ -938,7 +948,7 @@ setSocketOption :: Socket
 setSocketOption (MkSocket s _ _ _ _) so v = do
    (level, opt) <- packSocketOption' "setSocketOption" so
    with (fromIntegral v) $ \ptr_v -> do
-   throwSocketErrorIfMinus1_ "setSocketOption" $
+   throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
        c_setsockopt s level opt ptr_v
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
@@ -953,7 +963,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
    (level, opt) <- packSocketOption' "getSocketOption" so
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
-       throwSocketErrorIfMinus1Retry_ "getSocketOption" $
+       throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
          c_getsockopt s level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
@@ -971,7 +981,7 @@ getPeerCred sock = do
   let sz = (#const sizeof(struct ucred))
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
-     _ <- ($) throwSocketErrorIfMinus1Retry "getPeerCred" $
+     _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
        c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
      pid <- (#peek struct ucred, pid) ptr_cr
      uid <- (#peek struct ucred, uid) ptr_cr
@@ -990,7 +1000,7 @@ getPeerEid sock = do
   let fd = fdSocket sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
-      throwSocketErrorIfMinus1Retry_ "getPeerEid" $
+      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
         c_getpeereid fd ptr_uid ptr_gid
       uid <- peek ptr_uid
       gid <- peek ptr_gid
@@ -1007,7 +1017,7 @@ closeFdWith closer fd = closer fd
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
-  _ <- ($) throwSocketErrorWaitWrite sock "sendFd" $
+  _ <- ($) throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $
      c_sendFd (fdSocket sock) outfd
    -- Note: If Winsock supported FD-passing, thi would have been
    -- incorrect (since socket FDs need to be closed via closesocket().)
@@ -1015,7 +1025,7 @@ sendFd sock outfd = do
 
 recvFd :: Socket -> IO CInt
 recvFd sock = do
-  theFd <- throwSocketErrorWaitRead sock "recvFd" $
+  theFd <- throwSocketErrorWaitRead sock "Network.Socket.recvFd" $
                c_recvFd (fdSocket sock)
   return theFd
 
@@ -1084,7 +1094,8 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown (MkSocket s _ _ _ _) stype = do
-  throwSocketErrorIfMinus1Retry_ "shutdown" (c_shutdown s (sdownCmdToInt stype))
+  throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
+    c_shutdown s (sdownCmdToInt stype)
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -1153,7 +1164,8 @@ inet_addr ipstr = withSocketsDo $ do
    withCString ipstr $ \str -> do
    had <- c_inet_addr str
    if had == -1
-    then ioError (userError ("inet_addr: Malformed address: " ++ ipstr))
+    then ioError $ userError $
+      "Network.Socket.inet_addr: Malformed address: " ++ ipstr
     else return had  -- network byte order
 
 inet_ntoa :: HostAddress -> IO String
@@ -1443,7 +1455,7 @@ getAddrInfo hints node service = withSocketsDo $
                     return ais
             _ -> do err <- gai_strerror ret
                     ioError (ioeSetErrorString
-                             (mkIOError NoSuchThing "getAddrInfo" Nothing
+                             (mkIOError NoSuchThing "Network.Socket.getAddrInfo" Nothing
                               Nothing) err)
     -- Leaving out the service and using AI_NUMERICSERV causes a
     -- segfault on OS X 10.8.2. This code removes AI_NUMERICSERV
@@ -1480,7 +1492,7 @@ gai_strerror n = c_gai_strerror n >>= peekCString
 foreign import ccall safe "gai_strerror"
     c_gai_strerror :: CInt -> IO CString
 #else
-gai_strerror n = return ("error " ++ show n)
+gai_strerror n = ioError $ userError $ "Network.Socket.gai_strerror not supported: " ++ show n
 #endif
 
 withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
@@ -1523,7 +1535,7 @@ getNameInfo flags doHost doService addr = withSocketsDo $
             return (host, serv)
           _ -> do err <- gai_strerror ret
                   ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing "getNameInfo" Nothing
+                           (mkIOError NoSuchThing "Network.Socket.getNameInfo" Nothing
                             Nothing) err)
 
 foreign import ccall safe "hsnet_getnameinfo"

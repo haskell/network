@@ -344,7 +344,7 @@ getPeerPort sock = do
     case sockAddr of
         (SockAddrInet port _) -> return port
         (SockAddrInet6 port _ _ _) -> return port
-        _ -> error "getPeerPort: only works with IP sockets"
+        _ -> ioError $ userError "getPeerPort: only works with IP sockets"
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions

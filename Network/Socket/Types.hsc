@@ -59,7 +59,6 @@ module Network.Socket.Types
     ) where
 
 import Control.Concurrent.MVar
-import Control.Exception (throwIO)
 import Control.Monad
 import Data.Bits
 import Data.Maybe
@@ -724,8 +723,9 @@ unpackFamily f = case f of
 #ifdef AF_CAN
         (#const AF_CAN) -> AF_CAN
 #endif
-        unknown -> error ("Network.Socket.unpackFamily: unknown address " ++
-                          "family " ++ show unknown)
+        unknown -> error $
+          "Network.Socket.Types.unpackFamily: unknown address family: " ++
+          show unknown
 
 ------------------------------------------------------------------------
 -- Port Numbers
@@ -892,8 +892,9 @@ sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
 #if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddrByFamily AF_CAN   = #const sizeof(struct sockaddr_can)
 #endif
-sizeOfSockAddrByFamily family =
-    error $ "sizeOfSockAddrByFamily: " ++ show family ++ " not supported."
+sizeOfSockAddrByFamily family = error $
+    "Network.Socket.Types.sizeOfSockAddrByFamily: address family '" ++
+    show family ++ "' not supported."
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
@@ -994,7 +995,9 @@ peekSockAddr p = do
         ifidx <- (#peek struct sockaddr_can, can_ifindex) p
         return (SockAddrCan ifidx)
 #endif
-    _ -> throwIO $ userError $ "peekSockAddr: " ++ show family ++ " not supported on this platform."
+    _ -> ioError $ userError $
+      "Network.Socket.Types.peekSockAddr: address family '" ++
+      show family ++ "' not supported."
 
 ------------------------------------------------------------------------
 

@@ -59,7 +59,6 @@ module Network
     {-$performance-}
     ) where
 
-import Control.Exception (throwIO)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import Network.BSD
@@ -98,9 +97,9 @@ connectTo :: HostName           -- Hostname
 #if defined(IPV6_SOCKET_SUPPORT)
 -- IPv6 and IPv4.
 
-connectTo hostname (Service serv) = connect' hostname serv
+connectTo hostname (Service serv) = connect' "Network.connectTo" hostname serv
 
-connectTo hostname (PortNumber port) = connect' hostname (show port)
+connectTo hostname (PortNumber port) = connect' "Network.connectTo" hostname (show port)
 #else
 -- IPv4 only.
 
@@ -140,15 +139,15 @@ connectTo _ (UnixSocket path) = do
 #endif
 
 #if defined(IPV6_SOCKET_SUPPORT)
-connect' :: HostName -> ServiceName -> IO Handle
+connect' :: String -> HostName -> ServiceName -> IO Handle
 
-connect' host serv = do
+connect' caller host serv = do
     proto <- getProtocolNumber "tcp"
     let hints = defaultHints { addrFlags = [AI_ADDRCONFIG]
                              , addrProtocol = proto
                              , addrSocketType = Stream }
     addrs <- getAddrInfo (Just hints) (Just host) (Just serv)
-    firstSuccessful $ map tryToConnect addrs
+    firstSuccessful caller $ map tryToConnect addrs
   where
   tryToConnect addr =
     bracketOnError
@@ -291,14 +290,14 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
                  SockAddrInet  _   a   -> inet_ntoa a
                  SockAddrInet6 _ _ a _ -> return (show a)
 #if defined(mingw32_HOST_OS)
-                 SockAddrUnix {}       -> throwIO $ userError "accept: socket address not supported on this platform."
+                 SockAddrUnix {}       -> ioError $ userError "Network.accept: peer socket address 'SockAddrUnix' not supported on this platform."
 #else
                  SockAddrUnix      a   -> return a
 #endif
 #if defined(CAN_SOCKET_SUPPORT)
-                 SockAddrCan {}        -> throwIO $ userError "accept: unsupported for CAN peer."
+                 SockAddrCan {}        -> ioError $ userError "Network.accept: peer socket address 'SockAddrCan' not supported."
 #else
-                 SockAddrCan {}        -> throwIO $ userError "accept: socket address not supported on this platform."
+                 SockAddrCan {}        -> ioError $ userError "Network.accept: peer socket address 'SockAddrCan' not supported on this platform."
 #endif
  handle <- socketToHandle sock' ReadWriteMode
  let port = case addr of
@@ -314,7 +313,8 @@ accept sock@(MkSocket _ AF_UNIX _ _ _) = do
  return (handle, path, -1)
 #endif
 accept (MkSocket _ family _ _ _) =
-  error $ "Sorry, address family " ++ (show family) ++ " is not supported!"
+  ioError $ userError $ "Network.accept: address family '" ++
+    show family ++ "' not supported."
 
 
 -- | Close the socket. Sending data to or receiving data from closed socket
@@ -405,14 +405,14 @@ socketPort s = do
 #if defined(IPV6_SOCKET_SUPPORT)
       SockAddrInet6 port _ _ _ -> return $ PortNumber port
 #else
-      SockAddrInet6 {}         -> throwIO $ userError "socketPort: socket address not supported on this platform."
+      SockAddrInet6 {}         -> ioError $ userError "Network.socketPort: socket address 'SockAddrInet6' not supported on this platform."
 #endif
 #if defined(mingw32_HOST_OS)
-      SockAddrUnix {}          -> throwIO $ userError "socketPort: socket address not supported on this platform."
+      SockAddrUnix {}          -> ioError $ userError "Network.socketPort: socket address 'SockAddrUnix' not supported on this platform."
 #else
       SockAddrUnix path        -> return $ UnixSocket path
 #endif
-      SockAddrCan {}           -> throwIO $ userError "socketPort: CAN address not supported."
+      SockAddrCan {}           -> ioError $ userError "Network.socketPort: socket address 'SockAddrCan' not supported."
 
 -- ---------------------------------------------------------------------------
 -- Utils
@@ -463,8 +463,8 @@ tryIO m = catchIO (liftM Right m) (return . Left)
 -- The operations are run outside of the catchIO cleanup handler because
 -- catchIO masks asynchronous exceptions in the cleanup handler.
 -- In the case of complete failure, the last exception is actually thrown.
-firstSuccessful :: [IO a] -> IO a
-firstSuccessful = go Nothing
+firstSuccessful :: String -> [IO a] -> IO a
+firstSuccessful caller = go Nothing
   where
   -- Attempt the next operation, remember exception on failure
   go _ (p:ps) =
@@ -474,5 +474,5 @@ firstSuccessful = go Nothing
          Left  e -> go (Just e) ps
 
   -- All operations failed, throw error if one exists
-  go Nothing  [] = error "firstSuccessful: empty list"
+  go Nothing  [] = ioError $ userError $ caller ++ ": firstSuccessful: empty list"
   go (Just e) [] = Exception.throwIO e

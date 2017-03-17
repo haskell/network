@@ -168,7 +168,7 @@ instance Storable ServiceEntry where
                         serviceProtocol = s_proto
                 })
 
-   poke _p = error "Storable.poke(BSD.ServiceEntry) not implemented"
+   poke = throwUnsupportedOperationPoke "ServiceEntry"
 
 
 -- | Get service by name.
@@ -178,7 +178,7 @@ getServiceByName :: ServiceName         -- Service Name
 getServiceByName name proto = withLock $ do
  withCString name  $ \ cstr_name  -> do
  withCString proto $ \ cstr_proto -> do
- throwNoSuchThingIfNull "getServiceByName" "no such service entry"
+ throwNoSuchThingIfNull "Network.BSD.getServiceByName" "no such service entry"
    $ c_getservbyname cstr_name cstr_proto
  >>= peek
 
@@ -189,7 +189,7 @@ foreign import CALLCONV unsafe "getservbyname"
 getServiceByPort :: PortNumber -> ProtocolName -> IO ServiceEntry
 getServiceByPort port proto = withLock $ do
  withCString proto $ \ cstr_proto -> do
- throwNoSuchThingIfNull "getServiceByPort" "no such service entry"
+ throwNoSuchThingIfNull "Network.BSD.getServiceByPort" "no such service entry"
    $ c_getservbyport (fromIntegral port) cstr_proto
  >>= peek
 
@@ -205,7 +205,7 @@ getServicePortNumber name = do
 #if !defined(mingw32_HOST_OS)
 getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
- throwNoSuchThingIfNull "getServiceEntry" "no such service entry"
+ throwNoSuchThingIfNull "Network.BSD.getServiceEntry" "no such service entry"
    $ c_getservent
  >>= peek
 
@@ -270,12 +270,13 @@ instance Storable ProtocolEntry where
                         protoNumber  = p_proto
                 })
 
-   poke _p = error "Storable.poke(BSD.ProtocolEntry) not implemented"
+   poke = throwUnsupportedOperationPoke "ProtocolEntry"
+
 
 getProtocolByName :: ProtocolName -> IO ProtocolEntry
 getProtocolByName name = withLock $ do
  withCString name $ \ name_cstr -> do
- throwNoSuchThingIfNull "getProtocolByName" ("no such protocol name: " ++ name)
+ throwNoSuchThingIfNull "Network.BSD.getProtocolByName" ("no such protocol name: " ++ name)
    $ c_getprotobyname name_cstr
  >>= peek
 
@@ -285,7 +286,7 @@ foreign import  CALLCONV unsafe  "getprotobyname"
 
 getProtocolByNumber :: ProtocolNumber -> IO ProtocolEntry
 getProtocolByNumber num = withLock $ do
- throwNoSuchThingIfNull "getProtocolByNumber" ("no such protocol number: " ++ show num)
+ throwNoSuchThingIfNull "Network.BSD.getProtocolByNumber" ("no such protocol number: " ++ show num)
    $ c_getprotobynumber (fromIntegral num)
  >>= peek
 
@@ -301,7 +302,7 @@ getProtocolNumber proto = do
 #if !defined(mingw32_HOST_OS)
 getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
- ent <- throwNoSuchThingIfNull "getProtocolEntry" "no such protocol entry"
+ ent <- throwNoSuchThingIfNull "Network.BSD.getProtocolEntry" "no such protocol entry"
                 $ c_getprotoent
  peek ent
 
@@ -359,14 +360,14 @@ instance Storable HostEntry where
                         hostAddresses  = h_addr_list
                 })
 
-   poke _p = error "Storable.poke(BSD.ServiceEntry) not implemented"
+   poke = throwUnsupportedOperationPoke "HostEntry"
 
 
 -- convenience function:
 hostAddress :: HostEntry -> HostAddress
 hostAddress (HostEntry nm _ _ ls) =
  case ls of
-   []    -> error ("BSD.hostAddress: empty network address list for " ++ nm)
+   []    -> error $ "Network.BSD.hostAddress: empty network address list for " ++ nm
    (x:_) -> x
 
 -- getHostByName must use the same lock as the *hostent functions
@@ -376,7 +377,7 @@ hostAddress (HostEntry nm _ _ ls) =
 getHostByName :: HostName -> IO HostEntry
 getHostByName name = withLock $ do
   withCString name $ \ name_cstr -> do
-   ent <- throwNoSuchThingIfNull "getHostByName" "no such host entry"
+   ent <- throwNoSuchThingIfNull "Network.BSD.getHostByName" "no such host entry"
                 $ c_gethostbyname name_cstr
    peek ent
 
@@ -390,7 +391,7 @@ foreign import CALLCONV safe "gethostbyname"
 getHostByAddr :: Family -> HostAddress -> IO HostEntry
 getHostByAddr family addr = do
  with addr $ \ ptr_addr -> withLock $ do
- throwNoSuchThingIfNull         "getHostByAddr" "no such host entry"
+ throwNoSuchThingIfNull "Network.BSD.getHostByAddr" "no such host entry"
    $ c_gethostbyaddr ptr_addr (fromIntegral (sizeOf addr)) (packFamily family)
  >>= peek
 
@@ -400,7 +401,7 @@ foreign import CALLCONV safe "gethostbyaddr"
 #if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
- throwNoSuchThingIfNull         "getHostEntry" "unable to retrieve host entry"
+ throwNoSuchThingIfNull "Network.BSD.getHostEntry" "unable to retrieve host entry"
    $ c_gethostent
  >>= peek
 
@@ -460,14 +461,14 @@ instance Storable NetworkEntry where
                         networkAddress   = n_net
                 })
 
-   poke _p = error "Storable.poke(BSD.NetEntry) not implemented"
+   poke = throwUnsupportedOperationPoke "NetworkEntry"
 
 
 #if !defined(mingw32_HOST_OS)
 getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = withLock $ do
  withCString name $ \ name_cstr -> do
-  throwNoSuchThingIfNull "getNetworkByName" "no such network entry"
+  throwNoSuchThingIfNull "Network.BSD.getNetworkByName" "no such network entry"
     $ c_getnetbyname name_cstr
   >>= peek
 
@@ -476,7 +477,7 @@ foreign import ccall unsafe "getnetbyname"
 
 getNetworkByAddr :: NetworkAddr -> Family -> IO NetworkEntry
 getNetworkByAddr addr family = withLock $ do
- throwNoSuchThingIfNull "getNetworkByAddr" "no such network entry"
+ throwNoSuchThingIfNull "Network.BSD.getNetworkByAddr" "no such network entry"
    $ c_getnetbyaddr addr (packFamily family)
  >>= peek
 
@@ -485,7 +486,7 @@ foreign import ccall unsafe "getnetbyaddr"
 
 getNetworkEntry :: IO NetworkEntry
 getNetworkEntry = withLock $ do
- throwNoSuchThingIfNull "getNetworkEntry" "no more network entries"
+ throwNoSuchThingIfNull "Network.BSD.getNetworkEntry" "no more network entries"
           $ c_getnetent
  >>= peek
 
@@ -549,7 +550,7 @@ getHostName :: IO HostName
 getHostName = do
   let size = 256
   allocaArray0 size $ \ cstr -> do
-    throwSocketErrorIfMinus1_ "getHostName" $ c_gethostname cstr (fromIntegral size)
+    throwSocketErrorIfMinus1_ "Network.BSD.getHostName" $ c_gethostname cstr (fromIntegral size)
     peekCString cstr
 
 foreign import CALLCONV unsafe "gethostname"
@@ -577,3 +578,12 @@ throwNoSuchThingIfNull loc desc act = do
   if (ptr == nullPtr)
    then ioError (ioeSetErrorString (mkIOError NoSuchThing loc Nothing Nothing) desc)
    else return ptr
+
+throwUnsupportedOperationPoke :: String -> Ptr a -> a -> IO ()
+throwUnsupportedOperationPoke typ _ _ =
+  ioError $ ioeSetErrorString ioe "Operation not implemented"
+  where
+    ioe = mkIOError UnsupportedOperation
+                    ("Network.BSD: instance Storable " ++ typ ++ ": poke")
+                    Nothing
+                    Nothing
