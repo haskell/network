@@ -1,6 +1,6 @@
 /* -----------------------------------------------------------------------------
  *
- * Definitions for package `net' which are visible in Haskell land.
+ * Definitions for package `network' which are visible in Haskell land.
  *
  * ---------------------------------------------------------------------------*/
 

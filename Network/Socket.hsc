@@ -553,7 +553,7 @@ foreign import ccall unsafe "free"
 #endif
 
 -----------------------------------------------------------------------------
--- ** Sending and reciving data
+-- ** Sending and receiving data
 
 -- $sendrecv
 --
