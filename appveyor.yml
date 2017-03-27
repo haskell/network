@@ -15,6 +15,7 @@ matrix:
     - stack_lts: "nightly"
 
 install:
+- set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
 - curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-x86_64
 - 7z x stack.zip stack.exe
 - stack --no-terminal setup --resolver %stack_lts% > nul
