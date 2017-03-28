@@ -81,7 +81,8 @@ import Foreign.Storable
 --   * Status flag
 --
 --   If you are calling the 'MkSocket' constructor directly you should ensure
---   you have called 'Network.withSocketsDo'.
+--   you have called 'Network.withSocketsDo' and that the file descriptor is
+--   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
 data Socket
   = MkSocket
             CInt                 -- File Descriptor
