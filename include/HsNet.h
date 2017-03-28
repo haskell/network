@@ -118,7 +118,7 @@ recvFd(int sock);
 #endif /* HAVE_WINSOCK2_H */
 
 INLINE char *
-my_inet_ntoa(
+hsnet_inet_ntoa(
 #if defined(HAVE_WINSOCK2_H)
              u_long addr
 #elif defined(HAVE_IN_ADDR_T)
@@ -129,7 +129,7 @@ my_inet_ntoa(
              unsigned long addr
 #endif
 	    )
-{ 
+{
     struct in_addr a;
     a.s_addr = addr;
     return inet_ntoa(a);
