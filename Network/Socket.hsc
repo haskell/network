@@ -160,6 +160,7 @@ module Network.Socket
     -- in case you ever want to get at the underlying file descriptor..
     , fdSocket
     , mkSocket
+    , setNonBlockIfNeeded
 
     -- * Deprecated aliases
     -- $deprecated-aliases
@@ -262,6 +263,10 @@ socket2FD  (MkSocket fd _ _ _ _) =
   FD{fdFD = fd,fdIsSocket_ = 1}
 #endif
 
+-- | Smart constructor for constructing a 'Socket'. It should only be
+-- called once for every new file descriptor. The caller must make
+-- sure that the socket is in non-blocking mode. See
+-- 'setNonBlockIfNeeded'.
 mkSocket :: CInt
          -> Family
          -> SocketType
@@ -390,6 +395,9 @@ foreign import ccall unsafe "socketpair"
 #endif
 
 -- | Set the socket to nonblocking, if applicable to this platform.
+--
+-- Depending on the platform this is required when using sockets from file
+-- descriptors that are passed in through 'recvFd' or other means.
 setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
@@ -1023,6 +1031,9 @@ sendFd sock outfd = do
    -- incorrect (since socket FDs need to be closed via closesocket().)
   closeFd outfd
 
+-- | Receive a file descriptor over a domain socket. Note that the resulting
+-- file descriptor may have to be put into non-blocking mode in order to be
+-- used safely. See 'setNonBlockIfNeeded'.
 recvFd :: Socket -> IO CInt
 recvFd sock = do
   theFd <- throwSocketErrorWaitRead sock "Network.Socket.recvFd" $
