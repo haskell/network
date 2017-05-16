@@ -27,7 +27,7 @@ description:
   network-uri >= 2.6.
 category:       Network
 build-type:     Custom
-cabal-version:  >=1.8
+cabal-version:  >=1.10
 extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
   include/HsNetworkConfig.h
@@ -50,6 +50,7 @@ custom-setup
     cabal-doctest >= 1.0.2 && <1.1
 
 library
+  default-language: Haskell98
   exposed-modules:
     Network
     Network.BSD
@@ -78,7 +79,7 @@ library
     build-depends:
       unix >= 2
 
-  extensions:
+  default-extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
   include-dirs: include
   hs-source-dirs: src
@@ -88,6 +89,7 @@ library
   ghc-options: -Wall -fwarn-tabs
 
 test-suite simple
+  default-language: Haskell98
   hs-source-dirs: tests
   main-is: Simple.hs
   type: exitcode-stdio-1.0
@@ -101,6 +103,7 @@ test-suite simple
     test-framework-hunit
 
 test-suite regression
+  default-language: Haskell98
   hs-source-dirs: tests
   main-is: Regression.hs
   type: exitcode-stdio-1.0
@@ -116,6 +119,7 @@ test-suite regression
   ghc-options: -Wall -threaded
 
 test-suite doctests
+  default-language: Haskell98
   hs-source-dirs: tests
   main-is: doctests.hs
   type: exitcode-stdio-1.0
