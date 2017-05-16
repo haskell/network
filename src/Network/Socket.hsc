@@ -228,6 +228,13 @@ import Network.Socket.Types
 
 import Prelude -- Silence AMP warnings
 
+-- $setup
+--
+-- It is not clear why we need to import the module.
+-- doctests fails with "Not in scope" errors.
+--
+-- >>> import Network.Socket
+
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
 -- IPv6 address e.g., @\"192.168.0.1\"@.

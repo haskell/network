@@ -124,6 +124,7 @@ test-suite doctests
 
   build-depends:
     base < 5,
+    network,
     doctest >= 0.10.1
 
   ghc-options: -Wall
