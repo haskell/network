@@ -1,7 +1,28 @@
 ## Version 2.6.3.2
 
- * Zero memory of sockaddr_un if abstract socket
+ * Zero memory of `sockaddr_un` if abstract socket
    [#220](https://github.com/haskell/network/pull/220)
+
+ * Improving error messages
+   [#232](https://github.com/haskell/network/pull/232)
+
+ * Allow non-blocking file descriptors via `setNonBlockIfNeeded`
+   [#242](https://github.com/haskell/network/pull/242)
+
+ * Update config.{guess,sub} to latest version
+   [#244](https://github.com/haskell/network/pull/244)
+
+ * Rename `my_inet_ntoa` to avoid symbol conflicts
+   [#228](https://github.com/haskell/network/pull/228)
+
+ * Test infrastructure improvements
+   [#219](https://github.com/haskell/network/pull/219)
+   [#217](https://github.com/haskell/network/pull/217)
+   [#218](https://github.com/haskell/network/pull/218)
+
+ * House keeping and cleanup
+   [#238](https://github.com/haskell/network/pull/238)
+   [#237](https://github.com/haskell/network/pull/237)
 
 ## Version 2.6.3.1
 
