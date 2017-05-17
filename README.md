@@ -11,9 +11,9 @@ do this for you.
 
 ### GHC
 
-Our GHC policy supports 3 [stable](https://downloads.haskell.org/~ghc/8.0.2/docs/html/users_guide/intro.html#ghc-version-numbering-policy) versions. The current stable
+`network`'s GHC policy supports 3 [stable](https://downloads.haskell.org/~ghc/8.0.2/docs/html/users_guide/intro.html#ghc-version-numbering-policy) versions. The current stable
 version and two previous stable versions are supported.
 
 ### Hugs, JHC, UHC
 
-We do not officially support these compilers.
+`network` does not officially support these compilers.
