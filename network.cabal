@@ -26,8 +26,8 @@ description:
   That is, get the module from either network < 2.6 or from
   network-uri >= 2.6.
 category:       Network
-build-type:     Configure
-cabal-version:  >=1.8
+build-type:     Custom
+cabal-version:  >=1.10
 extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
   include/HsNetworkConfig.h
@@ -43,7 +43,14 @@ homepage:       https://github.com/haskell/network
 bug-reports:    https://github.com/haskell/network/issues
 tested-with:   GHC == 7.8.4, GHC == 7.10.1, GHC == 7.10.2, GHC == 8.0.1, GHC == 8.0.2
 
+custom-setup
+  setup-depends:
+    base >= 4 && <5,
+    Cabal,
+    cabal-doctest >= 1.0.2 && <1.1
+
 library
+  default-language: Haskell98
   exposed-modules:
     Network
     Network.BSD
@@ -72,15 +79,17 @@ library
     build-depends:
       unix >= 2
 
-  extensions:
+  default-extensions:
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
   include-dirs: include
+  hs-source-dirs: src
   includes: HsNet.h
   install-includes: HsNet.h HsNetworkConfig.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
 
 test-suite simple
+  default-language: Haskell98
   hs-source-dirs: tests
   main-is: Simple.hs
   type: exitcode-stdio-1.0
@@ -94,6 +103,7 @@ test-suite simple
     test-framework-hunit
 
 test-suite regression
+  default-language: Haskell98
   hs-source-dirs: tests
   main-is: Regression.hs
   type: exitcode-stdio-1.0
@@ -108,13 +118,17 @@ test-suite regression
   -- Some of the bugs only occur in the threaded RTS
   ghc-options: -Wall -threaded
 
-test-suite doctest
+test-suite doctests
+  default-language: Haskell98
   hs-source-dirs: tests
   main-is: doctests.hs
   type: exitcode-stdio-1.0
 
+  x-doctest-options: -fobject-code -DCALLCONV=ccall
+
   build-depends:
     base < 5,
+    network,
     doctest >= 0.10.1
 
   ghc-options: -Wall
