@@ -714,7 +714,7 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
 recv :: Socket -> Int -> IO String
 recv sock l = fst <$> recvLen sock l
 
-{-# WARNING recvLen "Use recvLen defined in \"Network.Socket.ByteString\"" #-}
+{-# WARNING recvLen "Use recv defined in \"Network.Socket.ByteString\" with \"Data.Bytestring.length\"" #-}
 recvLen :: Socket -> Int -> IO (String, Int)
 recvLen sock nbytes =
      allocaBytes nbytes $ \ptr -> do
