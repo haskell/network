@@ -76,7 +76,7 @@ library
     CPP, DeriveDataTypeable, ForeignFunctionInterface, TypeSynonymInstances
   include-dirs: include
   includes: HsNet.h
-  install-includes: HsNet.h HsNetworkConfig.h
+  install-includes: HsNet.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
 
