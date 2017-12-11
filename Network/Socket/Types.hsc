@@ -879,6 +879,10 @@ sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #if defined(CAN_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrCan _) = #const sizeof(struct sockaddr_can)
 #endif
+#if !(defined(IPV6_SOCKET_SUPPORT) \
+      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
+sizeOfSockAddr _ = error "sizeOfSockAddr: not supported"
+#endif
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -967,6 +971,10 @@ pokeSockAddr p (SockAddrCan ifIndex) = do
     zeroMemory p (#const sizeof(struct sockaddr_can))
 #endif
     (#poke struct sockaddr_can, can_ifindex) p ifIndex
+#endif
+#if !(defined(IPV6_SOCKET_SUPPORT) \
+      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
+pokeSockAddr _ _ = error "pokeSockAddr: not supported"
 #endif
 
 -- | Read a 'SockAddr' from the given memory location.
