@@ -1181,7 +1181,7 @@ inet_addr :: String -> IO HostAddress
 inet_addr ipstr = withSocketsDo $ do
    withCString ipstr $ \str -> do
    had <- c_inet_addr str
-   if had == -1
+   if had == maxBound
     then ioError $ userError $
       "Network.Socket.inet_addr: Malformed address: " ++ ipstr
     else return had  -- network byte order
