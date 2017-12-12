@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-} -- for recv
 
 module Main where
 

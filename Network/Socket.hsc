@@ -204,7 +204,10 @@ import Control.Concurrent.MVar
 import Data.Typeable
 import System.IO.Error
 
-import GHC.Conc (threadWaitRead, threadWaitWrite)
+import GHC.Conc (threadWaitWrite)
+# ifdef HAVE_ACCEPT4
+import GHC.Conc (threadWaitRead)
+# endif
 ##if MIN_VERSION_base(4,3,1)
 import GHC.Conc (closeFdWith)
 ##endif
@@ -308,6 +311,10 @@ instance Show SockAddr where
 #endif
 #if defined(CAN_SOCKET_SUPPORT)
   showsPrec _ (SockAddrCan ifidx) = shows ifidx
+#endif
+#if !(defined(IPV6_SOCKET_SUPPORT) \
+      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
+  showsPrec _ _ = error "showsPrec: not supported"
 #endif
 
 -----------------------------------------------------------------------------
