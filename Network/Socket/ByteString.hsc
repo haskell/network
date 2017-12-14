@@ -43,7 +43,7 @@ module Network.Socket.ByteString
     -- $example
     ) where
 
-import Control.Exception (catch, throwIO)
+import Control.Exception as E (catch, throwIO)
 import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.ByteString.Internal (createAndTrim)
@@ -226,7 +226,7 @@ recv :: Socket         -- ^ Connected socket
 recv sock nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise  = createAndTrim nbytes $ \ptr ->
-        catch
+        E.catch
           (recvBuf sock ptr nbytes)
           (\e -> if isEOFError e then return 0 else throwIO e)
 
