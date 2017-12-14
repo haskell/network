@@ -341,7 +341,9 @@ mkSocket :: CInt
 mkSocket fd fam sType pNum stat = do
    mStat <- newMVar stat
    withSocketsDo $ return ()
-   return (MkSocket fd fam sType pNum mStat)
+   let sock = MkSocket fd fam sType pNum mStat
+   _ <- mkWeakMVar mStat $ close sock
+   return sock
 
 
 fdSocket :: Socket -> CInt
@@ -413,9 +415,7 @@ socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
     setNonBlockIfNeeded fd
-    socket_status <- newMVar NotConnected
-    withSocketsDo $ return ()
-    let sock = MkSocket fd family stype protocol socket_status
+    sock <- mkSocket fd family stype protocol NotConnected
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
     -- so we explicitly set it to 0 to provide a common default.
@@ -452,9 +452,7 @@ socketPair family stype protocol = do
   where
     mkNonBlockingSocket fd = do
        setNonBlockIfNeeded fd
-       stat <- newMVar Connected
-       withSocketsDo $ return ()
-       return (MkSocket fd family stype protocol stat)
+       mkSocket fd family stype protocol Connected
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
@@ -612,8 +610,8 @@ accept sock@(MkSocket s family stype protocol status) = do
 # endif /* HAVE_ACCEPT4 */
 #endif
      addr <- peekSockAddr sockaddr
-     new_status <- newMVar Connected
-     return ((MkSocket new_sock family stype protocol new_status), addr)
+     sock' <- mkSocket new_sock family stype protocol Connected
+     return (sock', addr)
 
 #if defined(mingw32_HOST_OS)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
