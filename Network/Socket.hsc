@@ -15,9 +15,6 @@
 -- this module; in general the operations follow the behaviour of the C
 -- functions of the same name (consult your favourite Unix networking book).
 --
--- A higher level interface to networking operations is provided
--- through the module "Network".
---
 -- Here are two minimal example programs using the TCP/IP protocol: a
 -- server that echoes all data that it receives back (servicing only
 -- one client) and a client using it.
