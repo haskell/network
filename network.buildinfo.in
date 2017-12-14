@@ -4,3 +4,4 @@ ld-options: @LDFLAGS@
 cc-options: -DCALLCONV=@CALLCONV@ @EXTRA_CPPFLAGS@
 c-sources: @EXTRA_SRCS@
 extra-libraries: @EXTRA_LIBS@
+install-includes: HsNetworkConfig.h
