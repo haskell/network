@@ -286,7 +286,7 @@ instance Show SockAddr where
 #if defined(DOMAIN_SOCKET_SUPPORT)
   showsPrec _ (SockAddrUnix str) = showString str
 #else
-  showsPrec _ (SockAddrUnix _) = error "showsPrec: not supported"
+  showsPrec _ SockAddrUnix{} = error "showsPrec: not supported"
 #endif
   showsPrec _ (SockAddrInet port ha)
    = showString (unsafePerformIO (inet_ntoa ha))
@@ -301,7 +301,7 @@ instance Show SockAddr where
    . showString "]:"
    . shows port
 #else
-  showsPrec _ addr@(SockAddrInet6 _ _ _ _) = error "showsPrec: not supported"
+  showsPrec _ addr@SockAddrInet6{} = error "showsPrec: not supported"
 #endif
 
 -----------------------------------------------------------------------------
