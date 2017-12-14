@@ -913,16 +913,16 @@ withNewSockAddr family f = do
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrUnix path) = do
-#if defined(darwin_HOST_OS)
+# if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_un))
-#else
+# else
     case path of
       ('\0':_) -> zeroMemory p (#const sizeof(struct sockaddr_un))
       _        -> return ()
-#endif
-#if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
+# endif
+# if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
-#endif
+# endif
     (#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
     let pathC = map castCharToCChar path
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
@@ -942,12 +942,12 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
     (#poke struct sockaddr_in, sin_addr) p addr
 #if defined(IPV6_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
-#if defined(darwin_HOST_OS)
+# if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in6))
-#endif
-#if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
+# endif
+# if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_in6, sin6_len) p ((#const sizeof(struct sockaddr_in6)) :: Word8)
-#endif
+# endif
     (#poke struct sockaddr_in6, sin6_family) p ((#const AF_INET6) :: CSaFamily)
     (#poke struct sockaddr_in6, sin6_port) p port
     (#poke struct sockaddr_in6, sin6_flowinfo) p flow
