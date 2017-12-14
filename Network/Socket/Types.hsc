@@ -865,13 +865,13 @@ sizeOfSockAddr (SockAddrUnix path) =
         '\0':_ -> (#const sizeof(sa_family_t)) + length path
         _      -> #const sizeof(struct sockaddr_un)
 #else
-sizeOfSockAddr SockAddrUnix{} = "sizeOfSockAddr: not supported"
+sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
 #endif
 sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 #else
-sizeOfSockAddr SockAddrInet6{} = "sizeOfSockAddr: not supported"
+sizeOfSockAddr SockAddrInet6{} = error "sizeOfSockAddr: not supported"
 #endif
 
 -- | Computes the storage requirements (in bytes) required for a
