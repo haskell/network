@@ -294,11 +294,6 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
 #else
                  SockAddrUnix      a   -> return a
 #endif
-#if defined(CAN_SOCKET_SUPPORT)
-                 SockAddrCan {}        -> ioError $ userError "Network.accept: peer socket address 'SockAddrCan' not supported."
-#else
-                 SockAddrCan {}        -> ioError $ userError "Network.accept: peer socket address 'SockAddrCan' not supported on this platform."
-#endif
  handle <- socketToHandle sock' ReadWriteMode
  let port = case addr of
               SockAddrInet  p _     -> p
@@ -412,7 +407,6 @@ socketPort s = do
 #else
       SockAddrUnix path        -> return $ UnixSocket path
 #endif
-      SockAddrCan {}           -> ioError $ userError "Network.socketPort: socket address 'SockAddrCan' not supported."
 
 -- ---------------------------------------------------------------------------
 -- Utils

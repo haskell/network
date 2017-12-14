@@ -285,6 +285,8 @@ defaultProtocol = 0
 instance Show SockAddr where
 #if defined(DOMAIN_SOCKET_SUPPORT)
   showsPrec _ (SockAddrUnix str) = showString str
+#else
+  showsPrec _ SockAddrUnix{} = error "showsPrec: not supported"
 #endif
   showsPrec _ (SockAddrInet port ha)
    = showString (unsafePerformIO (inet_ntoa ha))
@@ -298,13 +300,8 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
-#endif
-#if defined(CAN_SOCKET_SUPPORT)
-  showsPrec _ (SockAddrCan ifidx) = shows ifidx
-#endif
-#if !(defined(IPV6_SOCKET_SUPPORT) \
-      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
-  showsPrec _ _ = error "showsPrec: not supported"
+#else
+  showsPrec _ addr@SockAddrInet6{} = error "showsPrec: not supported"
 #endif
 
 -----------------------------------------------------------------------------
