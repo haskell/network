@@ -838,11 +838,14 @@ isSupportedSockAddr addr = case addr of
   SockAddrInet {} -> True
 #if defined(IPV6_SOCKET_SUPPORT)
   SockAddrInet6 {} -> True
+#else
+  SockAddrInet6 {} -> False
 #endif
 #if defined(DOMAIN_SOCKET_SUPPORT)
   SockAddrUnix{} -> True
+#else
+  SockAddrUnix{} -> False
 #endif
-  _ -> False
 
 #if defined(WITH_WINSOCK)
 type CSaFamily = (#type unsigned short)
@@ -861,12 +864,15 @@ sizeOfSockAddr (SockAddrUnix path) =
     case path of
         '\0':_ -> (#const sizeof(sa_family_t)) + length path
         _      -> #const sizeof(struct sockaddr_un)
+#else
+sizeOfSockAddr (SockAddrUnix _) = "sizeOfSockAddr: not supported"
 #endif
 sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
+#else
+sizeOfSockAddr (SockAddrInet6 _ _ _ _) = "sizeOfSockAddr: not supported"
 #endif
-sizeOfSockAddr _ = error "sizeOfSockAddr: not supported"
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -921,6 +927,8 @@ pokeSockAddr p (SockAddrUnix path) = do
     let pathC = map castCharToCChar path
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
     poker ((#ptr struct sockaddr_un, sun_path) p) pathC
+#else
+pokeSockAddr p (SockAddrUnix _) = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_HOST_OS)
@@ -945,8 +953,10 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_flowinfo) p flow
     (#poke struct sockaddr_in6, sin6_addr) p (In6Addr addr)
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
+#else
+pokeSockAddr p (SockAddrInet6 _ _ _ _) = error "pokeSockAddr: not supported"
 #endif
-pokeSockAddr _ _ = error "pokeSockAddr: not supported"
+
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
