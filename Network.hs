@@ -25,7 +25,7 @@
 #define IPV6_SOCKET_SUPPORT 1
 #endif
 
-module Network
+module Network {-# DEPRECATED "The high level Network interface is no longer supported. Please use Network.Socket." #-}
     (
     -- * Basic data types
       Socket
