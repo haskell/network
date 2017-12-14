@@ -65,7 +65,6 @@ import Data.Maybe
 import Data.Ratio
 import Data.Typeable
 import Data.Word
-import Data.Int
 import Foreign.C
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
@@ -831,9 +830,6 @@ data SockAddr       -- C Names
         ScopeID         -- sin6_scope_id (ditto)
   | SockAddrUnix
         String          -- sun_path
-  | SockAddrCan
-        Int32           -- can_ifindex (can be get by Network.BSD.ifNameToIndex "can0")
-        -- TODO: Extend this to include transport protocol information
   deriving (Eq, Ord, Typeable)
 
 -- | Is the socket address type supported on this system?
@@ -846,13 +842,7 @@ isSupportedSockAddr addr = case addr of
 #if defined(DOMAIN_SOCKET_SUPPORT)
   SockAddrUnix{} -> True
 #endif
-#if defined(CAN_SOCKET_SUPPORT)
-  SockAddrCan{} -> True
-#endif
-#if !(defined(IPV6_SOCKET_SUPPORT) \
-      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
   _ -> False
-#endif
 
 #if defined(WITH_WINSOCK)
 type CSaFamily = (#type unsigned short)
@@ -876,13 +866,7 @@ sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
 #endif
-#if defined(CAN_SOCKET_SUPPORT)
-sizeOfSockAddr (SockAddrCan _) = #const sizeof(struct sockaddr_can)
-#endif
-#if !(defined(IPV6_SOCKET_SUPPORT) \
-      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
 sizeOfSockAddr _ = error "sizeOfSockAddr: not supported"
-#endif
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -894,9 +878,6 @@ sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
 sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
 #endif
 sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
-#if defined(CAN_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_CAN   = #const sizeof(struct sockaddr_can)
-#endif
 sizeOfSockAddrByFamily family = error $
     "Network.Socket.Types.sizeOfSockAddrByFamily: address family '" ++
     show family ++ "' not supported."
@@ -965,17 +946,7 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p (In6Addr addr)
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #endif
-#if defined(CAN_SOCKET_SUPPORT)
-pokeSockAddr p (SockAddrCan ifIndex) = do
-#if defined(darwin_HOST_OS)
-    zeroMemory p (#const sizeof(struct sockaddr_can))
-#endif
-    (#poke struct sockaddr_can, can_ifindex) p ifIndex
-#endif
-#if !(defined(IPV6_SOCKET_SUPPORT) \
-      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
 pokeSockAddr _ _ = error "pokeSockAddr: not supported"
-#endif
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
@@ -998,11 +969,6 @@ peekSockAddr p = do
         In6Addr addr <- (#peek struct sockaddr_in6, sin6_addr) p
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
-#endif
-#if defined(CAN_SOCKET_SUPPORT)
-    (#const AF_CAN) -> do
-        ifidx <- (#peek struct sockaddr_can, can_ifindex) p
-        return (SockAddrCan ifidx)
 #endif
     _ -> ioError $ userError $
       "Network.Socket.Types.peekSockAddr: address family '" ++

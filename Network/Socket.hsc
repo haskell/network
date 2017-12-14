@@ -299,13 +299,7 @@ instance Show SockAddr where
    . showString "]:"
    . shows port
 #endif
-#if defined(CAN_SOCKET_SUPPORT)
-  showsPrec _ (SockAddrCan ifidx) = shows ifidx
-#endif
-#if !(defined(IPV6_SOCKET_SUPPORT) \
-      && defined(DOMAIN_SOCKET_SUPPORT) && defined(CAN_SOCKET_SUPPORT))
   showsPrec _ _ = error "showsPrec: not supported"
-#endif
 
 -----------------------------------------------------------------------------
 -- Connection Functions
