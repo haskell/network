@@ -835,16 +835,16 @@ data SockAddr       -- C Names
 -- | Is the socket address type supported on this system?
 isSupportedSockAddr :: SockAddr -> Bool
 isSupportedSockAddr addr = case addr of
-  SockAddrInet {} -> True
+  SockAddrInet{}  -> True
 #if defined(IPV6_SOCKET_SUPPORT)
-  SockAddrInet6 {} -> True
+  SockAddrInet6{} -> True
 #else
-  SockAddrInet6 {} -> False
+  SockAddrInet6{} -> False
 #endif
 #if defined(DOMAIN_SOCKET_SUPPORT)
-  SockAddrUnix{} -> True
+  SockAddrUnix{}  -> True
 #else
-  SockAddrUnix{} -> False
+  SockAddrUnix{}  -> False
 #endif
 
 #if defined(WITH_WINSOCK)
@@ -865,13 +865,13 @@ sizeOfSockAddr (SockAddrUnix path) =
         '\0':_ -> (#const sizeof(sa_family_t)) + length path
         _      -> #const sizeof(struct sockaddr_un)
 #else
-sizeOfSockAddr (SockAddrUnix _) = "sizeOfSockAddr: not supported"
+sizeOfSockAddr SockAddrUnix{} = "sizeOfSockAddr: not supported"
 #endif
-sizeOfSockAddr (SockAddrInet _ _) = #const sizeof(struct sockaddr_in)
+sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
 #if defined(IPV6_SOCKET_SUPPORT)
-sizeOfSockAddr (SockAddrInet6 _ _ _ _) = #const sizeof(struct sockaddr_in6)
+sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 #else
-sizeOfSockAddr (SockAddrInet6 _ _ _ _) = "sizeOfSockAddr: not supported"
+sizeOfSockAddr SockAddrInet6{} = "sizeOfSockAddr: not supported"
 #endif
 
 -- | Computes the storage requirements (in bytes) required for a
@@ -928,7 +928,7 @@ pokeSockAddr p (SockAddrUnix path) = do
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
     poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #else
-pokeSockAddr p (SockAddrUnix _) = error "pokeSockAddr: not supported"
+pokeSockAddr p SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_HOST_OS)
@@ -954,7 +954,7 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p (In6Addr addr)
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 #else
-pokeSockAddr p (SockAddrInet6 _ _ _ _) = error "pokeSockAddr: not supported"
+pokeSockAddr p SockAddrInet6{} = error "pokeSockAddr: not supported"
 #endif
 
 
