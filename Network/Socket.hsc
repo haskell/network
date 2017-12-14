@@ -581,7 +581,7 @@ foreign import ccall unsafe "free"
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
-{-# WARNING sendTo "Use sendTo defined in \"Network.Socket.ByteString\"" #-}
+{-# DEPRECATED sendTo "Use sendTo defined in \"Network.Socket.ByteString\"" #-}
 sendTo :: Socket        -- (possibly) bound/connected Socket
        -> String        -- Data to send
        -> SockAddr
@@ -613,7 +613,7 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
-{-# WARNING recvFrom "Use recvFrom defined in \"Network.Socket.ByteString\"" #-}
+{-# DEPRECATED recvFrom "Use recvFrom defined in \"Network.Socket.ByteString\"" #-}
 recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
 recvFrom sock nbytes =
   allocaBytes nbytes $ \ptr -> do
@@ -662,7 +662,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 -- responsible for ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-{-# WARNING send "Use send defined in \"Network.Socket.ByteString\"" #-}
+{-# DEPRECATED send "Use send defined in \"Network.Socket.ByteString\"" #-}
 send :: Socket  -- Bound/Connected Socket
      -> String  -- Data to send
      -> IO Int  -- Number of Bytes sent
@@ -710,11 +710,11 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
 -- closed its half side of the connection.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-{-# WARNING recv "Use recv defined in \"Network.Socket.ByteString\"" #-}
+{-# DEPRECATED recv "Use recv defined in \"Network.Socket.ByteString\"" #-}
 recv :: Socket -> Int -> IO String
 recv sock l = fst <$> recvLen sock l
 
-{-# WARNING recvLen "Use recv defined in \"Network.Socket.ByteString\" with \"Data.Bytestring.length\"" #-}
+{-# DEPRECATED recvLen "Use recv defined in \"Network.Socket.ByteString\" with \"Data.Bytestring.length\"" #-}
 recvLen :: Socket -> Int -> IO (String, Int)
 recvLen sock nbytes =
      allocaBytes nbytes $ \ptr -> do
