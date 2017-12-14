@@ -342,7 +342,9 @@ mkSocket fd fam sType pNum stat = do
    mStat <- newMVar stat
    withSocketsDo $ return ()
    let sock = MkSocket fd fam sType pNum mStat
+##if MIN_VERSION_base(4,6,0)
    _ <- mkWeakMVar mStat $ close sock
+##endif
    return sock
 
 
