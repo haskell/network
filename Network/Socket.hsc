@@ -165,24 +165,12 @@ module Network.Socket
     , socketToHandle
 
     -- ** Sending and receiving data
-    -- *** Sending and receiving with String
-    -- $sendrecv
-    , send
-    , sendTo
-    , recv
-    , recvFrom
-    , recvLen
-
-    -- *** Sending and receiving with a buffer
     , sendBuf
     , recvBuf
     , sendBufTo
     , recvBufFrom
 
-    -- ** Misc
-    , inet_addr
-    , inet_ntoa
-
+    -- ** Closing
     , shutdown
     , close
 
@@ -222,14 +210,11 @@ module Network.Socket
     -- * Initialisation
     , withSocketsDo
 
-    -- * Very low level operations
+    -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
     , fdSocket
     , mkSocket
     , setNonBlockIfNeeded
-
-    -- * Deprecated aliases
-    -- $deprecated-aliases
 
     -- * Internal
 
@@ -239,6 +224,15 @@ module Network.Socket
     , packFamily
     , unpackFamily
     , packSocketType
+
+    -- * Deprecated
+    , send
+    , sendTo
+    , recv
+    , recvLen
+    , recvFrom
+    , inet_addr
+    , inet_ntoa
     ) where
 
 import Data.Bits
@@ -1690,12 +1684,5 @@ foreign import CALLCONV unsafe "setsockopt"
 foreign import CALLCONV unsafe "getpeereid"
   c_getpeereid :: CInt -> Ptr CUInt -> Ptr CUInt -> IO CInt
 #endif
--- ---------------------------------------------------------------------------
--- * Deprecated aliases
-
--- $deprecated-aliases
---
--- These aliases are deprecated and should not be used in new code.
--- There are currently none.
 
 
