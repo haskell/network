@@ -1018,12 +1018,8 @@ closeFdWith closer fd = closer fd
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
-sendFd sock outfd = do
-  _ <- ($) throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $
-     c_sendFd (fdSocket sock) outfd
-   -- Note: If Winsock supported FD-passing, thi would have been
-   -- incorrect (since socket FDs need to be closed via closesocket().)
-  closeFd outfd
+sendFd sock outfd =
+  void . throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (fdSocket sock) outfd
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
 -- file descriptor may have to be put into non-blocking mode in order to be
