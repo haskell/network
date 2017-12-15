@@ -38,9 +38,6 @@ module Network.Socket.ByteString
     -- * Receive data from a socket
     , recv
     , recvFrom
-
-    -- * Example
-    -- $example
     ) where
 
 import Control.Exception as E (catch, throwIO)
@@ -280,59 +277,3 @@ withIOVec cs f =
         unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)
 #endif
-
--- ---------------------------------------------------------------------
--- Example
-
--- $example
---
--- Here are two minimal example programs using the TCP/IP protocol: a
--- server that echoes all data that it receives back (servicing only
--- one client) and a client using it.
---
--- > -- Echo server program
--- > module Main where
--- >
--- > import Control.Monad (unless)
--- > import Network.Socket hiding (recv)
--- > import qualified Data.ByteString as S
--- > import Network.Socket.ByteString (recv, sendAll)
--- >
--- > main :: IO ()
--- > main = withSocketsDo $
--- >     do addrinfos <- getAddrInfo
--- >                     (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
--- >                     Nothing (Just "3000")
--- >        let serveraddr = head addrinfos
--- >        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
--- >        bind sock (addrAddress serveraddr)
--- >        listen sock 1
--- >        (conn, _) <- accept sock
--- >        talk conn
--- >        close conn
--- >        close sock
--- >
--- >     where
--- >       talk :: Socket -> IO ()
--- >       talk conn =
--- >           do msg <- recv conn 1024
--- >              unless (S.null msg) $ sendAll conn msg >> talk conn
---
--- > -- Echo client program
--- > module Main where
--- >
--- > import Network.Socket hiding (recv)
--- > import Network.Socket.ByteString (recv, sendAll)
--- > import qualified Data.ByteString.Char8 as C
--- >
--- > main :: IO ()
--- > main = withSocketsDo $
--- >     do addrinfos <- getAddrInfo Nothing (Just "") (Just "3000")
--- >        let serveraddr = head addrinfos
--- >        sock <- socket (addrFamily serveraddr) Stream defaultProtocol
--- >        connect sock (addrAddress serveraddr)
--- >        sendAll sock $ C.pack "Hello, world!"
--- >        msg <- recv sock 1024
--- >        close sock
--- >        putStr "Received "
--- >        C.putStrLn msg
