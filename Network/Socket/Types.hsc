@@ -863,6 +863,7 @@ sizeOfSockAddr :: SockAddr -> Int
 sizeOfSockAddr (SockAddrUnix path) =
     case path of
         '\0':_ -> (#const sizeof(sa_family_t)) + length path
+        ""     -> #const sizeof(sa_family_t)
         _      -> #const sizeof(struct sockaddr_un)
 #else
 sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
