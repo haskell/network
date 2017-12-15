@@ -12,19 +12,8 @@ description:
   you can automatically get it from the right package by adding this
   to your .cabal file:
   .
-  > flag network-uri
-  >   description: Get Network.URI from the network-uri package
-  >   default: True
-  >
   > library
-  >   -- ...
-  >   if flag(network-uri)
-  >     build-depends: network-uri >= 2.6, network >= 2.6
-  >   else
-  >     build-depends: network-uri < 2.6, network < 2.6
-  .
-  That is, get the module from either network < 2.6 or from
-  network-uri >= 2.6.
+  >   build-depends: network-uri-flag
 category:       Network
 build-type:     Configure
 cabal-version:  >=1.8
