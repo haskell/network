@@ -425,10 +425,10 @@ bracketOnError = Exception.bracketOnError
 
 {-$buffering
 
-The 'Handle' returned by 'connectTo' and 'accept' is block-buffered by
+The 'Handle' returned by 'connectTo' and 'accept' is 'NoBuffering' by
 default.  For an interactive application you may want to set the
 buffering mode on the 'Handle' to
-'LineBuffering' or 'NoBuffering', like so:
+'LineBuffering' or 'BlockBuffering', like so:
 
 > h <- connectTo host port
 > hSetBuffering h LineBuffering
