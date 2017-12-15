@@ -239,7 +239,8 @@ throwSocketErrorWaitWrite sock name io =
 -- ---------------------------------------------------------------------------
 -- WinSock support
 
-{-| With older versions of the @network@ library on Windows operating systems,
+{-| With older versions of the @network@ library (version 2.6.0.2 or earlier)
+on Windows operating systems,
 the networking subsystem must be initialised using 'withSocketsDo' before
 any networking operations can be used. eg.
 
@@ -248,7 +249,8 @@ any networking operations can be used. eg.
 It is fine to nest calls to 'withSocketsDo', and to perform networking operations
 after 'withSocketsDo' has returned.
 
-In newer versions of the @network@ library it is only necessary to call
+In newer versions of the @network@ library (version v2.6.1.0 or later)
+it is only necessary to call
 'withSocketsDo' if you are calling the 'MkSocket' constructor directly.
 However, for compatibility with older versions on Windows, it is good practice
 to always call 'withSocketsDo' (it's very cheap).
