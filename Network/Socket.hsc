@@ -1100,7 +1100,7 @@ closeFdWith closer fd = closer fd
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
   _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (fdSocket sock) outfd
-  pure ()
+  return ()
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
 -- file descriptor may have to be put into non-blocking mode in order to be
