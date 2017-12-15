@@ -352,7 +352,7 @@ socket family stype protocol = do
     -- so trying to change it might throw an error.
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
       E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
-# else
+# elif !defined(__OpenBSD__)
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
       setSocketOption sock IPv6Only 0 `onException` close sock
 # endif
