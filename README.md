@@ -17,3 +17,7 @@ version and two previous stable versions are supported.
 ### Hugs, JHC, UHC
 
 `network` does not officially support these compilers.
+
+### Windows
+
+We support MSYS only. We does not support Cygwin.
