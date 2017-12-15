@@ -93,14 +93,19 @@
 module Network.Socket
     (
     -- * Types
+    -- ** Socket
       Socket(..)
+    , SocketStatus(..)
+    -- ** Family
     , Family(..)
     , isSupportedFamily
+    -- ** Socket type
     , SocketType(..)
     , isSupportedSocketType
+    -- ** Socket address
     , SockAddr(..)
     , isSupportedSockAddr
-    , SocketStatus(..)
+    -- ** Host address
     , HostAddress
     , hostAddressToTuple
     , tupleToHostAddress
@@ -113,9 +118,10 @@ module Network.Socket
 #endif
     , htonl
     , ntohl
-    , ShutdownCmd(..)
+    -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
+    -- ** Port number
     , PortNumber(..)
     -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
     -- this use and make the type abstract.
@@ -126,6 +132,7 @@ module Network.Socket
     , ServiceName
 
 #if defined(IPV6_SOCKET_SUPPORT)
+    -- ** getaddrinfo
     , AddrInfo(..)
 
     , AddrInfoFlag(..)
@@ -135,6 +142,7 @@ module Network.Socket
 
     , getAddrInfo
 
+    -- ** getnameinfo
     , NameInfoFlag(..)
 
     , getNameInfo
@@ -171,8 +179,9 @@ module Network.Socket
     , recvBufFrom
 
     -- ** Closing
-    , shutdown
     , close
+    , shutdown
+    , ShutdownCmd(..)
 
     -- ** Predicates on sockets
     , isConnected
