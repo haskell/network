@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Network.Socket.Syscall where
 
 #include "HsNet.h"
