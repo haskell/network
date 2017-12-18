@@ -305,6 +305,7 @@ data Family
     | AF_WANPIPE          -- Wanpipe API sockets
     | AF_BLUETOOTH        -- bluetooth sockets
     | AF_CAN              -- Controller Area Network
+    | AF_NETLINK          -- Linux Netlink
       deriving (Eq, Ord, Read, Show)
 
 packFamily :: Family -> CInt
@@ -519,6 +520,9 @@ packFamily' f = case Just f of
 #ifdef AF_CAN
     Just AF_CAN -> Just #const AF_CAN
 #endif
+#ifdef AF_NETLINK
+    Just AF_NETLINK -> Just #const AF_NETLINK
+#endif
     _ -> Nothing
 
 --------- ----------
@@ -722,6 +726,9 @@ unpackFamily f = case f of
 #endif
 #ifdef AF_CAN
         (#const AF_CAN) -> AF_CAN
+#endif
+#ifdef AF_NETLINK
+        (#const AF_NETLINK) -> AF_NETLINK
 #endif
         unknown -> error $
           "Network.Socket.Types.unpackFamily: unknown address family: " ++
