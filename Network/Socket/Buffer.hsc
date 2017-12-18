@@ -7,6 +7,8 @@ module Network.Socket.Buffer (
   , recvBuf
   ) where
 
+#include "HsNet.h"
+
 import Control.Monad (liftM)
 import Data.Word (Word8)
 import Foreign.C.Types (CInt(..), CSize(..), CChar)

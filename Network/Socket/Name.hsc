@@ -4,6 +4,8 @@ module Network.Socket.Name (
   , socketPort
   ) where
 
+#include "HsNet.h"
+
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
