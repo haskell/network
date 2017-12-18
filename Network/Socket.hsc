@@ -259,12 +259,6 @@ import Foreign.Storable (Storable(..))
 import System.IO
 import System.IO.Error
 
-# if defined(mingw32_HOST_OS)
-import qualified Control.Exception as E
-import GHC.Conc (asyncDoProc)
-import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
-import Foreign (FunPtr)
-# endif
 # if defined(darwin_HOST_OS)
 import Data.List (delete)
 # endif
