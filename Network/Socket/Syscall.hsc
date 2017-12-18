@@ -54,6 +54,7 @@ import Network.Socket.Types
 -- called once for every new file descriptor. The caller must make
 -- sure that the socket is in non-blocking mode. See
 -- 'setNonBlockIfNeeded'.
+-- 'mkSocket' should be used intead of 'MkSocket'.
 mkSocket :: CInt
          -> Family
          -> SocketType

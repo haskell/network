@@ -95,6 +95,7 @@ module Network.Socket
     -- ** Socket
       Socket(..)
     , socketPort
+    , mkSocket
     -- ** Socket status
     , SocketStatus(..)
     -- ** Family
@@ -216,7 +217,6 @@ module Network.Socket
 
     -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    , mkSocket
     , setNonBlockIfNeeded
 
     -- * Internal
