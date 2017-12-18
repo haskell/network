@@ -94,29 +94,27 @@ module Network.BSD
 
     ) where
 
-import Network.Socket
-import Network.Socket.Types
-
 import Control.Concurrent (MVar, newMVar, withMVar)
 import qualified Control.Exception as E
+import Control.Monad (liftM)
+import Data.Typeable
 import Foreign.C.String (CString, peekCString, withCString)
-#if defined(HAVE_WINSOCK2_H)
-import Foreign.C.Types ( CShort )
-#endif
 import Foreign.C.Types ( CInt(..), CUInt(..), CULong(..), CSize(..) )
-import Foreign.Ptr (Ptr, nullPtr)
-import Foreign.Storable (Storable(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
 import Foreign.Marshal.Utils (with, fromBool)
-import Data.Typeable
+import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (Storable(..))
+import GHC.IO.Exception
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
-import GHC.IO.Exception
+#if defined(HAVE_WINSOCK2_H)
+import Foreign.C.Types (CShort)
+#endif
 
-import Control.Monad (liftM)
-
+import Network.Socket
 import Network.Socket.Internal (throwSocketErrorIfMinus1_)
+import Network.Socket.Types
 
 -- ---------------------------------------------------------------------------
 -- Basic Types
