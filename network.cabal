@@ -50,6 +50,7 @@ library
     Network.Socket.ByteString.Internal
     Network.Socket.Close
     Network.Socket.Constant
+    Network.Socket.Handle
     Network.Socket.Info
     Network.Socket.Name
     Network.Socket.Options

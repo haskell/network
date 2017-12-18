@@ -239,18 +239,15 @@ module Network.Socket
     , htonl
     , ntohl
     , fdSocket
+    , socketToHandle
     ) where
 
-import Control.Concurrent.MVar
 import Foreign.C.Types (CInt(..))
-import qualified GHC.IO.Device
-import GHC.IO.Handle.FD
-import System.IO
-import System.IO.Error
 
 import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
+import Network.Socket.Handle
 import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name
@@ -286,23 +283,3 @@ socketPort (MkSocket _ family _ _ _) =
     ioError $ userError $
       "Network.Socket.socketPort: address family '" ++ show family ++
       "' not supported."
-
-
--- | Turns a Socket into an 'Handle'. By default, the new handle is
--- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
---
--- Note that since a 'Handle' is automatically closed by a finalizer
--- when it is no longer referenced, you should avoid doing any more
--- operations on the 'Socket' after calling 'socketToHandle'.  To
--- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
--- on the 'Handle'.
-
-socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
- modifyMVar socketStatus $ \ status ->
-    if status == ConvertedToHandle
-        then ioError (userError ("socketToHandle: already a Handle"))
-        else do
-    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
-    hSetBuffering h NoBuffering
-    return (ConvertedToHandle, h)
