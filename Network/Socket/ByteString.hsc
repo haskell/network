@@ -263,7 +263,7 @@ totalLength = sum . map B.length
 
 -- | @withIOVec cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
--- 'IOVec' made from @cs@ and the number of pointers (@length cs@).
+-- IOVec made from @cs@ and the number of pointers (@length cs@).
 -- /Unix only/.
 withIOVec :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
 withIOVec cs f =
