@@ -1,6 +1,7 @@
 module Network.Socket.Name (
     getPeerName
   , getSocketName
+  , socketPort
   ) where
 
 import Foreign.C.Types (CInt(..))
@@ -41,3 +42,25 @@ foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getsockname"
   c_getsockname :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+
+-- ---------------------------------------------------------------------------
+-- socketPort
+--
+-- The port number the given socket is currently connected to can be
+-- determined by calling $port$, is generally only useful when bind
+-- was given $aNY\_PORT$.
+
+socketPort :: Socket            -- Connected & Bound Socket
+           -> IO PortNumber     -- Port Number of Socket
+socketPort sock@(MkSocket _ AF_INET _ _ _) = do
+    (SockAddrInet port _) <- getSocketName sock
+    return port
+#if defined(IPV6_SOCKET_SUPPORT)
+socketPort sock@(MkSocket _ AF_INET6 _ _ _) = do
+    (SockAddrInet6 port _ _ _) <- getSocketName sock
+    return port
+#endif
+socketPort (MkSocket _ family _ _ _) =
+    ioError $ userError $
+      "Network.Socket.socketPort: address family '" ++ show family ++
+      "' not supported."

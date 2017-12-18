@@ -242,8 +242,6 @@ module Network.Socket
     , socketToHandle
     ) where
 
-import Foreign.C.Types (CInt(..))
-
 import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
@@ -255,31 +253,3 @@ import Network.Socket.Options
 import Network.Socket.String
 import Network.Socket.Syscall
 import Network.Socket.Types
-
-import Prelude -- Silence AMP warnings
-
-{-# DEPRECATED fdSocket "Use sockFd intead" #-}
-fdSocket :: Socket -> CInt
-fdSocket = sockFd
-
--- ---------------------------------------------------------------------------
--- socketPort
---
--- The port number the given socket is currently connected to can be
--- determined by calling $port$, is generally only useful when bind
--- was given $aNY\_PORT$.
-
-socketPort :: Socket            -- Connected & Bound Socket
-           -> IO PortNumber     -- Port Number of Socket
-socketPort sock@(MkSocket _ AF_INET _ _ _) = do
-    (SockAddrInet port _) <- getSocketName sock
-    return port
-#if defined(IPV6_SOCKET_SUPPORT)
-socketPort sock@(MkSocket _ AF_INET6 _ _ _) = do
-    (SockAddrInet6 port _ _ _) <- getSocketName sock
-    return port
-#endif
-socketPort (MkSocket _ family _ _ _) =
-    ioError $ userError $
-      "Network.Socket.socketPort: address family '" ++ show family ++
-      "' not supported."

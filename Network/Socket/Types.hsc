@@ -8,6 +8,7 @@ module Network.Socket.Types
     (
     -- * Socket
       Socket(..)
+    , fdSocket
     -- * Socket status
     , SocketStatus(..)
     , isConnected
@@ -91,6 +92,7 @@ data Socket = MkSocket {
   , sockStatus   :: MVar SocketStatus -- Status Flag
   } deriving Typeable
 
+
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
 
@@ -99,6 +101,10 @@ instance Show Socket where
         showString "<socket: " . shows fd . showString ">"
 
 type ProtocolNumber = CInt
+
+{-# DEPRECATED fdSocket "Use sockFd intead" #-}
+fdSocket :: Socket -> CInt
+fdSocket = sockFd
 
 -- -----------------------------------------------------------------------------
 
