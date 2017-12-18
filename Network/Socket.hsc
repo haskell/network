@@ -379,6 +379,12 @@ instance Show SockAddr where
 #else
   showsPrec _ addr@SockAddrInet6{} = error "showsPrec: not supported"
 #endif
+  showsPrec _ (SockAddrRaw family raw_data)
+   = showString "{Raw("
+   . shows family
+   . showString ") "
+   . shows raw_data
+   . showString "}"
 
 -----------------------------------------------------------------------------
 -- Connection Functions
