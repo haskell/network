@@ -170,8 +170,8 @@ setNonBlockIfNeeded fd =
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bind (MkSocket s _family _stype _protocol socketStatus) addr = do
- modifyMVar_ socketStatus $ \ status -> do
+bind (MkSocket s _family _stype _protocol sockStatus) addr = do
+ modifyMVar_ sockStatus $ \ status -> do
  if status /= NotConnected
   then
    ioError $ userError $
@@ -189,8 +189,8 @@ bind (MkSocket s _family _stype _protocol socketStatus) addr = do
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocketsDo $ do
- modifyMVar_ socketStatus $ \currentStatus -> do
+connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSocketsDo $ do
+ modifyMVar_ sockStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
     ioError $ userError $
@@ -235,8 +235,8 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocke
 listen :: Socket  -- Connected & Bound Socket
        -> Int     -- Queue Length
        -> IO ()
-listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
- modifyMVar_ socketStatus $ \ status -> do
+listen (MkSocket s _family _stype _protocol sockStatus) backlog = do
+ modifyMVar_ sockStatus $ \ status -> do
  if status /= Bound
    then
      ioError $ userError $

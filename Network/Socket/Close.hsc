@@ -48,8 +48,8 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close (MkSocket s _ _ _ socketStatus) = do
- modifyMVar_ socketStatus $ \ status ->
+close (MkSocket s _ _ _ sockStatus) = do
+ modifyMVar_ sockStatus $ \ status ->
    case status of
      ConvertedToHandle ->
          ioError (userError ("close: converted to a Handle, use hClose instead"))

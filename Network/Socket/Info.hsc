@@ -151,8 +151,8 @@ instance Storable AddrInfo where
                  addrCanonName = ai_canonname
                 })
 
-    poke p (AddrInfo flags family socketType protocol _ _) = do
-        c_stype <- packSocketTypeOrThrow "AddrInfo.poke" socketType
+    poke p (AddrInfo flags family sockType protocol _ _) = do
+        c_stype <- packSocketTypeOrThrow "AddrInfo.poke" sockType
 
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
         (#poke struct addrinfo, ai_family) p (packFamily family)
