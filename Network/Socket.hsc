@@ -221,7 +221,6 @@ module Network.Socket
 
     -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    , fdSocket
     , mkSocket
     , setNonBlockIfNeeded
 
@@ -242,6 +241,7 @@ module Network.Socket
     , recvFrom
     , inet_addr
     , inet_ntoa
+    , fdSocket
     ) where
 
 import Control.Concurrent.MVar
@@ -347,9 +347,9 @@ mkSocket fd fam sType pNum stat = do
 ##endif
    return sock
 
-
+{-# DEPRECATED fdSocket "Use sockFd intead" #-}
 fdSocket :: Socket -> CInt
-fdSocket (MkSocket fd _ _ _ _) = fd
+fdSocket = sockFd
 
 -- | This is the default protocol for a given service.
 defaultProtocol :: ProtocolNumber
@@ -658,7 +658,7 @@ closeFdWith closer fd = closer fd
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
-  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (fdSocket sock) outfd
+  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (sockFd sock) outfd
   return ()
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
