@@ -8,11 +8,6 @@ module Network.Socket.Types
     (
     -- * Socket
       Socket(..)
-    , sockFd
-    , sockFamily
-    , sockType
-    , sockProtocol
-    , sockStatus
     -- * Socket status
     , SocketStatus(..)
     , isConnected
@@ -88,29 +83,13 @@ import Foreign.Storable
 --   If you are calling the 'MkSocket' constructor directly you should ensure
 --   you have called 'Network.withSocketsDo' and that the file descriptor is
 --   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
-data Socket
-  = MkSocket
-            CInt                 -- File Descriptor
-            Family
-            SocketType
-            ProtocolNumber       -- Protocol Number
-            (MVar SocketStatus)  -- Status Flag
-  deriving Typeable
-
-sockFd :: Socket -> CInt
-sockFd       (MkSocket n _ _ _ _) = n
-
-sockFamily :: Socket -> Family
-sockFamily   (MkSocket _ f _ _ _) = f
-
-sockType :: Socket -> SocketType
-sockType     (MkSocket _ _ t _ _) = t
-
-sockProtocol :: Socket -> ProtocolNumber
-sockProtocol (MkSocket _ _ _ p _) = p
-
-sockStatus :: Socket -> MVar SocketStatus
-sockStatus   (MkSocket _ _ _ _ s) = s
+data Socket = MkSocket {
+    sockFd       :: CInt                 -- File Descriptor
+  , sockFamily   :: Family
+  , sockType     :: SocketType
+  , sockProtocol :: ProtocolNumber    -- Protocol Number
+  , sockStatus   :: MVar SocketStatus -- Status Flag
+  } deriving Typeable
 
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2

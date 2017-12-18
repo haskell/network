@@ -94,6 +94,8 @@ module Network.Socket
     -- * Types
     -- ** Socket
       Socket(..)
+    , socketPort
+    -- ** Socket status
     , SocketStatus(..)
     -- ** Family
     , Family(..)
@@ -164,10 +166,6 @@ module Network.Socket
     , getPeerEid
 #endif
 #endif
-
-    , socketPort
-
-    , socketToHandle
 
     -- ** Sending and receiving data
     , sendBuf
@@ -262,7 +260,6 @@ import Network.Socket.Syscall
 import Network.Socket.Types
 
 import Prelude -- Silence AMP warnings
-
 
 {-# DEPRECATED fdSocket "Use sockFd intead" #-}
 fdSocket :: Socket -> CInt
