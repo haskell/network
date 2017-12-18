@@ -1,27 +1,37 @@
 -- Echo server program
-module Main where
+module Main (main) where
 
-import Control.Monad (unless)
-import Network.Socket hiding (recv)
+import Control.Concurrent (forkFinally)
+import qualified Control.Exception as E
+import Control.Monad (unless, forever, void)
 import qualified Data.ByteString as S
+import Network.Socket hiding (recv)
 import Network.Socket.ByteString (recv, sendAll)
 
 main :: IO ()
-main = withSocketsDo $
-    do addrinfos <- getAddrInfo
-                    (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                    Nothing (Just "3000")
-       let serveraddr = head addrinfos
-       sock <- socket (addrFamily serveraddr) Stream defaultProtocol
-       bind sock (addrAddress serveraddr)
-       listen sock 1
-       (conn, _) <- accept sock
-       talk conn
-       close conn
-       close sock
-
-    where
-      talk :: Socket -> IO ()
-      talk conn =
-          do msg <- recv conn 1024
-             unless (S.null msg) $ sendAll conn msg >> talk conn
+main = withSocketsDo $ do
+    addr <- resolve "3000"
+    E.bracket (open addr) close loop
+  where
+    resolve port = do
+        let hints = defaultHints {
+                addrFlags = [AI_PASSIVE]
+              , addrSocketType = Stream
+              }
+        addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
+        return addr
+    open addr = do
+        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+        setSocketOption sock ReuseAddr 1
+        bind sock (addrAddress addr)
+        listen sock 10
+        return sock
+    loop sock = forever $ do
+        (conn, peer) <- accept sock
+        putStrLn $ "Connection from " ++ show peer
+        void $ forkFinally (talk conn) (\_ -> close conn)
+    talk conn = do
+        msg <- recv conn 1024
+        unless (S.null msg) $ do
+          sendAll conn msg
+          talk conn
