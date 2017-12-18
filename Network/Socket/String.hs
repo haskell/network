@@ -85,7 +85,7 @@ send sock xs = withCStringLen xs $ \(str, len) ->
 -- Receiving data from closed socket may lead to undefined behaviour.
 {-# DEPRECATED recv "Use recv defined in \"Network.Socket.ByteString\"" #-}
 recv :: Socket -> Int -> IO String
-recv sock l = fst <$> recvLen sock l
+recv sock l = fst `fmap` recvLen sock l
 
 {-# DEPRECATED recvLen "Use recv defined in \"Network.Socket.ByteString\" with \"Data.Bytestring.length\"" #-}
 recvLen :: Socket -> Int -> IO (String, Int)

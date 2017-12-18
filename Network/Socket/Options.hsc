@@ -13,6 +13,10 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 
+#if defined(HAVE_STRUCT_UCRED)
+import Foreign.Marshal.Alloc (allocaBytes)
+#endif
+
 import Network.Socket.Internal
 import Network.Socket.Types
 
