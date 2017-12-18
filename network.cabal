@@ -48,6 +48,7 @@ library
   other-modules:
     Network.Socket.Buffer
     Network.Socket.ByteString.Internal
+    Network.Socket.Constant
     Network.Socket.Name
     Network.Socket.Options
     Network.Socket.String

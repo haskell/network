@@ -116,8 +116,6 @@ module Network.Socket
     , FlowInfo
     , ScopeID
 #endif
-    , htonl
-    , ntohl
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
@@ -241,6 +239,8 @@ module Network.Socket
     , recvFrom
     , inet_addr
     , inet_ntoa
+    , htonl
+    , ntohl
     , fdSocket
     ) where
 
@@ -250,7 +250,6 @@ import Data.Bits
 import Data.Functor
 import Data.List (foldl')
 import Data.Typeable
-import Data.Word (Word32)
 import Foreign.C.Error
 import Foreign.C.String (CString, withCString, peekCString)
 import Foreign.C.Types (CInt(..), CSize(..), CChar)
@@ -285,6 +284,7 @@ import GHC.IO
 import qualified System.Posix.Internals
 
 import Network.Socket.Buffer
+import Network.Socket.Constant
 import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Options
@@ -674,46 +674,6 @@ foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 
 #endif
-
--- ---------------------------------------------------------------------------
--- Utility Functions
-
-aNY_PORT :: PortNumber
-aNY_PORT = 0
-
--- | The IPv4 wild card address.
-
-iNADDR_ANY :: HostAddress
-iNADDR_ANY = htonl (#const INADDR_ANY)
-
--- | Converts the from host byte order to network byte order.
-foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
--- | Converts the from network byte order to host byte order.
-foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
-
-#if defined(IPV6_SOCKET_SUPPORT)
--- | The IPv6 wild card address.
-
-iN6ADDR_ANY :: HostAddress6
-iN6ADDR_ANY = (0, 0, 0, 0)
-#endif
-
-sOMAXCONN :: Int
-sOMAXCONN = #const SOMAXCONN
-
-sOL_SOCKET :: Int
-sOL_SOCKET = #const SOL_SOCKET
-
-#ifdef SCM_RIGHTS
-sCM_RIGHTS :: Int
-sCM_RIGHTS = #const SCM_RIGHTS
-#endif
-
--- | This is the value of SOMAXCONN, typically 128.
--- 128 is good enough for normal network servers but
--- is too small for high performance servers.
-maxListenQueue :: Int
-maxListenQueue = sOMAXCONN
 
 -- -----------------------------------------------------------------------------
 
