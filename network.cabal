@@ -47,6 +47,7 @@ library
     Network.Socket.Internal
   other-modules:
     Network.Socket.ByteString.Internal
+    Network.Socket.Options
     Network.Socket.Types
 
   if !os(windows)
