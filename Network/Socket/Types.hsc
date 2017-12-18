@@ -85,13 +85,12 @@ import Foreign.Storable
 --   you have called 'Network.withSocketsDo' and that the file descriptor is
 --   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
 data Socket = MkSocket {
-    sockFd       :: CInt                 -- File Descriptor
-  , sockFamily   :: Family
-  , sockType     :: SocketType
-  , sockProtocol :: ProtocolNumber    -- Protocol Number
-  , sockStatus   :: MVar SocketStatus -- Status Flag
+    socketFd       :: CInt              -- ^ File descriptor
+  , socketFamily   :: Family            -- ^ Address family
+  , socketType     :: SocketType        -- ^ Socket type
+  , socketProtocol :: ProtocolNumber    -- ^ Protocol number
+  , socketStatus   :: MVar SocketStatus -- ^ Socket status
   } deriving Typeable
-
 
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
@@ -102,9 +101,9 @@ instance Show Socket where
 
 type ProtocolNumber = CInt
 
-{-# DEPRECATED fdSocket "Use sockFd intead" #-}
+{-# DEPRECATED fdSocket "Use socketFd intead" #-}
 fdSocket :: Socket -> CInt
-fdSocket = sockFd
+fdSocket = socketFd
 
 -- -----------------------------------------------------------------------------
 

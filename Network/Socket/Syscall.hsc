@@ -90,10 +90,10 @@ mkSocket fd fam sType pNum stat = do
 -- >>> import Network.Socket
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
 -- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
--- >>> sock@(MkSocket _ fam stype _ _) <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >>> fam
+-- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+-- >>> socketFamily sock
 -- AF_INET
--- >>> stype
+-- >>> socketType sock
 -- Stream
 -- >>> bind sock (addrAddress addr)
 -- >>> getSocketName sock
@@ -350,7 +350,7 @@ foreign import ccall unsafe "free"
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
-  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (sockFd sock) outfd
+  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
   return ()
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
@@ -359,7 +359,7 @@ sendFd sock outfd = do
 recvFd :: Socket -> IO CInt
 recvFd sock = do
   theFd <- throwSocketErrorWaitRead sock "Network.Socket.recvFd" $
-               c_recvFd (sockFd sock)
+               c_recvFd (socketFd sock)
   return theFd
 
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt

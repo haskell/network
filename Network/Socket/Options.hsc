@@ -201,7 +201,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
 #ifdef HAVE_STRUCT_UCRED
-  let fd = sockFd sock
+  let fd = socketFd sock
   let sz = (#const sizeof(struct ucred))
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
@@ -221,7 +221,7 @@ getPeerCred sock = do
 -- peer connected to a UNIX-domain socket
 getPeerEid :: Socket -> IO (CUInt, CUInt)
 getPeerEid sock = do
-  let fd = sockFd sock
+  let fd = socketFd sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
       throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
