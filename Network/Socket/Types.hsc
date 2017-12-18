@@ -239,72 +239,72 @@ unpackSocketType' caller ty = maybe err return (unpackSocketType ty)
 -- A constructor being present here does not mean it is supported by the
 -- operating system: see 'isSupportedFamily'.
 data Family
-    = AF_UNSPEC           -- unspecified
-    | AF_UNIX             -- local to host (pipes, portals
-    | AF_INET             -- internetwork: UDP, TCP, etc
-    | AF_INET6            -- Internet Protocol version 6
-    | AF_IMPLINK          -- arpanet imp addresses
-    | AF_PUP              -- pup protocols: e.g. BSP
-    | AF_CHAOS            -- mit CHAOS protocols
-    | AF_NS               -- XEROX NS protocols
-    | AF_NBS              -- nbs protocols
-    | AF_ECMA             -- european computer manufacturers
-    | AF_DATAKIT          -- datakit protocols
-    | AF_CCITT            -- CCITT protocols, X.25 etc
-    | AF_SNA              -- IBM SNA
-    | AF_DECnet           -- DECnet
-    | AF_DLI              -- Direct data link interface
-    | AF_LAT              -- LAT
-    | AF_HYLINK           -- NSC Hyperchannel
-    | AF_APPLETALK        -- Apple Talk
-    | AF_ROUTE            -- Internal Routing Protocol (aka AF_NETLINK)
-    | AF_NETBIOS          -- NetBios-style addresses
-    | AF_NIT              -- Network Interface Tap
-    | AF_802              -- IEEE 802.2, also ISO 8802
-    | AF_ISO              -- ISO protocols
-    | AF_OSI              -- umbrella of all families used by OSI
-    | AF_NETMAN           -- DNA Network Management
-    | AF_X25              -- CCITT X.25
-    | AF_AX25
-    | AF_OSINET           -- AFI
-    | AF_GOSSIP           -- US Government OSI
-    | AF_IPX              -- Novell Internet Protocol
-    | Pseudo_AF_XTP       -- eXpress Transfer Protocol (no AF)
-    | AF_CTF              -- Common Trace Facility
-    | AF_WAN              -- Wide Area Network protocols
-    | AF_SDL              -- SGI Data Link for DLPI
-    | AF_NETWARE
-    | AF_NDD
-    | AF_INTF             -- Debugging use only
-    | AF_COIP             -- connection-oriented IP, aka ST II
-    | AF_CNT              -- Computer Network Technology
-    | Pseudo_AF_RTIP      -- Help Identify RTIP packets
-    | Pseudo_AF_PIP       -- Help Identify PIP packets
-    | AF_SIP              -- Simple Internet Protocol
-    | AF_ISDN             -- Integrated Services Digital Network
-    | Pseudo_AF_KEY       -- Internal key-management function
-    | AF_NATM             -- native ATM access
-    | AF_ARP              -- (rev.) addr. res. prot. (RFC 826)
-    | Pseudo_AF_HDRCMPLT  -- Used by BPF to not rewrite hdrs in iface output
-    | AF_ENCAP
-    | AF_LINK             -- Link layer interface
-    | AF_RAW              -- Link layer interface
-    | AF_RIF              -- raw interface
-    | AF_NETROM           -- Amateur radio NetROM
-    | AF_BRIDGE           -- multiprotocol bridge
-    | AF_ATMPVC           -- ATM PVCs
-    | AF_ROSE             -- Amateur Radio X.25 PLP
-    | AF_NETBEUI          -- 802.2LLC
-    | AF_SECURITY         -- Security callback pseudo AF
-    | AF_PACKET           -- Packet family
-    | AF_ASH              -- Ash
-    | AF_ECONET           -- Acorn Econet
-    | AF_ATMSVC           -- ATM SVCs
-    | AF_IRDA             -- IRDA sockets
-    | AF_PPPOX            -- PPPoX sockets
-    | AF_WANPIPE          -- Wanpipe API sockets
-    | AF_BLUETOOTH        -- bluetooth sockets
-    | AF_CAN              -- Controller Area Network
+    = AF_UNSPEC           -- ^ unspecified
+    | AF_UNIX             -- ^ Unix domain
+    | AF_INET             -- ^ Internet Protocol version 4
+    | AF_INET6            -- ^ Internet Protocol version 6
+    | AF_IMPLINK          -- ^ Arpanet imp addresses
+    | AF_PUP              -- ^ pup protocols: e.g. BSP
+    | AF_CHAOS            -- ^ mit CHAOS protocols
+    | AF_NS               -- ^ XEROX NS protocols
+    | AF_NBS              -- ^ nbs protocols
+    | AF_ECMA             -- ^ european computer manufacturers
+    | AF_DATAKIT          -- ^ datakit protocols
+    | AF_CCITT            -- ^ CCITT protocols, X.25 etc
+    | AF_SNA              -- ^ IBM SNA
+    | AF_DECnet           -- ^ DECnet
+    | AF_DLI              -- ^ Direct data link interface
+    | AF_LAT              -- ^ LAT
+    | AF_HYLINK           -- ^ NSC Hyperchannel
+    | AF_APPLETALK        -- ^ Apple Talk
+    | AF_ROUTE            -- ^ Internal Routing Protocol (aka AF_NETLINK)
+    | AF_NETBIOS          -- ^ NetBios-style addresses
+    | AF_NIT              -- ^ Network Interface Tap
+    | AF_802              -- ^ IEEE 802.2, also ISO 8802
+    | AF_ISO              -- ^ ISO protocols
+    | AF_OSI              -- ^ umbrella of all families used by OSI
+    | AF_NETMAN           -- ^ DNA Network Management
+    | AF_X25              -- ^ CCITT X.25
+    | AF_AX25             -- ^ AX25
+    | AF_OSINET           -- ^ AFI
+    | AF_GOSSIP           -- ^ US Government OSI
+    | AF_IPX              -- ^ Novell Internet Protocol
+    | Pseudo_AF_XTP       -- ^ eXpress Transfer Protocol (no AF)
+    | AF_CTF              -- ^ Common Trace Facility
+    | AF_WAN              -- ^ Wide Area Network protocols
+    | AF_SDL              -- ^ SGI Data Link for DLPI
+    | AF_NETWARE          -- ^ Netware
+    | AF_NDD              -- ^ NDD
+    | AF_INTF             -- ^ Debugging use only
+    | AF_COIP             -- ^ connection-oriented IP, aka ST II
+    | AF_CNT              -- ^ Computer Network Technology
+    | Pseudo_AF_RTIP      -- ^ Help Identify RTIP packets
+    | Pseudo_AF_PIP       -- ^ Help Identify PIP packets
+    | AF_SIP              -- ^ Simple Internet Protocol
+    | AF_ISDN             -- ^ Integrated Services Digital Network
+    | Pseudo_AF_KEY       -- ^ Internal key-management function
+    | AF_NATM             -- ^ native ATM access
+    | AF_ARP              -- ^ ARP (RFC 826)
+    | Pseudo_AF_HDRCMPLT  -- ^ Used by BPF to not rewrite hdrs in iface output
+    | AF_ENCAP            -- ^ ENCAP
+    | AF_LINK             -- ^ Link layer interface
+    | AF_RAW              -- ^ Link layer interface
+    | AF_RIF              -- ^ raw interface
+    | AF_NETROM           -- ^ Amateur radio NetROM
+    | AF_BRIDGE           -- ^ multiprotocol bridge
+    | AF_ATMPVC           -- ^ ATM PVCs
+    | AF_ROSE             -- ^ Amateur Radio X.25 PLP
+    | AF_NETBEUI          -- ^ Netbeui 802.2LLC
+    | AF_SECURITY         -- ^ Security callback pseudo AF
+    | AF_PACKET           -- ^ Packet family
+    | AF_ASH              -- ^ Ash
+    | AF_ECONET           -- ^ Acorn Econet
+    | AF_ATMSVC           -- ^ ATM SVCs
+    | AF_IRDA             -- ^ IRDA sockets
+    | AF_PPPOX            -- ^ PPPoX sockets
+    | AF_WANPIPE          -- ^ Wanpipe API sockets
+    | AF_BLUETOOTH        -- ^ bluetooth sockets
+    | AF_CAN              -- ^ Controller Area Network
       deriving (Eq, Ord, Read, Show)
 
 packFamily :: Family -> CInt
