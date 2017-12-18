@@ -258,7 +258,7 @@ data Family
     | AF_LAT              -- LAT
     | AF_HYLINK           -- NSC Hyperchannel
     | AF_APPLETALK        -- Apple Talk
-    | AF_ROUTE            -- Internal Routing Protocol
+    | AF_ROUTE            -- Internal Routing Protocol (aka AF_NETLINK)
     | AF_NETBIOS          -- NetBios-style addresses
     | AF_NIT              -- Network Interface Tap
     | AF_802              -- IEEE 802.2, also ISO 8802
