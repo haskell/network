@@ -52,6 +52,7 @@ foreign import CALLCONV unsafe "getsockname"
 -- determined by calling $port$, is generally only useful when bind
 -- was given $aNY\_PORT$.
 
+-- | Getting the port of socket.
 socketPort :: Socket            -- Connected & Bound Socket
            -> IO PortNumber     -- Port Number of Socket
 socketPort sock@(MkSocket _ AF_INET _ _ _) = do
