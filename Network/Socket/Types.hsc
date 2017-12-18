@@ -13,8 +13,14 @@ module Network.Socket.Types
     , sockType
     , sockProtocol
     , sockStatus
+    -- * Socket status
     , SocketStatus(..)
-
+    , isConnected
+    , isBound
+    , isListening
+    , isReadable
+    , isWritable
+    , isAcceptable
     -- * Socket types
     , SocketType(..)
     , isSupportedSocketType
@@ -115,6 +121,8 @@ instance Show Socket where
 
 type ProtocolNumber = CInt
 
+-- -----------------------------------------------------------------------------
+
 -- | The status of the socket as /determined by this library/, not
 -- necessarily reflecting the state of the connection itself.
 --
@@ -129,6 +137,49 @@ data SocketStatus
   | ConvertedToHandle   -- ^ Is now a 'Handle' (via 'socketToHandle'), don't touch
   | Closed              -- ^ Closed was closed by 'close'
     deriving (Eq, Show, Typeable)
+
+
+-- -----------------------------------------------------------------------------
+-- Socket Predicates
+
+-- | Determines whether 'close' has been used on the 'Socket'. This
+-- does /not/ indicate any status about the socket beyond this. If the
+-- socket has been closed remotely, this function can still return
+-- 'True'.
+isConnected :: Socket -> IO Bool
+isConnected (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Connected)
+
+isBound :: Socket -> IO Bool
+isBound (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Bound)
+
+isListening :: Socket -> IO Bool
+isListening (MkSocket _ _ _  _ status) = do
+    value <- readMVar status
+    return (value == Listening)
+
+isReadable  :: Socket -> IO Bool
+isReadable (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Listening || value == Connected)
+
+isWritable  :: Socket -> IO Bool
+isWritable = isReadable -- sort of.
+
+isAcceptable :: Socket -> IO Bool
+#if defined(DOMAIN_SOCKET_SUPPORT)
+isAcceptable (MkSocket _ AF_UNIX x _ status)
+    | x == Stream || x == SeqPacket = do
+        value <- readMVar status
+        return (value == Connected || value == Bound || value == Listening)
+isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
+#endif
+isAcceptable (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Connected || value == Listening)
 
 -----------------------------------------------------------------------------
 -- Socket types

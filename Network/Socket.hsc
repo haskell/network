@@ -244,24 +244,22 @@ module Network.Socket
     , inet_ntoa
     ) where
 
+import Control.Concurrent.MVar
+import Control.Monad (liftM, when)
 import Data.Bits
 import Data.Functor
 import Data.List (foldl')
-import Data.Word (Word8, Word32)
-import Foreign.Ptr (Ptr, castPtr, nullPtr)
-import Foreign.Storable (Storable(..))
+import Data.Typeable
+import Data.Word (Word32)
 import Foreign.C.Error
-import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
+import Foreign.C.String (CString, withCString, peekCString)
 import Foreign.C.Types (CInt(..), CSize(..), CChar)
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
 import Foreign.Marshal.Utils ( maybeWith, with )
-
+import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (Storable(..))
 import System.IO
-import Control.Monad (liftM, when)
-
-import Control.Concurrent.MVar
-import Data.Typeable
 import System.IO.Error
 
 import GHC.Conc (threadWaitWrite)
@@ -286,9 +284,12 @@ import GHC.IO.Exception
 import GHC.IO
 import qualified System.Posix.Internals
 
+import Network.Socket.Buffer
 import Network.Socket.Internal
-import Network.Socket.Types
+import Network.Socket.Name
 import Network.Socket.Options
+import Network.Socket.String
+import Network.Socket.Types
 
 import Prelude -- Silence AMP warnings
 
@@ -625,201 +626,6 @@ foreign import ccall unsafe "free"
   c_free:: Ptr a -> IO ()
 #endif
 
------------------------------------------------------------------------------
--- ** Sending and receiving data
-
--- $sendrecv
---
--- Do not use the @send@ and @recv@ functions defined in this section
--- in new code, as they incorrectly represent binary data as a Unicode
--- string.  As a result, these functions are inefficient and may lead
--- to bugs in the program.  Instead use the @send@ and @recv@
--- functions defined in the "Network.Socket.ByteString" module.
-
------------------------------------------------------------------------------
--- sendTo & recvFrom
-
--- | Send data to the socket.  The recipient can be specified
--- explicitly, so the socket need not be in a connected state.
--- Returns the number of bytes sent.  Applications are responsible for
--- ensuring that all data has been sent.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
-{-# DEPRECATED sendTo "Use sendTo defined in \"Network.Socket.ByteString\"" #-}
-sendTo :: Socket        -- (possibly) bound/connected Socket
-       -> String        -- Data to send
-       -> SockAddr
-       -> IO Int        -- Number of Bytes sent
-sendTo sock xs addr = do
- withCStringLen xs $ \(str, len) -> do
-   sendBufTo sock str len addr
-
--- | Send data to the socket.  The recipient can be specified
--- explicitly, so the socket need not be in a connected state.
--- Returns the number of bytes sent.  Applications are responsible for
--- ensuring that all data has been sent.
-sendBufTo :: Socket            -- (possibly) bound/connected Socket
-          -> Ptr a -> Int  -- Data to send
-          -> SockAddr
-          -> IO Int            -- Number of Bytes sent
-sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
- withSockAddr addr $ \p_addr sz -> do
-   liftM fromIntegral $
-     throwSocketErrorWaitWrite sock "Network.Socket.sendBufTo" $
-        c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
-                        p_addr (fromIntegral sz)
-
--- | Receive data from the socket. The socket need not be in a
--- connected state. Returns @(bytes, nbytes, address)@ where @bytes@
--- is a @String@ of length @nbytes@ representing the data received and
--- @address@ is a 'SockAddr' representing the address of the sending
--- socket.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
-{-# DEPRECATED recvFrom "Use recvFrom defined in \"Network.Socket.ByteString\"" #-}
-recvFrom :: Socket -> Int -> IO (String, Int, SockAddr)
-recvFrom sock nbytes =
-  allocaBytes nbytes $ \ptr -> do
-    (len, sockaddr) <- recvBufFrom sock ptr nbytes
-    str <- peekCStringLen (ptr, len)
-    return (str, len, sockaddr)
-
--- | Receive data from the socket, writing it into buffer instead of
--- creating a new string.  The socket need not be in a connected
--- state. Returns @(nbytes, address)@ where @nbytes@ is the number of
--- bytes received and @address@ is a 'SockAddr' representing the
--- address of the sending socket.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
-recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
- | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
- | otherwise   =
-    withNewSockAddr family $ \ptr_addr sz -> do
-      alloca $ \ptr_len -> do
-        poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead sock "Network.Socket.recvBufFrom" $
-                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
-                                ptr_addr ptr_len
-        let len' = fromIntegral len
-        if len' == 0
-         then ioError (mkEOFError "Network.Socket.recvFrom")
-         else do
-           flg <- isConnected sock
-             -- For at least one implementation (WinSock 2), recvfrom() ignores
-             -- filling in the sockaddr for connected TCP sockets. Cope with
-             -- this by using getPeerName instead.
-           sockaddr <-
-                if flg then
-                   getPeerName sock
-                else
-                   peekSockAddr ptr_addr
-           return (len', sockaddr)
-
------------------------------------------------------------------------------
--- send & recv
-
--- | Send data to the socket. The socket must be connected to a remote
--- socket. Returns the number of bytes sent.  Applications are
--- responsible for ensuring that all data has been sent.
---
--- Sending data to closed socket may lead to undefined behaviour.
-{-# DEPRECATED send "Use send defined in \"Network.Socket.ByteString\"" #-}
-send :: Socket  -- Bound/Connected Socket
-     -> String  -- Data to send
-     -> IO Int  -- Number of Bytes sent
-send sock xs = withCStringLen xs $ \(str, len) ->
-    sendBuf sock (castPtr str) len
-
--- | Send data to the socket. The socket must be connected to a remote
--- socket. Returns the number of bytes sent.  Applications are
--- responsible for ensuring that all data has been sent.
---
--- Sending data to closed socket may lead to undefined behaviour.
-sendBuf :: Socket     -- Bound/Connected Socket
-        -> Ptr Word8  -- Pointer to the data to send
-        -> Int        -- Length of the buffer
-        -> IO Int     -- Number of Bytes sent
-sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
-   liftM fromIntegral $
-#if defined(mingw32_HOST_OS)
--- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
--- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
--- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
--- bug is supported.
-    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $ writeRawBufferPtr
-      "Network.Socket.sendBuf"
-      (socket2FD sock)
-      (castPtr str)
-      0
-      (fromIntegral len)
-#else
-     throwSocketErrorWaitWrite sock "Network.Socket.sendBuf" $
-        c_send s str (fromIntegral len) 0{-flags-}
-#endif
-
-
--- | Receive data from the socket.  The socket must be in a connected
--- state. This function may return fewer bytes than specified.  If the
--- message is longer than the specified length, it may be discarded
--- depending on the type of socket.  This function may block until a
--- message arrives.
---
--- Considering hardware and network realities, the maximum number of
--- bytes to receive should be a small power of 2, e.g., 4096.
---
--- For TCP sockets, a zero length return value means the peer has
--- closed its half side of the connection.
---
--- Receiving data from closed socket may lead to undefined behaviour.
-{-# DEPRECATED recv "Use recv defined in \"Network.Socket.ByteString\"" #-}
-recv :: Socket -> Int -> IO String
-recv sock l = fst <$> recvLen sock l
-
-{-# DEPRECATED recvLen "Use recv defined in \"Network.Socket.ByteString\" with \"Data.Bytestring.length\"" #-}
-recvLen :: Socket -> Int -> IO (String, Int)
-recvLen sock nbytes =
-     allocaBytes nbytes $ \ptr -> do
-        len <- recvBuf sock ptr nbytes
-        s <- peekCStringLen (castPtr ptr,len)
-        return (s, len)
-
--- | Receive data from the socket.  The socket must be in a connected
--- state. This function may return fewer bytes than specified.  If the
--- message is longer than the specified length, it may be discarded
--- depending on the type of socket.  This function may block until a
--- message arrives.
---
--- Considering hardware and network realities, the maximum number of
--- bytes to receive should be a small power of 2, e.g., 4096.
---
--- For TCP sockets, a zero length return value means the peer has
--- closed its half side of the connection.
---
--- Receiving data from closed socket may lead to undefined behaviour.
-recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
- | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
- | otherwise   = do
-        len <-
-#if defined(mingw32_HOST_OS)
--- see comment in sendBuf above.
-            throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
-                readRawBufferPtr "Network.Socket.recvBuf"
-                (socket2FD sock) ptr 0 (fromIntegral nbytes)
-#else
-               throwSocketErrorWaitRead sock "Network.Socket.recvBuf" $
-                   c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
-#endif
-        let len' = fromIntegral len
-        if len' == 0
-         then ioError (mkEOFError "Network.Socket.recvBuf")
-         else return len'
-
-
 -- ---------------------------------------------------------------------------
 -- socketPort
 --
@@ -842,32 +648,6 @@ socketPort (MkSocket _ family _ _ _) =
       "Network.Socket.socketPort: address family '" ++ show family ++
       "' not supported."
 
-
--- ---------------------------------------------------------------------------
--- getPeerName
-
--- Calling $getPeerName$ returns the address details of the machine,
--- other than the local one, which is connected to the socket. This is
--- used in programs such as FTP to determine where to send the
--- returning data.  The corresponding call to get the details of the
--- local machine is $getSocketName$.
-
-getPeerName   :: Socket -> IO SockAddr
-getPeerName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
-   with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
-     c_getpeername s ptr int_star
-   _sz <- peek int_star
-   peekSockAddr ptr
-
-getSocketName :: Socket -> IO SockAddr
-getSocketName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
-   with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
-     c_getsockname s ptr int_star
-   peekSockAddr ptr
 
 ##if !(MIN_VERSION_base(4,3,1))
 closeFdWith closer fd = closer fd
@@ -972,50 +752,6 @@ close (MkSocket s _ _ _ socketStatus) = do
      Closed ->
          return status
      _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
-
--- -----------------------------------------------------------------------------
-
--- | Determines whether 'close' has been used on the 'Socket'. This
--- does /not/ indicate any status about the socket beyond this. If the
--- socket has been closed remotely, this function can still return
--- 'True'.
-isConnected :: Socket -> IO Bool
-isConnected (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
-    return (value == Connected)
-
--- -----------------------------------------------------------------------------
--- Socket Predicates
-
-isBound :: Socket -> IO Bool
-isBound (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
-    return (value == Bound)
-
-isListening :: Socket -> IO Bool
-isListening (MkSocket _ _ _  _ status) = do
-    value <- readMVar status
-    return (value == Listening)
-
-isReadable  :: Socket -> IO Bool
-isReadable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
-    return (value == Listening || value == Connected)
-
-isWritable  :: Socket -> IO Bool
-isWritable = isReadable -- sort of.
-
-isAcceptable :: Socket -> IO Bool
-#if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable (MkSocket _ AF_UNIX x _ status)
-    | x == Stream || x == SeqPacket = do
-        value <- readMVar status
-        return (value == Connected || value == Bound || value == Listening)
-isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
-#endif
-isAcceptable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
-    return (value == Connected || value == Listening)
 
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:
@@ -1404,14 +1140,6 @@ foreign import ccall safe "hsnet_getnameinfo"
                   -> CSize -> CInt -> IO CInt
 #endif
 
-mkInvalidRecvArgError :: String -> IOError
-mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
-                                    InvalidArgument
-                                    loc Nothing Nothing) "non-positive length"
-
-mkEOFError :: String -> IOError
-mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
-
 -- ---------------------------------------------------------------------------
 -- foreign imports from the C library
 
@@ -1457,16 +1185,3 @@ foreign import CALLCONV safe "accept"
 
 foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
 #endif
-
-foreign import CALLCONV unsafe "send"
-  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "sendto"
-  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
-foreign import CALLCONV unsafe "recv"
-  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "recvfrom"
-  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
-foreign import CALLCONV unsafe "getpeername"
-  c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
-foreign import CALLCONV unsafe "getsockname"
-  c_getsockname :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
