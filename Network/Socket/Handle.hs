@@ -17,8 +17,8 @@ import Network.Socket.Types
 -- on the 'Handle'.
 
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
- modifyMVar socketStatus $ \ status ->
+socketToHandle s@(MkSocket fd _ _ _ sockStatus) mode = do
+ modifyMVar sockStatus $ \ status ->
     if status == ConvertedToHandle
         then ioError (userError ("socketToHandle: already a Handle"))
         else do
