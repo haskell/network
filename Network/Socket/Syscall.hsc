@@ -48,12 +48,6 @@ import Network.Socket.Types
 -----------------------------------------------------------------------------
 -- Socket types
 
-#if defined(mingw32_HOST_OS)
-socket2FD  (MkSocket fd _ _ _ _) =
-  -- HACK, 1 means True
-  FD{fdFD = fd,fdIsSocket_ = 1}
-#endif
-
 -- | Smart constructor for constructing a 'Socket'. It should only be
 -- called once for every new file descriptor. The caller must make
 -- sure that the socket is in non-blocking mode. See

@@ -39,6 +39,12 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
         c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
+#if defined(mingw32_HOST_OS)
+socket2FD  (MkSocket fd _ _ _ _) =
+  -- HACK, 1 means True
+  FD{fdFD = fd,fdIsSocket_ = 1}
+#endif
+
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
 -- responsible for ensuring that all data has been sent.
