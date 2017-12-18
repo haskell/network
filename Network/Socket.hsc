@@ -219,15 +219,6 @@ module Network.Socket
     -- in case you ever want to get at the underlying file descriptor..
     , setNonBlockIfNeeded
 
-    -- * Internal
-
-    -- | The following are exported ONLY for use in the BSD module and
-    -- should not be used anywhere else.
-
-    , packFamily
-    , unpackFamily
-    , packSocketType
-
     -- * Deprecated
     , send
     , sendTo
