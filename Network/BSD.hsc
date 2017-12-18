@@ -95,6 +95,7 @@ module Network.BSD
     ) where
 
 import Network.Socket
+import Network.Socket.Types
 
 import Control.Concurrent (MVar, newMVar, withMVar)
 import qualified Control.Exception as E
