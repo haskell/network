@@ -677,7 +677,7 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
 sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
-     throwSocketErrorWaitWrite sock "Network.Socket.sendTo" $
+     throwSocketErrorWaitWrite sock "Network.Socket.sendBufTo" $
         c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
@@ -707,12 +707,12 @@ recvFrom sock nbytes =
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
- | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvFrom")
+ | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
  | otherwise   =
     withNewSockAddr family $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead sock "Network.Socket.recvFrom" $
+        len <- throwSocketErrorWaitRead sock "Network.Socket.recvBufFrom" $
                    c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
