@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 
 #include "HsNet.h"
 
