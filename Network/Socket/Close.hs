@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Network.Socket.Close (
     ShutdownCmd(..)
   , shutdown
