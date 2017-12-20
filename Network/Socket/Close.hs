@@ -65,10 +65,10 @@ closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
 
-#if !defined(WITH_WINSOCK)
-foreign import ccall unsafe "close"
+#if defined(WITH_WINSOCK)
+foreign import stdcall unsafe "closesocket"
   c_close :: CInt -> IO CInt
 #else
-foreign import stdcall unsafe "closesocket"
+foreign import ccall unsafe "close"
   c_close :: CInt -> IO CInt
 #endif
