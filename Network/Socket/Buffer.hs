@@ -18,9 +18,9 @@ import Foreign.Storable (Storable(..))
 import System.IO.Error (mkIOError, ioeSetErrorString)
 import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
 
-# if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
-# endif
+#endif
 
 import Network.Socket.Internal
 import Network.Socket.Name
