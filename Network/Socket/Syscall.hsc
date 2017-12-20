@@ -18,15 +18,15 @@ import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
 import qualified System.Posix.Internals
 
-# if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
-# endif
+#endif
 
-# ifdef HAVE_ACCEPT4
+#ifdef HAVE_ACCEPT4
 import GHC.Conc (threadWaitRead)
-# endif
+#endif
 
 import Network.Socket.Close
 import Network.Socket.Internal

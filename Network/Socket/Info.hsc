@@ -19,9 +19,9 @@ import GHC.IO (unsafePerformIO)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
-# if defined(darwin_HOST_OS)
+#if defined(darwin_HOST_OS)
 import Data.List (delete)
-# endif
+#endif
 
 import Network.Socket.Internal
 import Network.Socket.Types
