@@ -4,8 +4,7 @@ module Network.Socket.Close (
   , close
   ) where
 
-#include "HsNet.h"
-##include "HsNetDef.h"
+#include "HsNetDef.h"
 
 import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable
@@ -14,11 +13,11 @@ import Foreign.C.Types (CInt(..))
 import Network.Socket.Internal
 import Network.Socket.Types
 
-##if MIN_VERSION_base(4,3,1)
+#if MIN_VERSION_base(4,3,1)
 import GHC.Conc (closeFdWith)
-##else
+#else
 closeFdWith closer fd = closer fd
-##endif
+#endif
 
 -- -----------------------------------------------------------------------------
 
