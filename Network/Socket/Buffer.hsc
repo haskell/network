@@ -8,6 +8,7 @@ module Network.Socket.Buffer (
   ) where
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 import Control.Monad (liftM)
 import Data.Word (Word8)

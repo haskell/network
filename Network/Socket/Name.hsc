@@ -5,6 +5,7 @@ module Network.Socket.Name (
   ) where
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)

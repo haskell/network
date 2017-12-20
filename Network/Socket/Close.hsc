@@ -5,6 +5,7 @@ module Network.Socket.Close (
   ) where
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable

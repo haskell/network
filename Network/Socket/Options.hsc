@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Options where
 

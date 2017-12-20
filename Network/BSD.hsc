@@ -15,6 +15,7 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.BSD
     (

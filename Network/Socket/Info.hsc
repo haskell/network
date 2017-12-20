@@ -3,6 +3,7 @@
 module Network.Socket.Info where
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 import Control.Monad (liftM)
 import Data.Bits

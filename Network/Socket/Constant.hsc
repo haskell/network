@@ -1,6 +1,7 @@
 module Network.Socket.Constant where
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 import Data.Word (Word32)
 
