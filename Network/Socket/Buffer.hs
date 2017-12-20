@@ -7,8 +7,7 @@ module Network.Socket.Buffer (
   , recvBuf
   ) where
 
-#include "HsNet.h"
-##include "HsNetDef.h"
+#include "HsNetDef.h"
 
 import Control.Monad (liftM)
 import Data.Word (Word8)
@@ -147,12 +146,6 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 
 mkEOFError :: String -> IOError
 mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
-
-##if defined(mingw32_HOST_OS)
-##define SAFE_ON_WIN safe
-##else
-##define SAFE_ON_WIN unsafe
-##endif
 
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
