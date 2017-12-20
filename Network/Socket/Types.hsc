@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Types
     (

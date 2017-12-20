@@ -7,18 +7,11 @@
 #ifndef HSNET_H
 #define HSNET_H
 
-#include "HsNetworkConfig.h"
+#include "HsNetDef.h"
 
 #ifdef NEED_WINVER
 # define WINVER 0x0501
 #endif
-
-/* ultra-evil... */
-#undef PACKAGE_BUGREPORT
-#undef PACKAGE_NAME
-#undef PACKAGE_STRING
-#undef PACKAGE_TARNAME
-#undef PACKAGE_VERSION
 
 #ifndef INLINE
 # if defined(_MSC_VER)
@@ -159,22 +152,6 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 {
     freeaddrinfo(ai);
 }
-#endif
-
-#if defined(HAVE_WINSOCK2_H)
-# define WITH_WINSOCK  1
-#endif
-
-#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
-# define DOMAIN_SOCKET_SUPPORT 1
-#endif
-
-#if !defined(CALLCONV)
-# if defined(WITH_WINSOCK)
-#  define CALLCONV stdcall
-# else
-#  define CALLCONV ccall
-# endif
 #endif
 
 #if !defined(IOV_MAX)
