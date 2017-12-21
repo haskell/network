@@ -219,12 +219,14 @@ connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSockets
 #endif
                else return ()
 
+#if !(defined(HAVE_WINSOCK2_H))
         connectBlocked = do
            threadWaitWrite (fromIntegral s)
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return ()
                 else throwSocketErrorCode errLoc (fromIntegral err)
+#endif
 
     connectLoop
     return Connected
