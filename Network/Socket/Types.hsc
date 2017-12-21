@@ -970,7 +970,7 @@ pokeSockAddr p (SockAddrUnix path) = do
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
     poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #else
-pokeSockAddr p SockAddrUnix{} = error "pokeSockAddr: not supported"
+pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_HOST_OS)

@@ -11,7 +11,7 @@ module Network.Socket.Buffer (
 
 import Control.Monad (liftM)
 import Data.Word (Word8)
-import Foreign.C.Types (CInt(..), CSize(..), CChar)
+import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (Storable(..))
@@ -20,6 +20,8 @@ import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
+#else
+import Foreign.C.Types (CChar)
 #endif
 
 import Network.Socket.Internal
