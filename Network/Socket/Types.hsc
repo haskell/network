@@ -1,20 +1,22 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Types
     (
     -- * Socket
       Socket(..)
-    , sockFd
-    , sockFamily
-    , sockType
-    , sockProtocol
-    , sockStatus
+    , fdSocket
+    -- * Socket status
     , SocketStatus(..)
-
+    , isConnected
+    , isBound
+    , isListening
+    , isReadable
+    , isWritable
+    , isAcceptable
     -- * Socket types
     , SocketType(..)
     , isSupportedSocketType
@@ -56,6 +58,8 @@ module Network.Socket.Types
 
     -- * Low-level helpers
     , zeroMemory
+    , htonl
+    , ntohl
     ) where
 
 import Control.Concurrent.MVar
@@ -67,44 +71,31 @@ import Data.Typeable
 import Data.Word
 import Foreign.C
 import Foreign.Marshal.Alloc
-import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 
--- | Represents a socket.  The fields are, respectively:
+#if defined(DOMAIN_SOCKET_SUPPORT)
+import Foreign.Marshal.Array
+#endif
+
+-- | Represents a socket.
 --
---   * File descriptor
---   * Socket family
---   * Socket type
---   * Protocol number
---   * Status flag
+--   This module will stop exporting 'MkSocket' in the future.
+--   Use 'mkSocket' to create 'Socket' instead of using 'MkSocket'
+--   and use its accessors intead of pattern matching.
 --
 --   If you are calling the 'MkSocket' constructor directly you should ensure
 --   you have called 'Network.withSocketsDo' and that the file descriptor is
 --   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
-data Socket
-  = MkSocket
-            CInt                 -- File Descriptor
-            Family
-            SocketType
-            ProtocolNumber       -- Protocol Number
-            (MVar SocketStatus)  -- Status Flag
-  deriving Typeable
-
-sockFd :: Socket -> CInt
-sockFd       (MkSocket n _ _ _ _) = n
-
-sockFamily :: Socket -> Family
-sockFamily   (MkSocket _ f _ _ _) = f
-
-sockType :: Socket -> SocketType
-sockType     (MkSocket _ _ t _ _) = t
-
-sockProtocol :: Socket -> ProtocolNumber
-sockProtocol (MkSocket _ _ _ p _) = p
-
-sockStatus :: Socket -> MVar SocketStatus
-sockStatus   (MkSocket _ _ _ _ s) = s
+data Socket = MkSocket
+  {
+    socketFd       :: CInt              -- ^ File descriptor
+  , socketFamily   :: Family            -- ^ Address family
+  , socketType     :: SocketType        -- ^ Socket type
+  , socketProtocol :: ProtocolNumber    -- ^ Protocol number
+  , socketStatus   :: MVar SocketStatus -- ^ Socket status
+  } deriving Typeable
+{-# DEPRECATED MkSocket "Use \"mkSocket\" and the accessors intead" #-}
 
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
@@ -114,6 +105,12 @@ instance Show Socket where
         showString "<socket: " . shows fd . showString ">"
 
 type ProtocolNumber = CInt
+
+{-# DEPRECATED fdSocket "Use socketFd intead" #-}
+fdSocket :: Socket -> CInt
+fdSocket = socketFd
+
+-- -----------------------------------------------------------------------------
 
 -- | The status of the socket as /determined by this library/, not
 -- necessarily reflecting the state of the connection itself.
@@ -129,6 +126,49 @@ data SocketStatus
   | ConvertedToHandle   -- ^ Is now a 'Handle' (via 'socketToHandle'), don't touch
   | Closed              -- ^ Closed was closed by 'close'
     deriving (Eq, Show, Typeable)
+
+
+-- -----------------------------------------------------------------------------
+-- Socket Predicates
+
+-- | Determines whether 'close' has been used on the 'Socket'. This
+-- does /not/ indicate any status about the socket beyond this. If the
+-- socket has been closed remotely, this function can still return
+-- 'True'.
+isConnected :: Socket -> IO Bool
+isConnected (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Connected)
+
+isBound :: Socket -> IO Bool
+isBound (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Bound)
+
+isListening :: Socket -> IO Bool
+isListening (MkSocket _ _ _  _ status) = do
+    value <- readMVar status
+    return (value == Listening)
+
+isReadable  :: Socket -> IO Bool
+isReadable (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Listening || value == Connected)
+
+isWritable  :: Socket -> IO Bool
+isWritable = isReadable -- sort of.
+
+isAcceptable :: Socket -> IO Bool
+#if defined(DOMAIN_SOCKET_SUPPORT)
+isAcceptable (MkSocket _ AF_UNIX x _ status)
+    | x == Stream || x == SeqPacket = do
+        value <- readMVar status
+        return (value == Connected || value == Bound || value == Listening)
+isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
+#endif
+isAcceptable (MkSocket _ _ _ _ status) = do
+    value <- readMVar status
+    return (value == Connected || value == Listening)
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -760,8 +800,10 @@ portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
-foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
+-- | Converts the from host byte order to network byte order.
 foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
+-- | Converts the from network byte order to host byte order.
+foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 
 instance Enum PortNumber where
     toEnum   = intToPortNumber
@@ -928,7 +970,7 @@ pokeSockAddr p (SockAddrUnix path) = do
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
     poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #else
-pokeSockAddr p SockAddrUnix{} = error "pokeSockAddr: not supported"
+pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_HOST_OS)

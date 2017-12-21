@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -19,6 +18,7 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Internal
     (
@@ -43,7 +43,7 @@ module Network.Socket.Internal
     , Family(..)
 
     -- * Socket error functions
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
     , c_getLastError
 #endif
     , throwSocketError
@@ -69,27 +69,26 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
-import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
-                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
-                        Errno(..), errnoToIOError)
-#if defined(HAVE_WINSOCK2_H)
-import Foreign.C.String (peekCString)
-import Foreign.Ptr (Ptr)
-#endif
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
-#if defined(HAVE_WINSOCK2_H)
-import Control.Exception ( evaluate )
-import System.IO.Unsafe ( unsafePerformIO )
-import Control.Monad ( when )
-#  if __GLASGOW_HASKELL__ >= 707
-import GHC.IO.Exception ( IOErrorType(..) )
-#  else
-import GHC.IOBase ( IOErrorType(..) )
-#  endif
-import Foreign.C.Types ( CChar )
-import System.IO.Error ( ioeSetErrorString, mkIOError )
+#if defined(WITH_WINSOCK)
+import Control.Exception (evaluate)
+import Control.Monad (when)
+import Foreign.C.String (peekCString)
+import Foreign.Ptr (Ptr)
+import System.IO.Unsafe (unsafePerformIO)
+# if __GLASGOW_HASKELL__ >= 707
+import GHC.IO.Exception (IOErrorType(..))
+# else
+import GHC.IOBase (IOErrorType(..))
+# endif
+import Foreign.C.Types (CChar)
+import System.IO.Error (ioeSetErrorString, mkIOError)
+#else
+import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
+                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
+                        Errno(..), errnoToIOError)
 #endif
 
 import Network.Socket.Types
@@ -156,7 +155,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if (!defined(HAVE_WINSOCK2_H))
+#if (!defined(WITH_WINSOCK))
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -176,10 +175,10 @@ throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
 
 throwSocketErrorIfMinus1_ name act = do
-  throwSocketErrorIfMinus1Retry name act
+  _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(HAVE_WINSOCK2_H)
+# if defined(WITH_WINSOCK)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)
@@ -188,10 +187,10 @@ throwSocketErrorIfMinus1Retry name act = do
     case rc of
       #{const WSANOTINITIALISED} -> do
         withSocketsDo (return ())
-        r <- act
-        if (r == -1)
+        r' <- act
+        if (r' == -1)
            then throwSocketError name
-           else return r
+           else return r'
       _ -> throwSocketError name
    else return r
 
@@ -224,7 +223,7 @@ throwSocketErrorCode loc errno =
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitRead sock name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitRead $ fromIntegral $ sockFd sock)
+        (threadWaitRead $ fromIntegral $ socketFd sock)
         io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
@@ -233,7 +232,7 @@ throwSocketErrorWaitRead sock name io =
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitWrite sock name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitWrite $ fromIntegral $ sockFd sock)
+        (threadWaitWrite $ fromIntegral $ socketFd sock)
         io
 
 -- ---------------------------------------------------------------------------

@@ -24,7 +24,7 @@ extra-source-files:
   README.md CHANGELOG.md
   examples/*.hs tests/*.hs config.guess config.sub install-sh
   configure.ac configure network.buildinfo.in
-  include/HsNetworkConfig.h.in include/HsNet.h
+  include/HsNetworkConfig.h.in include/HsNet.h include/HsNetDef.h
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
   cbits/winSockErr.c
@@ -46,7 +46,16 @@ library
     Network.Socket.ByteString.Lazy
     Network.Socket.Internal
   other-modules:
+    Network.Socket.Buffer
     Network.Socket.ByteString.Internal
+    Network.Socket.Close
+    Network.Socket.Constant
+    Network.Socket.Handle
+    Network.Socket.Info
+    Network.Socket.Name
+    Network.Socket.Options
+    Network.Socket.String
+    Network.Socket.Syscall
     Network.Socket.Types
 
   if !os(windows)

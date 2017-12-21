@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.BSD
@@ -15,6 +15,7 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.BSD
     (
@@ -27,7 +28,7 @@ module Network.BSD
     , getHostByAddr
     , hostAddress
 
-#if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
+#if defined(HAVE_GETHOSTENT) && !defined(WITH_WINSOCK)
     , getHostEntries
 
     -- ** Low level functionality
@@ -43,7 +44,7 @@ module Network.BSD
     , getServiceByPort
     , getServicePortNumber
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , getServiceEntries
 
     -- ** Low level functionality
@@ -61,7 +62,7 @@ module Network.BSD
     , getProtocolNumber
     , defaultProtocol
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , getProtocolEntries
     -- ** Low level functionality
     , setProtocolEntry
@@ -77,7 +78,7 @@ module Network.BSD
     , NetworkAddr
     , NetworkEntry(..)
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , getNetworkByName
     , getNetworkByAddr
     , getNetworkEntries
@@ -94,28 +95,30 @@ module Network.BSD
 
     ) where
 
-import Network.Socket
-
 import Control.Concurrent (MVar, newMVar, withMVar)
-import qualified Control.Exception as E
+import Data.Typeable
 import Foreign.C.String (CString, peekCString, withCString)
-#if defined(HAVE_WINSOCK2_H)
-import Foreign.C.Types ( CShort )
-#endif
-import Foreign.C.Types ( CInt(..), CUInt(..), CULong(..), CSize(..) )
+import Foreign.C.Types (CInt(..), CULong(..), CSize(..))
+import Foreign.Marshal.Array (allocaArray0, peekArray0)
+import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable(..))
-import Foreign.Marshal.Array (allocaArray0, peekArray0)
-import Foreign.Marshal.Utils (with, fromBool)
-import Data.Typeable
+import GHC.IO.Exception
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.IO.Unsafe (unsafePerformIO)
 
-import GHC.IO.Exception
-
+#if defined(WITH_WINSOCK)
+import Foreign.C.Types (CShort)
+#else
+import qualified Control.Exception as E
 import Control.Monad (liftM)
+import Foreign.C.Types (CUInt(..))
+import Foreign.Marshal.Utils (fromBool)
+#endif
 
+import Network.Socket
 import Network.Socket.Internal (throwSocketErrorIfMinus1_)
+import Network.Socket.Types
 
 -- ---------------------------------------------------------------------------
 -- Basic Types
@@ -158,7 +161,7 @@ instance Storable ServiceEntry where
         return (ServiceEntry {
                         serviceName     = s_name,
                         serviceAliases  = s_aliases,
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
                         servicePort     = (fromIntegral (s_port :: CShort)),
 #else
                            -- s_port is already in network byte order, but it
@@ -202,7 +205,7 @@ getServicePortNumber name = do
     (ServiceEntry _ _ port _) <- getServiceByName name "tcp"
     return port
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "Network.BSD.getServiceEntry" "no such service entry"
@@ -255,7 +258,7 @@ instance Storable ProtocolEntry where
         p_aliases <- (#peek struct protoent, p_aliases) p
                            >>= peekArray0 nullPtr
                            >>= mapM peekCString
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
          -- With WinSock, the protocol number is only a short;
          -- hoist it in as such, but represent it on the Haskell side
          -- as a CInt.
@@ -299,7 +302,7 @@ getProtocolNumber proto = do
  (ProtocolEntry _ _ num) <- getProtocolByName proto
  return num
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "Network.BSD.getProtocolEntry" "no such protocol entry"
@@ -352,7 +355,7 @@ instance Storable HostEntry where
         return (HostEntry {
                         hostName       = h_name,
                         hostAliases    = h_aliases,
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
                         hostFamily     = unpackFamily (fromIntegral (h_addrtype :: CShort)),
 #else
                         hostFamily     = unpackFamily h_addrtype,
@@ -398,7 +401,7 @@ getHostByAddr family addr = do
 foreign import CALLCONV safe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
-#if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
+#if defined(HAVE_GETHOSTENT) && !defined(WITH_WINSOCK)
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
  throwNoSuchThingIfNull "Network.BSD.getHostEntry" "unable to retrieve host entry"
@@ -464,7 +467,7 @@ instance Storable NetworkEntry where
    poke = throwUnsupportedOperationPoke "NetworkEntry"
 
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = withLock $ do
  withCString name $ \ name_cstr -> do
@@ -556,6 +559,7 @@ getHostName = do
 foreign import CALLCONV unsafe "gethostname"
    c_gethostname :: CString -> CSize -> IO CInt
 
+#if !defined(WITH_WINSOCK)
 -- Helper function used by the exported functions that provides a
 -- Haskellised view of the enumerator functions:
 
@@ -570,7 +574,7 @@ getEntries getOne atEnd = loop
       case vv of
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)
-
+#endif
 
 throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
 throwNoSuchThingIfNull loc desc act = do
