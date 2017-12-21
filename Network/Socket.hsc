@@ -233,10 +233,11 @@ module Network.Socket
     , recvFrom
     , inet_addr
     , inet_ntoa
+    , fdSocket
+    -- * Internal use only
     , packFamily
     , unpackFamily
     , packSocketType
-    , fdSocket
     ) where
 
 import Data.Bits
@@ -1692,5 +1693,3 @@ foreign import CALLCONV unsafe "setsockopt"
 foreign import CALLCONV unsafe "getpeereid"
   c_getpeereid :: CInt -> Ptr CUInt -> Ptr CUInt -> IO CInt
 #endif
-
-
