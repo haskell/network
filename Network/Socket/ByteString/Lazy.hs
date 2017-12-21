@@ -43,7 +43,7 @@ import System.IO.Unsafe (unsafeInterleaveIO)
 import qualified Data.ByteString as S
 import qualified Network.Socket.ByteString as N
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 import Network.Socket.ByteString.Lazy.Windows (send, sendAll)
 #else
 import Network.Socket.ByteString.Lazy.Posix (send, sendAll)

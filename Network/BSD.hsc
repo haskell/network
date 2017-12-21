@@ -28,7 +28,7 @@ module Network.BSD
     , getHostByAddr
     , hostAddress
 
-#if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
+#if defined(HAVE_GETHOSTENT) && !defined(WITH_WINSOCK)
     , getHostEntries
 
     -- ** Low level functionality
@@ -44,7 +44,7 @@ module Network.BSD
     , getServiceByPort
     , getServicePortNumber
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , getServiceEntries
 
     -- ** Low level functionality
@@ -62,7 +62,7 @@ module Network.BSD
     , getProtocolNumber
     , defaultProtocol
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , getProtocolEntries
     -- ** Low level functionality
     , setProtocolEntry
@@ -78,7 +78,7 @@ module Network.BSD
     , NetworkAddr
     , NetworkEntry(..)
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , getNetworkByName
     , getNetworkByAddr
     , getNetworkEntries
@@ -205,7 +205,7 @@ getServicePortNumber name = do
     (ServiceEntry _ _ port _) <- getServiceByName name "tcp"
     return port
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 getServiceEntry :: IO ServiceEntry
 getServiceEntry = withLock $ do
  throwNoSuchThingIfNull "Network.BSD.getServiceEntry" "no such service entry"
@@ -302,7 +302,7 @@ getProtocolNumber proto = do
  (ProtocolEntry _ _ num) <- getProtocolByName proto
  return num
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 getProtocolEntry :: IO ProtocolEntry    -- Next Protocol Entry from DB
 getProtocolEntry = withLock $ do
  ent <- throwNoSuchThingIfNull "Network.BSD.getProtocolEntry" "no such protocol entry"
@@ -401,7 +401,7 @@ getHostByAddr family addr = do
 foreign import CALLCONV safe "gethostbyaddr"
    c_gethostbyaddr :: Ptr HostAddress -> CInt -> CInt -> IO (Ptr HostEntry)
 
-#if defined(HAVE_GETHOSTENT) && !defined(mingw32_HOST_OS)
+#if defined(HAVE_GETHOSTENT) && !defined(WITH_WINSOCK)
 getHostEntry :: IO HostEntry
 getHostEntry = withLock $ do
  throwNoSuchThingIfNull "Network.BSD.getHostEntry" "unable to retrieve host entry"
@@ -467,7 +467,7 @@ instance Storable NetworkEntry where
    poke = throwUnsupportedOperationPoke "NetworkEntry"
 
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 getNetworkByName :: NetworkName -> IO NetworkEntry
 getNetworkByName name = withLock $ do
  withCString name $ \ name_cstr -> do
@@ -559,7 +559,7 @@ getHostName = do
 foreign import CALLCONV unsafe "gethostname"
    c_gethostname :: CString -> CSize -> IO CInt
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 -- Helper function used by the exported functions that provides a
 -- Haskellised view of the enumerator functions:
 

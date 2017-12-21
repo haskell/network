@@ -28,7 +28,7 @@
 # define CALLCONV ccall
 #endif
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 # define SAFE_ON_WIN safe
 #else
 # define SAFE_ON_WIN unsafe

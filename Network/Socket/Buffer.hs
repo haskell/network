@@ -18,7 +18,7 @@ import Foreign.Storable (Storable(..))
 import System.IO.Error (mkIOError, ioeSetErrorString)
 import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
 #else
 import Foreign.C.Types (CChar)
@@ -43,7 +43,7 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
         c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 socket2FD :: Socket -> FD
 socket2FD  (MkSocket fd _ _ _ _) =
   -- HACK, 1 means True
@@ -61,7 +61,7 @@ sendBuf :: Socket     -- Bound/Connected Socket
         -> IO Int     -- Number of Bytes sent
 sendBuf sock str len = do
    liftM fromIntegral $
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
 -- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
 -- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
@@ -128,7 +128,7 @@ recvBuf sock ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
         len <-
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 -- see comment in sendBuf above.
             throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
                 readRawBufferPtr "Network.Socket.recvBuf"
@@ -150,7 +150,7 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 mkEOFError :: String -> IOError
 mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"

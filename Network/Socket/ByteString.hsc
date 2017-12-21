@@ -56,7 +56,7 @@ import Network.Socket.ByteString.Internal
 import Network.Socket.Internal
 import Network.Socket.Types
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 import Control.Monad (liftM, zipWithM_)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
@@ -157,7 +157,7 @@ sendAllTo sock xs addr = do
 sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 sendMany sock@(MkSocket fd _ _ _ _) cs = do
     sent <- sendManyInner
     when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
@@ -183,7 +183,7 @@ sendManyTo :: Socket        -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
            -> IO ()
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
     sent <- liftM fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
@@ -245,7 +245,7 @@ recvFrom sock nbytes =
 -- ----------------------------------------------------------------------------
 -- Not exported
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 -- | Suppose we try to transmit a list of chunks @cs@ via a gathering write
 -- operation and find that @n@ bytes were sent. Then @remainingChunks n cs@ is
 -- list of chunks remaining to be sent.

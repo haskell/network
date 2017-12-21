@@ -12,7 +12,7 @@
 module Network.Socket.ByteString.Internal
     (
       mkInvalidRecvArgError
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
     , c_writev
     , c_sendmsg
 #endif
@@ -20,7 +20,7 @@ module Network.Socket.ByteString.Internal
 
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 import Foreign.C.Types (CInt(..))
 import System.Posix.Types (CSsize(..))
 import Foreign.Ptr (Ptr)
@@ -36,7 +36,7 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
                                     loc Nothing Nothing) "non-positive length"
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(WITH_WINSOCK)
 foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
 

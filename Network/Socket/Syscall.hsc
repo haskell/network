@@ -18,7 +18,7 @@ import Foreign.Marshal.Array (peekArray)
 import Foreign.Storable (Storable(..))
 #endif
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 import qualified Control.Exception as E
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
@@ -117,7 +117,7 @@ socket family stype protocol = do
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
     -- so we explicitly set it to 0 to provide a common default.
-# if defined(mingw32_HOST_OS)
+# if defined(WITH_WINSOCK)
     -- The IPv6Only option is only supported on Windows Vista and later,
     -- so trying to change it might throw an error.
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
@@ -283,7 +283,7 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
      new_sock <-
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
@@ -329,14 +329,14 @@ foreign import CALLCONV unsafe "accept"
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 foreign import CALLCONV safe "accept"
   c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
 
 foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
 #endif
 
-#if defined(mingw32_HOST_OS)
+#if defined(WITH_WINSOCK)
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"
