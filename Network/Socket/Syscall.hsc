@@ -11,7 +11,6 @@ import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
-import GHC.Conc (threadWaitWrite)
 import qualified System.Posix.Internals
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
@@ -25,6 +24,7 @@ import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
+import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
 #endif
 
