@@ -100,9 +100,9 @@ import qualified Control.Exception as E
 import Control.Monad (liftM)
 import Data.Typeable
 import Foreign.C.String (CString, peekCString, withCString)
-import Foreign.C.Types ( CInt(..), CUInt(..), CULong(..), CSize(..) )
+import Foreign.C.Types (CInt(..), CULong(..), CSize(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
-import Foreign.Marshal.Utils (with, fromBool)
+import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable(..))
 import GHC.IO.Exception
@@ -111,6 +111,9 @@ import System.IO.Unsafe (unsafePerformIO)
 
 #if defined(WITH_WINSOCK)
 import Foreign.C.Types (CShort)
+#else
+import Foreign.Marshal.Utils (fromBool)
+import Foreign.C.Types (CUInt(..))
 #endif
 
 import Network.Socket
