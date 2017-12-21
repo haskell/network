@@ -96,8 +96,6 @@ module Network.BSD
     ) where
 
 import Control.Concurrent (MVar, newMVar, withMVar)
-import qualified Control.Exception as E
-import Control.Monad (liftM)
 import Data.Typeable
 import Foreign.C.String (CString, peekCString, withCString)
 import Foreign.C.Types (CInt(..), CULong(..), CSize(..))
@@ -112,8 +110,10 @@ import System.IO.Unsafe (unsafePerformIO)
 #if defined(WITH_WINSOCK)
 import Foreign.C.Types (CShort)
 #else
-import Foreign.Marshal.Utils (fromBool)
+import qualified Control.Exception as E
+import Control.Monad (liftM)
 import Foreign.C.Types (CUInt(..))
+import Foreign.Marshal.Utils (fromBool)
 #endif
 
 import Network.Socket
