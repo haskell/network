@@ -78,24 +78,24 @@ import Foreign.Storable
 import Foreign.Marshal.Array
 #endif
 
--- | Represents a socket.  The fields are, respectively:
+-- | Represents a socket.
 --
---   * File descriptor
---   * Socket family
---   * Socket type
---   * Protocol number
---   * Status flag
+--   This module will stop exporting 'MkSocket' in the future.
+--   Use 'mkSocket' to create 'Socket' instead of using 'MkSocket'
+--   and use its accessors intead of pattern matching.
 --
 --   If you are calling the 'MkSocket' constructor directly you should ensure
 --   you have called 'Network.withSocketsDo' and that the file descriptor is
 --   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
-data Socket = MkSocket {
+data Socket = MkSocket
+  {
     socketFd       :: CInt              -- ^ File descriptor
   , socketFamily   :: Family            -- ^ Address family
   , socketType     :: SocketType        -- ^ Socket type
   , socketProtocol :: ProtocolNumber    -- ^ Protocol number
   , socketStatus   :: MVar SocketStatus -- ^ Socket status
   } deriving Typeable
+{-# DEPRECATED MkSocket "Use \"mkSocket\" and the accessors intead" #-}
 
 instance Eq Socket where
   (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
