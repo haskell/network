@@ -6,7 +6,6 @@ module Network.Socket.ByteString.Lazy.Windows
     , sendAll
     ) where
 
-import Control.Applicative ((<$>))
 import Control.Monad (unless)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
@@ -22,7 +21,7 @@ send :: Socket        -- ^ Connected socket
      -> L.ByteString  -- ^ Data to send
      -> IO Int64      -- ^ Number of bytes sent
 send sock s = do
-  fromIntegral <$> case L.toChunks s of
+  fromIntegral `fmap` case L.toChunks s of
       -- TODO: Consider doing nothing if the string is empty.
       []    -> Socket.send sock S.empty
       (x:_) -> Socket.send sock x

@@ -69,27 +69,26 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
-import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
-                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
-                        Errno(..), errnoToIOError)
-#if defined(WITH_WINSOCK)
-import Foreign.C.String (peekCString)
-import Foreign.Ptr (Ptr)
-#endif
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(WITH_WINSOCK)
-import Control.Exception ( evaluate )
-import System.IO.Unsafe ( unsafePerformIO )
-import Control.Monad ( when )
-#  if __GLASGOW_HASKELL__ >= 707
-import GHC.IO.Exception ( IOErrorType(..) )
-#  else
-import GHC.IOBase ( IOErrorType(..) )
-#  endif
-import Foreign.C.Types ( CChar )
-import System.IO.Error ( ioeSetErrorString, mkIOError )
+import Control.Exception (evaluate)
+import Control.Monad (when)
+import Foreign.C.String (peekCString)
+import Foreign.Ptr (Ptr)
+import System.IO.Unsafe (unsafePerformIO)
+# if __GLASGOW_HASKELL__ >= 707
+import GHC.IO.Exception (IOErrorType(..))
+# else
+import GHC.IOBase (IOErrorType(..))
+# endif
+import Foreign.C.Types (CChar)
+import System.IO.Error (ioeSetErrorString, mkIOError)
+#else
+import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
+                        throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
+                        Errno(..), errnoToIOError)
 #endif
 
 import Network.Socket.Types
@@ -188,10 +187,10 @@ throwSocketErrorIfMinus1Retry name act = do
     case rc of
       #{const WSANOTINITIALISED} -> do
         withSocketsDo (return ())
-        r <- act
-        if (r == -1)
+        r' <- act
+        if (r' == -1)
            then throwSocketError name
-           else return r
+           else return r'
       _ -> throwSocketError name
    else return r
 

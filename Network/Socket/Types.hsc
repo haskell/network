@@ -71,9 +71,12 @@ import Data.Typeable
 import Data.Word
 import Foreign.C
 import Foreign.Marshal.Alloc
-import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+
+#if defined(DOMAIN_SOCKET_SUPPORT)
+import Foreign.Marshal.Array
+#endif
 
 -- | Represents a socket.  The fields are, respectively:
 --
