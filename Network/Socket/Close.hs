@@ -66,7 +66,7 @@ foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
 
 #if defined(WITH_WINSOCK)
-foreign import stdcall unsafe "closesocket"
+foreign import CALLCONV unsafe "closesocket"
   c_close :: CInt -> IO CInt
 #else
 foreign import ccall unsafe "close"
