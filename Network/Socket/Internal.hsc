@@ -175,7 +175,7 @@ throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
 
 throwSocketErrorIfMinus1_ name act = do
-  throwSocketErrorIfMinus1Retry name act
+  _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
 # if defined(WITH_WINSOCK)

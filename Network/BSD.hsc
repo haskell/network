@@ -559,6 +559,7 @@ getHostName = do
 foreign import CALLCONV unsafe "gethostname"
    c_gethostname :: CString -> CSize -> IO CInt
 
+#if !defined(mingw32_HOST_OS)
 -- Helper function used by the exported functions that provides a
 -- Haskellised view of the enumerator functions:
 
@@ -573,7 +574,7 @@ getEntries getOne atEnd = loop
       case vv of
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)
-
+#endif
 
 throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
 throwNoSuchThingIfNull loc desc act = do
