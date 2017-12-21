@@ -74,6 +74,7 @@ import Foreign.Storable
 --   * Protocol number
 --   * Status flag
 --
+--   Use 'mkSocket' to create 'Socket' instead of using 'MkSocket'.
 --   If you are calling the 'MkSocket' constructor directly you should ensure
 --   you have called 'Network.withSocketsDo' and that the file descriptor is
 --   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.

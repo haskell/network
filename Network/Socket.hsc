@@ -95,6 +95,8 @@ module Network.Socket
     -- * Types
     -- ** Socket
       Socket(..)
+    , mkSocket
+    -- ** Socket status
     , SocketStatus(..)
     -- ** Family
     , Family(..)
@@ -221,7 +223,6 @@ module Network.Socket
 
     -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    , mkSocket
     , setNonBlockIfNeeded
 
     -- * Deprecated
@@ -326,6 +327,7 @@ socket2FD  (MkSocket fd _ _ _ _) =
 -- called once for every new file descriptor. The caller must make
 -- sure that the socket is in non-blocking mode. See
 -- 'setNonBlockIfNeeded'.
+-- 'mkSocket' should be used intead of 'MkSocket'.
 mkSocket :: CInt
          -> Family
          -> SocketType
