@@ -18,7 +18,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Network.BSD
+module Network.BSD  {-# DEPRECATED "This platform dependent module is no longer supported." #-}
     (
     -- * Host names
       HostName
