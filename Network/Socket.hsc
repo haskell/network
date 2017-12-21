@@ -221,18 +221,8 @@ module Network.Socket
 
     -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
-    , fdSocket
     , mkSocket
     , setNonBlockIfNeeded
-
-    -- * Internal
-
-    -- | The following are exported ONLY for use in the BSD module and
-    -- should not be used anywhere else.
-
-    , packFamily
-    , unpackFamily
-    , packSocketType
 
     -- * Deprecated
     , send
@@ -242,6 +232,10 @@ module Network.Socket
     , recvFrom
     , inet_addr
     , inet_ntoa
+    , packFamily
+    , unpackFamily
+    , packSocketType
+    , fdSocket
     ) where
 
 import Data.Bits
@@ -348,8 +342,9 @@ mkSocket fd fam sType pNum stat = do
    return sock
 
 
+{-# DEPRECATED fdSocket "Use \"socketFd\" instead" #-}
 fdSocket :: Socket -> CInt
-fdSocket (MkSocket fd _ _ _ _) = fd
+fdSocket = socketFd
 
 -- | This is the default protocol for a given service.
 defaultProtocol :: ProtocolNumber
@@ -479,8 +474,8 @@ setNonBlockIfNeeded fd =
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bind (MkSocket s _family _stype _protocol socketStatus) addr = do
- modifyMVar_ socketStatus $ \ status -> do
+bind (MkSocket s _family _stype _protocol sockStatus) addr = do
+ modifyMVar_ sockStatus $ \ status -> do
  if status /= NotConnected
   then
    ioError $ userError $
@@ -498,8 +493,8 @@ bind (MkSocket s _family _stype _protocol socketStatus) addr = do
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocketsDo $ do
- modifyMVar_ socketStatus $ \currentStatus -> do
+connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSocketsDo $ do
+ modifyMVar_ sockStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
     ioError $ userError $
@@ -544,8 +539,8 @@ connect sock@(MkSocket s _family _stype _protocol socketStatus) addr = withSocke
 listen :: Socket  -- Connected & Bound Socket
        -> Int     -- Queue Length
        -> IO ()
-listen (MkSocket s _family _stype _protocol socketStatus) backlog = do
- modifyMVar_ socketStatus $ \ status -> do
+listen (MkSocket s _family _stype _protocol sockStatus) backlog = do
+ modifyMVar_ sockStatus $ \ status -> do
  if status /= Bound
    then
      ioError $ userError $
@@ -1051,7 +1046,7 @@ getSocketOption (MkSocket s _ _ _ _) so = do
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
 #ifdef HAVE_STRUCT_UCRED
-  let fd = fdSocket sock
+  let fd = socketFd sock
   let sz = (#const sizeof(struct ucred))
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
@@ -1071,7 +1066,7 @@ getPeerCred sock = do
 -- peer connected to a UNIX-domain socket
 getPeerEid :: Socket -> IO (CUInt, CUInt)
 getPeerEid sock = do
-  let fd = fdSocket sock
+  let fd = socketFd sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
       throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
@@ -1091,7 +1086,7 @@ closeFdWith closer fd = closer fd
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = do
-  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (fdSocket sock) outfd
+  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
   return ()
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
@@ -1100,7 +1095,7 @@ sendFd sock outfd = do
 recvFd :: Socket -> IO CInt
 recvFd sock = do
   theFd <- throwSocketErrorWaitRead sock "Network.Socket.recvFd" $
-               c_recvFd (fdSocket sock)
+               c_recvFd (socketFd sock)
   return theFd
 
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
@@ -1177,8 +1172,8 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close (MkSocket s _ _ _ socketStatus) = do
- modifyMVar_ socketStatus $ \ status ->
+close (MkSocket s _ _ _ sockStatus) = do
+ modifyMVar_ sockStatus $ \ status ->
    case status of
      ConvertedToHandle ->
          ioError (userError ("close: converted to a Handle, use hClose instead"))
@@ -1257,8 +1252,8 @@ inet_ntoa haddr = withSocketsDo $ do
 -- on the 'Handle'.
 
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ socketStatus) mode = do
- modifyMVar socketStatus $ \ status ->
+socketToHandle s@(MkSocket fd _ _ _ sockStatus) mode = do
+ modifyMVar sockStatus $ \ status ->
     if status == ConvertedToHandle
         then ioError (userError ("socketToHandle: already a Handle"))
         else do
@@ -1401,8 +1396,8 @@ instance Storable AddrInfo where
                  addrCanonName = ai_canonname
                 })
 
-    poke p (AddrInfo flags family socketType protocol _ _) = do
-        c_stype <- packSocketTypeOrThrow "AddrInfo.poke" socketType
+    poke p (AddrInfo flags family sockType protocol _ _) = do
+        c_stype <- packSocketTypeOrThrow "AddrInfo.poke" sockType
 
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
         (#poke struct addrinfo, ai_family) p (packFamily family)
