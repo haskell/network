@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
