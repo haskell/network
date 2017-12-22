@@ -1,5 +1,6 @@
 #include "HsNet.h"
 ##include "HsNetDef.h"
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 
 module Network.Socket.Constant where
 
