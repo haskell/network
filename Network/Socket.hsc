@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-{-# ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNet.h"
 
