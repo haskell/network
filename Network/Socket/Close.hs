@@ -11,15 +11,10 @@ module Network.Socket.Close (
 import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable
 import Foreign.C.Types (CInt(..))
+import GHC.Conc (closeFdWith)
 
 import Network.Socket.Internal
 import Network.Socket.Types
-
-#if MIN_VERSION_base(4,3,1)
-import GHC.Conc (closeFdWith)
-#else
-closeFdWith closer fd = closer fd
-#endif
 
 -- -----------------------------------------------------------------------------
 
