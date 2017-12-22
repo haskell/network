@@ -33,9 +33,8 @@ sendTo :: Socket        -- (possibly) bound/connected Socket
        -> String        -- Data to send
        -> SockAddr
        -> IO Int        -- Number of Bytes sent
-sendTo sock xs addr = do
- withCStringLen xs $ \(str, len) -> do
-   sendBufTo sock str len addr
+sendTo sock xs addr =
+  withCStringLen xs $ \(str, len) -> sendBufTo sock str len addr
 
 
 -- | Receive data from the socket. The socket need not be in a

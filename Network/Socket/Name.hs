@@ -27,21 +27,21 @@ import Network.Socket.Types
 -- local machine is $getSocketName$.
 
 getPeerName   :: Socket -> IO SockAddr
-getPeerName Socket{..} = do
- withNewSockAddr socketFamily $ \ptr sz -> do
+getPeerName Socket{..} =
+ withNewSockAddr socketFamily $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
-     c_getpeername socketFd ptr int_star
-   _sz <- peek int_star
-   peekSockAddr ptr
+     throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
+       c_getpeername socketFd ptr int_star
+     _sz <- peek int_star
+     peekSockAddr ptr
 
 getSocketName :: Socket -> IO SockAddr
-getSocketName Socket{..} = do
- withNewSockAddr socketFamily $ \ptr sz -> do
+getSocketName Socket{..} =
+ withNewSockAddr socketFamily $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
-   throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
-     c_getsockname socketFd ptr int_star
-   peekSockAddr ptr
+     throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
+       c_getsockname socketFd ptr int_star
+     peekSockAddr ptr
 
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt

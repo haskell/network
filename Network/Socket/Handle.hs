@@ -19,10 +19,10 @@ import Network.Socket.Types
 -- on the 'Handle'.
 
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@Socket{..} mode = do
- modifyMVar socketStatus $ \ status ->
+socketToHandle s@Socket{..} mode =
+ modifyMVar socketStatus $ \status ->
     if status == ConvertedToHandle
-        then ioError (userError ("socketToHandle: already a Handle"))
+        then ioError (userError "socketToHandle: already a Handle")
         else do
     h <- fdToHandle' (fromIntegral socketFd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
     hSetBuffering h NoBuffering

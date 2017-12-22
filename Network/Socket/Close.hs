@@ -46,11 +46,11 @@ shutdown Socket{..} stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close Socket{..} = do
- modifyMVar_ socketStatus $ \ status ->
+close Socket{..} =
+ modifyMVar_ socketStatus $ \status ->
    case status of
      ConvertedToHandle ->
-         ioError (userError ("close: converted to a Handle, use hClose instead"))
+         ioError (userError "close: converted to a Handle, use hClose instead")
      Closed ->
          return status
      _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd) >> return Closed

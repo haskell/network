@@ -10,7 +10,6 @@ module Network.Socket.Buffer (
   , recvBuf
   ) where
 
-import Control.Monad (liftM)
 import Data.Word (Word8)
 import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca)
@@ -37,11 +36,11 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
           -> IO Int            -- Number of Bytes sent
-sendBufTo sock@Socket{..} ptr nbytes addr = do
- withSockAddr addr $ \p_addr sz -> do
-   liftM fromIntegral $
+sendBufTo sock@Socket{..} ptr nbytes addr =
+ withSockAddr addr $ \p_addr sz ->
+   fmap fromIntegral $
      throwSocketErrorWaitWrite sock "Network.Socket.sendBufTo" $
-        c_sendto socketFd ptr (fromIntegral $ nbytes) 0{-flags-}
+        c_sendto socketFd ptr (fromIntegral nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
@@ -60,8 +59,8 @@ sendBuf :: Socket     -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf sock str len = do
-   liftM fromIntegral $
+sendBuf sock str len =
+   fmap fromIntegral $
 #if defined(mingw32_HOST_OS)
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
 -- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
@@ -90,7 +89,7 @@ recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom sock@Socket{..} ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
  | otherwise   =
-    withNewSockAddr socketFamily $ \ptr_addr sz -> do
+    withNewSockAddr socketFamily $ \ptr_addr sz ->
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
         len <- throwSocketErrorWaitRead sock "Network.Socket.recvBufFrom" $
