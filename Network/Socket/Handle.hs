@@ -27,3 +27,4 @@ socketToHandle s@Socket{..} mode =
     h <- fdToHandle' (fromIntegral socketFd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
     hSetBuffering h NoBuffering
     return (ConvertedToHandle, h)
+{-# DEPRECATED socketToHandle "Handle is not supported anymore" #-}
