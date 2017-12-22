@@ -351,6 +351,8 @@ foreign import ccall unsafe "free"
 #if defined(DOMAIN_SOCKET_SUPPORT)
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
+
+-- | Send a file descriptor over a domain socket.
 sendFd :: Socket -> CInt -> IO ()
 sendFd sock outfd = void $
   throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
