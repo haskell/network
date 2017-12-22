@@ -137,7 +137,7 @@ testGetPeerCred =
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        bind sock $ SockAddrUnix addr 
+        bind sock $ SockAddrUnix addr
         listen sock 1
         return sock
 
@@ -167,7 +167,7 @@ testGetPeerEid =
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        bind sock $ SockAddrUnix addr 
+        bind sock $ SockAddrUnix addr
         listen sock 1
         return sock
 
