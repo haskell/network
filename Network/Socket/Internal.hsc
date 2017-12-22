@@ -18,6 +18,7 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Internal
     (
@@ -42,7 +43,7 @@ module Network.Socket.Internal
     , Family(..)
 
     -- * Socket error functions
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
     , c_getLastError
 #endif
     , throwSocketError
@@ -71,14 +72,14 @@ module Network.Socket.Internal
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
                         Errno(..), errnoToIOError)
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
 import Foreign.C.String (peekCString)
 import Foreign.Ptr (Ptr)
 #endif
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
-#if defined(HAVE_WINSOCK2_H)
+#if defined(WITH_WINSOCK)
 import Control.Exception ( evaluate )
 import System.IO.Unsafe ( unsafePerformIO )
 import Control.Monad ( when )
@@ -155,7 +156,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if (!defined(HAVE_WINSOCK2_H))
+#if (!defined(WITH_WINSOCK))
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -178,7 +179,7 @@ throwSocketErrorIfMinus1_ name act = do
   throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(HAVE_WINSOCK2_H)
+# if defined(WITH_WINSOCK)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)

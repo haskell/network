@@ -1,10 +1,12 @@
+{-# LANGUAGE CPP #-}
+
 module Network.Socket.Close (
     ShutdownCmd(..)
   , shutdown
   , close
   ) where
 
-#include "HsNet.h"
+#include "HsNetDef.h"
 
 import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable
@@ -13,11 +15,11 @@ import Foreign.C.Types (CInt(..))
 import Network.Socket.Internal
 import Network.Socket.Types
 
-##if MIN_VERSION_base(4,3,1)
+#if MIN_VERSION_base(4,3,1)
 import GHC.Conc (closeFdWith)
-##else
+#else
 closeFdWith closer fd = closer fd
-##endif
+#endif
 
 -- -----------------------------------------------------------------------------
 
@@ -63,10 +65,10 @@ closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
 
-#if !defined(WITH_WINSOCK)
-foreign import ccall unsafe "close"
+#if defined(WITH_WINSOCK)
+foreign import stdcall unsafe "closesocket"
   c_close :: CInt -> IO CInt
 #else
-foreign import stdcall unsafe "closesocket"
+foreign import ccall unsafe "close"
   c_close :: CInt -> IO CInt
 #endif

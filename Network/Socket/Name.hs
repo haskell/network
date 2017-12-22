@@ -1,10 +1,12 @@
+{-# LANGUAGE CPP #-}
+
 module Network.Socket.Name (
     getPeerName
   , getSocketName
   , socketPort
   ) where
 
-#include "HsNet.h"
+#include "HsNetDef.h"
 
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)

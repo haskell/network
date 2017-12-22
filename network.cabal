@@ -24,7 +24,7 @@ extra-source-files:
   README.md CHANGELOG.md
   examples/*.hs tests/*.hs config.guess config.sub install-sh
   configure.ac configure network.buildinfo.in
-  include/HsNetworkConfig.h.in include/HsNet.h
+  include/HsNetworkConfig.h.in include/HsNet.h include/HsNetDef.h
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
   cbits/winSockErr.c

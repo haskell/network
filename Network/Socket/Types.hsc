@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Types
     (
@@ -57,6 +58,8 @@ module Network.Socket.Types
 
     -- * Low-level helpers
     , zeroMemory
+    , htonl
+    , ntohl
     ) where
 
 import Control.Concurrent.MVar
@@ -794,8 +797,10 @@ portNumberToInt (PortNum po) = fromIntegral (ntohs po)
 
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
-foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
+-- | Converts the from host byte order to network byte order.
 foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
+-- | Converts the from network byte order to host byte order.
+foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 
 instance Enum PortNumber where
     toEnum   = intToPortNumber
