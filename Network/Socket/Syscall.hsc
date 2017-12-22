@@ -15,6 +15,7 @@ import Foreign.Ptr (Ptr)
 import qualified System.Posix.Internals
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
+import Control.Monad (void)
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Storable (Storable(..))
 #endif
@@ -138,15 +139,15 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
-socketPair family stype protocol = do
+socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-    c_stype <- packSocketTypeOrThrow "socketPair" stype
-    _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
-                c_socketpair (packFamily family) c_stype protocol fdArr
-    [fd1,fd2] <- peekArray 2 fdArr
-    s1 <- mkNonBlockingSocket fd1
-    s2 <- mkNonBlockingSocket fd2
-    return (s1,s2)
+      c_stype <- packSocketTypeOrThrow "socketPair" stype
+      _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
+                  c_socketpair (packFamily family) c_stype protocol fdArr
+      [fd1,fd2] <- peekArray 2 fdArr
+      s1 <- mkNonBlockingSocket fd1
+      s2 <- mkNonBlockingSocket fd2
+      return (s1,s2)
   where
     mkNonBlockingSocket fd = do
        setNonBlockIfNeeded fd
@@ -175,17 +176,17 @@ setNonBlockIfNeeded fd =
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bind Socket{..} addr = do
- modifyMVar_ socketStatus $ \ status -> do
- if status /= NotConnected
-  then
-   ioError $ userError $
-     "Network.Socket.bind: can't bind to socket with status " ++ show status
-  else do
-   withSockAddr addr $ \p_addr sz -> do
-   _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind socketFd p_addr (fromIntegral sz)
-   return Bound
+bind Socket{..} addr =
+ modifyMVar_ socketStatus $ \status ->
+   if status /= NotConnected
+    then
+     ioError $ userError $
+       "Network.Socket.bind: can't bind to socket with status " ++ show status
+    else
+     withSockAddr addr $ \p_addr sz -> do
+       _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
+         c_bind socketFd p_addr (fromIntegral sz)
+       return Bound
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
@@ -194,13 +195,13 @@ bind Socket{..} addr = do
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@Socket{..} addr = withSocketsDo $ do
- modifyMVar_ socketStatus $ \currentStatus -> do
+connect sock@Socket{..} addr = withSocketsDo $
+ modifyMVar_ socketStatus $ \currentStatus ->
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
     ioError $ userError $
       errLoc ++ ": can't connect to socket with status " ++ show currentStatus
-  else do
+  else
     withSockAddr addr $ \p_addr sz -> do
 
     let connectLoop = do
@@ -242,16 +243,16 @@ connect sock@Socket{..} addr = withSocketsDo $ do
 listen :: Socket  -- Connected & Bound Socket
        -> Int     -- Queue Length
        -> IO ()
-listen Socket{..} backlog = do
- modifyMVar_ socketStatus $ \ status -> do
- if status /= Bound
-   then
-     ioError $ userError $
-       "Network.Socket.listen: can't listen on socket with status " ++ show status
-   else do
-     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-       c_listen socketFd (fromIntegral backlog)
-     return Listening
+listen Socket{..} backlog =
+ modifyMVar_ socketStatus $ \status ->
+   if status /= Bound
+     then
+       ioError $ userError $
+         "Network.Socket.listen: can't listen on socket with status " ++ show status
+     else do
+       throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
+         c_listen socketFd (fromIntegral backlog)
+       return Listening
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -351,18 +352,15 @@ foreign import ccall unsafe "free"
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
-sendFd sock outfd = do
-  _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
-  return ()
+sendFd sock outfd = void $
+  throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
 -- file descriptor may have to be put into non-blocking mode in order to be
 -- used safely. See 'setNonBlockIfNeeded'.
 recvFd :: Socket -> IO CInt
-recvFd sock = do
-  theFd <- throwSocketErrorWaitRead sock "Network.Socket.recvFd" $
-               c_recvFd (socketFd sock)
-  return theFd
+recvFd sock =
+  throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd sock)
 
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt

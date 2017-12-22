@@ -70,6 +70,7 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
+import Control.Monad (void)
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
@@ -138,7 +139,7 @@ throwSocketErrorIfMinus1Retry_
     -> IO a    -- ^ the 'IO' operation to be executed
     -> IO ()
 throwSocketErrorIfMinus1Retry_ loc m =
-    throwSocketErrorIfMinus1Retry loc m >> return ()
+    void $ throwSocketErrorIfMinus1Retry loc m
 {-# SPECIALIZE throwSocketErrorIfMinus1Retry_ :: String -> IO CInt -> IO () #-}
 
 -- | Throw an 'IOError' corresponding to the current socket error if

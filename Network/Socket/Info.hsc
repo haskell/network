@@ -5,7 +5,6 @@
 
 module Network.Socket.Info where
 
-import Control.Monad (liftM)
 import Data.Bits
 import Data.List (foldl')
 import Data.Typeable
@@ -139,7 +138,7 @@ instance Storable AddrInfo where
 
         ai_canonname <- if ai_canonname_ptr == nullPtr
                         then return Nothing
-                        else liftM Just $ peekCString ai_canonname_ptr
+                        else fmap Just $ peekCString ai_canonname_ptr
 
         socktype <- unpackSocketType' "AddrInfo.peek" ai_socktype
         return (AddrInfo
@@ -349,14 +348,14 @@ getNameInfo :: [NameInfoFlag] -- ^ flags to control lookup behaviour
 
 getNameInfo flags doHost doService addr = withSocketsDo $
   withCStringIf doHost (#const NI_MAXHOST) $ \c_hostlen c_host ->
-    withCStringIf doService (#const NI_MAXSERV) $ \c_servlen c_serv -> do
+    withCStringIf doService (#const NI_MAXSERV) $ \c_servlen c_serv ->
       withSockAddr addr $ \ptr_addr sz -> do
         ret <- c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
                              c_serv c_servlen (packBits niFlagMapping flags)
         case ret of
           0 -> do
             let peekIf doIf c_val = if doIf
-                                     then liftM Just $ peekCString c_val
+                                     then fmap Just $ peekCString c_val
                                      else return Nothing
             host <- peekIf doHost c_host
             serv <- peekIf doService c_serv
@@ -412,7 +411,7 @@ instance Show SockAddr where
   showsPrec _ addr@(SockAddrInet6 port _ _ _)
    = showChar '['
    . showString (unsafePerformIO $
-                 fst `liftM` getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 fst `fmap` getNameInfo [NI_NUMERICHOST] True False addr >>=
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
@@ -424,13 +423,13 @@ instance Show SockAddr where
 -- Internet address manipulation routines:
 
 inet_addr :: String -> IO HostAddress
-inet_addr ipstr = withSocketsDo $ do
+inet_addr ipstr = withSocketsDo $
    withCString ipstr $ \str -> do
-   had <- c_inet_addr str
-   if had == maxBound
-    then ioError $ userError $
-      "Network.Socket.inet_addr: Malformed address: " ++ ipstr
-    else return had  -- network byte order
+     had <- c_inet_addr str
+     if had == maxBound
+      then ioError $ userError $
+        "Network.Socket.inet_addr: Malformed address: " ++ ipstr
+      else return had  -- network byte order
 
 inet_ntoa :: HostAddress -> IO String
 inet_ntoa haddr = withSocketsDo $ do

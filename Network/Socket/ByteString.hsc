@@ -58,7 +58,7 @@ import Network.Socket.Internal
 import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
-import Control.Monad (liftM, zipWithM_)
+import Control.Monad (zipWithM_)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, plusPtr)
@@ -164,7 +164,7 @@ sendMany sock@Socket{..} cs = do
     when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
   where
     sendManyInner =
-      liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
+      fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
           throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendMany" $
               c_writev (fromIntegral socketFd) iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
@@ -186,7 +186,7 @@ sendManyTo :: Socket        -- ^ Socket
            -> IO ()
 #if !defined(mingw32_HOST_OS)
 sendManyTo sock@Socket{..} cs addr = do
-    sent <- liftM fromIntegral sendManyToInner
+    sent <- fmap fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
     sendManyToInner =
