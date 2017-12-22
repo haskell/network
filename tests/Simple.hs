@@ -9,10 +9,9 @@ import qualified Control.Exception as E
 import Control.Monad
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
-import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import qualified Network.Socket (recv)
+import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
-
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?), assertBool, assertFailure)
