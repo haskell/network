@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Network.Socket.Name (
     getPeerName
@@ -26,20 +27,20 @@ import Network.Socket.Types
 -- local machine is $getSocketName$.
 
 getPeerName   :: Socket -> IO SockAddr
-getPeerName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
+getPeerName Socket{..} = do
+ withNewSockAddr socketFamily $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
    throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
-     c_getpeername s ptr int_star
+     c_getpeername socketFd ptr int_star
    _sz <- peek int_star
    peekSockAddr ptr
 
 getSocketName :: Socket -> IO SockAddr
-getSocketName (MkSocket s family _ _ _) = do
- withNewSockAddr family $ \ptr sz -> do
+getSocketName Socket{..} = do
+ withNewSockAddr socketFamily $ \ptr sz -> do
    with (fromIntegral sz) $ \int_star -> do
    throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
-     c_getsockname s ptr int_star
+     c_getsockname socketFd ptr int_star
    peekSockAddr ptr
 
 foreign import CALLCONV unsafe "getpeername"
@@ -57,15 +58,15 @@ foreign import CALLCONV unsafe "getsockname"
 -- | Getting the port of socket.
 socketPort :: Socket            -- Connected & Bound Socket
            -> IO PortNumber     -- Port Number of Socket
-socketPort sock@(MkSocket _ AF_INET _ _ _) = do
+socketPort sock@(Socket _ AF_INET _ _ _) = do
     (SockAddrInet port _) <- getSocketName sock
     return port
 #if defined(IPV6_SOCKET_SUPPORT)
-socketPort sock@(MkSocket _ AF_INET6 _ _ _) = do
+socketPort sock@(Socket _ AF_INET6 _ _ _) = do
     (SockAddrInet6 port _ _ _) <- getSocketName sock
     return port
 #endif
-socketPort (MkSocket _ family _ _ _) =
+socketPort Socket{..} =
     ioError $ userError $
-      "Network.Socket.socketPort: address family '" ++ show family ++
+      "Network.Socket.socketPort: address family '" ++ show socketFamily ++
       "' not supported."

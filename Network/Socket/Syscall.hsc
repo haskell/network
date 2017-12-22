@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.Socket.Syscall where
@@ -59,7 +60,6 @@ import Network.Socket.Types
 -- called once for every new file descriptor. The caller must make
 -- sure that the socket is in non-blocking mode. See
 -- 'setNonBlockIfNeeded'.
--- 'mkSocket' should be used intead of 'MkSocket'.
 mkSocket :: CInt
          -> Family
          -> SocketType
@@ -69,7 +69,7 @@ mkSocket :: CInt
 mkSocket fd fam sType pNum stat = do
    mStat <- newMVar stat
    withSocketsDo $ return ()
-   let sock = MkSocket fd fam sType pNum mStat
+   let sock = Socket fd fam sType pNum mStat
 ##if MIN_VERSION_base(4,6,0)
    _ <- mkWeakMVar mStat $ close sock
 ##endif
@@ -175,8 +175,8 @@ setNonBlockIfNeeded fd =
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bind (MkSocket s _family _stype _protocol sockStatus) addr = do
- modifyMVar_ sockStatus $ \ status -> do
+bind Socket{..} addr = do
+ modifyMVar_ socketStatus $ \ status -> do
  if status /= NotConnected
   then
    ioError $ userError $
@@ -184,7 +184,7 @@ bind (MkSocket s _family _stype _protocol sockStatus) addr = do
   else do
    withSockAddr addr $ \p_addr sz -> do
    _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind s p_addr (fromIntegral sz)
+     c_bind socketFd p_addr (fromIntegral sz)
    return Bound
 
 -----------------------------------------------------------------------------
@@ -194,8 +194,8 @@ bind (MkSocket s _family _stype _protocol sockStatus) addr = do
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSocketsDo $ do
- modifyMVar_ sockStatus $ \currentStatus -> do
+connect sock@Socket{..} addr = withSocketsDo $ do
+ modifyMVar_ socketStatus $ \currentStatus -> do
  if currentStatus /= NotConnected && currentStatus /= Bound
   then
     ioError $ userError $
@@ -204,7 +204,7 @@ connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSockets
     withSockAddr addr $ \p_addr sz -> do
 
     let connectLoop = do
-           r <- c_connect s p_addr (fromIntegral sz)
+           r <- c_connect socketFd p_addr (fromIntegral sz)
            if r == -1
                then do
 #if !(defined(HAVE_WINSOCK2_H))
@@ -221,7 +221,7 @@ connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSockets
 
 #if !(defined(HAVE_WINSOCK2_H))
         connectBlocked = do
-           threadWaitWrite (fromIntegral s)
+           threadWaitWrite (fromIntegral socketFd)
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return ()
@@ -242,15 +242,15 @@ connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSockets
 listen :: Socket  -- Connected & Bound Socket
        -> Int     -- Queue Length
        -> IO ()
-listen (MkSocket s _family _stype _protocol sockStatus) backlog = do
- modifyMVar_ sockStatus $ \ status -> do
+listen Socket{..} backlog = do
+ modifyMVar_ socketStatus $ \ status -> do
  if status /= Bound
    then
      ioError $ userError $
        "Network.Socket.listen: can't listen on socket with status " ++ show status
    else do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-       c_listen s (fromIntegral backlog)
+       c_listen socketFd (fromIntegral backlog)
      return Listening
 
 -----------------------------------------------------------------------------
@@ -271,46 +271,46 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept sock@(MkSocket s family stype protocol status) = do
- currentStatus <- readMVar status
+accept sock@Socket{..} = do
+ currentStatus <- readMVar socketStatus
  okay <- isAcceptable sock
  if not okay
    then
      ioError $ userError $
        "Network.Socket.accept: can't accept socket (" ++
-         show (family, stype, protocol) ++ ") with status " ++
+         show (socketFamily, socketType, socketProtocol) ++ ") with status " ++
          show currentStatus
    else do
-     let sz = sizeOfSockAddrByFamily family
+     let sz = sizeOfSockAddrByFamily socketFamily
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS)
-     new_sock <-
+     new_fd <-
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe s sockaddr ptr_len
+                    c_accept_safe socketFd sockaddr ptr_len
            else do
-                paramData <- c_newAcceptParams s (fromIntegral sz) sockaddr
+                paramData <- c_newAcceptParams socketFd (fromIntegral sz) sockaddr
                 rc        <- asyncDoProc c_acceptDoProc paramData
-                new_sock  <- c_acceptNewSock    paramData
+                new_fd  <- c_acceptNewSock    paramData
                 c_free paramData
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                return new_sock
+                return new_fd
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ACCEPT4
-     new_sock <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
-                        (threadWaitRead (fromIntegral s))
-                        (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
+     new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
+                        (threadWaitRead (fromIntegral socketFd))
+                        (c_accept4 socketFd sockaddr ptr_len (#const SOCK_NONBLOCK))
 # else
-     new_sock <- throwSocketErrorWaitRead sock "Network.Socket.accept"
-                        (c_accept s sockaddr ptr_len)
-     setNonBlockIfNeeded new_sock
+     new_fd <- throwSocketErrorWaitRead sock "Network.Socket.accept"
+                        (c_accept socketFd sockaddr ptr_len)
+     setNonBlockIfNeeded new_fd
 # endif /* HAVE_ACCEPT4 */
 #endif
      addr <- peekSockAddr sockaddr
-     sock' <- mkSocket new_sock family stype protocol Connected
+     sock' <- mkSocket new_fd socketFamily socketType socketProtocol Connected
      return (sock', addr)
 
 foreign import CALLCONV unsafe "socket"

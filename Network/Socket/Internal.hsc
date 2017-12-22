@@ -248,9 +248,7 @@ any networking operations can be used. eg.
 It is fine to nest calls to 'withSocketsDo', and to perform networking operations
 after 'withSocketsDo' has returned.
 
-In newer versions of the @network@ library (version v2.6.1.0 or later)
-it is only necessary to call
-'withSocketsDo' if you are calling the 'MkSocket' constructor directly.
+'withSocketsDo' is not necessary for the current network library.
 However, for compatibility with older versions on Windows, it is good practice
 to always call 'withSocketsDo' (it's very cheap).
 -}

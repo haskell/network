@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network
@@ -65,6 +66,7 @@ import Network.BSD
 import Network.Socket hiding (accept, socketPort, recvFrom,
                               sendTo, PortNumber)
 import qualified Network.Socket as Socket (accept)
+import Network.Socket.Types (Socket(..))
 import System.IO
 import Prelude
 import qualified Control.Exception as Exception
@@ -271,7 +273,7 @@ accept :: Socket                -- ^ Listening Socket
                                 -- communicating with the client,
                                 -- the 'HostName' of the peer socket, and
                                 -- the 'PortNumber' of the remote connection.
-accept sock@(MkSocket _ AF_INET _ _ _) = do
+accept sock@(Socket _ AF_INET _ _ _) = do
  ~(sock', (SockAddrInet port haddr)) <- Socket.accept sock
  peer <- catchIO
           (do
@@ -283,7 +285,7 @@ accept sock@(MkSocket _ AF_INET _ _ _) = do
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, peer, port)
 #if defined(IPV6_SOCKET_SUPPORT)
-accept sock@(MkSocket _ AF_INET6 _ _ _) = do
+accept sock@(Socket _ AF_INET6 _ _ _) = do
  (sock', addr) <- Socket.accept sock
  peer <- catchIO ((fromJust . fst) `liftM` getNameInfo [] True False addr) $
          \_ -> case addr of
@@ -302,12 +304,12 @@ accept sock@(MkSocket _ AF_INET6 _ _ _) = do
  return (handle, peer, port)
 #endif
 #if !defined(mingw32_HOST_OS)
-accept sock@(MkSocket _ AF_UNIX _ _ _) = do
+accept sock@(Socket _ AF_UNIX _ _ _) = do
  ~(sock', (SockAddrUnix path)) <- Socket.accept sock
  handle <- socketToHandle sock' ReadWriteMode
  return (handle, path, -1)
 #endif
-accept (MkSocket _ family _ _ _) =
+accept (Socket _ family _ _ _) =
   ioError $ userError $ "Network.accept: address family '" ++
     show family ++ "' not supported."
 

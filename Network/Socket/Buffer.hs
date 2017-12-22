@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Network.Socket.Buffer (
     sendBufTo
@@ -36,18 +37,18 @@ sendBufTo :: Socket            -- (possibly) bound/connected Socket
           -> Ptr a -> Int  -- Data to send
           -> SockAddr
           -> IO Int            -- Number of Bytes sent
-sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = do
+sendBufTo sock@Socket{..} ptr nbytes addr = do
  withSockAddr addr $ \p_addr sz -> do
    liftM fromIntegral $
      throwSocketErrorWaitWrite sock "Network.Socket.sendBufTo" $
-        c_sendto s ptr (fromIntegral $ nbytes) 0{-flags-}
+        c_sendto socketFd ptr (fromIntegral $ nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> FD
-socket2FD  (MkSocket fd _ _ _ _) =
+socket2FD Socket{..} =
   -- HACK, 1 means True
-  FD{fdFD = fd,fdIsSocket_ = 1}
+  FD{ fdFD = socketFd, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -86,14 +87,14 @@ sendBuf sock str len = do
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
+recvBufFrom sock@Socket{..} ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
  | otherwise   =
-    withNewSockAddr family $ \ptr_addr sz -> do
+    withNewSockAddr socketFamily $ \ptr_addr sz -> do
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
         len <- throwSocketErrorWaitRead sock "Network.Socket.recvBufFrom" $
-                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
+                   c_recvfrom socketFd ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
         if len' == 0

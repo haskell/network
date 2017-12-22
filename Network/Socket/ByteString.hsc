@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNet.h"
 
@@ -158,14 +159,14 @@ sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendMany sock@(MkSocket fd _ _ _ _) cs = do
+sendMany sock@Socket{..} cs = do
     sent <- sendManyInner
     when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
   where
     sendManyInner =
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
           throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendMany" $
-              c_writev (fromIntegral fd) iovsPtr
+              c_writev (fromIntegral socketFd) iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
 sendMany sock = sendAll sock . B.concat
@@ -184,7 +185,7 @@ sendManyTo :: Socket        -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
+sendManyTo sock@Socket{..} cs addr = do
     sent <- liftM fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
   where
@@ -196,7 +197,7 @@ sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
             throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendManyTo" $
-              c_sendmsg (fromIntegral fd) msgHdrPtr 0
+              c_sendmsg (fromIntegral socketFd) msgHdrPtr 0
 #else
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
 #endif

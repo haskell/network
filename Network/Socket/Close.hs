@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Network.Socket.Close (
     ShutdownCmd(..)
@@ -35,9 +36,9 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown (MkSocket s _ _ _ _) stype = do
+shutdown Socket{..} stype = do
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown s (sdownCmdToInt stype)
+    c_shutdown socketFd (sdownCmdToInt stype)
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -45,14 +46,14 @@ shutdown (MkSocket s _ _ _ _) stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close (MkSocket s _ _ _ sockStatus) = do
- modifyMVar_ sockStatus $ \ status ->
+close Socket{..} = do
+ modifyMVar_ socketStatus $ \ status ->
    case status of
      ConvertedToHandle ->
          ioError (userError ("close: converted to a Handle, use hClose instead"))
      Closed ->
          return status
-     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
+     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd) >> return Closed
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd

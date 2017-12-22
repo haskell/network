@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Network.Socket.Handle where
 
 import Control.Concurrent.MVar
@@ -17,11 +19,11 @@ import Network.Socket.Types
 -- on the 'Handle'.
 
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s@(MkSocket fd _ _ _ sockStatus) mode = do
- modifyMVar sockStatus $ \ status ->
+socketToHandle s@Socket{..} mode = do
+ modifyMVar socketStatus $ \ status ->
     if status == ConvertedToHandle
         then ioError (userError ("socketToHandle: already a Handle"))
         else do
-    h <- fdToHandle' (fromIntegral fd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
+    h <- fdToHandle' (fromIntegral socketFd) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
     hSetBuffering h NoBuffering
     return (ConvertedToHandle, h)

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -8,7 +9,6 @@ module Network.Socket.Types
     (
     -- * Socket
       Socket(..)
-    , fdSocket
     -- * Socket status
     , SocketStatus(..)
     , isConnected
@@ -78,16 +78,8 @@ import Foreign.Storable
 import Foreign.Marshal.Array
 #endif
 
--- | Represents a socket.
---
---   This module will stop exporting 'MkSocket' in the future.
---   Use 'mkSocket' to create 'Socket' instead of using 'MkSocket'
---   and use its accessors intead of pattern matching.
---
---   If you are calling the 'MkSocket' constructor directly you should ensure
---   you have called 'Network.withSocketsDo' and that the file descriptor is
---   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
-data Socket = MkSocket
+-- | Type for a socket. Use 'mkSocket' to create 'Socket'.
+data Socket = Socket
   {
     socketFd       :: CInt              -- ^ File descriptor
   , socketFamily   :: Family            -- ^ Address family
@@ -95,20 +87,15 @@ data Socket = MkSocket
   , socketProtocol :: ProtocolNumber    -- ^ Protocol number
   , socketStatus   :: MVar SocketStatus -- ^ Socket status
   } deriving Typeable
-{-# DEPRECATED MkSocket "Use \"mkSocket\" and the accessors intead" #-}
 
 instance Eq Socket where
-  (MkSocket _ _ _ _ m1) == (MkSocket _ _ _ _ m2) = m1 == m2
+  s1 == s2 = socketStatus s1 == socketStatus s2
 
 instance Show Socket where
-  showsPrec _n (MkSocket fd _ _ _ _) =
-        showString "<socket: " . shows fd . showString ">"
+  showsPrec _n Socket{..} =
+        showString "<socket: " . shows socketFd . showString ">"
 
 type ProtocolNumber = CInt
-
-{-# DEPRECATED fdSocket "Use socketFd intead" #-}
-fdSocket :: Socket -> CInt
-fdSocket = socketFd
 
 -- -----------------------------------------------------------------------------
 
@@ -136,23 +123,23 @@ data SocketStatus
 -- socket has been closed remotely, this function can still return
 -- 'True'.
 isConnected :: Socket -> IO Bool
-isConnected (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isConnected Socket{..} = do
+    value <- readMVar socketStatus
     return (value == Connected)
 
 isBound :: Socket -> IO Bool
-isBound (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isBound Socket{..} = do
+    value <- readMVar socketStatus
     return (value == Bound)
 
 isListening :: Socket -> IO Bool
-isListening (MkSocket _ _ _  _ status) = do
-    value <- readMVar status
+isListening Socket{..} = do
+    value <- readMVar socketStatus
     return (value == Listening)
 
 isReadable  :: Socket -> IO Bool
-isReadable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isReadable Socket{..} = do
+    value <- readMVar socketStatus
     return (value == Listening || value == Connected)
 
 isWritable  :: Socket -> IO Bool
@@ -160,14 +147,14 @@ isWritable = isReadable -- sort of.
 
 isAcceptable :: Socket -> IO Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable (MkSocket _ AF_UNIX x _ status)
+isAcceptable (Socket _ AF_UNIX x _ status)
     | x == Stream || x == SeqPacket = do
         value <- readMVar status
         return (value == Connected || value == Bound || value == Listening)
-isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
+isAcceptable (Socket _ AF_UNIX _ _ _) = return False
 #endif
-isAcceptable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
+isAcceptable Socket{..} = do
+    value <- readMVar socketStatus
     return (value == Connected || value == Listening)
 
 -----------------------------------------------------------------------------

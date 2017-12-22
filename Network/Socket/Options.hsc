@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -173,11 +175,11 @@ setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
                 -> IO ()
-setSocketOption (MkSocket s _ _ _ _) so v = do
+setSocketOption Socket{..} so v = do
    (level, opt) <- packSocketOption' "setSocketOption" so
    with (fromIntegral v) $ \ptr_v -> do
    throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-       c_setsockopt s level opt ptr_v
+       c_setsockopt socketFd level opt ptr_v
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
 
@@ -187,12 +189,12 @@ setSocketOption (MkSocket s _ _ _ _) so v = do
 getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
-getSocketOption (MkSocket s _ _ _ _) so = do
+getSocketOption Socket{..} so = do
    (level, opt) <- packSocketOption' "getSocketOption" so
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt s level opt ptr_v ptr_sz
+         c_getsockopt socketFd level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
 

@@ -93,7 +93,12 @@ module Network.Socket
     (
     -- * Types
     -- ** Socket
-      Socket(..)
+      Socket
+    , socketFd
+    , socketFamily
+    , socketType
+    , socketProtocol
+    , socketStatus
     , socketPort
     , mkSocket
     -- ** Socket status
@@ -229,7 +234,6 @@ module Network.Socket
     , inet_ntoa
     , htonl
     , ntohl
-    , fdSocket
     , socketToHandle
     ) where
 
