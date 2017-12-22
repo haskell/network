@@ -43,7 +43,7 @@ module Network.Socket.Internal
     , Family(..)
 
     -- * Socket error functions
-#if defined(WITH_WINSOCK)
+#if defined(mingw32_HOST_OS)
     , c_getLastError
 #endif
     , throwSocketError
@@ -72,7 +72,7 @@ module Network.Socket.Internal
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
-#if defined(WITH_WINSOCK)
+#if defined(mingw32_HOST_OS)
 import Control.Exception (evaluate)
 import Control.Monad (when)
 import Foreign.C.String (peekCString)
@@ -155,7 +155,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if (!defined(WITH_WINSOCK))
+#if !defined(mingw32_HOST_OS)
 
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -178,7 +178,7 @@ throwSocketErrorIfMinus1_ name act = do
   _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(WITH_WINSOCK)
+# if defined(mingw32_HOST_OS)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)
@@ -256,7 +256,7 @@ to always call 'withSocketsDo' (it's very cheap).
 -}
 {-# INLINE withSocketsDo #-}
 withSocketsDo :: IO a -> IO a
-#if !defined(WITH_WINSOCK)
+#if !defined(mingw32_HOST_OS)
 withSocketsDo x = x
 #else
 withSocketsDo act = evaluate withSocketsInit >> act

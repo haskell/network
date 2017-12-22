@@ -889,7 +889,7 @@ isSupportedSockAddr addr = case addr of
   SockAddrUnix{}  -> False
 #endif
 
-#if defined(WITH_WINSOCK)
+#if defined(mingw32_HOST_OS)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_HOST_OS)
 type CSaFamily = (#type u_char)

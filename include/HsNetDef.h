@@ -10,15 +10,11 @@
 #undef PACKAGE_TARNAME
 #undef PACKAGE_VERSION
 
-#if defined(HAVE_WINSOCK2_H)
-# define WITH_WINSOCK  1
-#endif
-
 #if !defined(mingw32_HOST_OS) && !defined(_WIN32)
 # define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
-#if defined(WITH_WINSOCK)
+#if defined(mingw32_HOST_OS)
 # if defined(_WIN32)
 #   define CALLCONV stdcall
 # else
