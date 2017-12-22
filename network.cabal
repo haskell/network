@@ -46,7 +46,16 @@ library
     Network.Socket.ByteString.Lazy
     Network.Socket.Internal
   other-modules:
+    Network.Socket.Buffer
     Network.Socket.ByteString.Internal
+    Network.Socket.Close
+    Network.Socket.Constant
+    Network.Socket.Handle
+    Network.Socket.Info
+    Network.Socket.Name
+    Network.Socket.Options
+    Network.Socket.String
+    Network.Socket.Syscall
     Network.Socket.Types
 
   if !os(windows)
