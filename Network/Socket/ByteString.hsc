@@ -44,6 +44,7 @@ module Network.Socket.ByteString
 import Control.Exception as E (catch, throwIO)
 import Control.Monad (when)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Alloc (allocaBytes)
@@ -51,10 +52,7 @@ import Foreign.Ptr (castPtr)
 import Network.Socket (sendBuf, sendBufTo, recvBuf, recvBufFrom)
 import System.IO.Error (isEOFError)
 
-import qualified Data.ByteString as B
-
 import Network.Socket.ByteString.Internal
-import Network.Socket.Internal
 import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
@@ -63,6 +61,7 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.Storable (Storable(..))
+import Network.Socket.Internal
 
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
