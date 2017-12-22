@@ -10,10 +10,9 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- The "Network.Socket" module is for when you want full control over
--- sockets.  Essentially the entire C socket API is exposed through
--- this module; in general the operations follow the behaviour of the C
--- functions of the same name (consult your favourite Unix networking book).
+-- This is the main module of the network package supposed to be
+-- used with either "Network.Socket.ByteString" or
+-- "Network.Socket.ByteString.Lazy" for sending/receiving.
 --
 -- Here are two minimal example programs using the TCP/IP protocol: a
 -- server that echoes all data that it receives back (servicing only
