@@ -129,9 +129,7 @@ module Network.Socket
     , ProtocolNumber
     , defaultProtocol
     -- ** Port number
-    , PortNumber(..)
-    -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
-    -- this use and make the type abstract.
+    , PortNumber
 
     -- * Address operations
 

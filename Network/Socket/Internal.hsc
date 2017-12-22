@@ -30,7 +30,7 @@ module Network.Socket.Internal
     , FlowInfo
     , ScopeID
 #endif
-    , PortNumber(..)
+    , PortNumber
     , SockAddr(..)
 
     , peekSockAddr
