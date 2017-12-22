@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
@@ -397,10 +398,10 @@ instance Show SockAddr where
 --
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
 -- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
--- >>> sock@(MkSocket _ fam stype _ _) <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >>> fam
+-- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+-- >>> socketFamily sock
 -- AF_INET
--- >>> stype
+-- >>> socketType sock
 -- Stream
 -- >>> bind sock (addrAddress addr)
 -- >>> getSocketName sock

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 module Network.Socket.ByteString.Lazy.Posix
     (
     -- * Send data to a socket
