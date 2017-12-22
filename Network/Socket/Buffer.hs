@@ -11,7 +11,7 @@ module Network.Socket.Buffer (
 
 import Control.Monad (liftM)
 import Data.Word (Word8)
-import Foreign.C.Types (CInt(..), CSize(..), CChar)
+import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (Storable(..))
@@ -20,6 +20,8 @@ import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
+#else
+import Foreign.C.Types (CChar)
 #endif
 
 import Network.Socket.Internal
@@ -42,6 +44,7 @@ sendBufTo sock@(MkSocket s _family _stype _protocol _status) ptr nbytes addr = d
                         p_addr (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
+socket2FD :: Socket -> FD
 socket2FD  (MkSocket fd _ _ _ _) =
   -- HACK, 1 means True
   FD{fdFD = fd,fdIsSocket_ = 1}
@@ -56,7 +59,7 @@ sendBuf :: Socket     -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
+sendBuf sock str len = do
    liftM fromIntegral $
 #if defined(mingw32_HOST_OS)
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
@@ -71,7 +74,7 @@ sendBuf sock@(MkSocket s _family _stype _protocol _status) str len = do
       (fromIntegral len)
 #else
      throwSocketErrorWaitWrite sock "Network.Socket.sendBuf" $
-        c_send s str (fromIntegral len) 0{-flags-}
+        c_send (socketFd sock) str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -121,7 +124,7 @@ recvBufFrom sock@(MkSocket s family _stype _protocol _status) ptr nbytes
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
+recvBuf sock ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
         len <-
@@ -132,7 +135,7 @@ recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
                 (socket2FD sock) ptr 0 (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead sock "Network.Socket.recvBuf" $
-                   c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+                   c_recv (socketFd sock) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0
@@ -147,11 +150,13 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 mkEOFError :: String -> IOError
 mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
+#if !defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "sendto"
-  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
 foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+#endif
+foreign import CALLCONV SAFE_ON_WIN "sendto"
+  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt

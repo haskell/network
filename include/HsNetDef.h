@@ -19,7 +19,11 @@
 #endif
 
 #if defined(WITH_WINSOCK)
-# define CALLCONV stdcall
+# if defined(_WIN32)
+#   define CALLCONV stdcall
+# else
+#   define CALLCONV ccall
+# endif
 #else
 # define CALLCONV ccall
 #endif

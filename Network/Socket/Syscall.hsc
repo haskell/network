@@ -7,21 +7,25 @@ module Network.Socket.Syscall where
 
 import Control.Concurrent.MVar
 import Control.Monad (when)
-import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
-import GHC.Conc (threadWaitWrite)
-import GHC.IO (onException)
 import qualified System.Posix.Internals
+
+#if defined(DOMAIN_SOCKET_SUPPORT)
+import Foreign.Marshal.Array (peekArray)
+import Foreign.Storable (Storable(..))
+#endif
 
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
+#else
+import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
+import GHC.Conc (threadWaitWrite)
+import GHC.IO (onException)
 #endif
 
 #ifdef HAVE_ACCEPT4
@@ -215,12 +219,14 @@ connect sock@(MkSocket s _family _stype _protocol sockStatus) addr = withSockets
 #endif
                else return ()
 
+#if !(defined(HAVE_WINSOCK2_H))
         connectBlocked = do
            threadWaitWrite (fromIntegral s)
            err <- getSocketOption sock SoError
            if (err == 0)
                 then return ()
                 else throwSocketErrorCode errLoc (fromIntegral err)
+#endif
 
     connectLoop
     return Connected

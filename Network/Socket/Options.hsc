@@ -8,7 +8,7 @@ module Network.Socket.Options where
 import Control.Monad (liftM)
 import Data.Maybe (isJust)
 import Data.Typeable
-import Foreign.C.Types (CInt(..), CUInt)
+import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
@@ -16,6 +16,9 @@ import Foreign.Storable (Storable(..))
 
 #if defined(HAVE_STRUCT_UCRED)
 import Foreign.Marshal.Alloc (allocaBytes)
+#endif
+#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
+import Foreign.C.Types (CUInt(..))
 #endif
 
 import Network.Socket.Internal

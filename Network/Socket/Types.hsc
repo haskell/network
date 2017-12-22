@@ -71,9 +71,12 @@ import Data.Typeable
 import Data.Word
 import Foreign.C
 import Foreign.Marshal.Alloc
-import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+
+#if defined(DOMAIN_SOCKET_SUPPORT)
+import Foreign.Marshal.Array
+#endif
 
 -- | Represents a socket.  The fields are, respectively:
 --
@@ -967,7 +970,7 @@ pokeSockAddr p (SockAddrUnix path) = do
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
     poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #else
-pokeSockAddr p SockAddrUnix{} = error "pokeSockAddr: not supported"
+pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
 #if defined(darwin_HOST_OS)

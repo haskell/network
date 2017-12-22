@@ -96,13 +96,11 @@ module Network.BSD
     ) where
 
 import Control.Concurrent (MVar, newMVar, withMVar)
-import qualified Control.Exception as E
-import Control.Monad (liftM)
 import Data.Typeable
 import Foreign.C.String (CString, peekCString, withCString)
-import Foreign.C.Types ( CInt(..), CUInt(..), CULong(..), CSize(..) )
+import Foreign.C.Types (CInt(..), CULong(..), CSize(..))
 import Foreign.Marshal.Array (allocaArray0, peekArray0)
-import Foreign.Marshal.Utils (with, fromBool)
+import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable(..))
 import GHC.IO.Exception
@@ -111,6 +109,11 @@ import System.IO.Unsafe (unsafePerformIO)
 
 #if defined(WITH_WINSOCK)
 import Foreign.C.Types (CShort)
+#else
+import qualified Control.Exception as E
+import Control.Monad (liftM)
+import Foreign.C.Types (CUInt(..))
+import Foreign.Marshal.Utils (fromBool)
 #endif
 
 import Network.Socket
@@ -556,6 +559,7 @@ getHostName = do
 foreign import CALLCONV unsafe "gethostname"
    c_gethostname :: CString -> CSize -> IO CInt
 
+#if !defined(mingw32_HOST_OS)
 -- Helper function used by the exported functions that provides a
 -- Haskellised view of the enumerator functions:
 
@@ -570,7 +574,7 @@ getEntries getOne atEnd = loop
       case vv of
         Nothing -> return []
         Just v  -> loop >>= \ vs -> atEnd >> return (v:vs)
-
+#endif
 
 throwNoSuchThingIfNull :: String -> String -> IO (Ptr a) -> IO (Ptr a)
 throwNoSuchThingIfNull loc desc act = do
