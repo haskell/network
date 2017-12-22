@@ -12,6 +12,7 @@ import qualified Data.ByteString.Char8 as C
 import qualified Network.Socket (recv)
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
+import System.Timeout (timeout)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?), assertBool, assertFailure)
@@ -366,7 +367,7 @@ test clientSetup clientAct serverSetup serverAct = do
     server barrier = do
         E.bracket serverSetup close $ \sock -> do
             serverReady
-            _ <- serverAct sock
+            Just _ <- timeout 1000000 $ serverAct sock
             putMVar barrier ()
       where
         -- | Signal to the client that it can proceed.
@@ -376,7 +377,7 @@ test clientSetup clientAct serverSetup serverAct = do
         takeMVar barrier
         -- Transfer exceptions to the main thread.
         bracketWithReraise tid clientSetup close $ \res -> do
-            _ <- clientAct res
+            Just _ <- timeout 1000000 $ clientAct res
             takeMVar barrier
 
 -- | Like 'bracket' but catches and reraises the exception in another
