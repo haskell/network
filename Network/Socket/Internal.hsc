@@ -23,32 +23,12 @@
 
 module Network.Socket.Internal
     (
-    -- * Socket addresses
-      HostAddress
-#if defined(IPV6_SOCKET_SUPPORT)
-    , HostAddress6
-    , FlowInfo
-    , ScopeID
-#endif
-    , PortNumber
-    , SockAddr(..)
-
-    , peekSockAddr
-    , pokeSockAddr
-    , sizeOfSockAddr
-    , sizeOfSockAddrByFamily
-    , withSockAddr
-    , withNewSockAddr
-
-    -- * Protocol families
-    , Family(..)
-
     -- * Socket error functions
+      throwSocketError
+    , throwSocketErrorCode
 #if defined(mingw32_HOST_OS)
     , c_getLastError
 #endif
-    , throwSocketError
-    , throwSocketErrorCode
 
     -- * Guards for socket operations that may fail
     , throwSocketErrorIfMinus1_
