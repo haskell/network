@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 -- Module      : Network.Socket.ByteString.Internal

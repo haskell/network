@@ -1,13 +1,13 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
+#include "HsNetDef.h"
+
 module Network.Socket.Close (
     ShutdownCmd(..)
   , shutdown
   , close
   ) where
-
-#include "HsNetDef.h"
 
 import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable

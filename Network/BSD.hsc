@@ -1,4 +1,8 @@
 {-# LANGUAGE CPP #-}
+
+#include "HsNet.h"
+##include "HsNetDef.h"
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.BSD
@@ -13,9 +17,6 @@
 -- programming functionality provided by BSD Unix derivatives.
 --
 -----------------------------------------------------------------------------
-
-#include "HsNet.h"
-##include "HsNetDef.h"
 
 module Network.BSD
     (

@@ -1,13 +1,13 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
+#include "HsNetDef.h"
+
 module Network.Socket.Name (
     getPeerName
   , getSocketName
   , socketPort
   ) where
-
-#include "HsNetDef.h"
 
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)

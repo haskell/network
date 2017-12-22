@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
+#include "HsNet.h"
+##include "HsNetDef.h"
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket.Internal
@@ -16,9 +20,6 @@
 -- the public interface.
 --
 -----------------------------------------------------------------------------
-
-#include "HsNet.h"
-##include "HsNetDef.h"
 
 module Network.Socket.Internal
     (

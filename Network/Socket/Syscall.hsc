@@ -1,10 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Network.Socket.Syscall where
-
 #include "HsNet.h"
 ##include "HsNetDef.h"
+
+module Network.Socket.Syscall where
 
 import Control.Concurrent.MVar
 import Control.Monad (when)

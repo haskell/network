@@ -1,14 +1,14 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
+#include "HsNetDef.h"
+
 module Network.Socket.Buffer (
     sendBufTo
   , sendBuf
   , recvBufFrom
   , recvBuf
   ) where
-
-#include "HsNetDef.h"
 
 import Control.Monad (liftM)
 import Data.Word (Word8)

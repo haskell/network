@@ -1,4 +1,8 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# ScopedTypeVariables #-}
+
+#include "HsNet.h"
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket
@@ -84,8 +88,6 @@
 -- >         putStr "Received: "
 -- >         C.putStrLn msg
 -----------------------------------------------------------------------------
-
-#include "HsNet.h"
 
 -- In order to process this file, you need to have CALLCONV defined.
 

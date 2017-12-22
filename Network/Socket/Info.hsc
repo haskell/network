@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Network.Socket.Info where
-
 #include "HsNet.h"
 ##include "HsNetDef.h"
+
+module Network.Socket.Info where
 
 import Control.Monad (liftM)
 import Data.Bits

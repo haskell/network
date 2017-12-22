@@ -1,7 +1,7 @@
-module Network.Socket.Constant where
-
 #include "HsNet.h"
 ##include "HsNetDef.h"
+
+module Network.Socket.Constant where
 
 import Network.Socket.Types
 
