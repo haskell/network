@@ -9,27 +9,10 @@ import qualified Control.Exception as E
 import Control.Monad
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
-#if defined(HAVE_LINUX_CAN_H)
-import Data.Maybe (fromJust)
-#endif
-import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import qualified Network.Socket (recv)
+import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import Network.Socket.ByteString
-
---- To tests for AF_CAN on Linux, you need to bring up a virtual (or real can
---- interface.). Run as root:
---- # modprobe can
---- # modprobe can_raw
---- # modprobe vcan
---- # sudo ip link add dev vcan0 type vcan
---- # ip link show vcan0
---- 3: can0: <NOARP,UP,LOWER_UP> mtu 16 qdisc noqueue state UNKNOWN link/can
---- Define HAVE_LINUX_CAN to run CAN tests as well.
---- #define HAVE_LINUX_CAN 1
--- #include "../include/HsNetworkConfig.h"
-#if defined(HAVE_LINUX_CAN_H)
-import Network.BSD (ifNameToIndex)
-#endif
+import System.Timeout (timeout)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, (@=?), assertBool, assertFailure)
@@ -155,7 +138,7 @@ testGetPeerCred =
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        bind sock $ SockAddrUnix addr 
+        bind sock $ SockAddrUnix addr
         listen sock 1
         return sock
 
@@ -185,7 +168,7 @@ testGetPeerEid =
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        bind sock $ SockAddrUnix addr 
+        bind sock $ SockAddrUnix addr
         listen sock 1
         return sock
 
@@ -203,33 +186,6 @@ testGetPeerEid =
                      msg <- recv sock 1024
                      putStrLn $ C.unpack msg
 -}
-
-#if defined(HAVE_LINUX_CAN_H)
-canTestMsg = S.pack [ 0,0,0,0 -- can ID = 0
-                    , 4,0,0,0 -- data length counter = 2 (bytes)
-                    , 0x80,123,321,55 -- SYNC with some random extra bytes
-                    , 0, 0, 0, 0 -- padding
-                    ]
-
-testCanSend :: Assertion
-testCanSend = canTest "vcan0" client server
-  where
-    server sock = recv sock 1024 >>= (@=?) canTestMsg
-    client sock = send sock canTestMsg
-
-canTest :: String -> (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-canTest ifname clientAct serverAct = do
-    ifIndex <- liftM fromJust $ ifNameToIndex ifname
-    test (clientSetup ifIndex) clientAct (serverSetup ifIndex) serverAct
-  where
-    clientSetup ifIndex = do
-      sock <- socket AF_CAN Raw 1 -- protocol 1 = raw CAN
-      -- bind the socket to the interface
-      bind sock (SockAddrCan $ fromIntegral $ ifIndex)
-      return sock
-
-    serverSetup = clientSetup
-#endif
 
 -- The String version of 'recv' should throw an exception when the remote end
 -- has closed the connection, the ByteString version should return an empty
@@ -317,9 +273,6 @@ basicTests = testGroup "Basic socket operations"
 --    , testCase "testGetPeerEid" testGetPeerEid
     , testCase "testStringEol" testStringEol
     , testCase "testByteStringEol" testByteStringEol
-#if defined(HAVE_LINUX_CAN_H)
-    , testCase "testCanSend" testCanSend
-#endif
       -- conversions of IP addresses
     , testCase "testHtonlNtohl" testHtonlNtohl
     , testCase "testHostAddressToTuple" testHostAddressToTuple
@@ -414,7 +367,7 @@ test clientSetup clientAct serverSetup serverAct = do
     server barrier = do
         E.bracket serverSetup close $ \sock -> do
             serverReady
-            _ <- serverAct sock
+            Just _ <- timeout 1000000 $ serverAct sock
             putMVar barrier ()
       where
         -- | Signal to the client that it can proceed.
@@ -424,7 +377,7 @@ test clientSetup clientAct serverSetup serverAct = do
         takeMVar barrier
         -- Transfer exceptions to the main thread.
         bracketWithReraise tid clientSetup close $ \res -> do
-            _ <- clientAct res
+            Just _ <- timeout 1000000 $ clientAct res
             takeMVar barrier
 
 -- | Like 'bracket' but catches and reraises the exception in another
