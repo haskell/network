@@ -422,6 +422,7 @@ instance Show SockAddr where
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:
 
+{-# DEPRECATED inet_addr "Use \"getNameInfo\" instead" #-}
 inet_addr :: String -> IO HostAddress
 inet_addr ipstr = withSocketsDo $
    withCString ipstr $ \str -> do
@@ -431,6 +432,7 @@ inet_addr ipstr = withSocketsDo $
         "Network.Socket.inet_addr: Malformed address: " ++ ipstr
       else return had  -- network byte order
 
+{-# DEPRECATED inet_ntoa "Use \"getNameInfo\" instead" #-}
 inet_ntoa :: HostAddress -> IO String
 inet_ntoa haddr = withSocketsDo $ do
   pstr <- c_inet_ntoa haddr
