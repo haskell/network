@@ -48,20 +48,20 @@ AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 
 AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
 
-AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#if HAVE_SYS_TYPES_H
+AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
-#if HAVE_SYS_SOCKET_H
+#ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
-#if HAVE_SYS_UIO_H
+#ifdef HAVE_SYS_UIO_H
 # include <sys/uio.h>
 #endif])
 
-AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#if HAVE_SYS_TYPES_H
+AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
-#if HAVE_SYS_SOCKET_H
+#ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif])
 
