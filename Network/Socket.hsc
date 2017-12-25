@@ -129,6 +129,7 @@ module Network.Socket
 #endif
 #if defined(HAVE_IF_NAMETOINDEX)
     , ifNameToIndex
+    , ifIndexToName
 #endif
     -- ** Protocol number
     , ProtocolNumber
