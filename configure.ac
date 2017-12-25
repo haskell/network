@@ -149,22 +149,6 @@ dnl * test for IPPROTO_* macros/constants
 dnl -------------------------------------------------------
 AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 
-dnl --------------------------------------------------
-dnl * test for Linux sendfile(2)
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for sendfile in sys/sendfile.h)
-AC_EGREP_HEADER(sendfile, sys/sendfile.h,
- [ AC_DEFINE([HAVE_LINUX_SENDFILE], [1], [Define to 1 if you have a Linux sendfile(2) implementation.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
-
-dnl --------------------------------------------------
-dnl * test for BSD sendfile(2)
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for sendfile in sys/socket.h)
-AC_EGREP_HEADER(sendfile, sys/socket.h,
- [ AC_DEFINE([HAVE_BSD_SENDFILE], [1], [Define to 1 if you have a BSDish sendfile(2) implementation.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
-
 AC_CHECK_FUNCS(gethostent)
 
 AC_CHECK_FUNCS(accept4)
@@ -172,16 +156,13 @@ AC_CHECK_FUNCS(accept4)
 case "$host" in
 *-mingw* | *-msys*)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
-	EXTRA_LIBS=ws2_32
-	CALLCONV=stdcall ;;
+	EXTRA_LIBS=ws2_32 ;;
 *-solaris2*)
 	EXTRA_SRCS="cbits/ancilData.c"
-	EXTRA_LIBS="nsl, socket"
-	CALLCONV=ccall ;;
+	EXTRA_LIBS="nsl, socket" ;;
 *)
 	EXTRA_SRCS="cbits/ancilData.c"
-	EXTRA_LIBS=
-	CALLCONV=ccall ;;
+	EXTRA_LIBS= ;;
 esac
 AC_SUBST([CALLCONV])
 AC_SUBST([EXTRA_CPPFLAGS])
