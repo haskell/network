@@ -1,6 +1,6 @@
 ## Version 2.7
 
- * Removed deprecated aliases from `Network.Socket` [#190](https://github.com/haskell/network/pull/190):
+ * Breaking Change: Removed deprecated aliases from `Network.Socket` [#190](https://github.com/haskell/network/pull/190):
    * `bindSocket` -> `bind`
    * `sClose` -> `close`
    * `sIsConnected` -> `isConnected`
@@ -8,12 +8,12 @@
    * `sIsListening` -> `isListening`
    * `sIsReadable` -> `isReadable`
    * `sIsWritable` -> `isWritable`
+ * Breaking Change: SockAddrCan is removed.
+   [#266](https://github.com/haskell/network/pull/263)
  * Network and Network.BSD are deprecated.
    [#265](https://github.com/haskell/network/pull/265)
    [#275](https://github.com/haskell/network/pull/275)
  * fdSocket, inet_addr and inet_ntoa are deprecated.
- * SockAddrCan is removed.
-   [#266](https://github.com/haskell/network/pull/263)
  * sendTo, send, recvFrom, recv and recvLen are deprecated.
    [#266](https://github.com/haskell/network/pull/266)
  * sendFd now does not close the file descriptor.
