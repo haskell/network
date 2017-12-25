@@ -1,6 +1,9 @@
 AC_INIT([Haskell network package], [3.0.0.0], [libraries@haskell.org], [network])
 
 ac_includes_default="$ac_includes_default
+#ifdef HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
@@ -9,6 +12,9 @@ ac_includes_default="$ac_includes_default
 #endif
 #ifdef HAVE_NETDB_H
 # include <netdb.h>
+#endif
+#ifdef HAVE_SYS_UIO_H
+# include <sys/uio.h>
 #endif
 #ifdef HAVE_WINSOCK2_H
 # include <winsock2.h>
@@ -39,33 +45,18 @@ AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h netinet/tcp.h sys/socket.h sy
 AC_CHECK_HEADERS([net/if.h])
 
 AC_CHECK_FUNCS([readlink symlink if_nametoindex])
+AC_CHECK_FUNCS([gai_strerror gethostent accept4])
+AC_CHECK_FUNCS([getpeereid])
 
-dnl ** check what fields struct msghdr contains
-AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#if HAVE_SYS_SOCKET_H
-# include <sys/socket.h>
-#endif
-#if HAVE_SYS_UIO_H
-# include <sys/uio.h>
-#endif])
+AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])
+AC_CHECK_DECLS([IPV6_V6ONLY])
+AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 
-dnl ** check if struct sockaddr contains sa_len
-AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#if HAVE_SYS_SOCKET_H
-# include <sys/socket.h>
-#endif])
+AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
 
-dnl --------------------------------------------------
-dnl * test for in_addr_t
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for in_addr_t in netinet/in.h)
-AC_EGREP_HEADER(in_addr_t, netinet/in.h,
- [ AC_DEFINE([HAVE_IN_ADDR_T], [1], [Define to 1 if in_addr_t is available.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
+AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [])
+
+AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [])
 
 dnl --------------------------------------------------
 dnl * test for SO_PEERCRED and struct ucred
@@ -101,17 +92,6 @@ else
 fi
 
 dnl --------------------------------------------------
-dnl * test for GETPEEREID(3) 
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for getpeereid in unistd.h)
-AC_CHECK_FUNC( getpeereid, AC_DEFINE([HAVE_GETPEEREID], [1], [Define to 1 if you have getpeereid.] ))
-
-dnl --------------------------------------------------
-dnl * check for Windows networking libraries
-dnl --------------------------------------------------
-AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
-
-dnl --------------------------------------------------
 dnl * test for getaddrinfo as proxy for IPv6 support
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for getaddrinfo)
@@ -131,57 +111,16 @@ if test "x$ac_have_getaddrinfo" = x; then
   fi
 fi
 
-dnl Missing under mingw, sigh.
-AC_CHECK_FUNCS(gai_strerror)
-
-dnl -------------------------------------------------------
-dnl * test for AI_* flags that not all implementations have
-dnl -------------------------------------------------------
-AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])
-
-dnl -------------------------------------------------------
-dnl * test for IPV6_V6ONLY flags that not all implementations have
-dnl -------------------------------------------------------
-AC_CHECK_DECLS([IPV6_V6ONLY])
-
-dnl -------------------------------------------------------
-dnl * test for IPPROTO_* macros/constants
-dnl -------------------------------------------------------
-AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
-
-dnl --------------------------------------------------
-dnl * test for Linux sendfile(2)
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for sendfile in sys/sendfile.h)
-AC_EGREP_HEADER(sendfile, sys/sendfile.h,
- [ AC_DEFINE([HAVE_LINUX_SENDFILE], [1], [Define to 1 if you have a Linux sendfile(2) implementation.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
-
-dnl --------------------------------------------------
-dnl * test for BSD sendfile(2)
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for sendfile in sys/socket.h)
-AC_EGREP_HEADER(sendfile, sys/socket.h,
- [ AC_DEFINE([HAVE_BSD_SENDFILE], [1], [Define to 1 if you have a BSDish sendfile(2) implementation.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
-
-AC_CHECK_FUNCS(gethostent)
-
-AC_CHECK_FUNCS(accept4)
-
 case "$host" in
 *-mingw* | *-msys*)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
-	EXTRA_LIBS=ws2_32
-	CALLCONV=stdcall ;;
+	EXTRA_LIBS=ws2_32 ;;
 *-solaris2*)
 	EXTRA_SRCS="cbits/ancilData.c"
-	EXTRA_LIBS="nsl, socket"
-	CALLCONV=ccall ;;
+	EXTRA_LIBS="nsl, socket" ;;
 *)
 	EXTRA_SRCS="cbits/ancilData.c"
-	EXTRA_LIBS=
-	CALLCONV=ccall ;;
+	EXTRA_LIBS= ;;
 esac
 AC_SUBST([CALLCONV])
 AC_SUBST([EXTRA_CPPFLAGS])
