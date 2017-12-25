@@ -85,10 +85,6 @@ extern int   acceptDoProc(void* param);
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
-#ifdef HAVE_LINUX_CAN_H
-# include <linux/can.h>
-# define CAN_SOCKET_SUPPORT 1
-#endif
 #ifdef HAVE_NET_IF
 # include <net/if.h>
 #endif
