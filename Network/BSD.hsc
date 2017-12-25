@@ -114,7 +114,6 @@ import Foreign.C.Types (CShort)
 #else
 import qualified Control.Exception as E
 import Control.Monad (liftM)
-import Foreign.C.Types (CUInt(..))
 import Foreign.Marshal.Utils (fromBool)
 #endif
 
@@ -519,23 +518,6 @@ getNetworkEntries stayOpen = do
 #endif
 
 -- ---------------------------------------------------------------------------
--- Interface names
-
-#if defined(HAVE_IF_NAMETOINDEX)
-
--- returns the index of the network interface corresponding to the name ifname.
-ifNameToIndex :: String -> IO (Maybe Int)
-ifNameToIndex ifname = do
-  index <- withCString ifname c_if_nametoindex
-  -- On failure zero is returned. We'll return Nothing.
-  return $ if index == 0 then Nothing else Just $ fromIntegral index
-
-foreign import CALLCONV safe "if_nametoindex"
-   c_if_nametoindex :: CString -> IO CUInt
-
-#endif
-
-
 -- Mutex for name service lockdown
 
 {-# NOINLINE lock #-}
