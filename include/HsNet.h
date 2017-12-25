@@ -79,15 +79,6 @@ extern int   acceptDoProc(void* param);
 # include <net/if.h>
 #endif
 
-#ifdef HAVE_BSD_SENDFILE
-#include <sys/uio.h>
-#endif
-#ifdef HAVE_LINUX_SENDFILE
-#if !defined(__USE_FILE_OFFSET64)
-#include <sys/sendfile.h>
-#endif
-#endif
-
 extern int
 sendFd(int sock, int outfd);
 
