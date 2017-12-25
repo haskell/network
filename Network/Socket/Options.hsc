@@ -199,11 +199,11 @@ getSocketOption Socket{..} so = do
 
 
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
--- | Returns the processID, userID and groupID of the socket's peer.
+-- | Returns the processID, userID and groupID of the peer of
+--   a UNIX domain socket.
 --
--- Only available on platforms that support SO_PEERCRED or GETPEEREID(3)
--- on domain sockets.
--- GETPEEREID(3) returns userID and groupID. processID is always 0.
+-- Only available on platforms that support SO_PEERCRED or 'getPeerEid'.
+-- If 'getPeerEid' is used, processID is always 0.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
 #ifdef HAVE_STRUCT_UCRED
@@ -223,8 +223,10 @@ getPeerCred sock = do
 #endif
 
 #ifdef HAVE_GETPEEREID
--- | The getpeereid() function returns the effective user and group IDs of the
--- peer connected to a UNIX-domain socket
+-- | Returns the userID and groupID of the peer of
+--   a UNIX domain socket.
+--
+--  Only available on platforms that support getpeereid().
 getPeerEid :: Socket -> IO (CUInt, CUInt)
 getPeerEid sock = do
   let fd = socketFd sock

@@ -164,14 +164,6 @@ module Network.Socket
     , getPeerName
     , getSocketName
 
-#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
-    -- get the credentials of our domain socket peer.
-    , getPeerCred
-#if defined(HAVE_GETPEEREID)
-    , getPeerEid
-#endif
-#endif
-
     -- ** Sending and receiving data
     , sendBuf
     , recvBuf
@@ -222,6 +214,14 @@ module Network.Socket
     -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
     , setNonBlockIfNeeded
+
+#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
+    -- * Unix domain socket
+    , getPeerCred
+#if defined(HAVE_GETPEEREID)
+    , getPeerEid
+#endif
+#endif
 
     -- * Deprecated
     , send
