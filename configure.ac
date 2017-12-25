@@ -1,6 +1,9 @@
 AC_INIT([Haskell network package], [3.0.0.0], [libraries@haskell.org], [network])
 
 ac_includes_default="$ac_includes_default
+#ifdef HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
@@ -9,6 +12,9 @@ ac_includes_default="$ac_includes_default
 #endif
 #ifdef HAVE_NETDB_H
 # include <netdb.h>
+#endif
+#ifdef HAVE_SYS_UIO_H
+# include <sys/uio.h>
 #endif
 #ifdef HAVE_WINSOCK2_H
 # include <winsock2.h>
@@ -48,22 +54,9 @@ AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 
 AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
 
-AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#ifdef HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-# include <sys/socket.h>
-#endif
-#ifdef HAVE_SYS_UIO_H
-# include <sys/uio.h>
-#endif])
+AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [])
 
-AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#ifdef HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-# include <sys/socket.h>
-#endif])
+AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [])
 
 dnl --------------------------------------------------
 dnl * test for SO_PEERCRED and struct ucred
