@@ -20,12 +20,7 @@
 --
 -----------------------------------------------------------------------------
 
-#include "HsNetworkConfig.h"
-
-#ifdef HAVE_GETADDRINFO
--- Use IPv6-capable function definitions if the OS supports it.
-#define IPV6_SOCKET_SUPPORT 1
-#endif
+#include "HsNetDef.h"
 
 module Network {-# DEPRECATED "The high level Network interface is no longer supported. Please use Network.Socket." #-}
     (

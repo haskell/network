@@ -9,10 +9,6 @@
 
 #include "HsNetDef.h"
 
-#ifdef NEED_WINVER
-# define WINVER 0x0501
-#endif
-
 #ifndef INLINE
 # if defined(_MSC_VER)
 #  define INLINE extern __inline
@@ -21,12 +17,6 @@
 # else
 #  define INLINE inline
 # endif
-#endif
-
-#ifdef HAVE_GETADDRINFO
-# define IPV6_SOCKET_SUPPORT 1
-#else
-# undef IPV6_SOCKET_SUPPORT
 #endif
 
 #if defined(HAVE_WINSOCK2_H)
@@ -124,7 +114,7 @@ hsnet_inet_ntoa(
     return inet_ntoa(a);
 }
 
-#ifdef HAVE_GETADDRINFO
+#if HAVE_DECL_GETADDRINFO
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
 # if defined(HAVE_WINSOCK2_H)
