@@ -66,14 +66,6 @@ AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#ifdef HAVE_SYS_TYPES_H
 #endif])
 
 dnl --------------------------------------------------
-dnl * test for in_addr_t
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for in_addr_t in netinet/in.h)
-AC_EGREP_HEADER(in_addr_t, netinet/in.h,
- [ AC_DEFINE([HAVE_IN_ADDR_T], [1], [Define to 1 if in_addr_t is available.]) AC_MSG_RESULT(yes) ],
- AC_MSG_RESULT(no))
-
-dnl --------------------------------------------------
 dnl * test for SO_PEERCRED and struct ucred
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for SO_PEERCRED and struct ucred in sys/socket.h)
