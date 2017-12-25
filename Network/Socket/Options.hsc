@@ -16,10 +16,10 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 
-#if defined(HAVE_STRUCT_UCRED)
+#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED)
 import Foreign.Marshal.Alloc (allocaBytes)
 #endif
-#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
+#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
 import Foreign.C.Types (CUInt(..))
 #endif
 
@@ -198,7 +198,7 @@ getSocketOption Socket{..} so = do
        fromIntegral `liftM` peek ptr_v
 
 
-#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
+#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
 -- | Returns the processID, userID and groupID of the peer of
 --   a UNIX domain socket.
 --
@@ -206,7 +206,7 @@ getSocketOption Socket{..} so = do
 -- If 'getPeerEid' is used, processID is always 0.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 getPeerCred sock = do
-#ifdef HAVE_STRUCT_UCRED
+#ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
   let fd = socketFd sock
   let sz = (#const sizeof(struct ucred))
   allocaBytes sz $ \ ptr_cr ->
