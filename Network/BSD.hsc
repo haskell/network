@@ -90,7 +90,7 @@ module Network.BSD  {-# DEPRECATED "This platform dependent module is no longer 
     , endNetworkEntry
 #endif
 
-#if defined(HAVE_IF_NAMETOINDEX)
+#if HAVE_DECL_IF_NAMETOINDEX
     -- * Interface names
     , ifNameToIndex
 #endif

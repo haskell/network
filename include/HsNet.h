@@ -65,8 +65,11 @@
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
-#ifdef HAVE_NET_IF
+#ifdef HAVE_NET_IF_H
 # include <net/if.h>
+#endif
+#ifdef HAVE_NETIOAPI_H
+# include <netioapi.h>
 #endif
 
 #ifdef HAVE_WINSOCK2_H

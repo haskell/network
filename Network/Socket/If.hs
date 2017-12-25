@@ -3,13 +3,13 @@
 #include "HsNetDef.h"
 
 module Network.Socket.If (
-#if defined(HAVE_IF_NAMETOINDEX)
+#if HAVE_DECL_IF_NAMETOINDEX
     ifNameToIndex
   , ifIndexToName
 #endif
   ) where
 
-#if defined(HAVE_IF_NAMETOINDEX)
+#if HAVE_DECL_IF_NAMETOINDEX
 import Foreign.C.String (CString, withCString, peekCString)
 import Foreign.C.Types (CUInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
