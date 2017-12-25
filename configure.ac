@@ -39,8 +39,15 @@ AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h netinet/tcp.h sys/socket.h sy
 AC_CHECK_HEADERS([net/if.h])
 
 AC_CHECK_FUNCS([readlink symlink if_nametoindex])
+AC_CHECK_FUNCS([gai_strerror gethostent accept4])
+AC_CHECK_FUNCS([getpeereid])
 
-dnl ** check what fields struct msghdr contains
+AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])
+AC_CHECK_DECLS([IPV6_V6ONLY])
+AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
+
+AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
+
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [#if HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
@@ -51,7 +58,6 @@ AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [
 # include <sys/uio.h>
 #endif])
 
-dnl ** check if struct sockaddr contains sa_len
 AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [#if HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
@@ -101,17 +107,6 @@ else
 fi
 
 dnl --------------------------------------------------
-dnl * test for GETPEEREID(3) 
-dnl --------------------------------------------------
-AC_MSG_CHECKING(for getpeereid in unistd.h)
-AC_CHECK_FUNC( getpeereid, AC_DEFINE([HAVE_GETPEEREID], [1], [Define to 1 if you have getpeereid.] ))
-
-dnl --------------------------------------------------
-dnl * check for Windows networking libraries
-dnl --------------------------------------------------
-AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
-
-dnl --------------------------------------------------
 dnl * test for getaddrinfo as proxy for IPv6 support
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for getaddrinfo)
@@ -130,28 +125,6 @@ if test "x$ac_have_getaddrinfo" = x; then
     int testme(){ getaddrinfo; }]])],[AC_DEFINE([HAVE_GETADDRINFO], [1], [Define to 1 if you have the `getaddrinfo' function.]) AC_DEFINE([NEED_WINVER_XP], [1], [Define to 1 if the `getaddrinfo' function needs WINVER set.]) EXTRA_CPPFLAGS="-DWINVER=0x0501 $EXTRA_CPPFLAGS"; AC_MSG_RESULT(yes)],[CFLAGS="$old_CFLAGS"; AC_MSG_RESULT(no)])
   fi
 fi
-
-dnl Missing under mingw, sigh.
-AC_CHECK_FUNCS(gai_strerror)
-
-dnl -------------------------------------------------------
-dnl * test for AI_* flags that not all implementations have
-dnl -------------------------------------------------------
-AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])
-
-dnl -------------------------------------------------------
-dnl * test for IPV6_V6ONLY flags that not all implementations have
-dnl -------------------------------------------------------
-AC_CHECK_DECLS([IPV6_V6ONLY])
-
-dnl -------------------------------------------------------
-dnl * test for IPPROTO_* macros/constants
-dnl -------------------------------------------------------
-AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
-
-AC_CHECK_FUNCS(gethostent)
-
-AC_CHECK_FUNCS(accept4)
 
 case "$host" in
 *-mingw* | *-msys*)
