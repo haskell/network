@@ -11,23 +11,29 @@ module Network.Socket.Unix (
   , getPeerEid
   ) where
 
-import Foreign.Marshal.Alloc (alloca, allocaBytes)
+import Foreign.C.Types (CInt(..), CUInt(..))
 
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
-import Foreign.C.Types (CUInt(..))
+import Network.Socket.Types
+
+#ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
+import Foreign.Marshal.Utils (with)
 #endif
-
-#if defined(DOMAIN_SOCKET_SUPPORT)
+#ifdef HAVE_GETPEEREID
+import Foreign.Marshal.Alloc (alloca)
+#endif
+#ifdef DOMAIN_SOCKET_SUPPORT
 import Control.Monad (void)
-import Foreign.C.Types (CInt(..))
+import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Array (peekArray)
-import Foreign.Storable (Storable(..))
 import Foreign.Ptr (Ptr)
-#endif
+import Foreign.Storable (Storable(..))
 
 import Network.Socket.Internal
 import Network.Socket.Syscall
-import Network.Socket.Types
+#endif
+#ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
+import Network.Socket.Options (c_getsockopt)
+#endif
 
 -- | Getting process ID, user ID and group ID for Unix domain sockets.
 getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
@@ -127,7 +133,7 @@ recvFd sock =
   throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd sock)
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
-sendFd _ _ = error "Network.Socket.recvFd"
+recvFd _ = error "Network.Socket.recvFd"
 #endif
 
 -- | Build a pair of connected socket objects.
