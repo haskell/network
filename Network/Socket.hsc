@@ -210,6 +210,7 @@ module Network.Socket
     -- * Low level operations
     -- in case you ever want to get at the underlying file descriptor..
     , setNonBlockIfNeeded
+    , setCloseOnExecIfNeeded
 
     -- * Unix domain socket
     , isUnixDomainSocketAvailable

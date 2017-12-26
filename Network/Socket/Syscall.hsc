@@ -132,6 +132,14 @@ setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
 
+
+setCloseOnExecIfNeeded :: CInt -> IO ()
+#if defined(mingw32_HOST_OS)
+setCloseOnExecIfNeeded _ = return ()
+#else
+setCloseOnExecIfNeeded = System.Posix.Internals.setCloseOnExec
+#endif
+
 -----------------------------------------------------------------------------
 -- Binding a socket
 
