@@ -1027,6 +1027,8 @@ type HostAddress = Word32
 -- | Converts 'HostAddress' to representation-independent IPv4 quadruple.
 -- For example for @127.0.0.1@ the function will return @(0x7f, 0, 0, 1)@
 -- regardless of host endianness.
+--
+-- prop> tow == hostAddressToTuple (tupleToHostAddress tow)
 hostAddressToTuple :: HostAddress -> (Word8, Word8, Word8, Word8)
 hostAddressToTuple ha' =
     let ha = htonl ha'
@@ -1046,6 +1048,9 @@ tupleToHostAddress (b3, b2, b1, b0) =
 -- 'tupleToHostAddress6'.
 type HostAddress6 = (Word32, Word32, Word32, Word32)
 
+-- |
+--
+-- prop> (w1,w2,w3,w4,w5,w6,w7,w8) == hostAddress6ToTuple (tupleToHostAddress6 (w1,w2,w3,w4,w5,w6,w7,w8))
 hostAddress6ToTuple :: HostAddress6 -> (Word16, Word16, Word16, Word16,
                                         Word16, Word16, Word16, Word16)
 hostAddress6ToTuple (w3, w2, w1, w0) =
