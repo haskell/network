@@ -25,6 +25,7 @@ import GHC.IO (onException)
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
+import Data.Bits ((.|.))
 import GHC.Conc (threadWaitRead)
 #endif
 
@@ -105,9 +106,14 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+                c_socket (packFamily family) (c_stype .|. (#const SOCK_NONBLOCK)) protocol
+#else
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
     setNonBlockIfNeeded fd
+#endif
     sock <- mkSocket fd family stype protocol NotConnected
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
