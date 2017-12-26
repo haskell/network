@@ -284,11 +284,12 @@ accept sock@Socket{..} = do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
                         (threadWaitRead (fromIntegral socketFd))
-                        (c_accept4 socketFd sockaddr ptr_len (#const SOCK_NONBLOCK))
+                        (c_accept4 socketFd sockaddr ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
 # else
      new_fd <- throwSocketErrorWaitRead sock "Network.Socket.accept"
                         (c_accept socketFd sockaddr ptr_len)
      setNonBlockIfNeeded new_fd
+     setCloseOnExecIfNeeded new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSockAddr sockaddr
