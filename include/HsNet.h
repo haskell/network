@@ -19,23 +19,15 @@
 # endif
 #endif
 
-#if defined(HAVE_WINSOCK2_H)
-#include <winsock2.h>
-# ifdef HAVE_WS2TCPIP_H
-#  include <ws2tcpip.h>
-// fix for MingW not defining IPV6_V6ONLY
-#  define IPV6_V6ONLY 27
-# endif
+#define _GNU_SOURCE 1 /* for struct ucred on Linux */
 
-extern int   initWinSock ();
-extern const char* getWSErrorDescr(int err);
-extern void* newAcceptParams(int sock,
-			     int sz,
-			     void* sockaddr);
-extern int   acceptNewSock(void* d);
-extern int   acceptDoProc(void* param);
-
-#else
+#ifdef HAVE_WINSOCK2_H
+# include <winsock2.h>
+#endif
+#ifdef HAVE_WS2TCPIP_H
+# include <ws2tcpip.h>
+# define IPV6_V6ONLY 27
+#endif
 
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
@@ -58,13 +50,11 @@ extern int   acceptDoProc(void* param);
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
-#ifdef HAVE_LINUX_TCP_H
-# include <linux/tcp.h>
-#elif HAVE_NETINET_TCP_H
-# include <netinet/tcp.h>
-#endif
 #ifdef HAVE_NETINET_IN_H
 # include <netinet/in.h>
+#endif
+#ifdef HAVE_NETINET_TCP_H
+# include <netinet/tcp.h>
 #endif
 #ifdef HAVE_SYS_UN_H
 # include <sys/un.h>
@@ -79,12 +69,20 @@ extern int   acceptDoProc(void* param);
 # include <net/if.h>
 #endif
 
+#ifdef HAVE_WINSOCK2_H
+extern int   initWinSock ();
+extern const char* getWSErrorDescr(int err);
+extern void* newAcceptParams(int sock,
+			     int sz,
+			     void* sockaddr);
+extern int   acceptNewSock(void* d);
+extern int   acceptDoProc(void* param);
+#else  /* HAVE_WINSOCK2_H */
 extern int
 sendFd(int sock, int outfd);
 
 extern int
 recvFd(int sock);
-
 #endif /* HAVE_WINSOCK2_H */
 
 INLINE char *
@@ -131,11 +129,11 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 }
 #endif
 
-#if !defined(IOV_MAX)
+#ifndef IOV_MAX
 # define IOV_MAX 1024
 #endif
 
-#if !defined(SOCK_NONBLOCK) // Missing define in Bionic libc (Android)
+#ifndef SOCK_NONBLOCK // Missing define in Bionic libc (Android)
 # define SOCK_NONBLOCK O_NONBLOCK
 #endif
 
