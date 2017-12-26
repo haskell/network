@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- | Support module for the POSIX 'sendmsg' system call.
