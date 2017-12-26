@@ -160,9 +160,6 @@ module Network.Socket
 
     -- * Socket operations
     , socket
-#if defined(DOMAIN_SOCKET_SUPPORT)
-    , socketPair
-#endif
     , connect
     , bind
     , listen
@@ -216,10 +213,9 @@ module Network.Socket
 
     -- * Unix domain socket
     , isUnixDomainSocketAvailable
-#ifdef DOMAIN_SOCKET_SUPPORT
+    , socketPair
     , sendFd
     , recvFd
-#endif
 #if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
     , getPeerCred
 #if defined(HAVE_GETPEEREID)

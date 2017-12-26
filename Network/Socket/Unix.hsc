@@ -3,16 +3,14 @@
 
 module Network.Socket.Unix (
     isUnixDomainSocketAvailable
+  , sendFd
+  , recvFd
+  , socketPair
 #if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
   , getPeerCred
 #endif
 #if defined(HAVE_GETPEEREID)
   , getPeerEid
-#endif
-#if defined(DOMAIN_SOCKET_SUPPORT)
-  , sendFd
-  , recvFd
-  , socketPair
 #endif
   ) where
 
@@ -79,27 +77,35 @@ foreign import CALLCONV unsafe "getpeereid"
 #endif
 #endif
 
-#if defined(DOMAIN_SOCKET_SUPPORT)
+-- | Whether or not Unix domain sockets are available.
 isUnixDomainSocketAvailable :: Bool
+#if defined(DOMAIN_SOCKET_SUPPORT)
 isUnixDomainSocketAvailable = True
-
--- sending/receiving ancillary socket data; low-level mechanism
--- for transmitting file descriptors, mainly.
+#else
+isUnixDomainSocketAvailable = False
+#endif
 
 -- | Send a file descriptor over a domain socket.
 sendFd :: Socket -> CInt -> IO ()
+#if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd sock outfd = void $
   throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
+foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
+#else
+sendFd _ _ = error "Network.Socket.sendFd"
+#endif
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
 -- file descriptor may have to be put into non-blocking mode in order to be
 -- used safely. See 'setNonBlockIfNeeded'.
 recvFd :: Socket -> IO CInt
+#if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd sock =
   throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd sock)
-
-foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
+#else
+sendFd _ _ = error "Network.Socket.recvFd"
+#endif
 
 -- | Build a pair of connected socket objects using the given address
 -- family, socket type, and protocol number.  Address family, socket
@@ -109,6 +115,7 @@ socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
+#if defined(DOMAIN_SOCKET_SUPPORT)
 socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
       c_stype <- packSocketTypeOrThrow "socketPair" stype
@@ -126,6 +133,5 @@ socketPair family stype protocol =
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
 #else
-isUnixDomainSocketAvailable :: Bool
-isUnixDomainSocketAvailable = False
+socketPair _ _ _ = error "Network.Socket.socketPair"
 #endif
