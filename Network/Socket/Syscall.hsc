@@ -24,7 +24,7 @@ import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
 #endif
 
-#ifdef HAVE_ACCEPT4
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
 import GHC.Conc (threadWaitRead)
 #endif
 
@@ -275,7 +275,7 @@ accept sock@Socket{..} = do
                 return new_fd
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
-# ifdef HAVE_ACCEPT4
+# ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
                         (threadWaitRead (fromIntegral socketFd))
                         (c_accept4 socketFd sockaddr ptr_len (#const SOCK_NONBLOCK))
@@ -283,7 +283,7 @@ accept sock@Socket{..} = do
      new_fd <- throwSocketErrorWaitRead sock "Network.Socket.accept"
                         (c_accept socketFd sockaddr ptr_len)
      setNonBlockIfNeeded new_fd
-# endif /* HAVE_ACCEPT4 */
+# endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSockAddr sockaddr
      sock' <- mkSocket new_fd socketFamily socketType socketProtocol Connected
@@ -295,7 +295,7 @@ foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-#ifdef HAVE_ACCEPT4
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
   c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
 #else
