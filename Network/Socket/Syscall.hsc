@@ -14,12 +14,6 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
 import qualified System.Posix.Internals
 
-#if defined(DOMAIN_SOCKET_SUPPORT)
-import Control.Monad (void)
-import Foreign.Marshal.Array (peekArray)
-import Foreign.Storable (Storable(..))
-#endif
-
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
 import Foreign (FunPtr)
@@ -129,33 +123,6 @@ socket family stype protocol = do
 # endif
 #endif
     return sock
-
--- | Build a pair of connected socket objects using the given address
--- family, socket type, and protocol number.  Address family, socket
--- type, and protocol number are as for the 'socket' function above.
--- Availability: Unix.
-#if defined(DOMAIN_SOCKET_SUPPORT)
-socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
-           -> SocketType          -- Socket Type (usually Stream)
-           -> ProtocolNumber      -- Protocol Number
-           -> IO (Socket, Socket) -- unnamed and connected.
-socketPair family stype protocol =
-    allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-      c_stype <- packSocketTypeOrThrow "socketPair" stype
-      _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
-                  c_socketpair (packFamily family) c_stype protocol fdArr
-      [fd1,fd2] <- peekArray 2 fdArr
-      s1 <- mkNonBlockingSocket fd1
-      s2 <- mkNonBlockingSocket fd2
-      return (s1,s2)
-  where
-    mkNonBlockingSocket fd = do
-       setNonBlockIfNeeded fd
-       mkSocket fd family stype protocol Connected
-
-foreign import ccall unsafe "socketpair"
-  c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
-#endif
 
 -- | Set the socket to nonblocking, if applicable to this platform.
 --
@@ -346,24 +313,4 @@ foreign import ccall unsafe "HsNet.h &acceptDoProc"
   c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
 foreign import ccall unsafe "free"
   c_free:: Ptr a -> IO ()
-#endif
-
-#if defined(DOMAIN_SOCKET_SUPPORT)
--- sending/receiving ancillary socket data; low-level mechanism
--- for transmitting file descriptors, mainly.
-
--- | Send a file descriptor over a domain socket.
-sendFd :: Socket -> CInt -> IO ()
-sendFd sock outfd = void $
-  throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
-
--- | Receive a file descriptor over a domain socket. Note that the resulting
--- file descriptor may have to be put into non-blocking mode in order to be
--- used safely. See 'setNonBlockIfNeeded'.
-recvFd :: Socket -> IO CInt
-recvFd sock =
-  throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd sock)
-
-foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
-foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #endif
