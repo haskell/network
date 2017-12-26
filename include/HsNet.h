@@ -9,10 +9,6 @@
 
 #include "HsNetDef.h"
 
-#ifdef NEED_WINVER
-# define WINVER 0x0501
-#endif
-
 #ifndef INLINE
 # if defined(_MSC_VER)
 #  define INLINE extern __inline
@@ -23,29 +19,15 @@
 # endif
 #endif
 
-#ifdef HAVE_GETADDRINFO
-# define IPV6_SOCKET_SUPPORT 1
-#else
-# undef IPV6_SOCKET_SUPPORT
+#define _GNU_SOURCE 1 /* for struct ucred on Linux */
+
+#ifdef HAVE_WINSOCK2_H
+# include <winsock2.h>
 #endif
-
-#if defined(HAVE_WINSOCK2_H)
-#include <winsock2.h>
-# ifdef HAVE_WS2TCPIP_H
-#  include <ws2tcpip.h>
-// fix for MingW not defining IPV6_V6ONLY
-#  define IPV6_V6ONLY 27
-# endif
-
-extern int   initWinSock ();
-extern const char* getWSErrorDescr(int err);
-extern void* newAcceptParams(int sock,
-			     int sz,
-			     void* sockaddr);
-extern int   acceptNewSock(void* d);
-extern int   acceptDoProc(void* param);
-
-#else
+#ifdef HAVE_WS2TCPIP_H
+# include <ws2tcpip.h>
+# define IPV6_V6ONLY 27
+#endif
 
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
@@ -68,13 +50,11 @@ extern int   acceptDoProc(void* param);
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
-#ifdef HAVE_LINUX_TCP_H
-# include <linux/tcp.h>
-#elif HAVE_NETINET_TCP_H
-# include <netinet/tcp.h>
-#endif
 #ifdef HAVE_NETINET_IN_H
 # include <netinet/in.h>
+#endif
+#ifdef HAVE_NETINET_TCP_H
+# include <netinet/tcp.h>
 #endif
 #ifdef HAVE_SYS_UN_H
 # include <sys/un.h>
@@ -89,21 +69,20 @@ extern int   acceptDoProc(void* param);
 # include <net/if.h>
 #endif
 
-#ifdef HAVE_BSD_SENDFILE
-#include <sys/uio.h>
-#endif
-#ifdef HAVE_LINUX_SENDFILE
-#if !defined(__USE_FILE_OFFSET64)
-#include <sys/sendfile.h>
-#endif
-#endif
-
+#ifdef HAVE_WINSOCK2_H
+extern int   initWinSock ();
+extern const char* getWSErrorDescr(int err);
+extern void* newAcceptParams(int sock,
+			     int sz,
+			     void* sockaddr);
+extern int   acceptNewSock(void* d);
+extern int   acceptDoProc(void* param);
+#else  /* HAVE_WINSOCK2_H */
 extern int
 sendFd(int sock, int outfd);
 
 extern int
 recvFd(int sock);
-
 #endif /* HAVE_WINSOCK2_H */
 
 INLINE char *
@@ -124,7 +103,7 @@ hsnet_inet_ntoa(
     return inet_ntoa(a);
 }
 
-#ifdef HAVE_GETADDRINFO
+#if HAVE_DECL_GETADDRINFO
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
 # if defined(HAVE_WINSOCK2_H)
@@ -150,11 +129,11 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 }
 #endif
 
-#if !defined(IOV_MAX)
+#ifndef IOV_MAX
 # define IOV_MAX 1024
 #endif
 
-#if !defined(SOCK_NONBLOCK) // Missing define in Bionic libc (Android)
+#ifndef SOCK_NONBLOCK // Missing define in Bionic libc (Android)
 # define SOCK_NONBLOCK O_NONBLOCK
 #endif
 

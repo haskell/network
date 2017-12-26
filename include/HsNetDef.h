@@ -14,6 +14,18 @@
 # define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
+#if HAVE_DECL_GETADDRINFO
+# define IPV6_SOCKET_SUPPORT 1
+#else
+# undef IPV6_SOCKET_SUPPORT
+#endif
+
+#if defined(HAVE_STRUCT_UCRED) && HAVE_DECL_SO_PEERCRED
+# define HAVE_STRUCT_UCRED_SO_PEERCRED 1
+#else
+# undef HAVE_STRUCT_UCRED_SO_PEERCRED
+#endif
+
 /* stdcall is for Windows 32.
    Haskell FFI does not have a keyword for Windows 64.
    If ccall/stdcall is specified on Windows 64,
