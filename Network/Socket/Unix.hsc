@@ -3,15 +3,12 @@
 
 module Network.Socket.Unix (
     isUnixDomainSocketAvailable
+  , socketPair
   , sendFd
   , recvFd
-  , socketPair
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
+  , getPeerCredential
   , getPeerCred
-#endif
-#if defined(HAVE_GETPEEREID)
   , getPeerEid
-#endif
   ) where
 
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
@@ -32,15 +29,30 @@ import Network.Socket.Internal
 import Network.Socket.Syscall
 import Network.Socket.Types
 
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
+-- | Getting process ID, user ID and group ID for Unix domain sockets.
+getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
+getPeerCredential sock
+  | socketFamily sock /= AF_UNIX = return (Nothing, Nothing, Nothing)
+#ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
+getPeerCredential sock = do
+    (pid, uid, gid) <- getPeerCred sock
+    return (Just pid, Just uid, Just gid)
+#elif defined(HAVE_GETPEEREID)
+getPeerCredential sock = do
+    (uid, gid) <- getPeerEid sock
+    return (Nothing, Just uid, Just gid)
+#else
+getPeerCredential _ = return (Nothing, Nothing, Nothing)
+#endif
+
 -- | Returns the processID, userID and groupID of the peer of
 --   a UNIX domain socket.
 --
 -- Only available on platforms that support SO_PEERCRED or 'getPeerEid'.
 -- If 'getPeerEid' is used, processID is always 0.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
-getPeerCred sock = do
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
+getPeerCred sock = do
   let fd = socketFd sock
   let sz = (#const sizeof(struct ucred))
   allocaBytes sz $ \ ptr_cr ->
@@ -51,17 +63,21 @@ getPeerCred sock = do
      uid <- (#peek struct ucred, uid) ptr_cr
      gid <- (#peek struct ucred, gid) ptr_cr
      return (pid, uid, gid)
-#else
+#elif HAVE_GETPEEREID
+getPeerCred sock = do
   (uid,gid) <- getPeerEid sock
-  return (0,uid,gid)
+  return (0, uid, gid)
+#else
+getPeerCred _ = return (0, 0, 0)
 #endif
+{-# Deprecated getPeerCred "Use getPeerCredential instead" #-}
 
-#ifdef HAVE_GETPEEREID
 -- | Returns the userID and groupID of the peer of
 --   a UNIX domain socket.
 --
 --  Only available on platforms that support getpeereid().
 getPeerEid :: Socket -> IO (CUInt, CUInt)
+#ifdef HAVE_GETPEEREID
 getPeerEid sock = do
   let fd = socketFd sock
   alloca $ \ ptr_uid ->
@@ -74,8 +90,11 @@ getPeerEid sock = do
 
 foreign import CALLCONV unsafe "getpeereid"
   c_getpeereid :: CInt -> Ptr CUInt -> Ptr CUInt -> IO CInt
+#else
+getPeerEid _ = return (0, 0)
 #endif
-#endif
+
+{-# Deprecated getPeerEid "Use getPeerCredential instead" #-}
 
 -- | Whether or not Unix domain sockets are available.
 isUnixDomainSocketAvailable :: Bool
@@ -85,7 +104,9 @@ isUnixDomainSocketAvailable = True
 isUnixDomainSocketAvailable = False
 #endif
 
--- | Send a file descriptor over a domain socket.
+-- | Send a file descriptor over a Unix domain socket.
+--   Use this function in the case where 'isUnixDomainSocketAvailable' is
+--  'True'.
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd sock outfd = void $
@@ -95,9 +116,11 @@ foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 sendFd _ _ = error "Network.Socket.sendFd"
 #endif
 
--- | Receive a file descriptor over a domain socket. Note that the resulting
--- file descriptor may have to be put into non-blocking mode in order to be
--- used safely. See 'setNonBlockIfNeeded'.
+-- | Receive a file descriptor over a Unix domain socket. Note that the resulting
+--   file descriptor may have to be put into non-blocking mode in order to be
+--   used safely. See 'setNonBlockIfNeeded'.
+--   Use this function in the case where 'isUnixDomainSocketAvailable' is
+--  'True'.
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd sock =
@@ -107,11 +130,11 @@ foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 sendFd _ _ = error "Network.Socket.recvFd"
 #endif
 
--- | Build a pair of connected socket objects using the given address
--- family, socket type, and protocol number.  Address family, socket
--- type, and protocol number are as for the 'socket' function above.
--- Availability: Unix.
-socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
+-- | Build a pair of connected socket objects.
+--   For portability, use this function in the case
+--   where 'isUnixDomainSocketAvailable' is 'True'
+--   and specify 'AF_UNIX' to the first argument.
+socketPair :: Family              -- Family Name (usually AF_UNIX)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.

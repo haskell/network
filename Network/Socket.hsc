@@ -216,12 +216,7 @@ module Network.Socket
     , socketPair
     , sendFd
     , recvFd
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
-    , getPeerCred
-#if defined(HAVE_GETPEEREID)
-    , getPeerEid
-#endif
-#endif
+    , getPeerCredential
 
     -- * Deprecated
     , send
@@ -234,6 +229,8 @@ module Network.Socket
     , htonl
     , ntohl
     , socketToHandle
+    , getPeerCred
+    , getPeerEid
     ) where
 
 import Network.Socket.Buffer
