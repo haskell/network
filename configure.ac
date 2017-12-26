@@ -45,6 +45,8 @@ AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h sys/types.h unistd.h winsock2.h ws2t
 AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h netinet/tcp.h sys/socket.h sys/uio.h sys/un.h linux/tcp.h])
 AC_CHECK_HEADERS([net/if.h])
 
+AC_CHECK_TYPES([struct ucred])
+
 AC_CHECK_FUNCS([readlink symlink if_nametoindex])
 AC_CHECK_FUNCS([gai_strerror gethostent accept4])
 AC_CHECK_FUNCS([getpeereid])
@@ -55,11 +57,10 @@ AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 AC_CHECK_DECLS([getaddrinfo])
 AC_CHECK_DECLS([SO_PEERCRED])
 
-AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
-
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights], [], [], [])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [], [])
-AC_CHECK_MEMBERS([struct ucred.pid], [], [], [])
+
+AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
 
 case "$host" in
 *-mingw* | *-msys*)
