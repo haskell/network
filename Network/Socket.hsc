@@ -160,9 +160,6 @@ module Network.Socket
 
     -- * Socket operations
     , socket
-#if defined(DOMAIN_SOCKET_SUPPORT)
-    , socketPair
-#endif
     , connect
     , bind
     , listen
@@ -194,13 +191,6 @@ module Network.Socket
     , getSocketOption
     , setSocketOption
 
-    -- * File descriptor transmission
-#ifdef DOMAIN_SOCKET_SUPPORT
-    , sendFd
-    , recvFd
-
-#endif
-
     -- * Special constants
     , aNY_PORT
     , iNADDR_ANY
@@ -221,13 +211,12 @@ module Network.Socket
     -- in case you ever want to get at the underlying file descriptor..
     , setNonBlockIfNeeded
 
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
     -- * Unix domain socket
-    , getPeerCred
-#if defined(HAVE_GETPEEREID)
-    , getPeerEid
-#endif
-#endif
+    , isUnixDomainSocketAvailable
+    , socketPair
+    , sendFd
+    , recvFd
+    , getPeerCredential
 
     -- * Deprecated
     , send
@@ -240,6 +229,8 @@ module Network.Socket
     , htonl
     , ntohl
     , socketToHandle
+    , getPeerCred
+    , getPeerEid
     ) where
 
 import Network.Socket.Buffer
@@ -254,3 +245,4 @@ import Network.Socket.Options
 import Network.Socket.String
 import Network.Socket.Syscall
 import Network.Socket.Types
+import Network.Socket.Unix

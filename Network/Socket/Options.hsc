@@ -4,7 +4,14 @@
 #include "HsNet.h"
 ##include "HsNetDef.h"
 
-module Network.Socket.Options where
+module Network.Socket.Options (
+    SocketOption(..)
+  , isSupportedSocketOption
+  , getSocketOption
+  , setSocketOption
+  , c_getsockopt
+  , c_setsockopt
+  ) where
 
 import Control.Monad (liftM)
 import Data.Maybe (isJust)
@@ -14,13 +21,6 @@ import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
-
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED)
-import Foreign.Marshal.Alloc (allocaBytes)
-#endif
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
-import Foreign.C.Types (CUInt(..))
-#endif
 
 import Network.Socket.Internal
 import Network.Socket.Types
@@ -196,54 +196,7 @@ getSocketOption Socket{..} so = do
          c_getsockopt socketFd level opt ptr_v ptr_sz
        fromIntegral `liftM` peek ptr_v
 
-
-#if defined(HAVE_STRUCT_UCRED_SO_PEERCRED) || defined(HAVE_GETPEEREID)
--- | Returns the processID, userID and groupID of the peer of
---   a UNIX domain socket.
---
--- Only available on platforms that support SO_PEERCRED or 'getPeerEid'.
--- If 'getPeerEid' is used, processID is always 0.
-getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
-getPeerCred sock = do
-#ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
-  let fd = socketFd sock
-  let sz = (#const sizeof(struct ucred))
-  allocaBytes sz $ \ ptr_cr ->
-   with (fromIntegral sz) $ \ ptr_sz -> do
-     _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
-       c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
-     pid <- (#peek struct ucred, pid) ptr_cr
-     uid <- (#peek struct ucred, uid) ptr_cr
-     gid <- (#peek struct ucred, gid) ptr_cr
-     return (pid, uid, gid)
-#else
-  (uid,gid) <- getPeerEid sock
-  return (0,uid,gid)
-#endif
-
-#ifdef HAVE_GETPEEREID
--- | Returns the userID and groupID of the peer of
---   a UNIX domain socket.
---
---  Only available on platforms that support getpeereid().
-getPeerEid :: Socket -> IO (CUInt, CUInt)
-getPeerEid sock = do
-  let fd = socketFd sock
-  alloca $ \ ptr_uid ->
-    alloca $ \ ptr_gid -> do
-      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
-        c_getpeereid fd ptr_uid ptr_gid
-      uid <- peek ptr_uid
-      gid <- peek ptr_gid
-      return (uid, gid)
-#endif
-#endif
-
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "setsockopt"
   c_setsockopt :: CInt -> CInt -> CInt -> Ptr CInt -> CInt -> IO CInt
-#if defined(HAVE_GETPEEREID)
-foreign import CALLCONV unsafe "getpeereid"
-  c_getpeereid :: CInt -> Ptr CUInt -> Ptr CUInt -> IO CInt
-#endif

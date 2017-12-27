@@ -58,6 +58,7 @@ library
     Network.Socket.String
     Network.Socket.Syscall
     Network.Socket.Types
+    Network.Socket.Unix
 
   if !os(windows)
     other-modules:
