@@ -239,6 +239,7 @@ module Network.Socket
 import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
+import Network.Socket.Fcntl
 import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
