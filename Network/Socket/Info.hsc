@@ -335,11 +335,11 @@ withCStringIf True n f = allocaBytes n (f (fromIntegral n))
 --
 -- If the query fails, this function throws an IO exception.
 --
--- Example:
--- @
---   (hostName, _) <- getNameInfo [] True False myAddress
--- @
-
+-- >>> addr:_ <- getAddrInfo (Just defaultHints) (Just "127.0.0.1") (Just "http")
+-- >>> getNameInfo [] True True $ addrAddress addr
+-- (Just "localhost",Just "http")
+-- >>> getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True $ addrAddress addr
+-- (Just "127.0.0.1",Just "80")
 getNameInfo :: [NameInfoFlag] -- ^ flags to control lookup behaviour
             -> Bool -- ^ whether to look up a hostname
             -> Bool -- ^ whether to look up a service name
