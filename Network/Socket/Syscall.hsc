@@ -131,14 +131,14 @@ socket family stype protocol = do
 #endif
     return sock
 
--- | Set the socket to nonblocking, if applicable to this platform.
---
--- Depending on the platform this is required when using sockets from file
--- descriptors that are passed in through 'recvFd' or other means.
+-- | Set the nonblocking flag on Unix.
+--   On Windows, nothing is done.
 setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
 
+-- | Set the close_on_exec flag on Unix.
+--   On Windows, nothing is done.
 setCloseOnExecIfNeeded :: CInt -> IO ()
 #if defined(mingw32_HOST_OS)
 setCloseOnExecIfNeeded _ = return ()
