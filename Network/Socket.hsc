@@ -45,6 +45,9 @@
 -- >     open addr = do
 -- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >         setSocketOption sock ReuseAddr 1
+-- >         -- If the prefork technique is not used,
+-- >         -- set CloseOnExec for the security reasons.
+-- >         setCloseOnExecIfNeeded $ socketFd sock
 -- >         bind sock (addrAddress addr)
 -- >         listen sock 10
 -- >         return sock
