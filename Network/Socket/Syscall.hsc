@@ -12,7 +12,6 @@ import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
-import qualified System.Posix.Internals
 
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
@@ -24,11 +23,13 @@ import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
 #endif
 
-#ifdef HAVE_ACCEPT4
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
+import Data.Bits ((.|.))
 import GHC.Conc (threadWaitRead)
 #endif
 
 import Network.Socket.Close
+import Network.Socket.Fcntl
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types
@@ -105,9 +106,14 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+                c_socket (packFamily family) (c_stype .|. (#const SOCK_NONBLOCK)) protocol
+#else
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
     setNonBlockIfNeeded fd
+#endif
     sock <- mkSocket fd family stype protocol NotConnected
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
@@ -123,14 +129,6 @@ socket family stype protocol = do
 # endif
 #endif
     return sock
-
--- | Set the socket to nonblocking, if applicable to this platform.
---
--- Depending on the platform this is required when using sockets from file
--- descriptors that are passed in through 'recvFd' or other means.
-setNonBlockIfNeeded :: CInt -> IO ()
-setNonBlockIfNeeded fd =
-    System.Posix.Internals.setNonBlockingFD fd True
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -267,15 +265,16 @@ accept sock@Socket{..} = do
                 return new_fd
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
-# ifdef HAVE_ACCEPT4
+# ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
                         (threadWaitRead (fromIntegral socketFd))
-                        (c_accept4 socketFd sockaddr ptr_len (#const SOCK_NONBLOCK))
+                        (c_accept4 socketFd sockaddr ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
 # else
      new_fd <- throwSocketErrorWaitRead sock "Network.Socket.accept"
                         (c_accept socketFd sockaddr ptr_len)
      setNonBlockIfNeeded new_fd
-# endif /* HAVE_ACCEPT4 */
+     setCloseOnExecIfNeeded new_fd
+# endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSockAddr sockaddr
      sock' <- mkSocket new_fd socketFamily socketType socketProtocol Connected
@@ -287,7 +286,7 @@ foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
-#ifdef HAVE_ACCEPT4
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
   c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
 #else

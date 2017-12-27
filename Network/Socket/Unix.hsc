@@ -28,6 +28,7 @@ import Foreign.Marshal.Array (peekArray)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 
+import Network.Socket.Fcntl
 import Network.Socket.Internal
 import Network.Socket.Syscall
 #endif

@@ -26,6 +26,12 @@
 # undef HAVE_STRUCT_UCRED_SO_PEERCRED
 #endif
 
+#ifdef HAVE_ACCEPT4
+# define HAVE_ADVANCED_SOCKET_FLAGS 1
+#else
+# undef HAVE_ADVANCED_SOCKET_FLAGS
+#endif
+
 /* stdcall is for Windows 32.
    Haskell FFI does not have a keyword for Windows 64.
    If ccall/stdcall is specified on Windows 64,

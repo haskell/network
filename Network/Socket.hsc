@@ -45,6 +45,9 @@
 -- >     open addr = do
 -- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >         setSocketOption sock ReuseAddr 1
+-- >         -- If the prefork technique is not used,
+-- >         -- set CloseOnExec for the security reasons.
+-- >         setCloseOnExecIfNeeded $ socketFd sock
 -- >         bind sock (addrAddress addr)
 -- >         listen sock 10
 -- >         return sock
@@ -207,9 +210,11 @@ module Network.Socket
     -- * Initialisation
     , withSocketsDo
 
-    -- * Low level operations
-    -- in case you ever want to get at the underlying file descriptor..
+    -- * Socket flags
     , setNonBlockIfNeeded
+    , setCloseOnExecIfNeeded
+    , getNonBlock
+    , getCloseOnExec
 
     -- * Unix domain socket
     , isUnixDomainSocketAvailable
@@ -236,6 +241,7 @@ module Network.Socket
 import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
+import Network.Socket.Fcntl
 import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
