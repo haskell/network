@@ -118,11 +118,18 @@ module Network.Socket
     , hostAddressToTuple
     , tupleToHostAddress
 #if defined(IPV6_SOCKET_SUPPORT)
+    -- ** Host address6
     , HostAddress6
     , hostAddress6ToTuple
     , tupleToHostAddress6
+    -- ** Flow Info
     , FlowInfo
+    -- ** Scope ID
     , ScopeID
+#endif
+#if HAVE_DECL_IF_NAMETOINDEX
+    , ifNameToIndex
+    , ifIndexToName
 #endif
     -- ** Protocol number
     , ProtocolNumber
@@ -240,6 +247,7 @@ import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
 import Network.Socket.Handle
+import Network.Socket.If
 import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name

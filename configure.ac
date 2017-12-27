@@ -51,8 +51,11 @@ $ac_includes_default
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
-#ifdef HAVE_NET_IF
+#ifdef HAVE_NET_IF_H
 # include <net/if.h>
+#endif
+#ifdef HAVE_NETIOAPI_H
+# include <netioapi.h>
 #endif
 "
 
@@ -73,11 +76,11 @@ AC_CHECK_HEADERS([winsock2.h ws2tcpip.h])
 AC_CHECK_HEADERS([limits.h stdlib.h unistd.h sys/types.h fcntl.h])
 AC_CHECK_HEADERS([sys/uio.h sys/socket.h netinet/in.h netinet/tcp.h])
 AC_CHECK_HEADERS([sys/un.h arpa/inet.h netdb.h])
-AC_CHECK_HEADERS([net/if.h])
+AC_CHECK_HEADERS([net/if.h netioapi.h])
 
 AC_CHECK_TYPES([struct ucred])
 
-AC_CHECK_FUNCS([readlink symlink if_nametoindex])
+AC_CHECK_FUNCS([readlink symlink])
 AC_CHECK_FUNCS([gai_strerror gethostent accept4])
 AC_CHECK_FUNCS([getpeereid])
 
@@ -86,7 +89,7 @@ AC_CHECK_DECLS([IPV6_V6ONLY])
 AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 AC_CHECK_DECLS([SO_PEERCRED])
 dnl AC_CHECK_DECLS is used instead of AC_CHECK_FUNCS for Windows
-AC_CHECK_DECLS([getaddrinfo])
+AC_CHECK_DECLS([getaddrinfo, if_nametoindex])
 
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len])
