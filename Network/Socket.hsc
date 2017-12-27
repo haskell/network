@@ -211,6 +211,8 @@ module Network.Socket
     -- in case you ever want to get at the underlying file descriptor..
     , setNonBlockIfNeeded
     , setCloseOnExecIfNeeded
+    , getNonBlock
+    , getCloseOnExec
 
     -- * Unix domain socket
     , isUnixDomainSocketAvailable
