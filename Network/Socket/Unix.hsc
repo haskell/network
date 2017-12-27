@@ -37,6 +37,8 @@ import Network.Socket.Options (c_getsockopt)
 #endif
 
 -- | Getting process ID, user ID and group ID for Unix domain sockets.
+--
+--   Since 3.0.0.0.
 getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
 getPeerCredential sock
   | socketFamily sock /= AF_UNIX = return (Nothing, Nothing, Nothing)
@@ -104,6 +106,8 @@ getPeerEid _ = return (0, 0)
 {-# Deprecated getPeerEid "Use getPeerCredential instead" #-}
 
 -- | Whether or not Unix domain sockets are available.
+--
+--   Since 3.0.0.0.
 isUnixDomainSocketAvailable :: Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
 isUnixDomainSocketAvailable = True
