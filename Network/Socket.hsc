@@ -210,8 +210,7 @@ module Network.Socket
     -- * Initialisation
     , withSocketsDo
 
-    -- * Low level operations
-    -- in case you ever want to get at the underlying file descriptor..
+    -- * Socket flags
     , setNonBlockIfNeeded
     , setCloseOnExecIfNeeded
     , getNonBlock
