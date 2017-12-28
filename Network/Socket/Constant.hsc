@@ -9,17 +9,21 @@ import Network.Socket.Types
 -- ---------------------------------------------------------------------------
 -- Utility Functions
 
+{-# DEPRECATED aNY_PORT "Use getAddrInfo instead" #-}
 aNY_PORT :: PortNumber
 aNY_PORT = 0
 
+{-# DEPRECATED iNADDR_ANY "Use getAddrInfo instead" #-}
 -- | The IPv4 wild card address.
 iNADDR_ANY :: HostAddress
 iNADDR_ANY = htonl (#const INADDR_ANY)
 
+{-# DEPRECATED iN6ADDR_ANY "Use getAddrInfo instead" #-}
 -- | The IPv6 wild card address.
 iN6ADDR_ANY :: HostAddress6
 iN6ADDR_ANY = (0, 0, 0, 0)
 
+{-# DEPRECATED sOMAXCONN "Use maxListenQueue instead" #-}
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
 

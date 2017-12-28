@@ -183,13 +183,6 @@ module Network.Socket
     , getSocketOption
     , setSocketOption
 
-    -- * Special constants
-    , aNY_PORT
-    , iNADDR_ANY
-    , iN6ADDR_ANY
-    , sOMAXCONN
-    , maxListenQueue
-
     -- * Initialisation
     , withSocketsDo
 
@@ -206,6 +199,9 @@ module Network.Socket
     , recvFd
     , getPeerCredential
 
+    -- * Special constants
+    , maxListenQueue
+
     -- * Deprecated
     , send
     , sendTo
@@ -219,6 +215,10 @@ module Network.Socket
     , socketToHandle
     , getPeerCred
     , getPeerEid
+    , aNY_PORT
+    , iNADDR_ANY
+    , iN6ADDR_ANY
+    , sOMAXCONN
     ) where
 
 import Network.Socket.Buffer
