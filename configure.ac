@@ -89,7 +89,7 @@ AC_CHECK_DECLS([IPV6_V6ONLY])
 AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 AC_CHECK_DECLS([SO_PEERCRED])
 dnl AC_CHECK_DECLS is used instead of AC_CHECK_FUNCS for Windows
-AC_CHECK_DECLS([getaddrinfo, if_nametoindex])
+AC_CHECK_DECLS([getaddrinfo])
 
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len])

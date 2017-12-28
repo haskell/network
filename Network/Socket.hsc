@@ -129,10 +129,8 @@ module Network.Socket
     -- ** Scope ID
     , ScopeID
 #endif
-#if HAVE_DECL_IF_NAMETOINDEX
     , ifNameToIndex
     , ifIndexToName
-#endif
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol

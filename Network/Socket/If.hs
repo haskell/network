@@ -3,13 +3,10 @@
 #include "HsNetDef.h"
 
 module Network.Socket.If (
-#if HAVE_DECL_IF_NAMETOINDEX
     ifNameToIndex
   , ifIndexToName
-#endif
   ) where
 
-#if HAVE_DECL_IF_NAMETOINDEX
 import Foreign.C.String (CString, withCString, peekCString)
 import Foreign.C.Types (CUInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
@@ -40,4 +37,3 @@ foreign import CALLCONV safe "if_nametoindex"
 
 foreign import CALLCONV safe "if_indextoname"
    c_if_indextoname :: CUInt -> CString -> IO CString
-#endif
