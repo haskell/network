@@ -143,6 +143,7 @@ module Network.Socket
     , isListening
     , isReadable
     , isWritable
+    , withConnectedSocket
     -- ** Family
     , Family(..)
     , isSupportedFamily

@@ -17,6 +17,7 @@ module Network.Socket.Types
     , isReadable
     , isWritable
     , isAcceptable
+    , withConnectedSocket
     -- * Socket types
     , SocketType(..)
     , isSupportedSocketType
@@ -167,6 +168,22 @@ isAcceptable (Socket _ AF_UNIX _ _ _) = return False
 isAcceptable Socket{..} = do
     value <- readMVar socketStatus
     return (value == Connected || value == Listening)
+
+
+-- | If you're operating 'Socket' in multithread environment,
+-- for example, use a timeout thread to close 'Socket'. you have to
+-- make sure 'Socket' is opened before read/write, 'withConnectedSocket'
+-- will run your action if 'Socket' is still 'Connected', otherwise
+-- return the 'Socket' status instead.
+--
+-- Note, this will block other thread which try to close 'Socket' by locking
+-- the status 'MVar'.
+withConnectedSocket :: Socket -> (Socket -> IO a) -> IO (Either SocketStatus a)
+withConnectedSocket sock act =
+  withMVar (socketStatus sock) $ \status ->
+     case status of
+       Connected -> Right `fmap` act sock
+       _         -> return (Left status)
 
 -----------------------------------------------------------------------------
 -- Socket types
