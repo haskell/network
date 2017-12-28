@@ -52,7 +52,9 @@ module Network.Socket.Types
 
     -- * Unsorted
     , ProtocolNumber
+    , defaultProtocol
     , PortNumber
+    , defaultPort
 
     -- * Low-level helpers
     , zeroMemory
@@ -94,8 +96,17 @@ instance Show Socket where
   showsPrec _n Socket{..} =
         showString "<socket: " . shows socketFd . showString ">"
 
+-----------------------------------------------------------------------------
+
 -- | Protocl number.
 type ProtocolNumber = CInt
+
+-- | This is the default protocol for a given service.
+--
+-- >>> defaultProtocol
+-- 0
+defaultProtocol :: ProtocolNumber
+defaultProtocol = 0
 
 -- -----------------------------------------------------------------------------
 
@@ -818,6 +829,13 @@ instance Storable PortNumber where
    alignment _ = alignment (undefined :: Word16)
    poke p (PortNum po) = poke (castPtr p) po
    peek p = PortNum `liftM` peek (castPtr p)
+
+-- | Default port number.
+--
+-- >>> defaultPort
+-- 0
+defaultPort :: PortNumber
+defaultPort = 0
 
 ------------------------------------------------------------------------
 -- Socket addresses

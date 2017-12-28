@@ -35,15 +35,6 @@ type HostName       = String
 type ServiceName    = String
 
 -----------------------------------------------------------------------------
-
--- | This is the default protocol for a given service.
---
--- >>> defaultProtocol
--- 0
-defaultProtocol :: ProtocolNumber
-defaultProtocol = 0
-
------------------------------------------------------------------------------
 -- Address and service lookups
 
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
@@ -71,8 +62,8 @@ data AddrInfoFlag =
     | AI_NUMERICSERV
     -- | If no 'HostName' value is provided, the network
     --   address in each 'SockAddr'
-    --   will be left as a "wild card", i.e. as either 'iNADDR_ANY'
-    --   or 'iN6ADDR_ANY'.  This is useful for server applications that
+    --   will be left as a "wild card".
+    --   This is useful for server applications that
     --   will accept connections from any client.
     | AI_PASSIVE
     -- | If an IPv6 lookup is performed, and no IPv6

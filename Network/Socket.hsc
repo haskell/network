@@ -134,6 +134,7 @@ module Network.Socket
     , defaultProtocol
     -- ** Port number
     , PortNumber
+    , defaultPort
 
     -- * Address operations
     , HostName
