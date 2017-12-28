@@ -94,27 +94,63 @@
 
 module Network.Socket
     (
+    -- * Initialisation
+      withSocketsDo
+
+    -- * Address information
+    , getAddrInfo
+    -- ** Types
+    , HostName
+    , ServiceName
+    , AddrInfo(..)
+    , defaultHints
+    -- ** Flags
+    , AddrInfoFlag(..)
+    , addrInfoFlagImplemented
+
+    -- * Socket operations
+    , socket
+    , connect
+    , bind
+    , listen
+    , accept
+    -- ** Closing
+    , close
+    , shutdown
+    , ShutdownCmd(..)
+
+    -- * Socket options
+    , SocketOption(..)
+    , isSupportedSocketOption
+    , getSocketOption
+    , setSocketOption
+
     -- * Types
     -- ** Socket
-      Socket
+    , Socket
     , socketFd
     , socketFamily
     , socketType
     , socketProtocol
     , socketStatus
-    , socketPort
-    , mkSocket
-    -- ** Socket status
-    , SocketStatus(..)
-    -- ** Family
-    , Family(..)
-    , isSupportedFamily
     -- ** Socket type
     , SocketType(..)
     , isSupportedSocketType
+    -- ** Socket status
+    , SocketStatus(..)
+    , isConnected
+    , isBound
+    , isListening
+    , isReadable
+    , isWritable
+    -- ** Family
+    , Family(..)
+    , isSupportedFamily
     -- ** Socket address
     , SockAddr(..)
     , isSupportedSockAddr
+    , getPeerName
+    , getSocketName
     -- ** Host address
     , HostAddress
     , hostAddressToTuple
@@ -135,63 +171,7 @@ module Network.Socket
     -- ** Port number
     , PortNumber
     , defaultPort
-
-    -- * Address operations
-    , HostName
-    , ServiceName
-
-    -- ** getaddrinfo
-    , AddrInfo(..)
-    , AddrInfoFlag(..)
-    , addrInfoFlagImplemented
-    , defaultHints
-    , getAddrInfo
-
-    -- ** getnameinfo
-    , NameInfoFlag(..)
-    , getNameInfo
-
-    -- * Socket operations
-    , socket
-    , connect
-    , bind
-    , listen
-    , accept
-    , getPeerName
-    , getSocketName
-
-    -- ** Sending and receiving data
-    , sendBuf
-    , recvBuf
-    , sendBufTo
-    , recvBufFrom
-
-    -- ** Closing
-    , close
-    , shutdown
-    , ShutdownCmd(..)
-
-    -- ** Predicates on sockets
-    , isConnected
-    , isBound
-    , isListening
-    , isReadable
-    , isWritable
-
-    -- * Socket options
-    , SocketOption(..)
-    , isSupportedSocketOption
-    , getSocketOption
-    , setSocketOption
-
-    -- * Initialisation
-    , withSocketsDo
-
-    -- * Socket flags
-    , setNonBlockIfNeeded
-    , setCloseOnExecIfNeeded
-    , getNonBlock
-    , getCloseOnExec
+    , socketPort
 
     -- * Unix domain socket
     , isUnixDomainSocketAvailable
@@ -199,6 +179,23 @@ module Network.Socket
     , sendFd
     , recvFd
     , getPeerCredential
+
+    -- * Name information
+    , getNameInfo
+    , NameInfoFlag(..)
+
+    -- * Low level
+    -- ** socket operations
+    , setCloseOnExecIfNeeded
+    , getCloseOnExec
+    , setNonBlockIfNeeded
+    , getNonBlock
+    , mkSocket
+    -- ** Sending and receiving data
+    , sendBuf
+    , recvBuf
+    , sendBufTo
+    , recvBufFrom
 
     -- * Special constants
     , maxListenQueue
