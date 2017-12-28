@@ -161,42 +161,37 @@ connect :: Socket    -- Unconnected Socket
         -> IO ()
 connect sock@Socket{..} addr = withSocketsDo $
  modifyMVar_ socketStatus $ \currentStatus ->
- if currentStatus /= NotConnected && currentStatus /= Bound
-  then
-    ioError $ userError $
-      errLoc ++ ": can't connect to socket with status " ++ show currentStatus
-  else
-    withSockAddr addr $ \p_addr sz -> do
+ if currentStatus `elem` [NotConnected, Bound]
+  then withSockAddr addr $ \p_addr sz -> do
+     connectLoop sock p_addr (fromIntegral sz)
+     return Connected
+  else do
+     let errLoc = "Network.Socket.connect: " ++ show sock
+     ioError $ userError $
+       errLoc ++ ": can't connect to socket with status " ++ show currentStatus
 
-    let connectLoop = do
-           r <- c_connect socketFd p_addr (fromIntegral sz)
-           if r == -1
-               then do
-#if !(defined(HAVE_WINSOCK2_H))
-                   err <- getErrno
-                   case () of
-                     _ | err == eINTR       -> connectLoop
-                     _ | err == eINPROGRESS -> connectBlocked
---                   _ | err == eAGAIN      -> connectBlocked
-                     _otherwise             -> throwSocketError errLoc
+connectLoop :: Socket -> Ptr SockAddr -> CInt -> IO ()
+connectLoop sock@Socket{..} p_addr sz = loop
+  where
+    errLoc = "Network.Socket.connect: " ++ show sock
+    loop = do
+       r <- c_connect socketFd p_addr sz
+       when (r == -1) $ do
+#if defined(mingw32_HOST_OS)
+           throwSocketError errLoc
 #else
-                   throwSocketError errLoc
-#endif
-               else return ()
+           err <- getErrno
+           case () of
+             _ | err == eINTR       -> loop
+             _ | err == eINPROGRESS -> connectBlocked
+--           _ | err == eAGAIN      -> connectBlocked
+             _otherwise             -> throwSocketError errLoc
 
-#if !(defined(HAVE_WINSOCK2_H))
-        connectBlocked = do
-           threadWaitWrite (fromIntegral socketFd)
-           err <- getSocketOption sock SoError
-           if (err == 0)
-                then return ()
-                else throwSocketErrorCode errLoc (fromIntegral err)
+    connectBlocked = do
+       threadWaitWrite (fromIntegral socketFd)
+       err <- getSocketOption sock SoError
+       when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
-
-    connectLoop
-    return Connected
- where
-   errLoc = "Network.Socket.connect: " ++ show sock
 
 -----------------------------------------------------------------------------
 -- Listen
