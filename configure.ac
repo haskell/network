@@ -80,7 +80,6 @@ AC_CHECK_HEADERS([net/if.h netioapi.h])
 
 AC_CHECK_TYPES([struct ucred])
 
-AC_CHECK_FUNCS([readlink symlink])
 AC_CHECK_FUNCS([gai_strerror gethostent accept4])
 AC_CHECK_FUNCS([getpeereid])
 
