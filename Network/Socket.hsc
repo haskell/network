@@ -188,10 +188,6 @@ module Network.Socket
     , iNADDR_ANY
     , iN6ADDR_ANY
     , sOMAXCONN
-    , sOL_SOCKET
-#ifdef SCM_RIGHTS
-    , sCM_RIGHTS
-#endif
     , maxListenQueue
 
     -- * Initialisation

@@ -23,14 +23,6 @@ iN6ADDR_ANY = (0, 0, 0, 0)
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
 
-sOL_SOCKET :: Int
-sOL_SOCKET = #const SOL_SOCKET
-
-#ifdef SCM_RIGHTS
-sCM_RIGHTS :: Int
-sCM_RIGHTS = #const SCM_RIGHTS
-#endif
-
 -- | This is the value of SOMAXCONN, typically 128.
 -- 128 is good enough for normal network servers but
 -- is too small for high performance servers.
