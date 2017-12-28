@@ -16,6 +16,8 @@ import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (nullPtr)
 
 -- | Returns the index corresponding to the interface name.
+--
+--   Since 3.0.0.0.
 ifNameToIndex :: String -> IO (Maybe Int)
 ifNameToIndex ifname = do
   index <- withCString ifname c_if_nametoindex
@@ -23,6 +25,8 @@ ifNameToIndex ifname = do
   return $ if index == 0 then Nothing else Just $ fromIntegral index
 
 -- | Returns the interface name corresponding to the index.
+--
+--   Since 3.0.0.0.
 ifIndexToName :: Int -> IO (Maybe String)
 ifIndexToName ifn = allocaBytes 16 $ \ptr -> do -- 16 == IFNAMSIZ
     r <- c_if_indextoname (fromIntegral ifn) ptr
