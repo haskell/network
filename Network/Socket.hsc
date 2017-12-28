@@ -119,7 +119,6 @@ module Network.Socket
     , HostAddress
     , hostAddressToTuple
     , tupleToHostAddress
-#if defined(IPV6_SOCKET_SUPPORT)
     -- ** Host address6
     , HostAddress6
     , hostAddress6ToTuple
@@ -128,7 +127,6 @@ module Network.Socket
     , FlowInfo
     -- ** Scope ID
     , ScopeID
-#endif
     , ifNameToIndex
     , ifIndexToName
     -- ** Protocol number
@@ -138,26 +136,19 @@ module Network.Socket
     , PortNumber
 
     -- * Address operations
-
     , HostName
     , ServiceName
 
-#if defined(IPV6_SOCKET_SUPPORT)
     -- ** getaddrinfo
     , AddrInfo(..)
-
     , AddrInfoFlag(..)
     , addrInfoFlagImplemented
-
     , defaultHints
-
     , getAddrInfo
 
     -- ** getnameinfo
     , NameInfoFlag(..)
-
     , getNameInfo
-#endif
 
     -- * Socket operations
     , socket
@@ -195,9 +186,7 @@ module Network.Socket
     -- * Special constants
     , aNY_PORT
     , iNADDR_ANY
-#if defined(IPV6_SOCKET_SUPPORT)
     , iN6ADDR_ANY
-#endif
     , sOMAXCONN
     , sOL_SOCKET
 #ifdef SCM_RIGHTS

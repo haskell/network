@@ -46,8 +46,6 @@ defaultProtocol = 0
 -----------------------------------------------------------------------------
 -- Address and service lookups
 
-#if defined(IPV6_SOCKET_SUPPORT)
-
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
 --   For more information, see <https://tools.ietf.org/html/rfc3493#page-25>
 data AddrInfoFlag =
@@ -396,7 +394,6 @@ unpackBits [] _    = []
 unpackBits ((k,v):xs) r
     | r .&. v /= 0 = k : unpackBits xs (r .&. complement v)
     | otherwise    = unpackBits xs r
-#endif
 
 -----------------------------------------------------------------------------
 -- SockAddr
@@ -411,7 +408,6 @@ instance Show SockAddr where
    = showString (unsafePerformIO (inet_ntoa ha))
    . showString ":"
    . shows port
-#if defined(IPV6_SOCKET_SUPPORT)
   showsPrec _ addr@(SockAddrInet6 port _ _ _)
    = showChar '['
    . showString (unsafePerformIO $
@@ -419,9 +415,6 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
-#else
-  showsPrec _ addr@SockAddrInet6{} = error "showsPrec: not supported"
-#endif
 
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:

@@ -38,13 +38,11 @@ module Network.Socket.Types
     , HostAddress
     , hostAddressToTuple
     , tupleToHostAddress
-#if defined(IPV6_SOCKET_SUPPORT)
     , HostAddress6
     , hostAddress6ToTuple
     , tupleToHostAddress6
     , FlowInfo
     , ScopeID
-#endif
     , peekSockAddr
     , pokeSockAddr
     , sizeOfSockAddr
@@ -841,12 +839,10 @@ instance Storable PortNumber where
 -- families. Currently only Unix domain sockets and the Internet
 -- families are supported.
 
-#if defined(IPV6_SOCKET_SUPPORT)
 -- | Flow information.
 type FlowInfo = Word32
 -- | Scope identifier.
 type ScopeID = Word32
-#endif
 
 -- | Socket addresses.
 --  The existence of a constructor does not necessarily imply that
@@ -869,11 +865,7 @@ data SockAddr       -- C Names
 isSupportedSockAddr :: SockAddr -> Bool
 isSupportedSockAddr addr = case addr of
   SockAddrInet{}  -> True
-#if defined(IPV6_SOCKET_SUPPORT)
   SockAddrInet6{} -> True
-#else
-  SockAddrInet6{} -> False
-#endif
 #if defined(DOMAIN_SOCKET_SUPPORT)
   SockAddrUnix{}  -> True
 #else
@@ -901,11 +893,7 @@ sizeOfSockAddr (SockAddrUnix path) =
 sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
 #endif
 sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
-#if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
-#else
-sizeOfSockAddr SockAddrInet6{} = error "sizeOfSockAddr: not supported"
-#endif
 
 -- | Computes the storage requirements (in bytes) required for a
 -- 'SockAddr' with the given 'Family'.
@@ -913,9 +901,7 @@ sizeOfSockAddrByFamily :: Family -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
 #endif
-#if defined(IPV6_SOCKET_SUPPORT)
 sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
-#endif
 sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
 sizeOfSockAddrByFamily family = error $
     "Network.Socket.Types.sizeOfSockAddrByFamily: address family '" ++
@@ -973,7 +959,6 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
     (#poke struct sockaddr_in, sin_family) p ((#const AF_INET) :: CSaFamily)
     (#poke struct sockaddr_in, sin_port) p port
     (#poke struct sockaddr_in, sin_addr) p addr
-#if defined(IPV6_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
 # if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in6))
@@ -986,10 +971,6 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_flowinfo) p flow
     (#poke struct sockaddr_in6, sin6_addr) p (In6Addr addr)
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
-#else
-pokeSockAddr p SockAddrInet6{} = error "pokeSockAddr: not supported"
-#endif
-
 
 -- | Read a 'SockAddr' from the given memory location.
 peekSockAddr :: Ptr SockAddr -> IO SockAddr
@@ -1005,14 +986,12 @@ peekSockAddr p = do
         addr <- (#peek struct sockaddr_in, sin_addr) p
         port <- (#peek struct sockaddr_in, sin_port) p
         return (SockAddrInet (PortNum port) addr)
-#if defined(IPV6_SOCKET_SUPPORT)
     (#const AF_INET6) -> do
         port <- (#peek struct sockaddr_in6, sin6_port) p
         flow <- (#peek struct sockaddr_in6, sin6_flowinfo) p
         In6Addr addr <- (#peek struct sockaddr_in6, sin6_addr) p
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
         return (SockAddrInet6 (PortNum port) flow addr scope)
-#endif
     _ -> ioError $ userError $
       "Network.Socket.Types.peekSockAddr: address family '" ++
       show family ++ "' not supported."
@@ -1045,7 +1024,6 @@ tupleToHostAddress (b3, b2, b1, b0) =
     let x `sl` i = fromIntegral x `shiftL` i :: Word32
     in ntohl $ (b3 `sl` 24) .|. (b2 `sl` 16) .|. (b1 `sl` 8) .|. (b0 `sl` 0)
 
-#if defined(IPV6_SOCKET_SUPPORT)
 -- | Independent of endianness. For example @::1@ is stored as @(0, 0, 0, 1)@.
 --
 -- For direct manipulation prefer 'hostAddress6ToTuple' and
@@ -1122,7 +1100,6 @@ instance Storable In6Addr where
         poke32 p 1 b
         poke32 p 2 c
         poke32 p 3 d
-#endif
 
 ------------------------------------------------------------------------
 -- Helper functions

@@ -13,16 +13,12 @@ aNY_PORT :: PortNumber
 aNY_PORT = 0
 
 -- | The IPv4 wild card address.
-
 iNADDR_ANY :: HostAddress
 iNADDR_ANY = htonl (#const INADDR_ANY)
 
-#if defined(IPV6_SOCKET_SUPPORT)
 -- | The IPv6 wild card address.
-
 iN6ADDR_ANY :: HostAddress6
 iN6ADDR_ANY = (0, 0, 0, 0)
-#endif
 
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN

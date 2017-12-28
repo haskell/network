@@ -54,11 +54,9 @@ socketPort :: Socket            -- Connected & Bound Socket
 socketPort sock@(Socket _ AF_INET _ _ _) = do
     (SockAddrInet port _) <- getSocketName sock
     return port
-#if defined(IPV6_SOCKET_SUPPORT)
 socketPort sock@(Socket _ AF_INET6 _ _ _) = do
     (SockAddrInet6 port _ _ _) <- getSocketName sock
     return port
-#endif
 socketPort Socket{..} =
     ioError $ userError $
       "Network.Socket.socketPort: address family '" ++ show socketFamily ++
