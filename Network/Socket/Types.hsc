@@ -95,6 +95,7 @@ instance Show Socket where
   showsPrec _n Socket{..} =
         showString "<socket: " . shows socketFd . showString ">"
 
+-- | Protocl number.
 type ProtocolNumber = CInt
 
 -- -----------------------------------------------------------------------------
@@ -757,10 +758,9 @@ unpackFamily f = case f of
 ------------------------------------------------------------------------
 -- Port Numbers
 
--- | Use the @Num@ instance (i.e. use a literal) to create a
--- @PortNumber@ value with the correct network-byte-ordering. You
--- should not use the PortNum constructor. It will be removed in the
--- next release.
+-- | Port number.
+--   Use the @Num@ instance (i.e. use a literal) to create a
+--   @PortNumber@ value with the correct network-byte-ordering.
 --
 -- >>> 1 :: PortNumber
 -- 1

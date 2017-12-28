@@ -36,6 +36,9 @@ type ServiceName    = String
 -----------------------------------------------------------------------------
 
 -- | This is the default protocol for a given service.
+--
+-- >>> defaultProtocol
+-- 0
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
 
