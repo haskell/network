@@ -35,18 +35,7 @@ type HostName       = String
 type ServiceName    = String
 
 -----------------------------------------------------------------------------
-
--- | This is the default protocol for a given service.
---
--- >>> defaultProtocol
--- 0
-defaultProtocol :: ProtocolNumber
-defaultProtocol = 0
-
------------------------------------------------------------------------------
 -- Address and service lookups
-
-#if defined(IPV6_SOCKET_SUPPORT)
 
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
 --   For more information, see <https://tools.ietf.org/html/rfc3493#page-25>
@@ -73,8 +62,8 @@ data AddrInfoFlag =
     | AI_NUMERICSERV
     -- | If no 'HostName' value is provided, the network
     --   address in each 'SockAddr'
-    --   will be left as a "wild card", i.e. as either 'iNADDR_ANY'
-    --   or 'iN6ADDR_ANY'.  This is useful for server applications that
+    --   will be left as a "wild card".
+    --   This is useful for server applications that
     --   will accept connections from any client.
     | AI_PASSIVE
     -- | If an IPv6 lookup is performed, and no IPv6
@@ -396,7 +385,6 @@ unpackBits [] _    = []
 unpackBits ((k,v):xs) r
     | r .&. v /= 0 = k : unpackBits xs (r .&. complement v)
     | otherwise    = unpackBits xs r
-#endif
 
 -----------------------------------------------------------------------------
 -- SockAddr
@@ -411,7 +399,6 @@ instance Show SockAddr where
    = showString (unsafePerformIO (inet_ntoa ha))
    . showString ":"
    . shows port
-#if defined(IPV6_SOCKET_SUPPORT)
   showsPrec _ addr@(SockAddrInet6 port _ _ _)
    = showChar '['
    . showString (unsafePerformIO $
@@ -419,9 +406,6 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
-#else
-  showsPrec _ addr@SockAddrInet6{} = error "showsPrec: not supported"
-#endif
 
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:

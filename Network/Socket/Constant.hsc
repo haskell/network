@@ -9,31 +9,23 @@ import Network.Socket.Types
 -- ---------------------------------------------------------------------------
 -- Utility Functions
 
+{-# DEPRECATED aNY_PORT "Use getAddrInfo instead" #-}
 aNY_PORT :: PortNumber
 aNY_PORT = 0
 
+{-# DEPRECATED iNADDR_ANY "Use getAddrInfo instead" #-}
 -- | The IPv4 wild card address.
-
 iNADDR_ANY :: HostAddress
 iNADDR_ANY = htonl (#const INADDR_ANY)
 
-#if defined(IPV6_SOCKET_SUPPORT)
+{-# DEPRECATED iN6ADDR_ANY "Use getAddrInfo instead" #-}
 -- | The IPv6 wild card address.
-
 iN6ADDR_ANY :: HostAddress6
 iN6ADDR_ANY = (0, 0, 0, 0)
-#endif
 
+{-# DEPRECATED sOMAXCONN "Use maxListenQueue instead" #-}
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
-
-sOL_SOCKET :: Int
-sOL_SOCKET = #const SOL_SOCKET
-
-#ifdef SCM_RIGHTS
-sCM_RIGHTS :: Int
-sCM_RIGHTS = #const SCM_RIGHTS
-#endif
 
 -- | This is the value of SOMAXCONN, typically 128.
 -- 128 is good enough for normal network servers but

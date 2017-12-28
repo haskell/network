@@ -119,7 +119,6 @@ module Network.Socket
     , HostAddress
     , hostAddressToTuple
     , tupleToHostAddress
-#if defined(IPV6_SOCKET_SUPPORT)
     -- ** Host address6
     , HostAddress6
     , hostAddress6ToTuple
@@ -128,38 +127,29 @@ module Network.Socket
     , FlowInfo
     -- ** Scope ID
     , ScopeID
-#endif
-#if HAVE_DECL_IF_NAMETOINDEX
     , ifNameToIndex
     , ifIndexToName
-#endif
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
     -- ** Port number
     , PortNumber
+    , defaultPort
 
     -- * Address operations
-
     , HostName
     , ServiceName
 
-#if defined(IPV6_SOCKET_SUPPORT)
     -- ** getaddrinfo
     , AddrInfo(..)
-
     , AddrInfoFlag(..)
     , addrInfoFlagImplemented
-
     , defaultHints
-
     , getAddrInfo
 
     -- ** getnameinfo
     , NameInfoFlag(..)
-
     , getNameInfo
-#endif
 
     -- * Socket operations
     , socket
@@ -194,19 +184,6 @@ module Network.Socket
     , getSocketOption
     , setSocketOption
 
-    -- * Special constants
-    , aNY_PORT
-    , iNADDR_ANY
-#if defined(IPV6_SOCKET_SUPPORT)
-    , iN6ADDR_ANY
-#endif
-    , sOMAXCONN
-    , sOL_SOCKET
-#ifdef SCM_RIGHTS
-    , sCM_RIGHTS
-#endif
-    , maxListenQueue
-
     -- * Initialisation
     , withSocketsDo
 
@@ -223,6 +200,9 @@ module Network.Socket
     , recvFd
     , getPeerCredential
 
+    -- * Special constants
+    , maxListenQueue
+
     -- * Deprecated
     , send
     , sendTo
@@ -236,6 +216,10 @@ module Network.Socket
     , socketToHandle
     , getPeerCred
     , getPeerEid
+    , aNY_PORT
+    , iNADDR_ANY
+    , iN6ADDR_ANY
+    , sOMAXCONN
     ) where
 
 import Network.Socket.Buffer

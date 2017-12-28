@@ -135,7 +135,7 @@ socket family stype protocol = do
 -- | Bind the socket to an address. The socket must not already be
 -- bound.  The 'Family' passed to @bind@ must be the
 -- same as that passed to 'socket'.  If the special port number
--- 'aNY_PORT' is passed then the system assigns the next available
+-- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to

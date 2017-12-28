@@ -106,7 +106,6 @@ hsnet_inet_ntoa(
     return inet_ntoa(a);
 }
 
-#if HAVE_DECL_GETADDRINFO
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
 # if defined(HAVE_WINSOCK2_H)
@@ -130,7 +129,6 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 {
     freeaddrinfo(ai);
 }
-#endif
 
 #ifndef IOV_MAX
 # define IOV_MAX 1024
