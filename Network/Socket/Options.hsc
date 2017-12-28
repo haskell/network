@@ -47,15 +47,15 @@ data SocketOption
     | MaxSegment    -- ^ TCP_MAXSEG
     | NoDelay       -- ^ TCP_NODELAY
     | Cork          -- ^ TCP_CORK
-    | Linger        -- ^ SO_LINGER
+    | Linger        -- ^ SO_LINGER: timeout in seconds, 0 means disabling/disabled.
     | ReusePort     -- ^ SO_REUSEPORT
     | RecvLowWater  -- ^ SO_RCVLOWAT
     | SendLowWater  -- ^ SO_SNDLOWAT
-    | RecvTimeOut   -- ^ SO_RCVTIMEO
-    | SendTimeOut   -- ^ SO_SNDTIMEO
+    | RecvTimeOut   -- ^ SO_RCVTIMEO: this does not work at this moment.
+    | SendTimeOut   -- ^ SO_SNDTIMEO: this does not work at this moment.
     | UseLoopBack   -- ^ SO_USELOOPBACK
     | UserTimeout   -- ^ TCP_USER_TIMEOUT
-    | IPv6Only      -- ^ IPV6_V6ONLY
+    | IPv6Only      -- ^ IPV6_V6ONLY: don't use this on OpenBSD.
     | CustomSockOpt (CInt, CInt)
     deriving (Show, Typeable)
 
