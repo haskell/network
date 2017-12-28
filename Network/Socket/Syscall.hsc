@@ -52,10 +52,9 @@ import Network.Socket.Types
 -----------------------------------------------------------------------------
 -- Socket types
 
--- | Smart constructor for constructing a 'Socket'. It should only be
--- called once for every new file descriptor. The caller must make
--- sure that the socket is in non-blocking mode. See
--- 'setNonBlockIfNeeded'.
+-- | Creating 'Socket' from the a low level socket (i.e. a file descriptor).
+--   The caller must make sure that the low level socket is
+--   in non-blocking mode. See 'setNonBlockIfNeeded'.
 mkSocket :: CInt
          -> Family
          -> SocketType

@@ -17,15 +17,7 @@ import Foreign.Storable (Storable(..))
 import Network.Socket.Internal
 import Network.Socket.Types
 
--- ---------------------------------------------------------------------------
--- getPeerName
-
--- Calling $getPeerName$ returns the address details of the machine,
--- other than the local one, which is connected to the socket. This is
--- used in programs such as FTP to determine where to send the
--- returning data.  The corresponding call to get the details of the
--- local machine is $getSocketName$.
-
+-- | Getting peer's 'SockAddr'.
 getPeerName   :: Socket -> IO SockAddr
 getPeerName Socket{..} =
  withNewSockAddr socketFamily $ \ptr sz ->
@@ -35,6 +27,7 @@ getPeerName Socket{..} =
      _sz <- peek int_star
      peekSockAddr ptr
 
+-- | Getting my 'SockAddr'.
 getSocketName :: Socket -> IO SockAddr
 getSocketName Socket{..} =
  withNewSockAddr socketFamily $ \ptr sz ->

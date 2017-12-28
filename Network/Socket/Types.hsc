@@ -79,13 +79,14 @@ import Foreign.Marshal.Array
 #endif
 
 -- | Type for a socket. Use 'mkSocket' to create 'Socket'.
+--   This is typically created by 'socket', 'accept' and 'socketPair'.
 data Socket = Socket
   {
-    socketFd       :: CInt              -- ^ File descriptor
-  , socketFamily   :: Family            -- ^ Address family
-  , socketType     :: SocketType        -- ^ Socket type
-  , socketProtocol :: ProtocolNumber    -- ^ Protocol number
-  , socketStatus   :: MVar SocketStatus -- ^ Socket status
+    socketFd       :: CInt              -- ^ File descriptor.
+  , socketFamily   :: Family            -- ^ Address family.
+  , socketType     :: SocketType        -- ^ Socket type.
+  , socketProtocol :: ProtocolNumber    -- ^ Protocol number.
+  , socketStatus   :: MVar SocketStatus -- ^ Socket status.
   } deriving Typeable
 
 instance Eq Socket where
@@ -841,12 +842,15 @@ instance Storable PortNumber where
 -- families are supported.
 
 #if defined(IPV6_SOCKET_SUPPORT)
+-- | Flow information.
 type FlowInfo = Word32
+-- | Scope identifier.
 type ScopeID = Word32
 #endif
 
--- | The existence of a constructor does not necessarily imply that
--- that socket address type is supported on your system: see
+-- | Socket addresses.
+--  The existence of a constructor does not necessarily imply that
+--  that socket address type is supported on your system: see
 -- 'isSupportedSockAddr'.
 data SockAddr       -- C Names
   = SockAddrInet
@@ -1048,7 +1052,7 @@ tupleToHostAddress (b3, b2, b1, b0) =
 -- 'tupleToHostAddress6'.
 type HostAddress6 = (Word32, Word32, Word32, Word32)
 
--- |
+-- | Converts 'HostAddress6' to representation-independent IPv6 octuple.
 --
 -- prop> (w1,w2,w3,w4,w5,w6,w7,w8) == hostAddress6ToTuple (tupleToHostAddress6 (w1,w2,w3,w4,w5,w6,w7,w8))
 hostAddress6ToTuple :: HostAddress6 -> (Word16, Word16, Word16, Word16,
@@ -1059,6 +1063,7 @@ hostAddress6ToTuple (w3, w2, w1, w0) =
         low w = fromIntegral w
     in (high w3, low w3, high w2, low w2, high w1, low w1, high w0, low w0)
 
+-- | Converts IPv6 octuple to 'HostAddress6'.
 tupleToHostAddress6 :: (Word16, Word16, Word16, Word16,
                         Word16, Word16, Word16, Word16) -> HostAddress6
 tupleToHostAddress6 (w7, w6, w5, w4, w3, w2, w1, w0) =
