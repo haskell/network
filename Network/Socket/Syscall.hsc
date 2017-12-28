@@ -161,7 +161,8 @@ connect :: Socket    -- Unconnected Socket
         -> IO ()
 connect sock@Socket{..} addr = withSocketsDo $
  modifyMVar_ socketStatus $ \currentStatus ->
- if currentStatus `elem` [NotConnected, Bound]
+ if (socketType == Stream && currentStatus `elem` [NotConnected, Bound]) ||
+    (currentStatus `elem` [NotConnected, Bound, Listening, Connected])
   then withSockAddr addr $ \p_addr sz -> do
      connectLoop sock p_addr (fromIntegral sz)
      return Connected
