@@ -1226,8 +1226,8 @@ isWritable = isReadable -- sort of.
 
 isAcceptable :: Family -> SocketType -> SocketStatus -> Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable AF_UNIX x status
-    | x == Stream || x == SeqPacket =
+isAcceptable AF_UNIX sockType status
+    | sockType == Stream || sockType == SeqPacket =
         status == Connected || status == Bound || status == Listening
 isAcceptable AF_UNIX _ _ = False
 #endif
