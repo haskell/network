@@ -572,10 +572,8 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept sock@(MkSocket s family stype protocol status) = do
- currentStatus <- readMVar status
- okay <- isAcceptable sock
- if not okay
+accept (MkSocket s family stype protocol status) = withMVar status $ \currentStatus -> do
+ if not $ isAcceptable family stype currentStatus
    then
      ioError $ userError $
        "Network.Socket.accept: can't accept socket (" ++
@@ -1226,17 +1224,14 @@ isReadable (MkSocket _ _ _ _ status) = do
 isWritable  :: Socket -> IO Bool
 isWritable = isReadable -- sort of.
 
-isAcceptable :: Socket -> IO Bool
+isAcceptable :: Family -> SocketType -> SocketStatus -> Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable (MkSocket _ AF_UNIX x _ status)
-    | x == Stream || x == SeqPacket = do
-        value <- readMVar status
-        return (value == Connected || value == Bound || value == Listening)
-isAcceptable (MkSocket _ AF_UNIX _ _ _) = return False
+isAcceptable AF_UNIX x status
+    | x == Stream || x == SeqPacket =
+        status == Connected || status == Bound || status == Listening
+isAcceptable AF_UNIX _ _ = False
 #endif
-isAcceptable (MkSocket _ _ _ _ status) = do
-    value <- readMVar status
-    return (value == Connected || value == Listening)
+isAcceptable _ _ status = status == Connected || status == Listening
 
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:
