@@ -232,10 +232,8 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept sock@Socket{..} = do
- currentStatus <- readMVar socketStatus
- okay <- isAcceptable sock
- if not okay
+accept sock@Socket{..} = withMVar socketStatus $ \currentStatus -> do
+ if not $ isAcceptable socketFamily socketType currentStatus
    then
      ioError $ userError $
        "Network.Socket.accept: can't accept socket (" ++

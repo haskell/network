@@ -157,17 +157,14 @@ isReadable Socket{..} = do
 isWritable  :: Socket -> IO Bool
 isWritable = isReadable -- sort of.
 
-isAcceptable :: Socket -> IO Bool
+isAcceptable :: Family -> SocketType -> SocketStatus -> Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable (Socket _ AF_UNIX x _ status)
-    | x == Stream || x == SeqPacket = do
-        value <- readMVar status
-        return (value == Connected || value == Bound || value == Listening)
-isAcceptable (Socket _ AF_UNIX _ _ _) = return False
+isAcceptable AF_UNIX sockType status
+    | sockType == Stream || sockType == SeqPacket =
+        status == Connected || status == Bound || status == Listening
+isAcceptable AF_UNIX _ _ = False
 #endif
-isAcceptable Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Connected || value == Listening)
+isAcceptable _ _ status = status == Connected || status == Listening
 
 
 -- | If you're operating 'Socket' in multithread environment,
