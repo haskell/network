@@ -1533,8 +1533,17 @@ getAddrInfo hints node service = withSocketsDo $
                     c_freeaddrinfo ptr_addrs
                     return ais
             _ -> do err <- gai_strerror ret
+                    let message = concat
+                            [ "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
+                            , show hints
+                            , ", host name: "
+                            , show node
+                            , ", service name: "
+                            , show service
+                            , ")"
+                            ]
                     ioError (ioeSetErrorString
-                             (mkIOError NoSuchThing "Network.Socket.getAddrInfo" Nothing
+                             (mkIOError NoSuchThing message Nothing
                               Nothing) err)
     -- Leaving out the service and using AI_NUMERICSERV causes a
     -- segfault on OS X 10.8.2. This code removes AI_NUMERICSERV
@@ -1613,8 +1622,19 @@ getNameInfo flags doHost doService addr = withSocketsDo $
             serv <- peekIf doService c_serv
             return (host, serv)
           _ -> do err <- gai_strerror ret
+                  let message = concat
+                        [ "Network.Socket.getNameInfo (called with flags: "
+                        , show flags
+                        , ", hostname lookup: "
+                        , show doHost
+                        , ", service name lookup: "
+                        , show doService
+                        , ", socket address: "
+                        , show addr
+                        , ")"
+                        ]
                   ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing "Network.Socket.getNameInfo" Nothing
+                           (mkIOError NoSuchThing message Nothing
                             Nothing) err)
 
 foreign import ccall safe "hsnet_getnameinfo"
