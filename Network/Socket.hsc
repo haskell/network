@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -1408,6 +1408,25 @@ defaultHints = AddrInfo {
                          addrCanonName = undefined
                         }
 
+-- | Shows the fields of 'defaultHints', without inspecting the by-default undefined fields 'addrAddress' and 'addrCanonName'.
+showDefaultHints :: AddrInfo -> String
+showDefaultHints AddrInfo{..} = concat
+    [ "AddrInfo {"
+    , "addrFlags = "
+    , show addrFlags
+    , ", addrFamily = "
+    , show addrFamily
+    , ", addrSocketType = "
+    , show addrSocketType
+    , ", addrProtocol = "
+    , show addrProtocol
+    , ", addrAddress = "
+    , "<assumed to be undefined>"
+    , ", addrCanonName = "
+    , "<assumed to be undefined>"
+    , "}"
+    ]
+
 -- | Resolve a host or service name to one or more addresses.
 -- The 'AddrInfo' values that this function returns contain 'SockAddr'
 -- values that you can pass directly to 'connect' or
@@ -1467,7 +1486,7 @@ getAddrInfo hints node service = withSocketsDo $
             _ -> do err <- gai_strerror ret
                     let message = concat
                             [ "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
-                            , show hints
+                            , maybe (show hints) showDefaultHints hints
                             , ", host name: "
                             , show node
                             , ", service name: "
