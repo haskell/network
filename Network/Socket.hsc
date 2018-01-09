@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -1408,6 +1408,25 @@ defaultHints = AddrInfo {
                          addrCanonName = undefined
                         }
 
+-- | Shows the fields of 'defaultHints', without inspecting the by-default undefined fields 'addrAddress' and 'addrCanonName'.
+showDefaultHints :: AddrInfo -> String
+showDefaultHints AddrInfo{..} = concat
+    [ "AddrInfo {"
+    , "addrFlags = "
+    , show addrFlags
+    , ", addrFamily = "
+    , show addrFamily
+    , ", addrSocketType = "
+    , show addrSocketType
+    , ", addrProtocol = "
+    , show addrProtocol
+    , ", addrAddress = "
+    , "<assumed to be undefined>"
+    , ", addrCanonName = "
+    , "<assumed to be undefined>"
+    , "}"
+    ]
+
 -- | Resolve a host or service name to one or more addresses.
 -- The 'AddrInfo' values that this function returns contain 'SockAddr'
 -- values that you can pass directly to 'connect' or
@@ -1465,8 +1484,17 @@ getAddrInfo hints node service = withSocketsDo $
                     c_freeaddrinfo ptr_addrs
                     return ais
             _ -> do err <- gai_strerror ret
+                    let message = concat
+                            [ "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
+                            , maybe (show hints) showDefaultHints hints
+                            , ", host name: "
+                            , show node
+                            , ", service name: "
+                            , show service
+                            , ")"
+                            ]
                     ioError (ioeSetErrorString
-                             (mkIOError NoSuchThing "Network.Socket.getAddrInfo" Nothing
+                             (mkIOError NoSuchThing message Nothing
                               Nothing) err)
     -- Leaving out the service and using AI_NUMERICSERV causes a
     -- segfault on OS X 10.8.2. This code removes AI_NUMERICSERV
@@ -1545,8 +1573,19 @@ getNameInfo flags doHost doService addr = withSocketsDo $
             serv <- peekIf doService c_serv
             return (host, serv)
           _ -> do err <- gai_strerror ret
+                  let message = concat
+                        [ "Network.Socket.getNameInfo (called with flags: "
+                        , show flags
+                        , ", hostname lookup: "
+                        , show doHost
+                        , ", service name lookup: "
+                        , show doService
+                        , ", socket address: "
+                        , show addr
+                        , ")"
+                        ]
                   ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing "Network.Socket.getNameInfo" Nothing
+                           (mkIOError NoSuchThing message Nothing
                             Nothing) err)
 
 foreign import ccall safe "hsnet_getnameinfo"
