@@ -24,6 +24,13 @@
    MkSocket constructor is deprecated.
  * Updating documentations and fixes some bugs.
 
+## Version 2.6.3.3
+
+ * Adds a function to show the defaultHints without reading their undefined fields
+   [#291](https://github.com/haskell/network/pull/292)
+ * Improve exception error messages for getAddrInfo and getNameInfo
+   [#289](https://github.com/haskell/network/pull/289)
+
 ## Version 2.6.3.2
 
  * Zero memory of `sockaddr_un` if abstract socket
