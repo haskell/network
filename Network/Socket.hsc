@@ -583,7 +583,7 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept (MkSocket s family stype protocol status) = withMVar status $ \currentStatus -> do
+accept sock@(MkSocket s family stype protocol status) = withMVar status $ \currentStatus -> do
  if not $ isAcceptable family stype currentStatus
    then
      ioError $ userError $
