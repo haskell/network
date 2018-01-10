@@ -4,6 +4,7 @@
    [#291](https://github.com/haskell/network/pull/292)
  * Improve exception error messages for getAddrInfo and getNameInfo
    [#289](https://github.com/haskell/network/pull/289)
+ * Deprecating SockAddrCan.
 
 ## Version 2.6.3.2
 
