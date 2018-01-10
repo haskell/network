@@ -854,6 +854,10 @@ isSupportedSockAddr addr = case addr of
   _ -> False
 #endif
 
+#if defined(CAN_SOCKET_SUPPORT)
+{-# DEPRECATED SockAddrCan "This will be removed in 2.7" #-}
+#endif
+
 #if defined(WITH_WINSOCK)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_HOST_OS)
