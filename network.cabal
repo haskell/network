@@ -65,7 +65,7 @@ library
       Network.Socket.ByteString.Lazy.Windows
 
   build-depends:
-    base >= 3 && < 5,
+    base >= 4.6 && < 5,
     bytestring < 0.11
 
   if !os(windows)
