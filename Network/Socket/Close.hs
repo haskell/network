@@ -49,6 +49,8 @@ close :: Socket -> IO ()
 close Socket{..} =
  modifyMVar_ socketStatus $ \status ->
    case status of
+     -- This is called by the finalizer of MVar if 'socketToHandle'
+     -- is used. The finalizer catches and ignores this exception.
      ConvertedToHandle ->
          ioError (userError "close: converted to a Handle, use hClose instead")
      Closed ->
