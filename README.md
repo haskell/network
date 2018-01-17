@@ -42,3 +42,22 @@ So, if you use `CALLCONV`/`SAFE_ON_WIN`, the following is also necessary:
 ```
 ##include "HsNetDef.h"
 ```
+
+## Milestones
+
+### 2.6
+
+- Making `SockAddrCan` deprecated
+
+### 2.7
+
+- Removing `SockAddrCan`
+- Making `Network` deprecated
+- Making `Network.BSD` deprecated
+- Making `Socket` abstract
+
+### 3.0
+
+- Removing `Network`
+- Removing `Network.BSD`
+- Changing the internal structure of `Socket`.
