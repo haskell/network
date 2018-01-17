@@ -1,8 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | Tests for things that didn't work in the past.
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-} -- for recv and send
 module Main where
 
 import Network.Socket
+import Network.Socket.ByteString
 
 import Control.Exception
 

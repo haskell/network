@@ -39,8 +39,6 @@ tested-with:   GHC == 7.4.2
 
 library
   exposed-modules:
-    Network
-    Network.BSD
     Network.Socket
     Network.Socket.ByteString
     Network.Socket.ByteString.Lazy
@@ -56,7 +54,6 @@ library
     Network.Socket.Info
     Network.Socket.Name
     Network.Socket.Options
-    Network.Socket.String
     Network.Socket.Syscall
     Network.Socket.Types
     Network.Socket.Unix
