@@ -9,8 +9,7 @@ import qualified Control.Exception as E
 import Control.Monad
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
-import qualified Network.Socket (recv)
-import Network.Socket hiding (recv, recvFrom, send, sendTo)
+import Network.Socket
 import Network.Socket.ByteString
 import System.Timeout (timeout)
 import Test.Framework (Test, defaultMain, testGroup)
@@ -187,18 +186,6 @@ testGetPeerEid =
                      putStrLn $ C.unpack msg
 -}
 
--- The String version of 'recv' should throw an exception when the remote end
--- has closed the connection, the ByteString version should return an empty
--- ByteString.
-testStringEol :: Assertion
-testStringEol = tcpTest client close
-  where client s = do
-          res <- E.try $ Network.Socket.recv s 4096
-          case res of
-            Left (_ :: IOError) -> return ()
-            Right _ -> assertFailure
-              "String recv didn't throw an exception on a closed socket"
-
 testByteStringEol :: Assertion
 testByteStringEol = tcpTest client close
   where client s = do
@@ -271,7 +258,6 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testUserTimeout" testUserTimeout
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
-    , testCase "testStringEol" testStringEol
     , testCase "testByteStringEol" testByteStringEol
       -- conversions of IP addresses
     , testCase "testHtonlNtohl" testHtonlNtohl

@@ -202,11 +202,6 @@ module Network.Socket
     , maxListenQueue
 
     -- * Deprecated
-    , send
-    , sendTo
-    , recv
-    , recvLen
-    , recvFrom
     , inet_addr
     , inet_ntoa
     , htonl
@@ -230,7 +225,6 @@ import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Options
-import Network.Socket.String
 import Network.Socket.Syscall
 import Network.Socket.Types
 import Network.Socket.Unix
