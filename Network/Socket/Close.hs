@@ -9,7 +9,6 @@ module Network.Socket.Close (
   , close
   ) where
 
-import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (closeFdWith)
@@ -46,16 +45,7 @@ shutdown Socket{..} stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close Socket{..} =
- modifyMVar_ socketStatus $ \status ->
-   case status of
-     -- This is called by the finalizer of MVar if 'socketToHandle'
-     -- is used. The finalizer catches and ignores this exception.
-     ConvertedToHandle ->
-         ioError (userError "close: converted to a Handle, use hClose instead")
-     Closed ->
-         return status
-     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd) >> return Closed
+close Socket{..} = closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd)
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd

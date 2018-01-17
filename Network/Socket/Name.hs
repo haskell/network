@@ -51,10 +51,10 @@ foreign import CALLCONV unsafe "getsockname"
 -- | Getting the port of socket.
 socketPort :: Socket            -- Connected & Bound Socket
            -> IO PortNumber     -- Port Number of Socket
-socketPort sock@(Socket _ AF_INET _ _ _) = do
+socketPort sock@(Socket _ AF_INET _ _) = do
     (SockAddrInet port _) <- getSocketName sock
     return port
-socketPort sock@(Socket _ AF_INET6 _ _ _) = do
+socketPort sock@(Socket _ AF_INET6 _ _) = do
     (SockAddrInet6 port _ _ _) <- getSocketName sock
     return port
 socketPort Socket{..} =

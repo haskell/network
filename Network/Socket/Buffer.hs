@@ -99,15 +99,7 @@ recvBufFrom sock@Socket{..} ptr nbytes
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
          else do
-           flg <- isConnected sock
-             -- For at least one implementation (WinSock 2), recvfrom() ignores
-             -- filling in the sockaddr for connected TCP sockets. Cope with
-             -- this by using getPeerName instead.
-           sockaddr <-
-                if flg then
-                   getPeerName sock
-                else
-                   peekSockAddr ptr_addr
+           sockaddr <- getPeerName sock -- fixme: peekSockAddr ptr_addr
            return (len', sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected

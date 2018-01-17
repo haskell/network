@@ -132,18 +132,9 @@ module Network.Socket
     , socketFamily
     , socketType
     , socketProtocol
-    , socketStatus
     -- ** Socket type
     , SocketType(..)
     , isSupportedSocketType
-    -- ** Socket status
-    , SocketStatus(..)
-    , isConnected
-    , isBound
-    , isListening
-    , isReadable
-    , isWritable
-    , withConnectedSocket
     -- ** Family
     , Family(..)
     , isSupportedFamily
@@ -206,7 +197,6 @@ module Network.Socket
     , inet_ntoa
     , htonl
     , ntohl
-    , socketToHandle
     , getPeerCred
     , getPeerEid
     , aNY_PORT
@@ -219,7 +209,6 @@ import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
 import Network.Socket.Fcntl
-import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
 import Network.Socket.Internal
