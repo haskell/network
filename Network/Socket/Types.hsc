@@ -9,15 +9,6 @@ module Network.Socket.Types
     (
     -- * Socket
       Socket(..)
-    -- * Socket status
-    , SocketStatus(..)
-    , isConnected
-    , isBound
-    , isListening
-    , isReadable
-    , isWritable
-    , isAcceptable
-    , withConnectedSocket
     -- * Socket types
     , SocketType(..)
     , isSupportedSocketType
@@ -63,7 +54,6 @@ module Network.Socket.Types
     , ntohl
     ) where
 
-import Control.Concurrent.MVar
 import Control.Monad
 import Data.Bits
 import Data.Maybe
@@ -87,11 +77,10 @@ data Socket = Socket
   , socketFamily   :: Family            -- ^ Address family.
   , socketType     :: SocketType        -- ^ Socket type.
   , socketProtocol :: ProtocolNumber    -- ^ Protocol number.
-  , socketStatus   :: MVar SocketStatus -- ^ Socket status.
   } deriving Typeable
 
 instance Eq Socket where
-  s1 == s2 = socketStatus s1 == socketStatus s2
+  s1 == s2 = socketFd s1 == socketFd s2
 
 instance Show Socket where
   showsPrec _n Socket{..} =
@@ -108,79 +97,6 @@ type ProtocolNumber = CInt
 -- 0
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
-
--- -----------------------------------------------------------------------------
-
--- | The status of the socket as /determined by this library/, not
--- necessarily reflecting the state of the connection itself.
---
--- For example, the 'Closed' status is applied when the 'close'
--- function is called.
-data SocketStatus
-  -- Returned Status    Function called
-  = NotConnected        -- ^ Newly created, unconnected socket
-  | Bound               -- ^ Bound, via 'bind'
-  | Listening           -- ^ Listening, via 'listen'
-  | Connected           -- ^ Connected or accepted, via 'connect' or 'accept'
-  | ConvertedToHandle   -- ^ Is now a 'Handle' (via 'socketToHandle'), don't touch
-  | Closed              -- ^ Closed was closed by 'close'
-    deriving (Eq, Show, Typeable)
-
-
--- -----------------------------------------------------------------------------
--- Socket Predicates
-
--- | Determines whether 'close' has been used on the 'Socket'. This
--- does /not/ indicate any status about the socket beyond this. If the
--- socket has been closed remotely, this function can still return
--- 'True'.
-isConnected :: Socket -> IO Bool
-isConnected Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Connected)
-
-isBound :: Socket -> IO Bool
-isBound Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Bound)
-
-isListening :: Socket -> IO Bool
-isListening Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Listening)
-
-isReadable  :: Socket -> IO Bool
-isReadable Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Listening || value == Connected)
-
-isWritable  :: Socket -> IO Bool
-isWritable = isReadable -- sort of.
-
-isAcceptable :: Family -> SocketType -> SocketStatus -> Bool
-#if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable AF_UNIX sockType status
-    | sockType == Stream || sockType == SeqPacket =
-        status == Connected || status == Bound || status == Listening
-isAcceptable AF_UNIX _ _ = False
-#endif
-isAcceptable _ _ status = status == Connected || status == Listening
-
-
--- | If you're operating 'Socket' in multithread environment,
--- for example, use a timeout thread to close 'Socket'. you have to
--- make sure 'Socket' is opened before read/write, 'withConnectedSocket'
--- will run your action if 'Socket' is still 'Connected', otherwise
--- return the 'Socket' status instead.
---
--- Note, this will block other thread which try to close 'Socket' by locking
--- the status 'MVar'.
-withConnectedSocket :: Socket -> (Socket -> IO a) -> IO (Either SocketStatus a)
-withConnectedSocket sock act =
-  withMVar (socketStatus sock) $ \status ->
-     case status of
-       Connected -> Right `fmap` act sock
-       _         -> return (Left status)
 
 -----------------------------------------------------------------------------
 -- Socket types

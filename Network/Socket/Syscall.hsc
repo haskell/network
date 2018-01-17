@@ -6,7 +6,6 @@
 
 module Network.Socket.Syscall where
 
-import Control.Concurrent.MVar
 import Control.Monad (when)
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
@@ -59,15 +58,10 @@ mkSocket :: CInt
          -> Family
          -> SocketType
          -> ProtocolNumber
-         -> SocketStatus
          -> IO Socket
-mkSocket fd fam sType pNum stat = do
-   mStat <- newMVar stat
+mkSocket fd fam sType pNum = do
    withSocketsDo $ return ()
-   let sock = Socket fd fam sType pNum mStat
-##if MIN_VERSION_base(4,6,0)
-   _ <- mkWeakMVar mStat $ close sock
-##endif
+   let sock = Socket fd fam sType pNum
    return sock
 
 -----------------------------------------------------------------------------
@@ -113,7 +107,7 @@ socket family stype protocol = do
                 c_socket (packFamily family) c_stype protocol
     setNonBlockIfNeeded fd
 #endif
-    sock <- mkSocket fd family stype protocol NotConnected
+    sock <- mkSocket fd family stype protocol
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
     -- so we explicitly set it to 0 to provide a common default.
@@ -140,17 +134,10 @@ socket family stype protocol = do
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
            -> IO ()
-bind Socket{..} addr =
- modifyMVar_ socketStatus $ \status ->
-   if status /= NotConnected
-    then
-     ioError $ userError $
-       "Network.Socket.bind: can't bind to socket with status " ++ show status
-    else
-     withSockAddr addr $ \p_addr sz -> do
-       _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-         c_bind socketFd p_addr (fromIntegral sz)
-       return Bound
+bind Socket{..} addr = withSockAddr addr $ \p_addr sz -> do
+   _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
+     c_bind socketFd p_addr (fromIntegral sz)
+   return ()
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
@@ -159,17 +146,8 @@ bind Socket{..} addr =
 connect :: Socket    -- Unconnected Socket
         -> SockAddr  -- Socket address stuff
         -> IO ()
-connect sock@Socket{..} addr = withSocketsDo $
- modifyMVar_ socketStatus $ \currentStatus ->
- if (socketType == Stream && currentStatus `elem` [NotConnected, Bound]) ||
-    (currentStatus `elem` [NotConnected, Bound, Listening, Connected])
-  then withSockAddr addr $ \p_addr sz -> do
-     connectLoop sock p_addr (fromIntegral sz)
-     return Connected
-  else do
-     let errLoc = "Network.Socket.connect: " ++ show sock
-     ioError $ userError $
-       errLoc ++ ": can't connect to socket with status " ++ show currentStatus
+connect sock@Socket{..} addr = withSocketsDo $ withSockAddr addr $ \p_addr sz ->
+    connectLoop sock p_addr (fromIntegral sz)
 
 connectLoop :: Socket -> Ptr SockAddr -> CInt -> IO ()
 connectLoop sock@Socket{..} p_addr sz = loop
@@ -204,15 +182,8 @@ listen :: Socket  -- Connected & Bound Socket
        -> Int     -- Queue Length
        -> IO ()
 listen Socket{..} backlog =
- modifyMVar_ socketStatus $ \status ->
-   if status /= Bound
-     then
-       ioError $ userError $
-         "Network.Socket.listen: can't listen on socket with status " ++ show status
-     else do
-       throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-         c_listen socketFd (fromIntegral backlog)
-       return Listening
+    throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
+        c_listen socketFd (fromIntegral backlog)
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -232,14 +203,7 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept sock@Socket{..} = withMVar socketStatus $ \currentStatus -> do
- if not $ isAcceptable socketFamily socketType currentStatus
-   then
-     ioError $ userError $
-       "Network.Socket.accept: can't accept socket (" ++
-         show (socketFamily, socketType, socketProtocol) ++ ") with status " ++
-         show currentStatus
-   else do
+accept sock@Socket{..} = do
      let sz = sizeOfSockAddrByFamily socketFamily
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS)
@@ -270,7 +234,7 @@ accept sock@Socket{..} = withMVar socketStatus $ \currentStatus -> do
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSockAddr sockaddr
-     sock' <- mkSocket new_fd socketFamily socketType socketProtocol Connected
+     sock' <- mkSocket new_fd socketFamily socketType socketProtocol
      return (sock', addr)
 
 foreign import CALLCONV unsafe "socket"

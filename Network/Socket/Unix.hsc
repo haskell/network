@@ -162,7 +162,7 @@ socketPair family stype protocol =
   where
     mkNonBlockingSocket fd = do
        setNonBlockIfNeeded fd
-       mkSocket fd family stype protocol Connected
+       mkSocket fd family stype protocol
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
