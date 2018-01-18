@@ -7,11 +7,11 @@
 
 module Network.Socket.Types
     (
-    -- * Socket class
+    -- * Socket typeclass
       NetworkSocket(..)
     -- * Socket type
     , Socket(..)
-    -- * Socket types
+    -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
     , packSocketType
