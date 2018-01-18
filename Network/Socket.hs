@@ -139,7 +139,9 @@ module Network.Socket
     -- ** Family
     , Family(..)
     , isSupportedFamily
-    -- ** Socket address
+    -- ** Socket address typeclass
+    , SocketAddress(..)
+    -- ** Socket address type
     , SockAddr(..)
     , isSupportedSockAddr
     , getPeerName
