@@ -204,7 +204,7 @@ throwSocketErrorCode loc errno =
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitRead sock name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitRead $ fromIntegral $ socketFd sock)
+        (threadWaitRead $ fromIntegral $ socketFd' sock)
         io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
@@ -213,7 +213,7 @@ throwSocketErrorWaitRead sock name io =
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitWrite sock name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitWrite $ fromIntegral $ socketFd sock)
+        (threadWaitWrite $ fromIntegral $ socketFd' sock)
         io
 
 -- ---------------------------------------------------------------------------

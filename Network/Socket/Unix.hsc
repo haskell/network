@@ -62,7 +62,7 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred sock = do
-  let fd = socketFd sock
+  let fd = socketFd' sock
   let sz = (#const sizeof(struct ucred))
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
@@ -88,7 +88,7 @@ getPeerCred _ = return (0, 0, 0)
 getPeerEid :: Socket -> IO (CUInt, CUInt)
 #ifdef HAVE_GETPEEREID
 getPeerEid sock = do
-  let fd = socketFd sock
+  let fd = socketFd' sock
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
       throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
@@ -121,7 +121,7 @@ isUnixDomainSocketAvailable = False
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd sock outfd = void $
-  throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
+  throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd' sock) outfd
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
@@ -135,7 +135,7 @@ sendFd _ _ = error "Network.Socket.sendFd"
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd sock =
-  throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd sock)
+  throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd' sock)
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
 recvFd _ = error "Network.Socket.recvFd"

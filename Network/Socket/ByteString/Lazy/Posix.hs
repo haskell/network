@@ -34,7 +34,7 @@ send sock@Socket{..} s = do
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
       throwSocketErrorWaitWrite sock "writev" $
-        c_writev (fromIntegral socketFd) ptr niovs
+        c_writev (fromIntegral socketFd') ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
       where loop (c:cs) q k !niovs
