@@ -109,7 +109,6 @@ module Network.Socket
     , addrInfoFlagImplemented
 
     -- * Socket operations
-    , socket
     , connect
     , bind
     , listen
@@ -125,23 +124,25 @@ module Network.Socket
     , getSocketOption
     , setSocketOption
 
-    -- * Types
-    -- ** Socket typeclass
+    -- * Typeclasses
     , NetworkSocket(..)
-    -- ** Socket type
+    , SocketAddress(..)
+    -- * Basic socket
     , Socket
     , socketFamily
     , socketType
     , socketProtocol
+    , socket
     -- ** Types of Socket
     , SocketType(..)
     , isSupportedSocketType
     -- ** Family
     , Family(..)
     , isSupportedFamily
-    -- ** Socket address typeclass
-    , SocketAddress(..)
-    -- ** Socket address type
+    -- ** Protocol number
+    , ProtocolNumber
+    , defaultProtocol
+    -- * Basic socket address type
     , SockAddr(..)
     , isSupportedSockAddr
     , getPeerName
@@ -160,9 +161,6 @@ module Network.Socket
     , ScopeID
     , ifNameToIndex
     , ifIndexToName
-    -- ** Protocol number
-    , ProtocolNumber
-    , defaultProtocol
     -- ** Port number
     , PortNumber
     , defaultPort
