@@ -26,7 +26,10 @@ module Network.Socket.Types
     , packFamily
     , unpackFamily
 
-    -- * Socket addresses
+    -- * Socket address typeclass
+    , SocketAddress(..)
+    , withSocketAddress
+    -- * Socket address type
     , SockAddr(..)
     , isSupportedSockAddr
     , HostAddress
@@ -780,6 +783,18 @@ defaultPort :: PortNumber
 defaultPort = 0
 
 ------------------------------------------------------------------------
+
+class SocketAddress sa where
+    sizeOfSocketAddress :: sa -> Int
+    peekSocketAddrress :: Ptr sa -> IO sa
+    pokeSocketAddress  :: Ptr a -> sa -> IO ()
+
+withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
+withSocketAddress addr f = do
+    let sz = sizeOfSocketAddress addr
+    allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
+
+------------------------------------------------------------------------
 -- Socket addresses
 
 -- The scheme used for addressing sockets is somewhat quirky. The
@@ -831,6 +846,11 @@ isSupportedSockAddr addr = case addr of
 #else
   SockAddrUnix{}  -> False
 #endif
+
+instance SocketAddress SockAddr where
+    sizeOfSocketAddress = sizeOfSockAddr
+    peekSocketAddrress  = peekSockAddr
+    pokeSocketAddress   = pokeSockAddr
 
 #if defined(mingw32_HOST_OS)
 type CSaFamily = (#type unsigned short)
