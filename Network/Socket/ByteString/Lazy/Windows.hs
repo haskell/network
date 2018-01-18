@@ -11,25 +11,25 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.Int (Int64)
 
-import Network.Socket (Socket(..))
 import qualified Network.Socket.ByteString as Socket
+import Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
 -- Sending
 
-send :: Socket        -- ^ Connected socket
+send :: NetworkSocket s => s       -- ^ Connected socket
      -> L.ByteString  -- ^ Data to send
      -> IO Int64      -- ^ Number of bytes sent
-send sock s = do
-  fromIntegral `fmap` case L.toChunks s of
+send s lbs = do
+  fromIntegral `fmap` case L.toChunks lbs of
       -- TODO: Consider doing nothing if the string is empty.
-      []    -> Socket.send sock S.empty
-      (x:_) -> Socket.send sock x
+      []    -> Socket.send s S.empty
+      (x:_) -> Socket.send s x
 
-sendAll :: Socket        -- ^ Connected socket
+sendAll :: NetworkSocket s => s        -- ^ Connected socket
         -> L.ByteString  -- ^ Data to send
         -> IO ()
-sendAll sock bs = do
-  sent <- send sock bs
+sendAll s bs = do
+  sent <- send s bs
   let bs' = L.drop sent bs
-  unless (L.null bs') $ sendAll sock bs'
+  unless (L.null bs') $ sendAll s bs'

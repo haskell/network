@@ -20,21 +20,21 @@ import Foreign.Storable (Storable(..))
 import Network.Socket.ByteString.IOVec (IOVec(IOVec))
 import Network.Socket.ByteString.Internal (c_writev)
 import Network.Socket.Internal
-import Network.Socket.Types (Socket(..))
+import Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
 -- Sending
 
-send :: Socket      -- ^ Connected socket
+send :: NetworkSocket s => s     -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
-send Socket{..} s = do
-  let cs  = take maxNumChunks (L.toChunks s)
+send s lbs = do
+  let cs  = take maxNumChunks (L.toChunks lbs)
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
-      throwSocketErrorWaitWrite socketFd' "writev" $
-        c_writev (fromIntegral socketFd') ptr niovs
+      throwSocketErrorWaitWrite (socketFd s) "writev" $
+        c_writev (fromIntegral $ socketFd s) ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
       where loop (c:cs) q k !niovs
@@ -48,10 +48,10 @@ send Socket{..} s = do
     maxNumBytes  = 4194304 :: Int  -- maximum number of bytes to transmit in one system call
     maxNumChunks = 1024    :: Int  -- maximum number of chunks to transmit in one system call
 
-sendAll :: Socket      -- ^ Connected socket
+sendAll :: NetworkSocket s => s     -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
-sendAll sock bs = do
-  sent <- send sock bs
+sendAll s bs = do
+  sent <- send s bs
   let bs' = L.drop sent bs
-  unless (L.null bs') $ sendAll sock bs'
+  unless (L.null bs') $ sendAll s bs'
