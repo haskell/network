@@ -187,7 +187,7 @@ testGetPeerEid =
 -}
 
 testByteStringEol :: Assertion
-testByteStringEol = tcpTest client close
+testByteStringEol = tcpTest client (flip shutdown ShutdownSend)
   where client s = do
           res :: Either IOError C.ByteString <- E.try $ recv s 4096
           res @=? Right S.empty
