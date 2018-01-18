@@ -40,14 +40,14 @@ sendBufTo sock@Socket{..} ptr nbytes addr =
  withSockAddr addr $ \p_addr sz ->
    fmap fromIntegral $
      throwSocketErrorWaitWrite sock "Network.Socket.sendBufTo" $
-        c_sendto socketFd ptr (fromIntegral nbytes) 0{-flags-}
+        c_sendto socketFd' ptr (fromIntegral nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> FD
 socket2FD Socket{..} =
   -- HACK, 1 means True
-  FD{ fdFD = socketFd, fdIsSocket_ = 1 }
+  FD{ fdFD = socketFd', fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -74,7 +74,7 @@ sendBuf sock str len =
       (fromIntegral len)
 #else
      throwSocketErrorWaitWrite sock "Network.Socket.sendBuf" $
-        c_send (socketFd sock) str (fromIntegral len) 0{-flags-}
+        c_send (socketFd' sock) str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -93,7 +93,7 @@ recvBufFrom sock@Socket{..} ptr nbytes
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
         len <- throwSocketErrorWaitRead sock "Network.Socket.recvBufFrom" $
-                   c_recvfrom socketFd ptr (fromIntegral nbytes) 0{-flags-}
+                   c_recvfrom socketFd' ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
         if len' == 0
@@ -127,7 +127,7 @@ recvBuf sock ptr nbytes
                 (socket2FD sock) ptr 0 (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead sock "Network.Socket.recvBuf" $
-                   c_recv (socketFd sock) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+                   c_recv (socketFd' sock) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0

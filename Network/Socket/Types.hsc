@@ -73,18 +73,18 @@ import Foreign.Marshal.Array
 --   This is typically created by 'socket', 'accept' and 'socketPair'.
 data Socket = Socket
   {
-    socketFd       :: CInt              -- ^ File descriptor.
+    socketFd'       :: CInt              -- ^ File descriptor.
   , socketFamily   :: Family            -- ^ Address family.
   , socketType     :: SocketType        -- ^ Socket type.
   , socketProtocol :: ProtocolNumber    -- ^ Protocol number.
   } deriving Typeable
 
 instance Eq Socket where
-  s1 == s2 = socketFd s1 == socketFd s2
+  s1 == s2 = socketFd' s1 == socketFd' s2
 
 instance Show Socket where
   showsPrec _n Socket{..} =
-        showString "<socket: " . shows socketFd . showString ">"
+        showString "<socket: " . shows socketFd' . showString ">"
 
 -----------------------------------------------------------------------------
 

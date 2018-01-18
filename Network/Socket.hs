@@ -128,7 +128,7 @@ module Network.Socket
     -- * Types
     -- ** Socket
     , Socket
-    , socketFd
+    , socketFd'
     , socketFamily
     , socketType
     , socketProtocol

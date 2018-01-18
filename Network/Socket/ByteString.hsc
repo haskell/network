@@ -164,7 +164,7 @@ sendMany sock@Socket{..} cs = do
     sendManyInner =
       fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
           throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendMany" $
-              c_writev (fromIntegral socketFd) iovsPtr
+              c_writev (fromIntegral socketFd') iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
 sendMany sock = sendAll sock . B.concat
@@ -195,7 +195,7 @@ sendManyTo sock@Socket{..} cs addr = do
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
             throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendManyTo" $
-              c_sendmsg (fromIntegral socketFd) msgHdrPtr 0
+              c_sendmsg (fromIntegral socketFd') msgHdrPtr 0
 #else
 sendManyTo sock cs = sendAllTo sock (B.concat cs)
 #endif

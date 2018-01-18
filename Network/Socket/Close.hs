@@ -37,7 +37,7 @@ sdownCmdToInt ShutdownBoth    = 2
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown Socket{..} stype = do
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown socketFd (sdownCmdToInt stype)
+    c_shutdown socketFd' (sdownCmdToInt stype)
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ shutdown Socket{..} stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close Socket{..} = closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd)
+close Socket{..} = closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd')
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd

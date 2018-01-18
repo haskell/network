@@ -23,7 +23,7 @@ getPeerName Socket{..} =
  withNewSockAddr socketFamily $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
-       c_getpeername socketFd ptr int_star
+       c_getpeername socketFd' ptr int_star
      _sz <- peek int_star
      peekSockAddr ptr
 
@@ -33,7 +33,7 @@ getSocketName Socket{..} =
  withNewSockAddr socketFamily $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
-       c_getsockname socketFd ptr int_star
+       c_getsockname socketFd' ptr int_star
      peekSockAddr ptr
 
 foreign import CALLCONV unsafe "getpeername"

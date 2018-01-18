@@ -136,7 +136,7 @@ bind :: Socket    -- Unconnected Socket
            -> IO ()
 bind Socket{..} addr = withSockAddr addr $ \p_addr sz -> do
    _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind socketFd p_addr (fromIntegral sz)
+     c_bind socketFd' p_addr (fromIntegral sz)
    return ()
 
 -----------------------------------------------------------------------------
@@ -154,7 +154,7 @@ connectLoop sock@Socket{..} p_addr sz = loop
   where
     errLoc = "Network.Socket.connect: " ++ show sock
     loop = do
-       r <- c_connect socketFd p_addr sz
+       r <- c_connect socketFd' p_addr sz
        when (r == -1) $ do
 #if defined(mingw32_HOST_OS)
            throwSocketError errLoc
@@ -167,7 +167,7 @@ connectLoop sock@Socket{..} p_addr sz = loop
              _otherwise             -> throwSocketError errLoc
 
     connectBlocked = do
-       threadWaitWrite (fromIntegral socketFd)
+       threadWaitWrite (fromIntegral socketFd')
        err <- getSocketOption sock SoError
        when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
@@ -183,7 +183,7 @@ listen :: Socket  -- Connected & Bound Socket
        -> IO ()
 listen Socket{..} backlog =
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen socketFd (fromIntegral backlog)
+        c_listen socketFd' (fromIntegral backlog)
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -211,9 +211,9 @@ accept sock@Socket{..} = do
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe socketFd sockaddr ptr_len
+                    c_accept_safe socketFd' sockaddr ptr_len
            else do
-                paramData <- c_newAcceptParams socketFd (fromIntegral sz) sockaddr
+                paramData <- c_newAcceptParams socketFd' (fromIntegral sz) sockaddr
                 rc        <- asyncDoProc c_acceptDoProc paramData
                 new_fd  <- c_acceptNewSock    paramData
                 c_free paramData
@@ -224,11 +224,11 @@ accept sock@Socket{..} = do
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
-                        (threadWaitRead (fromIntegral socketFd))
-                        (c_accept4 socketFd sockaddr ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
+                        (threadWaitRead (fromIntegral socketFd'))
+                        (c_accept4 socketFd' sockaddr ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
 # else
      new_fd <- throwSocketErrorWaitRead sock "Network.Socket.accept"
-                        (c_accept socketFd sockaddr ptr_len)
+                        (c_accept socketFd' sockaddr ptr_len)
      setNonBlockIfNeeded new_fd
      setCloseOnExecIfNeeded new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
