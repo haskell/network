@@ -82,7 +82,7 @@ class NetworkSocket s where
 --   This is typically created by 'socket', 'accept' and 'socketPair'.
 data Socket = Socket
   {
-    socketFd'       :: CInt              -- ^ File descriptor.
+    socketFd'      :: CInt              -- ^ File descriptor.
   , socketFamily   :: Family            -- ^ Address family.
   , socketType     :: SocketType        -- ^ Socket type.
   , socketProtocol :: ProtocolNumber    -- ^ Protocol number.
