@@ -131,12 +131,10 @@ socket family stype protocol = do
 -- same as that passed to 'socket'.  If the special port number
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
-bind :: Socket    -- Unconnected Socket
-           -> SockAddr  -- Address to Bind to
-           -> IO ()
-bind Socket{..} addr = withSockAddr addr $ \p_addr sz -> do
+bind :: NetworkSocket s => s -> SockAddr -> IO ()
+bind s addr = withSockAddr addr $ \p_addr sz -> do
    _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind socketFd' p_addr (fromIntegral sz)
+     c_bind (socketFd s) p_addr (fromIntegral sz)
    return ()
 
 -----------------------------------------------------------------------------
@@ -178,12 +176,10 @@ connectLoop sock@Socket{..} p_addr sz = loop
 -- | Listen for connections made to the socket.  The second argument
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
-listen :: Socket  -- Connected & Bound Socket
-       -> Int     -- Queue Length
-       -> IO ()
-listen Socket{..} backlog =
+listen :: NetworkSocket s => s -> Int -> IO ()
+listen s backlog =
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen socketFd' (fromIntegral backlog)
+        c_listen (socketFd s) (fromIntegral backlog)
 
 -----------------------------------------------------------------------------
 -- Accept
