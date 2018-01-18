@@ -131,28 +131,26 @@ socket family stype protocol = do
 -- same as that passed to 'socket'.  If the special port number
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
-bind :: NetworkSocket s => s -> SockAddr -> IO ()
-bind s addr = withSockAddr addr $ \p_addr sz -> do
+bind :: (NetworkSocket s, SocketAddress sa) => s -> sa -> IO ()
+bind s sa = withSocketAddress sa $ \p_sa sz -> do
    _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind (socketFd s) p_addr (fromIntegral sz)
+     c_bind (socketFd s) p_sa (fromIntegral sz)
    return ()
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
 
 -- | Connect to a remote socket at address.
-connect :: Socket    -- Unconnected Socket
-        -> SockAddr  -- Socket address stuff
-        -> IO ()
-connect sock@Socket{..} addr = withSocketsDo $ withSockAddr addr $ \p_addr sz ->
-    connectLoop sock p_addr (fromIntegral sz)
+connect :: (NetworkSocket s, SocketAddress sa) => s -> sa -> IO ()
+connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
+    connectLoop s p_sa (fromIntegral sz)
 
-connectLoop :: Socket -> Ptr SockAddr -> CInt -> IO ()
-connectLoop sock@Socket{..} p_addr sz = loop
+connectLoop :: (NetworkSocket s, SocketAddress sa) => s -> Ptr sa -> CInt -> IO ()
+connectLoop s p_sa sz = loop
   where
-    errLoc = "Network.Socket.connect: " ++ show sock
+    errLoc = "Network.Socket.connect: " ++ show (socketFd s)
     loop = do
-       r <- c_connect socketFd' p_addr sz
+       r <- c_connect (socketFd s) p_sa sz
        when (r == -1) $ do
 #if defined(mingw32_HOST_OS)
            throwSocketError errLoc
@@ -165,8 +163,8 @@ connectLoop sock@Socket{..} p_addr sz = loop
              _otherwise             -> throwSocketError errLoc
 
     connectBlocked = do
-       threadWaitWrite (fromIntegral socketFd')
-       err <- getSocketOption sock SoError
+       threadWaitWrite (fromIntegral $ socketFd s)
+       err <- getSocketOption s SoError
        when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
 
@@ -236,9 +234,9 @@ accept Socket{..} = do
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
 foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
+  c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr SockAddr -> CInt{-CSockLen???-} -> IO CInt
+  c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
   c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
