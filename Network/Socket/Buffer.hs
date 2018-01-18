@@ -32,22 +32,22 @@ import Network.Socket.Types
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent.  Applications are responsible for
 -- ensuring that all data has been sent.
-sendBufTo :: Socket            -- (possibly) bound/connected Socket
-          -> Ptr a -> Int  -- Data to send
+sendBufTo :: NetworkSocket s => s -- (possibly) bound/connected Socket
+          -> Ptr a -> Int         -- Data to send
           -> SockAddr
-          -> IO Int            -- Number of Bytes sent
-sendBufTo sock@Socket{..} ptr nbytes addr =
+          -> IO Int               -- Number of Bytes sent
+sendBufTo s ptr nbytes addr =
  withSockAddr addr $ \p_addr sz ->
    fmap fromIntegral $
-     throwSocketErrorWaitWrite sock "Network.Socket.sendBufTo" $
-        c_sendto socketFd' ptr (fromIntegral nbytes) 0{-flags-}
+     throwSocketErrorWaitWrite (socketFd s) "Network.Socket.sendBufTo" $
+        c_sendto (socketFd s) ptr (fromIntegral nbytes) 0{-flags-}
                         p_addr (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
-socket2FD :: Socket -> FD
-socket2FD Socket{..} =
+socket2FD :: NetworkSocket s => s -> FD
+socket2FD s =
   -- HACK, 1 means True
-  FD{ fdFD = socketFd', fdIsSocket_ = 1 }
+  FD{ fdFD = socketFd s, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -55,11 +55,11 @@ socket2FD Socket{..} =
 -- responsible for ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendBuf :: Socket     -- Bound/Connected Socket
+sendBuf :: NetworkSocket s => s    -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf sock str len =
+sendBuf s str len =
    fmap fromIntegral $
 #if defined(mingw32_HOST_OS)
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
@@ -68,13 +68,13 @@ sendBuf sock str len =
 -- bug is supported.
     throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $ writeRawBufferPtr
       "Network.Socket.sendBuf"
-      (socket2FD sock)
+      (socket2FD s)
       (castPtr str)
       0
       (fromIntegral len)
 #else
-     throwSocketErrorWaitWrite sock "Network.Socket.sendBuf" $
-        c_send (socketFd' sock) str (fromIntegral len) 0{-flags-}
+     throwSocketErrorWaitWrite (socketFd s) "Network.Socket.sendBuf" $
+        c_send (socketFd s) str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -92,7 +92,7 @@ recvBufFrom sock@Socket{..} ptr nbytes
     withNewSockAddr socketFamily $ \ptr_addr sz ->
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead sock "Network.Socket.recvBufFrom" $
+        len <- throwSocketErrorWaitRead socketFd' "Network.Socket.recvBufFrom" $
                    c_recvfrom socketFd' ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_addr ptr_len
         let len' = fromIntegral len
@@ -115,8 +115,8 @@ recvBufFrom sock@Socket{..} ptr nbytes
 -- closed its half side of the connection.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBuf sock ptr nbytes
+recvBuf :: NetworkSocket s => s -> Ptr Word8 -> Int -> IO Int
+recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
         len <-
@@ -126,8 +126,8 @@ recvBuf sock ptr nbytes
                 readRawBufferPtr "Network.Socket.recvBuf"
                 (socket2FD sock) ptr 0 (fromIntegral nbytes)
 #else
-               throwSocketErrorWaitRead sock "Network.Socket.recvBuf" $
-                   c_recv (socketFd' sock) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+               throwSocketErrorWaitRead (socketFd s) "Network.Socket.recvBuf" $
+                   c_recv (socketFd s) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0

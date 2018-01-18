@@ -199,7 +199,7 @@ accept :: Socket                        -- Queue Socket
        -> IO (Socket,                   -- Readable Socket
               SockAddr)                 -- Peer details
 
-accept sock@Socket{..} = do
+accept Socket{..} = do
      let sz = sizeOfSockAddrByFamily socketFamily
      allocaBytes sz $ \ sockaddr -> do
 #if defined(mingw32_HOST_OS)
@@ -223,7 +223,7 @@ accept sock@Socket{..} = do
                         (threadWaitRead (fromIntegral socketFd'))
                         (c_accept4 socketFd' sockaddr ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
 # else
-     new_fd <- throwSocketErrorWaitRead sock "Network.Socket.accept"
+     new_fd <- throwSocketErrorWaitRead socketFd' "Network.Socket.accept"
                         (c_accept socketFd' sockaddr ptr_len)
      setNonBlockIfNeeded new_fd
      setCloseOnExecIfNeeded new_fd

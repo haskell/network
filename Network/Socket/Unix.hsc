@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 #include "HsNet.h"
 ##include "HsNetDef.h"
 
@@ -120,8 +122,8 @@ isUnixDomainSocketAvailable = False
 --  'True'.
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sendFd sock outfd = void $
-  throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd' sock) outfd
+sendFd Socket{..} outfd = void $
+  throwSocketErrorWaitWrite socketFd' "Network.Socket.sendFd" $ c_sendFd socketFd' outfd
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
@@ -134,8 +136,8 @@ sendFd _ _ = error "Network.Socket.sendFd"
 --  'True'.
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
-recvFd sock =
-  throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd' sock)
+recvFd Socket{..} =
+  throwSocketErrorWaitRead socketFd' "Network.Socket.recvFd" $ c_recvFd socketFd'
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
 recvFd _ = error "Network.Socket.recvFd"

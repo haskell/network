@@ -28,12 +28,12 @@ import Network.Socket.Types (Socket(..))
 send :: Socket      -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
-send sock@Socket{..} s = do
+send Socket{..} s = do
   let cs  = take maxNumChunks (L.toChunks s)
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
-      throwSocketErrorWaitWrite sock "writev" $
+      throwSocketErrorWaitWrite socketFd' "writev" $
         c_writev (fromIntegral socketFd') ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
