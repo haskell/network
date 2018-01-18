@@ -201,19 +201,19 @@ throwSocketErrorCode loc errno =
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
 -- and try again.
-throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
-throwSocketErrorWaitRead sock name io =
+throwSocketErrorWaitRead :: (Eq a, Num a) => CInt-> String -> IO a -> IO a
+throwSocketErrorWaitRead s name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitRead $ fromIntegral $ socketFd' sock)
+        (threadWaitRead $ fromIntegral s)
         io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be write-ready,
 -- and try again.
-throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
-throwSocketErrorWaitWrite sock name io =
+throwSocketErrorWaitWrite :: (Eq a, Num a) => CInt -> String -> IO a -> IO a
+throwSocketErrorWaitWrite s name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitWrite $ fromIntegral $ socketFd' sock)
+        (threadWaitWrite $ fromIntegral s)
         io
 
 -- ---------------------------------------------------------------------------
