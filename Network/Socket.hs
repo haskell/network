@@ -126,13 +126,14 @@ module Network.Socket
     , setSocketOption
 
     -- * Types
-    -- ** Socket
+    -- ** Socket typeclass
+    , NetworkSocket(..)
+    -- ** Socket type
     , Socket
-    , socketFd'
     , socketFamily
     , socketType
     , socketProtocol
-    -- ** Socket type
+    -- ** Types of Socket
     , SocketType(..)
     , isSupportedSocketType
     -- ** Family
