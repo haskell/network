@@ -7,8 +7,10 @@
 
 module Network.Socket.Types
     (
-    -- * Socket
-      Socket(..)
+    -- * Socket class
+      NetworkSocket(..)
+    -- * Socket type
+    , Socket(..)
     -- * Socket types
     , SocketType(..)
     , isSupportedSocketType
@@ -69,6 +71,13 @@ import Foreign.Storable
 import Foreign.Marshal.Array
 #endif
 
+-----------------------------------------------------------------------------
+
+class NetworkSocket s where
+    socketFd :: s -> CInt
+
+-----------------------------------------------------------------------------
+
 -- | Type for a socket. Use 'mkSocket' to create 'Socket'.
 --   This is typically created by 'socket', 'accept' and 'socketPair'.
 data Socket = Socket
@@ -85,6 +94,9 @@ instance Eq Socket where
 instance Show Socket where
   showsPrec _n Socket{..} =
         showString "<socket: " . shows socketFd' . showString ">"
+
+instance NetworkSocket Socket where
+    socketFd = socketFd'
 
 -----------------------------------------------------------------------------
 
