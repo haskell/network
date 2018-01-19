@@ -10,7 +10,7 @@ import Data.Bits
 import Data.List (foldl')
 import Data.Typeable
 import Foreign.C.String (CString, withCString, peekCString)
-import Foreign.C.Types (CInt(..), CSize(..), CChar)
+import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -436,8 +436,10 @@ instance Show SockAddr where
 #else
   showsPrec _ SockAddrUnix{} = error "showsPrec: not supported"
 #endif
-  showsPrec _ (SockAddrInet port ha)
-   = showString (unsafePerformIO (inet_ntoa ha))
+  showsPrec _ addr@(SockAddrInet port _)
+   = showString (unsafePerformIO $
+                 fst `fmap` getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 maybe (fail "showsPrec: impossible internal error") return)
    . showString ":"
    . shows port
   showsPrec _ addr@(SockAddrInet6 port _ _ _)
@@ -447,31 +449,3 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
-
--- -----------------------------------------------------------------------------
--- Internet address manipulation routines:
-
-{-# DEPRECATED inet_addr "Use \"getNameInfo\" instead" #-}
-inet_addr :: String -> IO HostAddress
-inet_addr ipstr = withSocketsDo $
-   withCString ipstr $ \str -> do
-     had <- c_inet_addr str
-     if had == maxBound
-      then ioError $ userError $
-        "Network.Socket.inet_addr: Malformed address: " ++ ipstr
-      else return had  -- network byte order
-
-{-# DEPRECATED inet_ntoa "Use \"getNameInfo\" instead" #-}
-inet_ntoa :: HostAddress -> IO String
-inet_ntoa haddr = withSocketsDo $ do
-  pstr <- c_inet_ntoa haddr
-  peekCString pstr
-
--- ---------------------------------------------------------------------------
--- foreign imports from the C library
-
-foreign import ccall unsafe "hsnet_inet_ntoa"
-  c_inet_ntoa :: HostAddress -> IO (Ptr CChar)
-
-foreign import CALLCONV unsafe "inet_addr"
-  c_inet_addr :: Ptr CChar -> IO HostAddress

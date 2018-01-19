@@ -189,18 +189,6 @@ module Network.Socket
 
     -- * Special constants
     , maxListenQueue
-
-    -- * Deprecated
-    , inet_addr
-    , inet_ntoa
-    , htonl
-    , ntohl
-    , getPeerCred
-    , getPeerEid
-    , aNY_PORT
-    , iNADDR_ANY
-    , iN6ADDR_ANY
-    , sOMAXCONN
     ) where
 
 import Network.Socket.Buffer
