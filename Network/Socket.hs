@@ -47,7 +47,7 @@
 -- >         setSocketOption sock ReuseAddr 1
 -- >         -- If the prefork technique is not used,
 -- >         -- set CloseOnExec for the security reasons.
--- >         setCloseOnExecIfNeeded $ socketFd sock
+-- >         setCloseOnExecIfNeeded sock
 -- >         bind sock (addrAddress addr)
 -- >         listen sock 10
 -- >         return sock
@@ -113,6 +113,7 @@ module Network.Socket
     , bind
     , listen
     , accept
+    , accept'
     -- ** Closing
     , close
     , shutdown
@@ -124,15 +125,10 @@ module Network.Socket
     , getSocketOption
     , setSocketOption
 
-    -- * Typeclasses
-    , NetworkSocket(..)
-    , SocketAddress(..)
-    -- * Basic socket
+    -- * Socket
     , Socket
-    , socketFamily
-    , socketType
-    , socketProtocol
     , socket
+    , fdSocket
     -- ** Types of Socket
     , SocketType(..)
     , isSupportedSocketType
@@ -142,11 +138,13 @@ module Network.Socket
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
-    -- * Basic socket address type
-    , SockAddr(..)
-    , isSupportedSockAddr
+    -- * Socket Address
+    , SocketAddress(..)
     , getPeerName
     , getSocketName
+    -- ** Basic socket address type
+    , SockAddr(..)
+    , isSupportedSockAddr
     -- ** Host address
     , HostAddress
     , hostAddressToTuple
@@ -183,7 +181,6 @@ module Network.Socket
     , getCloseOnExec
     , setNonBlockIfNeeded
     , getNonBlock
-    , mkSocket
     -- ** Sending and receiving data
     , sendBuf
     , recvBuf

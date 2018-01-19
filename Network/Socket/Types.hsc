@@ -7,10 +7,9 @@
 
 module Network.Socket.Types
     (
-    -- * Socket typeclass
-      NetworkSocket(..)
     -- * Socket type
-    , Socket(..)
+      Socket
+    , fdSocket
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
@@ -29,6 +28,7 @@ module Network.Socket.Types
     -- * Socket address typeclass
     , SocketAddress(..)
     , withSocketAddress
+    , withNewSocketAddress
     -- * Socket address type
     , SockAddr(..)
     , isSupportedSockAddr
@@ -76,29 +76,12 @@ import Foreign.Marshal.Array
 
 -----------------------------------------------------------------------------
 
-class NetworkSocket s where
-    socketFd :: s -> CInt
-
------------------------------------------------------------------------------
-
 -- | Basic type for a socket.
-data Socket = Socket
-  {
-    socketFd'      :: CInt              -- ^ File descriptor.
-  , socketFamily   :: Family            -- ^ Address family.
-  , socketType     :: SocketType        -- ^ Socket type.
-  , socketProtocol :: ProtocolNumber    -- ^ Protocol number.
-  } deriving Typeable
+type Socket = CInt
 
-instance Eq Socket where
-  s1 == s2 = socketFd' s1 == socketFd' s2
-
-instance Show Socket where
-  showsPrec _n Socket{..} =
-        showString "<socket: " . shows socketFd' . showString ">"
-
-instance NetworkSocket Socket where
-    socketFd = socketFd'
+{-# DEPRECATED fdSocket "This is just the identity function. Just remove it" #-}
+fdSocket :: Socket -> CInt
+fdSocket = id
 
 -----------------------------------------------------------------------------
 
@@ -785,13 +768,16 @@ defaultPort = 0
 
 class SocketAddress sa where
     sizeOfSocketAddress :: sa -> Int
-    peekSocketAddrress :: Ptr sa -> IO sa
+    peekSocketAddress :: Ptr sa -> IO sa
     pokeSocketAddress  :: Ptr a -> sa -> IO ()
 
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
 withSocketAddress addr f = do
     let sz = sizeOfSocketAddress addr
     allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
+
+withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
+withNewSocketAddress f = allocaBytes 128 $ \ptr -> f ptr 128
 
 ------------------------------------------------------------------------
 -- Socket addresses
@@ -848,7 +834,7 @@ isSupportedSockAddr addr = case addr of
 
 instance SocketAddress SockAddr where
     sizeOfSocketAddress = sizeOfSockAddr
-    peekSocketAddrress  = peekSockAddr
+    peekSocketAddress   = peekSockAddr
     pokeSocketAddress   = pokeSockAddr
 
 #if defined(mingw32_HOST_OS)

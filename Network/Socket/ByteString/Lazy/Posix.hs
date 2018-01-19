@@ -25,7 +25,7 @@ import Network.Socket.Types
 -- -----------------------------------------------------------------------------
 -- Sending
 
-send :: NetworkSocket s => s     -- ^ Connected socket
+send :: Socket     -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int64    -- ^ Number of bytes sent
 send s lbs = do
@@ -33,8 +33,8 @@ send s lbs = do
       len = length cs
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
-      throwSocketErrorWaitWrite (socketFd s) "writev" $
-        c_writev (fromIntegral $ socketFd s) ptr niovs
+      throwSocketErrorWaitWrite s "writev" $
+        c_writev (fromIntegral s) ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
       where loop (c:cs) q k !niovs
@@ -48,7 +48,7 @@ send s lbs = do
     maxNumBytes  = 4194304 :: Int  -- maximum number of bytes to transmit in one system call
     maxNumChunks = 1024    :: Int  -- maximum number of chunks to transmit in one system call
 
-sendAll :: NetworkSocket s => s     -- ^ Connected socket
+sendAll :: Socket     -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
 sendAll s bs = do

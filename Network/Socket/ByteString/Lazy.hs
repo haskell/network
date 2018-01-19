@@ -62,7 +62,7 @@ import Network.Socket.ByteString.Lazy.Posix (send, sendAll)
 -- more data to be received, the receiving side of the socket is shut
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
-getContents :: NetworkSocket s => s        -- ^ Connected socket
+getContents :: Socket        -- ^ Connected socket
             -> IO ByteString  -- ^ Data received
 getContents s = loop where
   loop = unsafeInterleaveIO $ do
@@ -80,7 +80,7 @@ getContents s = loop where
 -- If there is no more data to be received, returns an empty 'ByteString'.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recv :: NetworkSocket s => s        -- ^ Connected socket
+recv :: Socket        -- ^ Connected socket
      -> Int64          -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
 recv s nbytes = chunk `liftM` N.recv s (fromIntegral nbytes) where

@@ -32,8 +32,8 @@ import Network.Socket.Types
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent.  Applications are responsible for
 -- ensuring that all data has been sent.
-sendBufTo :: (NetworkSocket s, SocketAddress sa) =>
-             s -- (possibly) bound/connected Socket
+sendBufTo :: SocketAddress sa =>
+             Socket -- (possibly) bound/connected Socket
           -> Ptr a
           -> Int         -- Data to send
           -> sa
@@ -41,15 +41,15 @@ sendBufTo :: (NetworkSocket s, SocketAddress sa) =>
 sendBufTo s ptr nbytes sa =
  withSocketAddress sa $ \p_sa sz ->
    fmap fromIntegral $
-     throwSocketErrorWaitWrite (socketFd s) "Network.Socket.sendBufTo" $
-        c_sendto (socketFd s) ptr (fromIntegral nbytes) 0{-flags-}
+     throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
+        c_sendto s ptr (fromIntegral nbytes) 0{-flags-}
                         p_sa (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
-socket2FD :: NetworkSocket s => s -> FD
+socket2FD :: Socket -> FD
 socket2FD s =
   -- HACK, 1 means True
-  FD{ fdFD = socketFd s, fdIsSocket_ = 1 }
+  FD{ fdFD = s, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -57,7 +57,7 @@ socket2FD s =
 -- responsible for ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendBuf :: NetworkSocket s => s    -- Bound/Connected Socket
+sendBuf :: Socket    -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
@@ -75,8 +75,8 @@ sendBuf s str len =
       0
       (fromIntegral len)
 #else
-     throwSocketErrorWaitWrite (socketFd s) "Network.Socket.sendBuf" $
-        c_send (socketFd s) str (fromIntegral len) 0{-flags-}
+     throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
+        c_send s str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -88,20 +88,20 @@ sendBuf s str len =
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
-recvBufFrom sock@Socket{..} ptr nbytes
+recvBufFrom s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
  | otherwise   =
-    withNewSockAddr socketFamily $ \ptr_addr sz ->
+    withNewSocketAddress $ \ptr_sa sz ->
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead socketFd' "Network.Socket.recvBufFrom" $
-                   c_recvfrom socketFd' ptr (fromIntegral nbytes) 0{-flags-}
-                                ptr_addr ptr_len
+        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
+                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
+                                ptr_sa ptr_len
         let len' = fromIntegral len
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
          else do
-           sockaddr <- getPeerName sock -- fixme: peekSockAddr ptr_addr
+           sockaddr <- getPeerName s -- xxx fixme: peekSockAddr ptr_sa
            return (len', sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -117,7 +117,7 @@ recvBufFrom sock@Socket{..} ptr nbytes
 -- closed its half side of the connection.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recvBuf :: NetworkSocket s => s -> Ptr Word8 -> Int -> IO Int
+recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
@@ -128,8 +128,8 @@ recvBuf s ptr nbytes
                 readRawBufferPtr "Network.Socket.recvBuf"
                 (socket2FD sock) ptr 0 (fromIntegral nbytes)
 #else
-               throwSocketErrorWaitRead (socketFd s) "Network.Socket.recvBuf" $
-                   c_recv (socketFd s) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+               throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
+                   c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0

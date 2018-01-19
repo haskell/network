@@ -10,9 +10,11 @@ import qualified System.Posix.Internals
 import Data.Bits ((.&.))
 #endif
 
+import Network.Socket.Types
+
 -- | Set the nonblocking flag on Unix.
 --   On Windows, nothing is done.
-setNonBlockIfNeeded :: CInt -> IO ()
+setNonBlockIfNeeded :: Socket -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
 
@@ -20,7 +22,7 @@ setNonBlockIfNeeded fd =
 --   On Windows, nothing is done.
 --
 --   Since 3.0.0.0.
-setCloseOnExecIfNeeded :: CInt -> IO ()
+setCloseOnExecIfNeeded :: Socket -> IO ()
 #if defined(mingw32_HOST_OS)
 setCloseOnExecIfNeeded _ = return ()
 #else
@@ -36,7 +38,7 @@ foreign import ccall unsafe "fcntl"
 --   On Windows, this function always returns 'False'.
 --
 --   Since 3.0.0.0.
-getCloseOnExec :: CInt -> IO Bool
+getCloseOnExec :: Socket -> IO Bool
 #if defined(mingw32_HOST_OS)
 getCloseOnExec _ = return False
 #else
@@ -50,7 +52,7 @@ getCloseOnExec fd = do
 --   On Windows, this function always returns 'False'.
 --
 --   Since 3.0.0.0.
-getNonBlock :: CInt -> IO Bool
+getNonBlock :: Socket -> IO Bool
 #if defined(mingw32_HOST_OS)
 getNonBlock _ = return False
 #else

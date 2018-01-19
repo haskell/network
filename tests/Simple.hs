@@ -299,8 +299,8 @@ tcpTest clientAct serverAct = do
     clientSetup portVar = do
         sock <- socket AF_INET Stream defaultProtocol
 #if !defined(mingw32_HOST_OS)
-        getNonBlock (socketFd sock) >>= (@=?) True
-        getCloseOnExec (socketFd sock) >>= (@=?) False
+        getNonBlock sock >>= (@=?) True
+        getCloseOnExec sock >>= (@=?) False
 #endif
         addr <- inet_addr serverAddr
         serverPort <- readMVar portVar
@@ -310,13 +310,13 @@ tcpTest clientAct serverAct = do
     serverSetup portVar = do
         sock <- socket AF_INET Stream defaultProtocol
 #if !defined(mingw32_HOST_OS)
-        getNonBlock (socketFd sock) >>= (@=?) True
-        getCloseOnExec (socketFd sock) >>= (@=?) False
+        getNonBlock sock >>= (@=?) True
+        getCloseOnExec sock >>= (@=?) False
 #endif
         setSocketOption sock ReuseAddr 1
-        setCloseOnExecIfNeeded (socketFd sock)
+        setCloseOnExecIfNeeded sock
 #if !defined(mingw32_HOST_OS)
-        getCloseOnExec (socketFd sock) >>= (@=?) True
+        getCloseOnExec sock >>= (@=?) True
 #endif
         addr <- inet_addr serverAddr
         bind sock (SockAddrInet aNY_PORT addr)
@@ -328,8 +328,8 @@ tcpTest clientAct serverAct = do
     server sock = do
         (clientSock, _) <- accept sock
 #if !defined(mingw32_HOST_OS)
-        getNonBlock (socketFd clientSock) >>= (@=?) True
-        getCloseOnExec (socketFd clientSock) >>= (@=?) True
+        getNonBlock clientSock >>= (@=?) True
+        getCloseOnExec clientSock >>= (@=?) True
 #endif
         _ <- serverAct clientSock
         close clientSock

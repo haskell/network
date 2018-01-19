@@ -8,7 +8,6 @@ module Network.Socket.Syscall where
 
 import Control.Monad (when)
 import Foreign.C.Types (CInt(..))
-import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
 
@@ -49,22 +48,6 @@ import Network.Socket.Types
 --
 
 -----------------------------------------------------------------------------
--- Socket types
-
--- | Creating 'Socket' from the a low level socket (i.e. a file descriptor).
---   The caller must make sure that the low level socket is
---   in non-blocking mode. See 'setNonBlockIfNeeded'.
-mkSocket :: CInt
-         -> Family
-         -> SocketType
-         -> ProtocolNumber
-         -> IO Socket
-mkSocket fd fam sType pNum = do
-   withSocketsDo $ return ()
-   let sock = Socket fd fam sType pNum
-   return sock
-
------------------------------------------------------------------------------
 -- Connection Functions
 
 -- In the following connection and binding primitives.  The names of
@@ -86,12 +69,8 @@ mkSocket fd fam sType pNum = do
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
 -- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
 -- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >>> socketFamily sock
--- AF_INET
--- >>> socketType sock
--- Stream
 -- >>> bind sock (addrAddress addr)
--- >>> getSocketName sock
+-- >>> getSocketName sock :: IO SockAddr
 -- 127.0.0.1:5000
 socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
@@ -100,14 +79,13 @@ socket :: Family         -- Family Name (usually AF_INET)
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+    s <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) (c_stype .|. (#const SOCK_NONBLOCK)) protocol
 #else
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+    s <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
-    setNonBlockIfNeeded fd
+    setNonBlockIfNeeded s
 #endif
-    sock <- mkSocket fd family stype protocol
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
     -- so we explicitly set it to 0 to provide a common default.
@@ -118,10 +96,10 @@ socket family stype protocol = do
       E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
 # elif !defined(__OpenBSD__)
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
-      setSocketOption sock IPv6Only 0 `onException` close sock
+      setSocketOption s IPv6Only 0 `onException` close s
 # endif
 #endif
-    return sock
+    return s
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -131,26 +109,26 @@ socket family stype protocol = do
 -- same as that passed to 'socket'.  If the special port number
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
-bind :: (NetworkSocket s, SocketAddress sa) => s -> sa -> IO ()
+bind :: SocketAddress sa => Socket -> sa -> IO ()
 bind s sa = withSocketAddress sa $ \p_sa sz -> do
    _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind (socketFd s) p_sa (fromIntegral sz)
+     c_bind s p_sa (fromIntegral sz)
    return ()
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
 
 -- | Connect to a remote socket at address.
-connect :: (NetworkSocket s, SocketAddress sa) => s -> sa -> IO ()
+connect :: SocketAddress sa => Socket -> sa -> IO ()
 connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
     connectLoop s p_sa (fromIntegral sz)
 
-connectLoop :: (NetworkSocket s, SocketAddress sa) => s -> Ptr sa -> CInt -> IO ()
+connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
 connectLoop s p_sa sz = loop
   where
-    errLoc = "Network.Socket.connect: " ++ show (socketFd s)
+    errLoc = "Network.Socket.connect: " ++ show s
     loop = do
-       r <- c_connect (socketFd s) p_sa sz
+       r <- c_connect s p_sa sz
        when (r == -1) $ do
 #if defined(mingw32_HOST_OS)
            throwSocketError errLoc
@@ -163,7 +141,7 @@ connectLoop s p_sa sz = loop
              _otherwise             -> throwSocketError errLoc
 
     connectBlocked = do
-       threadWaitWrite (fromIntegral $ socketFd s)
+       threadWaitWrite (fromIntegral s)
        err <- getSocketOption s SoError
        when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
@@ -174,10 +152,13 @@ connectLoop s p_sa sz = loop
 -- | Listen for connections made to the socket.  The second argument
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
-listen :: NetworkSocket s => s -> Int -> IO ()
+listen :: Socket -> Int -> IO ()
 listen s backlog =
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen (socketFd s) (fromIntegral backlog)
+        c_listen s (fromIntegral backlog)
+
+accept :: Socket -> IO (Socket, SockAddr)
+accept = accept'
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -193,21 +174,16 @@ listen s backlog =
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
-accept :: Socket                        -- Queue Socket
-       -> IO (Socket,                   -- Readable Socket
-              SockAddr)                 -- Peer details
-
-accept Socket{..} = do
-     let sz = sizeOfSockAddrByFamily socketFamily
-     allocaBytes sz $ \ sockaddr -> do
+accept' :: SocketAddress sa => Socket -> IO (Socket, sa)
+accept' s = withNewSocketAddress $ \sa sz -> do
 #if defined(mingw32_HOST_OS)
      new_fd <-
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe socketFd' sockaddr ptr_len
+                    c_accept_safe s sa ptr_len
            else do
-                paramData <- c_newAcceptParams socketFd' (fromIntegral sz) sockaddr
+                paramData <- c_newAcceptParams s (fromIntegral sz) sa
                 rc        <- asyncDoProc c_acceptDoProc paramData
                 new_fd  <- c_acceptNewSock    paramData
                 c_free paramData
@@ -218,18 +194,17 @@ accept Socket{..} = do
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
-                        (threadWaitRead (fromIntegral socketFd'))
-                        (c_accept4 socketFd' sockaddr ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
+                        (threadWaitRead (fromIntegral s))
+                        (c_accept4 s sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
 # else
-     new_fd <- throwSocketErrorWaitRead socketFd' "Network.Socket.accept"
-                        (c_accept socketFd' sockaddr ptr_len)
+     new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
+                        (c_accept s sa ptr_len)
      setNonBlockIfNeeded new_fd
      setCloseOnExecIfNeeded new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
-     addr <- peekSockAddr sockaddr
-     sock' <- mkSocket new_fd socketFamily socketType socketProtocol
-     return (sock', addr)
+     addr <- peekSocketAddress sa
+     return (new_fd, addr)
 
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
@@ -239,17 +214,17 @@ foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+  c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
 #else
 foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
 #endif
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr SockAddr -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
 
 foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
 #endif
