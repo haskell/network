@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-} -- for recv
 
 module Main where
 
@@ -47,16 +46,18 @@ testSendTo = udpTest client server
   where
     server sock = recv sock 1024 >>= (@=?) testMsg
     client sock serverPort = do
-        addr <- inet_addr serverAddr
-        sendTo sock testMsg (SockAddrInet serverPort addr)
+        let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+        sendTo sock testMsg $ addrAddress addr
 
 testSendAllTo :: Assertion
 testSendAllTo = udpTest client server
   where
     server sock = recv sock 1024 >>= (@=?) testMsg
     client sock serverPort = do
-        addr <- inet_addr serverAddr
-        sendAllTo sock testMsg (SockAddrInet serverPort addr)
+        let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+        sendAllTo sock testMsg $ addrAddress addr
 
 testSendMany :: Assertion
 testSendMany = tcpTest client server
@@ -72,8 +73,9 @@ testSendManyTo = udpTest client server
   where
     server sock = recv sock 1024 >>= (@=?) (S.append seg1 seg2)
     client sock serverPort = do
-        addr <- inet_addr serverAddr
-        sendManyTo sock [seg1, seg2] (SockAddrInet serverPort addr)
+        let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+        sendManyTo sock [seg1, seg2] $ addrAddress addr
 
     seg1 = C.pack "This is a "
     seg2 = C.pack "test message."
@@ -101,9 +103,8 @@ testRecvFrom = tcpTest client server
                      testMsg @=? msg
 
     client sock = do
-        serverPort <- getPeerPort sock
-        addr <- inet_addr serverAddr
-        sendTo sock testMsg (SockAddrInet serverPort addr)
+        addr <- getPeerName sock
+        sendTo sock testMsg addr
 
 testOverFlowRecvFrom :: Assertion
 testOverFlowRecvFrom = tcpTest client server
@@ -195,14 +196,6 @@ testByteStringEol = tcpTest client (flip shutdown ShutdownSend)
 ------------------------------------------------------------------------
 -- Conversions of IP addresses
 
-testHtonlNtohl :: Assertion
-testHtonlNtohl = do
-    let addrl = 0xCafeBabe
-    addrl @=? (htonl . ntohl) addrl
-    addrl @=? (ntohl . htonl) addrl
-    assertBool "BE or LE byte order" $
-        ntohl addrl `elem` [0xCafeBabe, 0xbebafeca]
-
 testHostAddressToTuple :: Assertion
 testHostAddressToTuple = do
     -- Look up a numeric IPv4 host
@@ -260,7 +253,6 @@ basicTests = testGroup "Basic socket operations"
 --    , testCase "testGetPeerEid" testGetPeerEid
     , testCase "testByteStringEol" testByteStringEol
       -- conversions of IP addresses
-    , testCase "testHtonlNtohl" testHtonlNtohl
     , testCase "testHostAddressToTuple" testHostAddressToTuple
     , testCase "testHostAddressToTupleInv" testHostAddressToTupleInv
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -297,18 +289,24 @@ tcpTest clientAct serverAct = do
     test (clientSetup portVar) clientAct (serverSetup portVar) server
   where
     clientSetup portVar = do
-        sock <- socket AF_INET Stream defaultProtocol
+        let hints = defaultHints { addrSocketType = Stream }
+        serverPort <- readMVar portVar
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 #if !defined(mingw32_HOST_OS)
         getNonBlock sock >>= (@=?) True
         getCloseOnExec sock >>= (@=?) False
 #endif
-        addr <- inet_addr serverAddr
-        serverPort <- readMVar portVar
-        connect sock $ SockAddrInet serverPort addr
+        connect sock $ addrAddress addr
         return sock
 
     serverSetup portVar = do
-        sock <- socket AF_INET Stream defaultProtocol
+        let hints = defaultHints {
+                addrFlags = [AI_PASSIVE]
+              , addrSocketType = Stream
+              }
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
+        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 #if !defined(mingw32_HOST_OS)
         getNonBlock sock >>= (@=?) True
         getCloseOnExec sock >>= (@=?) False
@@ -318,8 +316,7 @@ tcpTest clientAct serverAct = do
 #if !defined(mingw32_HOST_OS)
         getCloseOnExec sock >>= (@=?) True
 #endif
-        addr <- inet_addr serverAddr
-        bind sock (SockAddrInet aNY_PORT addr)
+        bind sock $ addrAddress addr
         listen sock 1
         serverPort <- socketPort sock
         putMVar portVar serverPort
@@ -348,10 +345,14 @@ udpTest clientAct serverAct = do
         clientAct sock serverPort
 
     serverSetup portVar = do
-        sock <- socket AF_INET Datagram defaultProtocol
+        let hints = defaultHints {
+                addrFlags = [AI_PASSIVE]
+              , addrSocketType = Datagram
+              }
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
+        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
         setSocketOption sock ReuseAddr 1
-        addr <- inet_addr serverAddr
-        bind sock (SockAddrInet aNY_PORT addr)
+        bind sock $ addrAddress addr
         serverPort <- socketPort sock
         putMVar portVar serverPort
         return sock
