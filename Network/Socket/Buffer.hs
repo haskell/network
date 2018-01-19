@@ -126,7 +126,7 @@ recvBuf s ptr nbytes
 -- see comment in sendBuf above.
             throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
                 readRawBufferPtr "Network.Socket.recvBuf"
-                (socket2FD sock) ptr 0 (fromIntegral nbytes)
+                (socket2FD s) ptr 0 (fromIntegral nbytes)
 #else
                throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
                    c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}

@@ -19,6 +19,7 @@ import GHC.Conc (asyncDoProc)
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
+import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -26,7 +27,6 @@ import Data.Bits ((.|.))
 import GHC.Conc (threadWaitRead)
 #endif
 
-import Network.Socket.Close
 import Network.Socket.Fcntl
 import Network.Socket.Internal
 import Network.Socket.Options
@@ -93,7 +93,7 @@ socket family stype protocol = do
     -- The IPv6Only option is only supported on Windows Vista and later,
     -- so trying to change it might throw an error.
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
-      E.catch (setSocketOption sock IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
+      E.catch (setSocketOption s IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
 # elif !defined(__OpenBSD__)
     when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
       setSocketOption s IPv6Only 0 `onException` close s
