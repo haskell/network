@@ -32,16 +32,18 @@ import Network.Socket.Types
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent.  Applications are responsible for
 -- ensuring that all data has been sent.
-sendBufTo :: NetworkSocket s => s -- (possibly) bound/connected Socket
-          -> Ptr a -> Int         -- Data to send
-          -> SockAddr
-          -> IO Int               -- Number of Bytes sent
-sendBufTo s ptr nbytes addr =
- withSockAddr addr $ \p_addr sz ->
+sendBufTo :: (NetworkSocket s, SocketAddress sa) =>
+             s -- (possibly) bound/connected Socket
+          -> Ptr a
+          -> Int         -- Data to send
+          -> sa
+          -> IO Int      -- Number of Bytes sent
+sendBufTo s ptr nbytes sa =
+ withSocketAddress sa $ \p_sa sz ->
    fmap fromIntegral $
      throwSocketErrorWaitWrite (socketFd s) "Network.Socket.sendBufTo" $
         c_sendto (socketFd s) ptr (fromIntegral nbytes) 0{-flags-}
-                        p_addr (fromIntegral sz)
+                        p_sa (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: NetworkSocket s => s -> FD
@@ -149,6 +151,6 @@ foreign import CALLCONV unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 foreign import CALLCONV SAFE_ON_WIN "sendto"
-  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> CInt -> IO CInt
+  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr b -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
