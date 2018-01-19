@@ -140,11 +140,13 @@ module Network.Socket
     , defaultProtocol
     -- * Socket Address
     , SocketAddress(..)
-    , getPeerName
-    , getSocketName
+    , getPeerName'
+    , getSocketName'
     -- ** Basic socket address type
     , SockAddr(..)
     , isSupportedSockAddr
+    , getPeerName
+    , getSocketName
     -- ** Host address
     , HostAddress
     , hostAddressToTuple
