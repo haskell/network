@@ -129,6 +129,7 @@ module Network.Socket
     , Socket
     , socket
     , fdSocket
+    , socketToHandle
     -- ** Types of Socket
     , SocketType(..)
     , isSupportedSocketType
@@ -197,6 +198,7 @@ import Network.Socket.Buffer
 import Network.Socket.Close
 import Network.Socket.Constant
 import Network.Socket.Fcntl
+import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
 import Network.Socket.Internal
