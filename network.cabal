@@ -49,6 +49,7 @@ library
     Network.Socket.Close
     Network.Socket.Constant
     Network.Socket.Fcntl
+    Network.Socket.Handle
     Network.Socket.If
     Network.Socket.Info
     Network.Socket.Name
