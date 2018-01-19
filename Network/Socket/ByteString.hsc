@@ -100,12 +100,13 @@ sendAll s bs = do
 -- ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendTo :: Socket     -- ^ Socket
+sendTo :: SocketAddress sa =>
+          Socket     -- ^ Socket
        -> ByteString  -- ^ Data to send
-       -> SockAddr    -- ^ Recipient address
+       -> sa    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
-sendTo s xs addr =
-    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo s str len addr
+sendTo s xs sa =
+    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo s str len sa
 
 -- | Send data to the socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  Unlike
@@ -115,13 +116,14 @@ sendTo s xs addr =
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendAllTo :: Socket     -- ^ Socket
+sendAllTo :: SocketAddress sa =>
+             Socket     -- ^ Socket
           -> ByteString  -- ^ Data to send
-          -> SockAddr    -- ^ Recipient address
+          -> sa    -- ^ Recipient address
           -> IO ()
-sendAllTo s xs addr = do
-    sent <- sendTo s xs addr
-    when (sent < B.length xs) $ sendAllTo s (B.drop sent xs) addr
+sendAllTo s xs sa = do
+    sent <- sendTo s xs sa
+    when (sent < B.length xs) $ sendAllTo s (B.drop sent xs) sa
 
 -- ----------------------------------------------------------------------------
 -- ** Vectored I/O
