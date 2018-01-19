@@ -34,18 +34,18 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownReceive', further receives are disallowed.  If it is
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
-shutdown :: NetworkSocket s => s -> ShutdownCmd -> IO ()
+shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown s stype = do
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown (socketFd s) (sdownCmdToInt stype)
+    c_shutdown s (sdownCmdToInt stype)
   return ()
 
 -- -----------------------------------------------------------------------------
 
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
-close :: NetworkSocket s => s -> IO ()
-close s = closeFdWith (closeFd . fromIntegral) (fromIntegral $ socketFd s)
+close :: Socket -> IO ()
+close s = closeFdWith (closeFd . fromIntegral) (fromIntegral s)
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd

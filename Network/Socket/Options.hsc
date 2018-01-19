@@ -187,7 +187,7 @@ instance Storable StructLinger where
 
 -- | Set a socket option that expects an Int value.
 -- There is currently no API to set e.g. the timeval socket options
-setSocketOption :: NetworkSocket s => s
+setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
                 -> IO ()
@@ -197,7 +197,7 @@ setSocketOption s Linger v = do
    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
    with arg $ \ptr_arg -> do
    throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-       c_setsockopt (socketFd s) level opt
+       c_setsockopt s level opt
           (ptr_arg :: Ptr StructLinger)
           (fromIntegral (sizeOf (undefined :: StructLinger)))
    return ()
@@ -206,14 +206,14 @@ setSocketOption s so v = do
    (level, opt) <- packSocketOption' "setSocketOption" so
    with (fromIntegral v) $ \ptr_v -> do
    throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-       c_setsockopt (socketFd s) level opt
+       c_setsockopt s level opt
           (ptr_v :: Ptr CInt)
           (fromIntegral (sizeOf (undefined :: CInt)))
    return ()
 
 -- | Get a socket option that gives an Int value.
 -- There is currently no API to get e.g. the timeval socket options
-getSocketOption :: NetworkSocket s => s
+getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
 #ifdef SO_LINGER
@@ -222,7 +222,7 @@ getSocketOption s Linger = do
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: StructLinger))) $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt (socketFd s) level opt (ptr_v :: Ptr StructLinger) ptr_sz
+         c_getsockopt s level opt (ptr_v :: Ptr StructLinger) ptr_sz
        StructLinger onoff linger <- peek ptr_v
        return $ fromIntegral $ if onoff == 0 then 0 else linger
 #endif
@@ -231,7 +231,7 @@ getSocketOption s so = do
    alloca $ \ptr_v ->
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt (socketFd s) level opt (ptr_v :: Ptr CInt) ptr_sz
+         c_getsockopt s level opt (ptr_v :: Ptr CInt) ptr_sz
        fromIntegral `liftM` peek ptr_v
 
 foreign import CALLCONV unsafe "getsockopt"

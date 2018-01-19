@@ -25,7 +25,7 @@ main = withSocketsDo $ do
         setSocketOption sock ReuseAddr 1
         -- If the prefork technique is not used,
         -- set CloseOnExec for the security reasons.
-        setCloseOnExecIfNeeded $ socketFd sock
+        setCloseOnExecIfNeeded sock
         bind sock (addrAddress addr)
         listen sock 10
         return sock

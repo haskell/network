@@ -74,7 +74,7 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 -- responsible for ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-send :: NetworkSocket s => s     -- ^ Connected socket
+send :: Socket     -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
 send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
@@ -87,7 +87,7 @@ send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
 -- data, if any, was successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendAll :: NetworkSocket s => s     -- ^ Connected socket
+sendAll :: Socket     -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
 sendAll s bs = do
@@ -100,7 +100,7 @@ sendAll s bs = do
 -- ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendTo :: NetworkSocket s => s     -- ^ Socket
+sendTo :: Socket     -- ^ Socket
        -> ByteString  -- ^ Data to send
        -> SockAddr    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
@@ -115,7 +115,7 @@ sendTo s xs addr =
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendAllTo :: NetworkSocket s => s     -- ^ Socket
+sendAllTo :: Socket     -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> SockAddr    -- ^ Recipient address
           -> IO ()
@@ -153,7 +153,7 @@ sendAllTo s xs addr = do
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendMany :: NetworkSocket s => s       -- ^ Connected socket
+sendMany :: Socket       -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
@@ -163,8 +163,8 @@ sendMany s cs = do
   where
     sendManyInner =
       fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-          throwSocketErrorWaitWrite (socketFd s) "Network.Socket.ByteString.sendMany" $
-              c_writev (fromIntegral $ socketFd s) iovsPtr
+          throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
+              c_writev (fromIntegral s) iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
 sendMany s = sendAll s . B.concat
@@ -178,7 +178,7 @@ sendMany s = sendAll s . B.concat
 -- way to determine how much data, if any, was successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendManyTo :: NetworkSocket s => s       -- ^ Socket
+sendManyTo :: Socket       -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
            -> IO ()
@@ -194,8 +194,8 @@ sendManyTo s cs addr = do
                 addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorWaitWrite (socketFd s) "Network.Socket.ByteString.sendManyTo" $
-              c_sendmsg (fromIntegral $ socketFd s) msgHdrPtr 0
+            throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
+              c_sendmsg (fromIntegral s) msgHdrPtr 0
 #else
 sendManyTo s cs = sendAllTo s (B.concat cs)
 #endif
@@ -216,7 +216,7 @@ sendManyTo s cs = sendAllTo s (B.concat cs)
 -- closed its half side of the connection.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recv :: NetworkSocket s => s        -- ^ Connected socket
+recv :: Socket        -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
 recv s nbytes

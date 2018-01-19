@@ -17,7 +17,7 @@ import Network.Socket.Types
 -- -----------------------------------------------------------------------------
 -- Sending
 
-send :: NetworkSocket s => s       -- ^ Connected socket
+send :: Socket       -- ^ Connected socket
      -> L.ByteString  -- ^ Data to send
      -> IO Int64      -- ^ Number of bytes sent
 send s lbs = do
@@ -26,7 +26,7 @@ send s lbs = do
       []    -> Socket.send s S.empty
       (x:_) -> Socket.send s x
 
-sendAll :: NetworkSocket s => s        -- ^ Connected socket
+sendAll :: Socket        -- ^ Connected socket
         -> L.ByteString  -- ^ Data to send
         -> IO ()
 sendAll s bs = do
