@@ -81,8 +81,7 @@ class NetworkSocket s where
 
 -----------------------------------------------------------------------------
 
--- | Type for a socket. Use 'mkSocket' to create 'Socket'.
---   This is typically created by 'socket', 'accept' and 'socketPair'.
+-- | Basic type for a socket.
 data Socket = Socket
   {
     socketFd'      :: CInt              -- ^ File descriptor.
