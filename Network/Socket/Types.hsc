@@ -29,6 +29,7 @@ module Network.Socket.Types
     , SocketAddress(..)
     , withSocketAddress
     , withNewSocketAddress
+
     -- * Socket address type
     , SockAddr(..)
     , isSupportedSockAddr
@@ -42,10 +43,7 @@ module Network.Socket.Types
     , ScopeID
     , peekSockAddr
     , pokeSockAddr
-    , sizeOfSockAddr
-    , sizeOfSockAddrByFamily
     , withSockAddr
-    , withNewSockAddr
 
     -- * Unsorted
     , ProtocolNumber
@@ -860,31 +858,12 @@ sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
 sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
--- | Computes the storage requirements (in bytes) required for a
--- 'SockAddr' with the given 'Family'.
-sizeOfSockAddrByFamily :: Family -> Int
-#if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
-#endif
-sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
-sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
-sizeOfSockAddrByFamily family = error $
-    "Network.Socket.Types.sizeOfSockAddrByFamily: address family '" ++
-    show family ++ "' not supported."
-
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
-
--- | Create a new 'SockAddr' for use with a function requiring a
--- pointer to a 'SockAddr' and the length of that 'SockAddr'.
-withNewSockAddr :: Family -> (Ptr SockAddr -> Int -> IO a) -> IO a
-withNewSockAddr family f = do
-    let sz = sizeOfSockAddrByFamily family
-    allocaBytes sz $ \ptr -> f ptr sz
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
