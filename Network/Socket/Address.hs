@@ -1,3 +1,5 @@
+-- | This module provides extensible APIs for socket addresses.
+--
 module Network.Socket.Address (
     -- * Socket Address
       SocketAddress(..)

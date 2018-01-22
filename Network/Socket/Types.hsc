@@ -765,6 +765,7 @@ defaultPort = 0
 
 ------------------------------------------------------------------------
 
+-- | The core typeclass to unify socket addresses.
 class SocketAddress sa where
     sizeOfSocketAddress :: sa -> Int
     peekSocketAddress :: Ptr sa -> IO sa
