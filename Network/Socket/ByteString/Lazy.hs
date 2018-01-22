@@ -17,7 +17,7 @@
 --
 -- This module is made to be imported with 'Network.Socket' like so:
 --
--- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
+-- > import Network.Socket
 -- > import Network.Socket.ByteString.Lazy
 -- > import Prelude hiding (getContents)
 --

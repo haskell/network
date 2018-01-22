@@ -27,7 +27,7 @@
 -- > import qualified Control.Exception as E
 -- > import Control.Monad (unless, forever, void)
 -- > import qualified Data.ByteString as S
--- > import Network.Socket hiding (recv)
+-- > import Network.Socket
 -- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
@@ -67,7 +67,7 @@
 -- >
 -- > import qualified Control.Exception as E
 -- > import qualified Data.ByteString.Char8 as C
--- > import Network.Socket hiding (recv)
+-- > import Network.Socket
 -- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
