@@ -77,7 +77,8 @@ import Foreign.Marshal.Array
 -- | Basic type for a socket.
 type Socket = CInt
 
-{-# DEPRECATED fdSocket "This is just the identity function. Just remove it" #-}
+{-# WARNING fdSocket "This is just the identity function. Just remove it" #-}
+-- | Getting a file descriptor from a socket.
 fdSocket :: Socket -> CInt
 fdSocket = id
 
