@@ -157,9 +157,6 @@ listen s backlog =
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
         c_listen s (fromIntegral backlog)
 
-accept :: Socket -> IO (Socket, SockAddr)
-accept = accept'
-
 -----------------------------------------------------------------------------
 -- Accept
 --
@@ -174,8 +171,8 @@ accept = accept'
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
-accept' :: SocketAddress sa => Socket -> IO (Socket, sa)
-accept' s = withNewSocketAddress $ \sa sz -> do
+accept :: SocketAddress sa => Socket -> IO (Socket, sa)
+accept s = withNewSocketAddress $ \sa sz -> do
 #if defined(mingw32_HOST_OS)
      new_fd <-
         if threaded

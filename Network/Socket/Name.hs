@@ -5,9 +5,7 @@
 
 module Network.Socket.Name (
     getPeerName
-  , getPeerName'
   , getSocketName
-  , getSocketName'
   , socketPort
   ) where
 
@@ -19,13 +17,9 @@ import Foreign.Storable (Storable(..))
 import Network.Socket.Internal
 import Network.Socket.Types
 
--- | Getting peer's 'SockAddr'.
-getPeerName :: Socket -> IO SockAddr
-getPeerName = getPeerName'
-
 -- | Getting peer's socket address.
-getPeerName' :: SocketAddress sa => Socket -> IO sa
-getPeerName' s =
+getPeerName :: SocketAddress sa => Socket -> IO sa
+getPeerName s =
  withNewSocketAddress $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
@@ -33,13 +27,9 @@ getPeerName' s =
      _sz <- peek int_star
      peekSocketAddress ptr
 
--- | Getting my 'SockAddr'.
-getSocketName :: Socket -> IO SockAddr
-getSocketName = getSocketName'
-
 -- | Getting my socket address.
-getSocketName' :: SocketAddress sa => Socket -> IO sa
-getSocketName' s =
+getSocketName :: SocketAddress sa => Socket -> IO sa
+getSocketName s =
  withNewSocketAddress $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $

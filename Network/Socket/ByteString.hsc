@@ -100,10 +100,16 @@ sendAll s bs = do
 -- ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
+{-
 sendTo :: SocketAddress sa =>
           Socket     -- ^ Socket
        -> ByteString  -- ^ Data to send
        -> sa    -- ^ Recipient address
+       -> IO Int      -- ^ Number of bytes sent
+-}
+sendTo :: Socket     -- ^ Socket
+       -> ByteString  -- ^ Data to send
+       -> SockAddr    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
 sendTo s xs sa =
     unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo s str len sa
@@ -116,10 +122,16 @@ sendTo s xs sa =
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
+{-
 sendAllTo :: SocketAddress sa =>
              Socket     -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> sa    -- ^ Recipient address
+          -> IO ()
+-}
+sendAllTo :: Socket     -- ^ Socket
+          -> ByteString  -- ^ Data to send
+          -> SockAddr    -- ^ Recipient address
           -> IO ()
 sendAllTo s xs sa = do
     sent <- sendTo s xs sa
