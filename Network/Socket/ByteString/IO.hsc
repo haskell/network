@@ -22,7 +22,7 @@
 -- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
 -- > import Network.Socket.ByteString
 --
-module Network.Socket.ByteString
+module Network.Socket.ByteString.IO
     (
     -- * Send data to a socket
       send
@@ -48,9 +48,9 @@ import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr)
-import Network.Socket (sendBuf, sendBufTo, recvBuf, recvBufFrom)
 import System.IO.Error (isEOFError)
 
+import Network.Socket.Buffer
 import Network.Socket.ByteString.Internal
 import Network.Socket.Types
 
@@ -100,16 +100,10 @@ sendAll s bs = do
 -- ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-{-
 sendTo :: SocketAddress sa =>
           Socket     -- ^ Socket
        -> ByteString  -- ^ Data to send
        -> sa    -- ^ Recipient address
-       -> IO Int      -- ^ Number of bytes sent
--}
-sendTo :: Socket     -- ^ Socket
-       -> ByteString  -- ^ Data to send
-       -> SockAddr    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
 sendTo s xs sa =
     unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo s str len sa
@@ -122,42 +116,14 @@ sendTo s xs sa =
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-{-
 sendAllTo :: SocketAddress sa =>
              Socket     -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> sa    -- ^ Recipient address
           -> IO ()
--}
-sendAllTo :: Socket     -- ^ Socket
-          -> ByteString  -- ^ Data to send
-          -> SockAddr    -- ^ Recipient address
-          -> IO ()
 sendAllTo s xs sa = do
     sent <- sendTo s xs sa
     when (sent < B.length xs) $ sendAllTo s (B.drop sent xs) sa
-
--- ----------------------------------------------------------------------------
--- ** Vectored I/O
-
--- $vectored
---
--- Vectored I\/O, also known as scatter\/gather I\/O, allows multiple
--- data segments to be sent using a single system call, without first
--- concatenating the segments.  For example, given a list of
--- @ByteString@s, @xs@,
---
--- > sendMany sock xs
---
--- is equivalent to
---
--- > sendAll sock (concat xs)
---
--- but potentially more efficient.
---
--- Vectored I\/O are often useful when implementing network protocols
--- that, for example, group data into segments consisting of one or
--- more fixed-length headers followed by a variable-length body.
 
 -- | Send data to the socket.  The socket must be in a connected
 -- state.  The data is sent as if the parts have been concatenated.
@@ -246,9 +212,10 @@ recv s nbytes
 -- 'SockAddr' representing the address of the sending socket.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recvFrom :: Socket                     -- ^ Socket
+recvFrom :: SocketAddress sa =>
+            Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
-         -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
+         -> IO (ByteString, sa)  -- ^ Data received and sender address
 recvFrom sock nbytes =
     allocaBytes nbytes $ \ptr -> do
         (len, sockaddr) <- recvBufFrom sock ptr nbytes

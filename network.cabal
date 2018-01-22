@@ -47,6 +47,7 @@ library
   other-modules:
     Network.Socket.Buffer
     Network.Socket.ByteString.Internal
+    Network.Socket.ByteString.IO
     Network.Socket.Close
     Network.Socket.Constant
     Network.Socket.Fcntl
