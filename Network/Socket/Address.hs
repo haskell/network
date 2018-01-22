@@ -7,11 +7,16 @@ module Network.Socket.Address (
     , connect
     , bind
     , accept
-    -- ** Sending and receiving data
+    -- * Sending and receiving ByteString
+    , sendTo
+    , sendAllTo
+    , recvFrom
+    -- * Sending and receiving data from a buffer
     , sendBufTo
     , recvBufFrom
     ) where
 
+import Network.Socket.ByteString.IO
 import Network.Socket.Buffer
 import Network.Socket.Name
 import Network.Socket.Syscall
