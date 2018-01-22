@@ -64,12 +64,32 @@ import Network.Socket.Types
 -- that, for example, group data into segments consisting of one or
 -- more fixed-length headers followed by a variable-length body.
 
+-- | Send data to the socket.  The recipient can be specified
+-- explicitly, so the socket need not be in a connected state.
+-- Returns the number of bytes sent. Applications are responsible for
+-- ensuring that all data has been sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendTo :: Socket -> ByteString -> SockAddr -> IO Int
 sendTo = G.sendTo
 
+-- | Send data to the socket. The recipient can be specified
+-- explicitly, so the socket need not be in a connected state.  Unlike
+-- 'sendTo', this function continues to send data until either all
+-- data has been sent or an error occurs.  On error, an exception is
+-- raised, and there is no way to determine how much data, if any, was
+-- successfully sent.
+--
+-- Sending data to closed socket may lead to undefined behaviour.
 sendAllTo :: Socket -> ByteString -> SockAddr -> IO ()
 sendAllTo = G.sendAllTo
 
+-- | Receive data from the socket.  The socket need not be in a
+-- connected state.  Returns @(bytes, address)@ where @bytes@ is a
+-- 'ByteString' representing the data received and @address@ is a
+-- 'SockAddr' representing the address of the sending socket.
+--
+-- Receiving data from closed socket may lead to undefined behaviour.
 recvFrom :: Socket -> Int -> IO (ByteString, SockAddr)
 recvFrom = G.recvFrom
 
