@@ -87,7 +87,7 @@ sendBuf s str len =
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
-recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
+recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
  | otherwise   =

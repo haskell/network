@@ -113,7 +113,6 @@ module Network.Socket
     , bind
     , listen
     , accept
-    , accept'
     -- ** Closing
     , close
     , shutdown
@@ -139,10 +138,6 @@ module Network.Socket
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
-    -- * Socket Address
-    , SocketAddress(..)
-    , getPeerName'
-    , getSocketName'
     -- ** Basic socket address type
     , SockAddr(..)
     , isSupportedSockAddr
@@ -194,7 +189,7 @@ module Network.Socket
     , maxListenQueue
     ) where
 
-import Network.Socket.Buffer
+import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
 import Network.Socket.Close
 import Network.Socket.Constant
 import Network.Socket.Fcntl
@@ -202,8 +197,9 @@ import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
 import Network.Socket.Internal
-import Network.Socket.Name
+import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
-import Network.Socket.Syscall
+import Network.Socket.SockAddr
+import Network.Socket.Syscall hiding (connect, bind, accept)
 import Network.Socket.Types
 import Network.Socket.Unix
