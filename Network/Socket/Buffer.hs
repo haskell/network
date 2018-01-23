@@ -41,15 +41,15 @@ sendBufTo :: SocketAddress sa =>
 sendBufTo s ptr nbytes sa =
  withSocketAddress sa $ \p_sa sz ->
    fmap fromIntegral $
-     throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
-        c_sendto s ptr (fromIntegral nbytes) 0{-flags-}
+     throwSocketErrorWaitWrite (fdSocket s) "Network.Socket.sendBufTo" $
+        c_sendto (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
                         p_sa (fromIntegral sz)
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> FD
 socket2FD s =
   -- HACK, 1 means True
-  FD{ fdFD = s, fdIsSocket_ = 1 }
+  FD{ fdFD = fdSocket s, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -75,8 +75,10 @@ sendBuf s str len =
       0
       (fromIntegral len)
 #else
-     throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
-        c_send s str (fromIntegral len) 0{-flags-}
+    throwSocketErrorWaitWrite fd "Network.Socket.sendBuf" $
+      c_send fd str (fromIntegral len) 0{-flags-}
+  where
+    fd = fdSocket s
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -90,12 +92,13 @@ sendBuf s str len =
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
- | otherwise   =
+ | otherwise   = do
+    let fd = fdSocket s
     withNewSocketAddress $ \ptr_sa sz ->
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
-                   c_recvfrom s ptr (fromIntegral nbytes) 0{-flags-}
+        len <- throwSocketErrorWaitRead fd "Network.Socket.recvBufFrom" $
+                   c_recvfrom fd ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_sa ptr_len
         let len' = fromIntegral len
         if len' == 0
@@ -121,15 +124,15 @@ recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
-        len <-
 #if defined(mingw32_HOST_OS)
 -- see comment in sendBuf above.
-            throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
-                readRawBufferPtr "Network.Socket.recvBuf"
-                (socket2FD s) ptr 0 (fromIntegral nbytes)
+        len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
+                  readRawBufferPtr "Network.Socket.recvBuf"
+                  (socket2FD s) ptr 0 (fromIntegral nbytes)
 #else
-               throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
-                   c_recv s (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+        let fd = fdSocket s
+        len <- throwSocketErrorWaitRead fd "Network.Socket.recvBuf" $
+                  c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0

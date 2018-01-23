@@ -31,10 +31,11 @@ send :: Socket     -- ^ Connected socket
 send s lbs = do
   let cs  = take maxNumChunks (L.toChunks lbs)
       len = length cs
+      fd = fdSocket s
   liftM fromIntegral . allocaArray len $ \ptr ->
     withPokes cs ptr $ \niovs ->
-      throwSocketErrorWaitWrite s "writev" $
-        c_writev (fromIntegral s) ptr niovs
+      throwSocketErrorWaitWrite fd "writev" $
+        c_writev fd ptr niovs
   where
     withPokes ss p f = loop ss p 0 0
       where loop (c:cs) q k !niovs

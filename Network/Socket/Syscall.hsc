@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNet.h"
@@ -25,9 +24,10 @@ import Network.Socket.Close
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 import Data.Bits ((.|.))
 import GHC.Conc (threadWaitRead)
+#else
+import Network.Socket.Fcntl
 #endif
 
-import Network.Socket.Fcntl
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types
@@ -69,8 +69,8 @@ import Network.Socket.Types
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
 -- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
 -- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >>> bind sock (addrAddress addr)
--- >>> getSocketName sock :: IO SockAddr
+-- >>> Network.Socket.bind sock (addrAddress addr)
+-- >>> getSocketName sock
 -- 127.0.0.1:5000
 socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
@@ -79,11 +79,13 @@ socket :: Family         -- Family Name (usually AF_INET)
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    s <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) (c_stype .|. (#const SOCK_NONBLOCK)) protocol
+    let s = mkSocket fd
 #else
-    s <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
+    let s = mkSocket fd
     setNonBlockIfNeeded s
 #endif
 #if HAVE_DECL_IPV6_V6ONLY
@@ -112,7 +114,7 @@ socket family stype protocol = do
 bind :: SocketAddress sa => Socket -> sa -> IO ()
 bind s sa = withSocketAddress sa $ \p_sa sz -> do
    _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind s p_sa (fromIntegral sz)
+     c_bind (fdSocket s) p_sa (fromIntegral sz)
    return ()
 
 -----------------------------------------------------------------------------
@@ -126,9 +128,10 @@ connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
 connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
 connectLoop s p_sa sz = loop
   where
+    fd = fdSocket s
     errLoc = "Network.Socket.connect: " ++ show s
     loop = do
-       r <- c_connect s p_sa sz
+       r <- c_connect fd p_sa sz
        when (r == -1) $ do
 #if defined(mingw32_HOST_OS)
            throwSocketError errLoc
@@ -141,7 +144,7 @@ connectLoop s p_sa sz = loop
              _otherwise             -> throwSocketError errLoc
 
     connectBlocked = do
-       threadWaitWrite (fromIntegral s)
+       threadWaitWrite (fromIntegral fd)
        err <- getSocketOption s SoError
        when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
@@ -155,7 +158,7 @@ connectLoop s p_sa sz = loop
 listen :: Socket -> Int -> IO ()
 listen s backlog =
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen s (fromIntegral backlog)
+        c_listen (fdSocket s) (fromIntegral backlog)
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -173,35 +176,39 @@ listen s backlog =
 -- to the socket on the other end of the connection.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept s = withNewSocketAddress $ \sa sz -> do
+     let fd = fdSocket s
 #if defined(mingw32_HOST_OS)
      new_fd <-
         if threaded
            then with (fromIntegral sz) $ \ ptr_len ->
                   throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe s sa ptr_len
+                    c_accept_safe fd sa ptr_len
            else do
-                paramData <- c_newAcceptParams s (fromIntegral sz) sa
+                paramData <- c_newAcceptParams fd (fromIntegral sz) sa
                 rc        <- asyncDoProc c_acceptDoProc paramData
                 new_fd  <- c_acceptNewSock    paramData
                 c_free paramData
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
                 return new_fd
+     let new_s = mkSocket new_fd
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
-                        (threadWaitRead (fromIntegral s))
-                        (c_accept4 s sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
+                        (threadWaitRead $ fromIntegral fd)
+                        (c_accept4 fd sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
+     let new_s = mkSocket new_fd
 # else
-     new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
-                        (c_accept s sa ptr_len)
-     setNonBlockIfNeeded new_fd
-     setCloseOnExecIfNeeded new_fd
+     new_fd <- throwSocketErrorWaitRead fd "Network.Socket.accept"
+                        (c_accept fd sa ptr_len)
+     let new_s = mkSocket new_fd
+     setNonBlockIfNeeded new_s
+     setCloseOnExecIfNeeded new_s
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSocketAddress sa
-     return (new_fd, addr)
+     return (new_s, addr)
 
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt

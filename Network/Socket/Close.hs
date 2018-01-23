@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNetDef.h"
 
@@ -37,7 +36,7 @@ sdownCmdToInt ShutdownBoth    = 2
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown s stype = do
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown s (sdownCmdToInt stype)
+    c_shutdown (fdSocket s) (sdownCmdToInt stype)
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -45,7 +44,7 @@ shutdown s stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close s = closeFdWith (closeFd . fromIntegral) (fromIntegral s)
+close s = closeFdWith (closeFd . fromIntegral) (fromIntegral $ fdSocket s)
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
