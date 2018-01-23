@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 #include "HsNet.h"
 ##include "HsNetDef.h"
 
@@ -62,8 +60,9 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 -- If 'getPeerEid' is used, processID is always 0.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
-getPeerCred fd = do
+getPeerCred s = do
   let sz = (#const sizeof(struct ucred))
+      fd = fdSocket s
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
      _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
@@ -87,11 +86,11 @@ getPeerCred _ = return (0, 0, 0)
 --  Only available on platforms that support getpeereid().
 getPeerEid :: Socket -> IO (CUInt, CUInt)
 #ifdef HAVE_GETPEEREID
-getPeerEid fd = do
+getPeerEid s = do
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
       throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
-        c_getpeereid fd ptr_uid ptr_gid
+        c_getpeereid (fdSocket s) ptr_uid ptr_gid
       uid <- peek ptr_uid
       gid <- peek ptr_gid
       return (uid, gid)
@@ -120,7 +119,7 @@ isUnixDomainSocketAvailable = False
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd s outfd = void $
-  throwSocketErrorWaitWrite s "Network.Socket.sendFd" $ c_sendFd s outfd
+  throwSocketErrorWaitWrite (fdSocket s) "Network.Socket.sendFd" $ c_sendFd (fdSocket s) outfd
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
@@ -134,7 +133,7 @@ sendFd _ _ = error "Network.Socket.sendFd"
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd s =
-  throwSocketErrorWaitRead s "Network.Socket.recvFd" $ c_recvFd s
+  throwSocketErrorWaitRead (fdSocket s) "Network.Socket.recvFd" $ c_recvFd (fdSocket s)
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
 recvFd _ = error "Network.Socket.recvFd"
@@ -155,13 +154,11 @@ socketPair family stype protocol =
       _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
                   c_socketpair (packFamily family) c_stype protocol fdArr
       [fd1,fd2] <- peekArray 2 fdArr
-      s1 <- mkNonBlockingSocket fd1
-      s2 <- mkNonBlockingSocket fd2
-      return (s1,s2)
-  where
-    mkNonBlockingSocket fd = do
-       setNonBlockIfNeeded fd
-       return fd
+      let s1 = mkSocket fd1
+          s2 = mkSocket fd2
+      setNonBlockIfNeeded s1
+      setNonBlockIfNeeded s2
+      return (s1, s2)
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt

@@ -10,6 +10,7 @@ module Network.Socket.Types
     -- * Socket type
       Socket
     , fdSocket
+    , mkSocket
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
@@ -75,12 +76,14 @@ import Foreign.Marshal.Array
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-type Socket = CInt
+newtype Socket = Socket CInt deriving (Eq, Show)
 
-{-# WARNING fdSocket "This is just the identity function. Just remove it" #-}
 -- | Getting a file descriptor from a socket.
 fdSocket :: Socket -> CInt
-fdSocket = id
+fdSocket (Socket fd) = fd
+
+mkSocket :: CInt -> Socket
+mkSocket = Socket
 
 -----------------------------------------------------------------------------
 

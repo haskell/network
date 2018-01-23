@@ -15,8 +15,8 @@ import Network.Socket.Types
 -- | Set the nonblocking flag on Unix.
 --   On Windows, nothing is done.
 setNonBlockIfNeeded :: Socket -> IO ()
-setNonBlockIfNeeded fd =
-    System.Posix.Internals.setNonBlockingFD fd True
+setNonBlockIfNeeded s =
+    System.Posix.Internals.setNonBlockingFD (fdSocket s) True
 
 -- | Set the close_on_exec flag on Unix.
 --   On Windows, nothing is done.
@@ -26,7 +26,7 @@ setCloseOnExecIfNeeded :: Socket -> IO ()
 #if defined(mingw32_HOST_OS)
 setCloseOnExecIfNeeded _ = return ()
 #else
-setCloseOnExecIfNeeded = System.Posix.Internals.setCloseOnExec
+setCloseOnExecIfNeeded s = System.Posix.Internals.setCloseOnExec (fdSocket s)
 #endif
 
 #if !defined(mingw32_HOST_OS)
@@ -42,8 +42,8 @@ getCloseOnExec :: Socket -> IO Bool
 #if defined(mingw32_HOST_OS)
 getCloseOnExec _ = return False
 #else
-getCloseOnExec fd = do
-    flags <- c_fcntl_read fd (#const F_GETFD) 0
+getCloseOnExec s = do
+    flags <- c_fcntl_read (fdSocket s) (#const F_GETFD) 0
     let ret = flags .&. (#const FD_CLOEXEC)
     return (ret /= 0)
 #endif
@@ -56,8 +56,8 @@ getNonBlock :: Socket -> IO Bool
 #if defined(mingw32_HOST_OS)
 getNonBlock _ = return False
 #else
-getNonBlock fd = do
-    flags <- c_fcntl_read fd (#const F_GETFL) 0
+getNonBlock s = do
+    flags <- c_fcntl_read (fdSocket s) (#const F_GETFL) 0
     let ret = flags .&. (#const O_NONBLOCK)
     return (ret /= 0)
 #endif

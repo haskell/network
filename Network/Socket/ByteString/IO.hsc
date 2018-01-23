@@ -141,10 +141,11 @@ sendMany s cs = do
     sent <- sendManyInner
     when (sent < totalLength cs) $ sendMany s (remainingChunks sent cs)
   where
+    fd = fdSocket s
     sendManyInner =
       fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-          throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
-              c_writev (fromIntegral s) iovsPtr
+          throwSocketErrorWaitWrite fd "Network.Socket.ByteString.sendMany" $
+              c_writev fd iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
 sendMany s = sendAll s . B.concat
@@ -167,6 +168,7 @@ sendManyTo s cs addr = do
     sent <- fmap fromIntegral sendManyToInner
     when (sent < totalLength cs) $ sendManyTo s (remainingChunks sent cs) addr
   where
+    fd = fdSocket s
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
         withIOVec cs $ \(iovsPtr, iovsLen) -> do
@@ -174,8 +176,8 @@ sendManyTo s cs addr = do
                 addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
-              c_sendmsg (fromIntegral s) msgHdrPtr 0
+            throwSocketErrorWaitWrite fd "Network.Socket.ByteString.sendManyTo" $
+              c_sendmsg fd msgHdrPtr 0
 #else
 sendManyTo s cs = sendAllTo s (B.concat cs)
 #endif

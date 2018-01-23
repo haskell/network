@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Network.Socket.Handle where
 
 import qualified GHC.IO.Device (IODeviceType(Stream))
@@ -19,6 +17,7 @@ import Network.Socket.Types
 
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = do
-    h <- fdToHandle' (fromIntegral s) (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
+    let fd = fromIntegral $ fdSocket s
+    h <- fdToHandle' fd (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
     hSetBuffering h NoBuffering
     return h

@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNetDef.h"
 
@@ -23,7 +22,7 @@ getPeerName s =
  withNewSocketAddress $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
-       c_getpeername s ptr int_star
+       c_getpeername (fdSocket s) ptr int_star
      _sz <- peek int_star
      peekSocketAddress ptr
 
@@ -33,7 +32,7 @@ getSocketName s =
  withNewSocketAddress $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
-       c_getsockname s ptr int_star
+       c_getsockname (fdSocket s) ptr int_star
      peekSocketAddress ptr
 
 foreign import CALLCONV unsafe "getpeername"
