@@ -19,6 +19,7 @@ import Network.Socket.Types
 import Foreign.Marshal.Utils (with)
 #endif
 #ifdef HAVE_GETPEEREID
+import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (alloca)
 #endif
 #ifdef DOMAIN_SOCKET_SUPPORT
@@ -39,14 +40,15 @@ import Network.Socket.Options (c_getsockopt)
 --
 --   Since 3.0.0.0.
 getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
---getPeerCredential sock
---  | socketFamily sock /= AF_UNIX = return (Nothing, Nothing, Nothing) -- xxx fixme
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCredential sock = do
     (pid, uid, gid) <- getPeerCred sock
-    return (Just pid, Just uid, Just gid)
+    if uid == maxBound then
+        return (Nothing, Nothing, Nothing)
+      else
+        return (Just pid, Just uid, Just gid)
 #elif defined(HAVE_GETPEEREID)
-getPeerCredential sock = do
+getPeerCredential sock = E.handle (\(E.SomeException _) -> return (Nothing,Nothing,Nothing)) $ do
     (uid, gid) <- getPeerEid sock
     return (Nothing, Just uid, Just gid)
 #else
@@ -56,8 +58,7 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 -- | Returns the processID, userID and groupID of the peer of
 --   a UNIX domain socket.
 --
--- Only available on platforms that support SO_PEERCRED or 'getPeerEid'.
--- If 'getPeerEid' is used, processID is always 0.
+-- Only available on platforms that support SO_PEERCRED.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred s = do
@@ -71,10 +72,6 @@ getPeerCred s = do
      uid <- (#peek struct ucred, uid) ptr_cr
      gid <- (#peek struct ucred, gid) ptr_cr
      return (pid, uid, gid)
-#elif HAVE_GETPEEREID
-getPeerCred s = do
-  (uid,gid) <- getPeerEid s
-  return (0, uid, gid)
 #else
 getPeerCred _ = return (0, 0, 0)
 #endif
