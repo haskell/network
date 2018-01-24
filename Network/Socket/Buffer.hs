@@ -25,7 +25,6 @@ import Foreign.C.Types (CChar)
 #endif
 
 import Network.Socket.Internal
-import Network.Socket.Name
 import Network.Socket.Types
 
 -- | Send data to the socket.  The recipient can be specified
@@ -87,6 +86,8 @@ sendBuf s str len =
 -- bytes received and @address@ is a 'SockAddr' representing the
 -- address of the sending socket.
 --
+-- For 'Stream' sockets, the second return value would be invalid.
+--
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
@@ -104,7 +105,7 @@ recvBufFrom s ptr nbytes
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
          else do
-           sockaddr <- getPeerName s -- xxx fixme: peekSockAddr ptr_sa
+           sockaddr <- peekSocketAddress ptr_sa
            return (len', sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -156,4 +157,4 @@ foreign import CALLCONV unsafe "recv"
 foreign import CALLCONV SAFE_ON_WIN "sendto"
   c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr b -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
-  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr SockAddr -> Ptr CInt -> IO CInt
+  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
