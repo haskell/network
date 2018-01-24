@@ -47,17 +47,20 @@ So, if you use `CALLCONV`/`SAFE_ON_WIN`, the following is also necessary:
 
 ### 2.6
 
-- Making `SockAddrCan` deprecated
+- [x] Making `SockAddrCan` deprecated
 
 ### 2.7
 
-- Removing `SockAddrCan`
+See https://github.com/haskell/network/issues/296
+
 - Making `Network` deprecated
 - Making `Network.BSD` deprecated
-- Making `Socket` abstract
+- Making `MkSocket` deprecated
+- Making many APIs deprecated
 
 ### 3.0
 
 - Removing `Network`
 - Removing `Network.BSD`
+- Removing `SockAddrCan`
 - Changing the internal structure of `Socket`.
