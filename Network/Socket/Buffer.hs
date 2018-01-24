@@ -10,13 +10,14 @@ module Network.Socket.Buffer (
   , recvBuf
   ) where
 
+import qualified Control.Exception as E
 import Data.Word (Word8)
 import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Storable (Storable(..))
-import System.IO.Error (mkIOError, ioeSetErrorString)
 import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
+import System.IO.Error (mkIOError, ioeSetErrorString)
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
@@ -25,6 +26,7 @@ import Foreign.C.Types (CChar)
 #endif
 
 import Network.Socket.Internal
+import Network.Socket.Name
 import Network.Socket.Types
 
 -- | Send data to the socket.  The recipient can be specified
@@ -105,7 +107,7 @@ recvBufFrom s ptr nbytes
         if len' == 0
          then ioError (mkEOFError "Network.Socket.recvFrom")
          else do
-           sockaddr <- peekSocketAddress ptr_sa
+           sockaddr <- peekSocketAddress ptr_sa `E.catch` \(E.SomeException _) -> getPeerName s
            return (len', sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
