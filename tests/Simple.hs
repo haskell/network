@@ -126,66 +126,14 @@ testUserTimeout = do
       getSocketOption sock UserTimeout >>= (@=?) 2000
       close sock
 
-{-
-testGetPeerCred:: Assertion
-testGetPeerCred =
-    test clientSetup clientAct serverSetup server
-  where
-    clientSetup = do
-        sock <- socket AF_UNIX Stream defaultProtocol
-        connect sock $ SockAddrUnix addr
-        return sock
-
-    serverSetup = do
-        sock <- socket AF_UNIX Stream defaultProtocol
-        bind sock $ SockAddrUnix addr
-        listen sock 1
-        return sock
-
-    server sock = do
-        (clientSock, _) <- accept sock
-        _ <- serverAct clientSock
-        close clientSock
-
-    addr = "/tmp/testAddr1"
-    clientAct sock = withSocketsDo $ do
-                     sendAll sock testMsg
-                     (pid,uid,gid) <- getPeerCred sock
-                     putStrLn $ unwords ["pid=",show pid,"uid=",show uid, "gid=", show gid]
-    serverAct sock = withSocketsDo $ do
-                     msg <- recv sock 1024
-                     putStrLn $ C.unpack msg
-
-
-testGetPeerEid :: Assertion
-testGetPeerEid =
-    test clientSetup clientAct serverSetup server
-  where
-    clientSetup = do
-        sock <- socket AF_UNIX Stream defaultProtocol
-        connect sock $ SockAddrUnix addr
-        return sock
-
-    serverSetup = do
-        sock <- socket AF_UNIX Stream defaultProtocol
-        bind sock $ SockAddrUnix addr
-        listen sock 1
-        return sock
-
-    server sock = do
-        (clientSock, _) <- accept sock
-        _ <- serverAct clientSock
-        close clientSock
-
-    addr = "/tmp/testAddr2"
-    clientAct sock = withSocketsDo $ do
-                     sendAll sock testMsg
-                     (uid,gid) <- getPeerEid sock
-                     putStrLn $ unwords ["uid=",show uid, "gid=", show gid]
-    serverAct sock = withSocketsDo $ do
-                     msg <- recv sock 1024
-                     putStrLn $ C.unpack msg
--}
+testGetPeerCredential :: Assertion
+testGetPeerCredential = do
+    s <- socket AF_INET Stream defaultProtocol
+    cred1 <- getPeerCredential s
+    (Nothing,Nothing,Nothing) @=? cred1
+    (x,_) <- socketPair AF_UNIX Stream defaultProtocol
+    (_,muid,_) <- getPeerCredential x
+    assertBool "testGetPeerCredential" (muid /= Nothing)
 
 testByteStringEol :: Assertion
 testByteStringEol = tcpTest client (flip shutdown ShutdownSend)
@@ -249,8 +197,7 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testRecvFrom" testRecvFrom
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
     , testCase "testUserTimeout" testUserTimeout
---    , testCase "testGetPeerCred" testGetPeerCred
---    , testCase "testGetPeerEid" testGetPeerEid
+    , testCase "testGetPeerCredential" testGetPeerCredential
     , testCase "testByteStringEol" testByteStringEol
       -- conversions of IP addresses
     , testCase "testHostAddressToTuple" testHostAddressToTuple
