@@ -55,6 +55,8 @@ sendBufTo = G.sendBufTo
 -- bytes received and @address@ is a 'SockAddr' representing the
 -- address of the sending socket.
 --
+-- For 'Stream' sockets, the second return value would be invalid.
+--
 -- NOTE: blocking on Windows unless you compile with -threaded (see
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
