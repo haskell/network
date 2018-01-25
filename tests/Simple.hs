@@ -127,7 +127,7 @@ testUserTimeout = do
       close sock
 
 testGetPeerCredential :: Assertion
-testGetPeerCredential = do
+testGetPeerCredential = when isUnixDomainSocketAvailable $ do
     s <- socket AF_INET Stream defaultProtocol
     cred1 <- getPeerCredential s
     (Nothing,Nothing,Nothing) @=? cred1
