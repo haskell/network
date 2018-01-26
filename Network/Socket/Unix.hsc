@@ -116,7 +116,7 @@ isUnixDomainSocketAvailable = False
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd s outfd = void $
-  throwSocketErrorWaitWrite (fdSocket s) "Network.Socket.sendFd" $ c_sendFd (fdSocket s) outfd
+  throwSocketErrorWaitWrite s "Network.Socket.sendFd" $ c_sendFd (fdSocket s) outfd
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
@@ -130,7 +130,7 @@ sendFd _ _ = error "Network.Socket.sendFd"
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd s =
-  throwSocketErrorWaitRead (fdSocket s) "Network.Socket.recvFd" $ c_recvFd (fdSocket s)
+  throwSocketErrorWaitRead s "Network.Socket.recvFd" $ c_recvFd (fdSocket s)
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
 recvFd _ = error "Network.Socket.recvFd"

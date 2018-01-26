@@ -42,7 +42,7 @@ sendBufTo :: SocketAddress sa =>
 sendBufTo s ptr nbytes sa =
  withSocketAddress sa $ \p_sa sz ->
    fmap fromIntegral $
-     throwSocketErrorWaitWrite (fdSocket s) "Network.Socket.sendBufTo" $
+     throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
         c_sendto (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
                         p_sa (fromIntegral sz)
 
@@ -76,10 +76,8 @@ sendBuf s str len =
       0
       (fromIntegral len)
 #else
-    throwSocketErrorWaitWrite fd "Network.Socket.sendBuf" $
-      c_send fd str (fromIntegral len) 0{-flags-}
-  where
-    fd = fdSocket s
+    throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
+      c_send (fdSocket s) str (fromIntegral len) 0{-flags-}
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -96,12 +94,11 @@ recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
  | otherwise   = do
-    let fd = fdSocket s
     withNewSocketAddress $ \ptr_sa sz ->
       alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead fd "Network.Socket.recvBufFrom" $
-                   c_recvfrom fd ptr (fromIntegral nbytes) 0{-flags-}
+        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
+                   c_recvfrom (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
                                 ptr_sa ptr_len
         let len' = fromIntegral len
         if len' == 0
@@ -133,9 +130,8 @@ recvBuf s ptr nbytes
                   readRawBufferPtr "Network.Socket.recvBuf"
                   (socket2FD s) ptr 0 (fromIntegral nbytes)
 #else
-        let fd = fdSocket s
-        len <- throwSocketErrorWaitRead fd "Network.Socket.recvBuf" $
-                  c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+        len <- throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
+                  c_recv (fdSocket s) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
         let len' = fromIntegral len
         if len' == 0
