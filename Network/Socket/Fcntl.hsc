@@ -10,23 +10,21 @@ import Foreign.C.Types (CInt(..))
 import Data.Bits ((.&.))
 #endif
 
-import Network.Socket.Types
-
 -- | Set the nonblocking flag on Unix.
 --   On Windows, nothing is done.
-setNonBlockIfNeeded :: Socket -> IO ()
-setNonBlockIfNeeded s =
-    System.Posix.Internals.setNonBlockingFD (fdSocket s) True
+setNonBlockIfNeeded :: CInt -> IO ()
+setNonBlockIfNeeded fd =
+    System.Posix.Internals.setNonBlockingFD fd True
 
 -- | Set the close_on_exec flag on Unix.
 --   On Windows, nothing is done.
 --
 --   Since 3.0.0.0.
-setCloseOnExecIfNeeded :: Socket -> IO ()
+setCloseOnExecIfNeeded :: CInt -> IO ()
 #if defined(mingw32_HOST_OS)
 setCloseOnExecIfNeeded _ = return ()
 #else
-setCloseOnExecIfNeeded s = System.Posix.Internals.setCloseOnExec (fdSocket s)
+setCloseOnExecIfNeeded fd = System.Posix.Internals.setCloseOnExec fd
 #endif
 
 #if !defined(mingw32_HOST_OS)
@@ -38,12 +36,12 @@ foreign import ccall unsafe "fcntl"
 --   On Windows, this function always returns 'False'.
 --
 --   Since 3.0.0.0.
-getCloseOnExec :: Socket -> IO Bool
+getCloseOnExec :: CInt -> IO Bool
 #if defined(mingw32_HOST_OS)
 getCloseOnExec _ = return False
 #else
-getCloseOnExec s = do
-    flags <- c_fcntl_read (fdSocket s) (#const F_GETFD) 0
+getCloseOnExec fd = do
+    flags <- c_fcntl_read fd (#const F_GETFD) 0
     let ret = flags .&. (#const FD_CLOEXEC)
     return (ret /= 0)
 #endif
@@ -52,12 +50,12 @@ getCloseOnExec s = do
 --   On Windows, this function always returns 'False'.
 --
 --   Since 3.0.0.0.
-getNonBlock :: Socket -> IO Bool
+getNonBlock :: CInt -> IO Bool
 #if defined(mingw32_HOST_OS)
 getNonBlock _ = return False
 #else
-getNonBlock s = do
-    flags <- c_fcntl_read (fdSocket s) (#const F_GETFL) 0
+getNonBlock fd = do
+    flags <- c_fcntl_read fd (#const F_GETFL) 0
     let ret = flags .&. (#const O_NONBLOCK)
     return (ret /= 0)
 #endif

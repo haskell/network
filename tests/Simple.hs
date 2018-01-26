@@ -241,8 +241,8 @@ tcpTest clientAct serverAct = do
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 #if !defined(mingw32_HOST_OS)
-        getNonBlock sock >>= (@=?) True
-        getCloseOnExec sock >>= (@=?) False
+        getNonBlock (fdSocket sock) >>= (@=?) True
+        getCloseOnExec (fdSocket sock) >>= (@=?) False
 #endif
         connect sock $ addrAddress addr
         return sock
@@ -255,13 +255,13 @@ tcpTest clientAct serverAct = do
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 #if !defined(mingw32_HOST_OS)
-        getNonBlock sock >>= (@=?) True
-        getCloseOnExec sock >>= (@=?) False
+        getNonBlock (fdSocket sock) >>= (@=?) True
+        getCloseOnExec (fdSocket sock) >>= (@=?) False
 #endif
         setSocketOption sock ReuseAddr 1
-        setCloseOnExecIfNeeded sock
+        setCloseOnExecIfNeeded (fdSocket sock)
 #if !defined(mingw32_HOST_OS)
-        getCloseOnExec sock >>= (@=?) True
+        getCloseOnExec (fdSocket sock) >>= (@=?) True
 #endif
         bind sock $ addrAddress addr
         listen sock 1
@@ -272,8 +272,8 @@ tcpTest clientAct serverAct = do
     server sock = do
         (clientSock, _) <- accept sock
 #if !defined(mingw32_HOST_OS)
-        getNonBlock clientSock >>= (@=?) True
-        getCloseOnExec clientSock >>= (@=?) True
+        getNonBlock (fdSocket clientSock) >>= (@=?) True
+        getCloseOnExec (fdSocket clientSock) >>= (@=?) True
 #endif
         _ <- serverAct clientSock
         close clientSock

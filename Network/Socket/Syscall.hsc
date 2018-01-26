@@ -84,8 +84,8 @@ socket family stype protocol = do
 #else
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
                 c_socket (packFamily family) c_stype protocol
+    setNonBlockIfNeeded fd
     let s = mkSocket fd
-    setNonBlockIfNeeded s
 #endif
 #if HAVE_DECL_IPV6_V6ONLY
     -- The default value of the IPv6Only option is platform specific,
@@ -190,7 +190,6 @@ accept s = withNewSocketAddress $ \sa sz -> do
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
                 return new_fd
-     let new_s = mkSocket new_fd
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -200,12 +199,12 @@ accept s = withNewSocketAddress $ \sa sz -> do
 # else
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept fd sa ptr_len)
-     let new_s = mkSocket new_fd
-     setNonBlockIfNeeded new_s
-     setCloseOnExecIfNeeded new_s
+     setNonBlockIfNeeded new_fd
+     setCloseOnExecIfNeeded new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSocketAddress sa
+     let new_s = mkSocket new_fd
      return (new_s, addr)
 
 foreign import CALLCONV unsafe "socket"

@@ -151,10 +151,10 @@ socketPair family stype protocol =
       _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
                   c_socketpair (packFamily family) c_stype protocol fdArr
       [fd1,fd2] <- peekArray 2 fdArr
+      setNonBlockIfNeeded fd1
+      setNonBlockIfNeeded fd2
       let s1 = mkSocket fd1
           s2 = mkSocket fd2
-      setNonBlockIfNeeded s1
-      setNonBlockIfNeeded s2
       return (s1, s2)
 
 foreign import ccall unsafe "socketpair"
