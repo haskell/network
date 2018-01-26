@@ -23,7 +23,6 @@ import Network.Socket.Close
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 import Data.Bits ((.|.))
-import GHC.Conc (threadWaitRead)
 #else
 import Network.Socket.Fcntl
 #endif
@@ -195,8 +194,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
-     new_fd <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
-                        (threadWaitRead $ fromIntegral fd)
+     new_fd <- throwSocketErrorWaitRead fd "Network.Socket.accept"
                         (c_accept4 fd sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
      let new_s = mkSocket new_fd
 # else
