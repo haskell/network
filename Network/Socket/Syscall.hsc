@@ -185,17 +185,16 @@ accept s = withNewSocketAddress $ \sa sz -> do
            else do
                 paramData <- c_newAcceptParams fd (fromIntegral sz) sa
                 rc        <- asyncDoProc c_acceptDoProc paramData
-                new_fd  <- c_acceptNewSock    paramData
+                new_fd'  <- c_acceptNewSock    paramData
                 c_free paramData
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                return new_fd
+                return new_fd'
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept4 fd sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
-     let new_s = mkSocket new_fd
 # else
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept fd sa ptr_len)
