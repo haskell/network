@@ -1,6 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
-#include "HsNet.h"
+#include "HsNetDef.h"
 
 -----------------------------------------------------------------------------
 -- |
@@ -27,7 +27,7 @@
 -- > import qualified Control.Exception as E
 -- > import Control.Monad (unless, forever, void)
 -- > import qualified Data.ByteString as S
--- > import Network.Socket hiding (recv)
+-- > import Network.Socket
 -- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
@@ -47,7 +47,7 @@
 -- >         setSocketOption sock ReuseAddr 1
 -- >         -- If the prefork technique is not used,
 -- >         -- set CloseOnExec for the security reasons.
--- >         setCloseOnExecIfNeeded $ socketFd sock
+-- >         setCloseOnExecIfNeeded sock
 -- >         bind sock (addrAddress addr)
 -- >         listen sock 10
 -- >         return sock
@@ -67,7 +67,7 @@
 -- >
 -- > import qualified Control.Exception as E
 -- > import qualified Data.ByteString.Char8 as C
--- > import Network.Socket hiding (recv)
+-- > import Network.Socket
 -- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
@@ -109,7 +109,6 @@ module Network.Socket
     , addrInfoFlagImplemented
 
     -- * Socket operations
-    , socket
     , connect
     , bind
     , listen
@@ -125,29 +124,21 @@ module Network.Socket
     , getSocketOption
     , setSocketOption
 
-    -- * Types
-    -- ** Socket
+    -- * Socket
     , Socket
-    , socketFd
-    , socketFamily
-    , socketType
-    , socketProtocol
-    , socketStatus
-    -- ** Socket type
+    , socket
+    , fdSocket
+    , socketToHandle
+    -- ** Types of Socket
     , SocketType(..)
     , isSupportedSocketType
-    -- ** Socket status
-    , SocketStatus(..)
-    , isConnected
-    , isBound
-    , isListening
-    , isReadable
-    , isWritable
-    , withConnectedSocket
     -- ** Family
     , Family(..)
     , isSupportedFamily
-    -- ** Socket address
+    -- ** Protocol number
+    , ProtocolNumber
+    , defaultProtocol
+    -- ** Basic socket address type
     , SockAddr(..)
     , isSupportedSockAddr
     , getPeerName
@@ -166,9 +157,6 @@ module Network.Socket
     , ScopeID
     , ifNameToIndex
     , ifIndexToName
-    -- ** Protocol number
-    , ProtocolNumber
-    , defaultProtocol
     -- ** Port number
     , PortNumber
     , defaultPort
@@ -191,7 +179,6 @@ module Network.Socket
     , getCloseOnExec
     , setNonBlockIfNeeded
     , getNonBlock
-    , mkSocket
     -- ** Sending and receiving data
     , sendBuf
     , recvBuf
@@ -200,27 +187,9 @@ module Network.Socket
 
     -- * Special constants
     , maxListenQueue
-
-    -- * Deprecated
-    , send
-    , sendTo
-    , recv
-    , recvLen
-    , recvFrom
-    , inet_addr
-    , inet_ntoa
-    , htonl
-    , ntohl
-    , socketToHandle
-    , getPeerCred
-    , getPeerEid
-    , aNY_PORT
-    , iNADDR_ANY
-    , iN6ADDR_ANY
-    , sOMAXCONN
     ) where
 
-import Network.Socket.Buffer
+import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
 import Network.Socket.Close
 import Network.Socket.Constant
 import Network.Socket.Fcntl
@@ -228,9 +197,9 @@ import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
 import Network.Socket.Internal
-import Network.Socket.Name
+import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
-import Network.Socket.String
-import Network.Socket.Syscall
+import Network.Socket.SockAddr
+import Network.Socket.Syscall hiding (connect, bind, accept)
 import Network.Socket.Types
 import Network.Socket.Unix

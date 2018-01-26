@@ -17,7 +17,7 @@
 --
 -- This module is made to be imported with 'Network.Socket' like so:
 --
--- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
+-- > import Network.Socket
 -- > import Network.Socket.ByteString.Lazy
 -- > import Prelude hiding (getContents)
 --
@@ -36,12 +36,13 @@ module Network.Socket.ByteString.Lazy
 import Control.Monad (liftM)
 import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
 import Data.Int (Int64)
-import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
+import Network.Socket (ShutdownCmd(..), shutdown)
 import Prelude hiding (getContents)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
 import qualified Data.ByteString as S
 import qualified Network.Socket.ByteString as N
+import Network.Socket.Types
 
 #if defined(mingw32_HOST_OS)
 import Network.Socket.ByteString.Lazy.Windows (send, sendAll)
@@ -61,14 +62,14 @@ import Network.Socket.ByteString.Lazy.Posix (send, sendAll)
 -- more data to be received, the receiving side of the socket is shut
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
-getContents :: Socket         -- ^ Connected socket
+getContents :: Socket        -- ^ Connected socket
             -> IO ByteString  -- ^ Data received
-getContents sock = loop where
+getContents s = loop where
   loop = unsafeInterleaveIO $ do
-    s <- N.recv sock defaultChunkSize
-    if S.null s
-      then shutdown sock ShutdownReceive >> return Empty
-      else Chunk s `liftM` loop
+    sbs <- N.recv s defaultChunkSize
+    if S.null sbs
+      then shutdown s ShutdownReceive >> return Empty
+      else Chunk sbs `liftM` loop
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  This function may return fewer bytes than specified.  If
@@ -79,10 +80,10 @@ getContents sock = loop where
 -- If there is no more data to be received, returns an empty 'ByteString'.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recv :: Socket         -- ^ Connected socket
+recv :: Socket        -- ^ Connected socket
      -> Int64          -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
-recv sock nbytes = chunk `liftM` N.recv sock (fromIntegral nbytes) where
+recv s nbytes = chunk `liftM` N.recv s (fromIntegral nbytes) where
   chunk k
     | S.null k  = Empty
     | otherwise = Chunk k Empty

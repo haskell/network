@@ -22,7 +22,7 @@
 -- > import Network.Socket hiding (send, sendTo, recv, recvFrom)
 -- > import Network.Socket.ByteString
 --
-module Network.Socket.ByteString
+module Network.Socket.ByteString.IO
     (
     -- * Send data to a socket
       send
@@ -48,9 +48,9 @@ import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr)
-import Network.Socket (sendBuf, sendBufTo, recvBuf, recvBufFrom)
 import System.IO.Error (isEOFError)
 
+import Network.Socket.Buffer
 import Network.Socket.ByteString.Internal
 import Network.Socket.Types
 
@@ -74,11 +74,11 @@ import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 -- responsible for ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-send :: Socket      -- ^ Connected socket
+send :: Socket     -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send sock xs = unsafeUseAsCStringLen xs $ \(str, len) ->
-    sendBuf sock (castPtr str) len
+send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
+    sendBuf s (castPtr str) len
 
 -- | Send data to the socket.  The socket must be connected to a
 -- remote socket.  Unlike 'send', this function continues to send data
@@ -87,12 +87,12 @@ send sock xs = unsafeUseAsCStringLen xs $ \(str, len) ->
 -- data, if any, was successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendAll :: Socket      -- ^ Connected socket
+sendAll :: Socket     -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
-sendAll sock bs = do
-    sent <- send sock bs
-    when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
+sendAll s bs = do
+    sent <- send s bs
+    when (sent < B.length bs) $ sendAll s (B.drop sent bs)
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -100,12 +100,13 @@ sendAll sock bs = do
 -- ensuring that all data has been sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendTo :: Socket      -- ^ Socket
+sendTo :: SocketAddress sa =>
+          Socket     -- ^ Socket
        -> ByteString  -- ^ Data to send
-       -> SockAddr    -- ^ Recipient address
+       -> sa    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
-sendTo sock xs addr =
-    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo sock str len addr
+sendTo s xs sa =
+    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo s str len sa
 
 -- | Send data to the socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  Unlike
@@ -115,35 +116,14 @@ sendTo sock xs addr =
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendAllTo :: Socket      -- ^ Socket
+sendAllTo :: SocketAddress sa =>
+             Socket     -- ^ Socket
           -> ByteString  -- ^ Data to send
-          -> SockAddr    -- ^ Recipient address
+          -> sa    -- ^ Recipient address
           -> IO ()
-sendAllTo sock xs addr = do
-    sent <- sendTo sock xs addr
-    when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
-
--- ----------------------------------------------------------------------------
--- ** Vectored I/O
-
--- $vectored
---
--- Vectored I\/O, also known as scatter\/gather I\/O, allows multiple
--- data segments to be sent using a single system call, without first
--- concatenating the segments.  For example, given a list of
--- @ByteString@s, @xs@,
---
--- > sendMany sock xs
---
--- is equivalent to
---
--- > sendAll sock (concat xs)
---
--- but potentially more efficient.
---
--- Vectored I\/O are often useful when implementing network protocols
--- that, for example, group data into segments consisting of one or
--- more fixed-length headers followed by a variable-length body.
+sendAllTo s xs sa = do
+    sent <- sendTo s xs sa
+    when (sent < B.length xs) $ sendAllTo s (B.drop sent xs) sa
 
 -- | Send data to the socket.  The socket must be in a connected
 -- state.  The data is sent as if the parts have been concatenated.
@@ -153,21 +133,21 @@ sendAllTo sock xs addr = do
 -- successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendMany :: Socket        -- ^ Connected socket
+sendMany :: Socket       -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendMany sock@Socket{..} cs = do
+sendMany s cs = do
     sent <- sendManyInner
-    when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
+    when (sent < totalLength cs) $ sendMany s (remainingChunks sent cs)
   where
     sendManyInner =
       fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
-          throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendMany" $
-              c_writev (fromIntegral socketFd) iovsPtr
+          throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
+              c_writev (fdSocket s) iovsPtr
               (fromIntegral (min iovsLen (#const IOV_MAX)))
 #else
-sendMany sock = sendAll sock . B.concat
+sendMany s = sendAll s . B.concat
 #endif
 
 -- | Send data to the socket.  The recipient can be specified
@@ -178,14 +158,14 @@ sendMany sock = sendAll sock . B.concat
 -- way to determine how much data, if any, was successfully sent.
 --
 -- Sending data to closed socket may lead to undefined behaviour.
-sendManyTo :: Socket        -- ^ Socket
+sendManyTo :: Socket       -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 #if !defined(mingw32_HOST_OS)
-sendManyTo sock@Socket{..} cs addr = do
+sendManyTo s cs addr = do
     sent <- fmap fromIntegral sendManyToInner
-    when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
+    when (sent < totalLength cs) $ sendManyTo s (remainingChunks sent cs) addr
   where
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
@@ -194,10 +174,10 @@ sendManyTo sock@Socket{..} cs addr = do
                 addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorWaitWrite sock "Network.Socket.ByteString.sendManyTo" $
-              c_sendmsg (fromIntegral socketFd) msgHdrPtr 0
+            throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
+              c_sendmsg (fdSocket s) msgHdrPtr 0
 #else
-sendManyTo sock cs = sendAllTo sock (B.concat cs)
+sendManyTo s cs = sendAllTo s (B.concat cs)
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -216,14 +196,14 @@ sendManyTo sock cs = sendAllTo sock (B.concat cs)
 -- closed its half side of the connection.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recv :: Socket         -- ^ Connected socket
+recv :: Socket        -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
-recv sock nbytes
+recv s nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
     | otherwise  = createAndTrim nbytes $ \ptr ->
         E.catch
-          (recvBuf sock ptr nbytes)
+          (recvBuf s ptr nbytes)
           (\e -> if isEOFError e then return 0 else throwIO e)
 
 -- | Receive data from the socket.  The socket need not be in a
@@ -232,9 +212,10 @@ recv sock nbytes
 -- 'SockAddr' representing the address of the sending socket.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recvFrom :: Socket                     -- ^ Socket
+recvFrom :: SocketAddress sa =>
+            Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
-         -> IO (ByteString, SockAddr)  -- ^ Data received and sender address
+         -> IO (ByteString, sa)  -- ^ Data received and sender address
 recvFrom sock nbytes =
     allocaBytes nbytes $ \ptr -> do
         (len, sockaddr) <- recvBufFrom sock ptr nbytes

@@ -5,7 +5,7 @@ import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 import Control.Monad (unless, forever, void)
 import qualified Data.ByteString as S
-import Network.Socket hiding (recv)
+import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 
 main :: IO ()
@@ -25,7 +25,7 @@ main = withSocketsDo $ do
         setSocketOption sock ReuseAddr 1
         -- If the prefork technique is not used,
         -- set CloseOnExec for the security reasons.
-        setCloseOnExecIfNeeded $ socketFd sock
+        setCloseOnExecIfNeeded sock
         bind sock (addrAddress addr)
         listen sock 10
         return sock

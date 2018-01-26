@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNetDef.h"
 
@@ -9,7 +8,6 @@ module Network.Socket.Close (
   , close
   ) where
 
-import Control.Concurrent.MVar (modifyMVar_)
 import Data.Typeable
 import Foreign.C.Types (CInt(..))
 import GHC.Conc (closeFdWith)
@@ -36,9 +34,9 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown Socket{..} stype = do
+shutdown s stype = do
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown socketFd (sdownCmdToInt stype)
+    c_shutdown (fdSocket s) (sdownCmdToInt stype)
   return ()
 
 -- -----------------------------------------------------------------------------
@@ -46,16 +44,7 @@ shutdown Socket{..} stype = do
 -- | Close the socket. Sending data to or receiving data from closed socket
 -- may lead to undefined behaviour.
 close :: Socket -> IO ()
-close Socket{..} =
- modifyMVar_ socketStatus $ \status ->
-   case status of
-     -- This is called by the finalizer of MVar if 'socketToHandle'
-     -- is used. The finalizer catches and ignores this exception.
-     ConvertedToHandle ->
-         ioError (userError "close: converted to a Handle, use hClose instead")
-     Closed ->
-         return status
-     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral socketFd) >> return Closed
+close s = closeFdWith (closeFd . fromIntegral) (fromIntegral $ fdSocket s)
 
 closeFd :: CInt -> IO ()
 closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd

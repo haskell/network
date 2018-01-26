@@ -7,18 +7,11 @@
 
 module Network.Socket.Types
     (
-    -- * Socket
-      Socket(..)
-    -- * Socket status
-    , SocketStatus(..)
-    , isConnected
-    , isBound
-    , isListening
-    , isReadable
-    , isWritable
-    , isAcceptable
-    , withConnectedSocket
-    -- * Socket types
+    -- * Socket type
+      Socket
+    , fdSocket
+    , mkSocket
+    -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
     , packSocketType
@@ -33,7 +26,12 @@ module Network.Socket.Types
     , packFamily
     , unpackFamily
 
-    -- * Socket addresses
+    -- * Socket address typeclass
+    , SocketAddress(..)
+    , withSocketAddress
+    , withNewSocketAddress
+
+    -- * Socket address type
     , SockAddr(..)
     , isSupportedSockAddr
     , HostAddress
@@ -46,10 +44,7 @@ module Network.Socket.Types
     , ScopeID
     , peekSockAddr
     , pokeSockAddr
-    , sizeOfSockAddr
-    , sizeOfSockAddrByFamily
     , withSockAddr
-    , withNewSockAddr
 
     -- * Unsorted
     , ProtocolNumber
@@ -63,7 +58,6 @@ module Network.Socket.Types
     , ntohl
     ) where
 
-import Control.Concurrent.MVar
 import Control.Monad
 import Data.Bits
 import Data.Maybe
@@ -79,23 +73,17 @@ import Foreign.Storable
 import Foreign.Marshal.Array
 #endif
 
--- | Type for a socket. Use 'mkSocket' to create 'Socket'.
---   This is typically created by 'socket', 'accept' and 'socketPair'.
-data Socket = Socket
-  {
-    socketFd       :: CInt              -- ^ File descriptor.
-  , socketFamily   :: Family            -- ^ Address family.
-  , socketType     :: SocketType        -- ^ Socket type.
-  , socketProtocol :: ProtocolNumber    -- ^ Protocol number.
-  , socketStatus   :: MVar SocketStatus -- ^ Socket status.
-  } deriving Typeable
+-----------------------------------------------------------------------------
 
-instance Eq Socket where
-  s1 == s2 = socketStatus s1 == socketStatus s2
+-- | Basic type for a socket.
+newtype Socket = Socket CInt deriving (Eq, Show)
 
-instance Show Socket where
-  showsPrec _n Socket{..} =
-        showString "<socket: " . shows socketFd . showString ">"
+-- | Getting a file descriptor from a socket.
+fdSocket :: Socket -> CInt
+fdSocket (Socket fd) = fd
+
+mkSocket :: CInt -> Socket
+mkSocket = Socket
 
 -----------------------------------------------------------------------------
 
@@ -108,79 +96,6 @@ type ProtocolNumber = CInt
 -- 0
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
-
--- -----------------------------------------------------------------------------
-
--- | The status of the socket as /determined by this library/, not
--- necessarily reflecting the state of the connection itself.
---
--- For example, the 'Closed' status is applied when the 'close'
--- function is called.
-data SocketStatus
-  -- Returned Status    Function called
-  = NotConnected        -- ^ Newly created, unconnected socket
-  | Bound               -- ^ Bound, via 'bind'
-  | Listening           -- ^ Listening, via 'listen'
-  | Connected           -- ^ Connected or accepted, via 'connect' or 'accept'
-  | ConvertedToHandle   -- ^ Is now a 'Handle' (via 'socketToHandle'), don't touch
-  | Closed              -- ^ Closed was closed by 'close'
-    deriving (Eq, Show, Typeable)
-
-
--- -----------------------------------------------------------------------------
--- Socket Predicates
-
--- | Determines whether 'close' has been used on the 'Socket'. This
--- does /not/ indicate any status about the socket beyond this. If the
--- socket has been closed remotely, this function can still return
--- 'True'.
-isConnected :: Socket -> IO Bool
-isConnected Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Connected)
-
-isBound :: Socket -> IO Bool
-isBound Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Bound)
-
-isListening :: Socket -> IO Bool
-isListening Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Listening)
-
-isReadable  :: Socket -> IO Bool
-isReadable Socket{..} = do
-    value <- readMVar socketStatus
-    return (value == Listening || value == Connected)
-
-isWritable  :: Socket -> IO Bool
-isWritable = isReadable -- sort of.
-
-isAcceptable :: Family -> SocketType -> SocketStatus -> Bool
-#if defined(DOMAIN_SOCKET_SUPPORT)
-isAcceptable AF_UNIX sockType status
-    | sockType == Stream || sockType == SeqPacket =
-        status == Connected || status == Bound || status == Listening
-isAcceptable AF_UNIX _ _ = False
-#endif
-isAcceptable _ _ status = status == Connected || status == Listening
-
-
--- | If you're operating 'Socket' in multithread environment,
--- for example, use a timeout thread to close 'Socket'. you have to
--- make sure 'Socket' is opened before read/write, 'withConnectedSocket'
--- will run your action if 'Socket' is still 'Connected', otherwise
--- return the 'Socket' status instead.
---
--- Note, this will block other thread which try to close 'Socket' by locking
--- the status 'MVar'.
-withConnectedSocket :: Socket -> (Socket -> IO a) -> IO (Either SocketStatus a)
-withConnectedSocket sock act =
-  withMVar (socketStatus sock) $ \status ->
-     case status of
-       Connected -> Right `fmap` act sock
-       _         -> return (Left status)
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -852,6 +767,22 @@ defaultPort :: PortNumber
 defaultPort = 0
 
 ------------------------------------------------------------------------
+
+-- | The core typeclass to unify socket addresses.
+class SocketAddress sa where
+    sizeOfSocketAddress :: sa -> Int
+    peekSocketAddress :: Ptr sa -> IO sa
+    pokeSocketAddress  :: Ptr a -> sa -> IO ()
+
+withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
+withSocketAddress addr f = do
+    let sz = sizeOfSocketAddress addr
+    allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
+
+withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
+withNewSocketAddress f = allocaBytes 128 $ \ptr -> f ptr 128
+
+------------------------------------------------------------------------
 -- Socket addresses
 
 -- The scheme used for addressing sockets is somewhat quirky. The
@@ -904,6 +835,11 @@ isSupportedSockAddr addr = case addr of
   SockAddrUnix{}  -> False
 #endif
 
+instance SocketAddress SockAddr where
+    sizeOfSocketAddress = sizeOfSockAddr
+    peekSocketAddress   = peekSockAddr
+    pokeSocketAddress   = pokeSockAddr
+
 #if defined(mingw32_HOST_OS)
 type CSaFamily = (#type unsigned short)
 #elif defined(darwin_HOST_OS)
@@ -927,31 +863,12 @@ sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
 sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
--- | Computes the storage requirements (in bytes) required for a
--- 'SockAddr' with the given 'Family'.
-sizeOfSockAddrByFamily :: Family -> Int
-#if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddrByFamily AF_UNIX  = #const sizeof(struct sockaddr_un)
-#endif
-sizeOfSockAddrByFamily AF_INET6 = #const sizeof(struct sockaddr_in6)
-sizeOfSockAddrByFamily AF_INET  = #const sizeof(struct sockaddr_in)
-sizeOfSockAddrByFamily family = error $
-    "Network.Socket.Types.sizeOfSockAddrByFamily: address family '" ++
-    show family ++ "' not supported."
-
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
-
--- | Create a new 'SockAddr' for use with a function requiring a
--- pointer to a 'SockAddr' and the length of that 'SockAddr'.
-withNewSockAddr :: Family -> (Ptr SockAddr -> Int -> IO a) -> IO a
-withNewSockAddr family f = do
-    let sz = sizeOfSockAddrByFamily family
-    allocaBytes sz $ \ptr -> f ptr sz
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but

@@ -202,18 +202,18 @@ throwSocketErrorCode loc errno =
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
 -- and try again.
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
-throwSocketErrorWaitRead sock name io =
+throwSocketErrorWaitRead s name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitRead $ fromIntegral $ socketFd sock)
+        (threadWaitRead $ fromIntegral $ fdSocket s)
         io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be write-ready,
 -- and try again.
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
-throwSocketErrorWaitWrite sock name io =
+throwSocketErrorWaitWrite s name io =
     throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitWrite $ fromIntegral $ socketFd sock)
+        (threadWaitWrite $ fromIntegral $ fdSocket s)
         io
 
 -- ---------------------------------------------------------------------------

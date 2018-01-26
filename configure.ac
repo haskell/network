@@ -80,7 +80,7 @@ AC_CHECK_HEADERS([net/if.h netioapi.h])
 
 AC_CHECK_TYPES([struct ucred])
 
-AC_CHECK_FUNCS([gai_strerror gethostent accept4])
+AC_CHECK_FUNCS([gai_strerror accept4])
 AC_CHECK_FUNCS([getpeereid])
 
 AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])

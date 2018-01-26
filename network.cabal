@@ -39,15 +39,15 @@ tested-with:   GHC == 7.4.2
 
 library
   exposed-modules:
-    Network
-    Network.BSD
     Network.Socket
+    Network.Socket.Address
     Network.Socket.ByteString
     Network.Socket.ByteString.Lazy
     Network.Socket.Internal
   other-modules:
     Network.Socket.Buffer
     Network.Socket.ByteString.Internal
+    Network.Socket.ByteString.IO
     Network.Socket.Close
     Network.Socket.Constant
     Network.Socket.Fcntl
@@ -56,7 +56,7 @@ library
     Network.Socket.Info
     Network.Socket.Name
     Network.Socket.Options
-    Network.Socket.String
+    Network.Socket.SockAddr
     Network.Socket.Syscall
     Network.Socket.Types
     Network.Socket.Unix

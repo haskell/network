@@ -19,6 +19,7 @@ import Network.Socket.Types
 import Foreign.Marshal.Utils (with)
 #endif
 #ifdef HAVE_GETPEEREID
+import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (alloca)
 #endif
 #ifdef DOMAIN_SOCKET_SUPPORT
@@ -30,7 +31,6 @@ import Foreign.Storable (Storable(..))
 
 import Network.Socket.Fcntl
 import Network.Socket.Internal
-import Network.Socket.Syscall
 #endif
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 import Network.Socket.Options (c_getsockopt)
@@ -40,14 +40,15 @@ import Network.Socket.Options (c_getsockopt)
 --
 --   Since 3.0.0.0.
 getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
-getPeerCredential sock
-  | socketFamily sock /= AF_UNIX = return (Nothing, Nothing, Nothing)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCredential sock = do
     (pid, uid, gid) <- getPeerCred sock
-    return (Just pid, Just uid, Just gid)
+    if uid == maxBound then
+        return (Nothing, Nothing, Nothing)
+      else
+        return (Just pid, Just uid, Just gid)
 #elif defined(HAVE_GETPEEREID)
-getPeerCredential sock = do
+getPeerCredential sock = E.handle (\(E.SomeException _) -> return (Nothing,Nothing,Nothing)) $ do
     (uid, gid) <- getPeerEid sock
     return (Nothing, Just uid, Just gid)
 #else
@@ -57,13 +58,12 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 -- | Returns the processID, userID and groupID of the peer of
 --   a UNIX domain socket.
 --
--- Only available on platforms that support SO_PEERCRED or 'getPeerEid'.
--- If 'getPeerEid' is used, processID is always 0.
+-- Only available on platforms that support SO_PEERCRED.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
-getPeerCred sock = do
-  let fd = socketFd sock
+getPeerCred s = do
   let sz = (#const sizeof(struct ucred))
+      fd = fdSocket s
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
      _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
@@ -72,10 +72,6 @@ getPeerCred sock = do
      uid <- (#peek struct ucred, uid) ptr_cr
      gid <- (#peek struct ucred, gid) ptr_cr
      return (pid, uid, gid)
-#elif HAVE_GETPEEREID
-getPeerCred sock = do
-  (uid,gid) <- getPeerEid sock
-  return (0, uid, gid)
 #else
 getPeerCred _ = return (0, 0, 0)
 #endif
@@ -87,12 +83,11 @@ getPeerCred _ = return (0, 0, 0)
 --  Only available on platforms that support getpeereid().
 getPeerEid :: Socket -> IO (CUInt, CUInt)
 #ifdef HAVE_GETPEEREID
-getPeerEid sock = do
-  let fd = socketFd sock
+getPeerEid s = do
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
       throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
-        c_getpeereid fd ptr_uid ptr_gid
+        c_getpeereid (fdSocket s) ptr_uid ptr_gid
       uid <- peek ptr_uid
       gid <- peek ptr_gid
       return (uid, gid)
@@ -120,8 +115,8 @@ isUnixDomainSocketAvailable = False
 --  'True'.
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sendFd sock outfd = void $
-  throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (socketFd sock) outfd
+sendFd s outfd = void $
+  throwSocketErrorWaitWrite s "Network.Socket.sendFd" $ c_sendFd (fdSocket s) outfd
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
@@ -134,8 +129,8 @@ sendFd _ _ = error "Network.Socket.sendFd"
 --  'True'.
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
-recvFd sock =
-  throwSocketErrorWaitRead sock "Network.Socket.recvFd" $ c_recvFd (socketFd sock)
+recvFd s =
+  throwSocketErrorWaitRead s "Network.Socket.recvFd" $ c_recvFd (fdSocket s)
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
 recvFd _ = error "Network.Socket.recvFd"
@@ -156,13 +151,11 @@ socketPair family stype protocol =
       _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
                   c_socketpair (packFamily family) c_stype protocol fdArr
       [fd1,fd2] <- peekArray 2 fdArr
-      s1 <- mkNonBlockingSocket fd1
-      s2 <- mkNonBlockingSocket fd2
-      return (s1,s2)
-  where
-    mkNonBlockingSocket fd = do
-       setNonBlockIfNeeded fd
-       mkSocket fd family stype protocol Connected
+      setNonBlockIfNeeded fd1
+      setNonBlockIfNeeded fd2
+      let s1 = mkSocket fd1
+          s2 = mkSocket fd2
+      return (s1, s2)
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
