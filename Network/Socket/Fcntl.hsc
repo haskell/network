@@ -4,9 +4,10 @@ module Network.Socket.Fcntl where
 
 import qualified System.Posix.Internals
 
+import Foreign.C.Types (CInt(..))
+
 #if defined(mingw32_HOST_OS)
 #else
-import Foreign.C.Types (CInt(..))
 import Data.Bits ((.&.))
 #endif
 
