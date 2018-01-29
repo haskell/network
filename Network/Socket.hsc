@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, ScopedTypeVariables, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.Socket

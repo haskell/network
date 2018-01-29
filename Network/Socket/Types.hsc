@@ -133,6 +133,8 @@ data SocketStatus
   | Closed              -- ^ Closed was closed by 'close'
     deriving (Eq, Show, Typeable)
 
+{-# DEPRECATED SocketStatus "SocketStatus will be removed" #-}
+
 -----------------------------------------------------------------------------
 -- Socket types
 
