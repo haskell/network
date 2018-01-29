@@ -91,66 +91,78 @@
 
 module Network.Socket
     (
-    -- * Types
-      Socket(..)
-    , Family(..)
-    , isSupportedFamily
-    , SocketType(..)
-    , isSupportedSocketType
-    , SockAddr(..)
-    , isSupportedSockAddr
-    , SocketStatus(..)
-    , HostAddress
-    , hostAddressToTuple
-    , tupleToHostAddress
-#if defined(IPV6_SOCKET_SUPPORT)
-    , HostAddress6
-    , hostAddress6ToTuple
-    , tupleToHostAddress6
-    , FlowInfo
-    , ScopeID
-#endif
-    , htonl
-    , ntohl
-    , ShutdownCmd(..)
-    , ProtocolNumber
-    , defaultProtocol
-    , PortNumber(..)
-    -- PortNumber is used non-abstractly in Network.BSD.  ToDo: remove
-    -- this use and make the type abstract.
-
-    -- * Address operations
-
+    -- * Initialisation
+      withSocketsDo
+    -- * Address information
+    , getAddrInfo
+    -- ** Types
     , HostName
     , ServiceName
-
-#if defined(IPV6_SOCKET_SUPPORT)
     , AddrInfo(..)
-
+    , defaultHints
+    -- ** Flags
     , AddrInfoFlag(..)
     , addrInfoFlagImplemented
-
-    , defaultHints
-
-    , getAddrInfo
-
-    , NameInfoFlag(..)
-
-    , getNameInfo
-#endif
-
     -- * Socket operations
-    , socket
-#if defined(DOMAIN_SOCKET_SUPPORT)
-    , socketPair
-#endif
     , connect
     , bind
     , listen
     , accept
+    -- ** Closing
+    , close
+    , shutdown
+    , ShutdownCmd(..)
+    -- * Socket options
+    , SocketOption(..)
+    , isSupportedSocketOption
+    , getSocketOption
+    , setSocketOption
+    -- * Socket
+    , Socket(..)
+    , socket
+    , fdSocket
+    , mkSocket
+    , socketToHandle
+    -- ** Types of Socket
+    , SocketType(..)
+    , isSupportedSocketType
+    -- ** Family
+    , Family(..)
+    , isSupportedFamily
+    -- ** Protocol number
+    , ProtocolNumber
+    , defaultProtocol
+    -- * Socket address
+    , SockAddr(..)
+    , isSupportedSockAddr
     , getPeerName
     , getSocketName
-
+    -- ** Host address
+    , HostAddress
+    , hostAddressToTuple
+    , tupleToHostAddress
+#if defined(IPV6_SOCKET_SUPPORT)
+    -- ** Host address6
+    , HostAddress6
+    , hostAddress6ToTuple
+    , tupleToHostAddress6
+    -- ** Flow Info
+    , FlowInfo
+    -- ** Scope ID
+    , ScopeID
+    -- fixme: ifNameToIndex and ifIndexToName
+#endif
+    -- ** Port number
+    , PortNumber(..)
+    , defaultPort
+    , socketPort
+#if defined(DOMAIN_SOCKET_SUPPORT)
+    -- * Unix domain socket
+    , socketPair
+    , sendFd
+    , recvFd
+#endif
+-- fixme
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
     -- get the credentials of our domain socket peer.
     , getPeerCred
@@ -158,54 +170,36 @@ module Network.Socket
     , getPeerEid
 #endif
 #endif
-
-    , socketPort
-
-    , socketToHandle
-
-    -- ** Sending and receiving data
-    -- *** Sending and receiving with String
-    -- $sendrecv
+#if defined(IPV6_SOCKET_SUPPORT)
+    -- * Name information
+    , NameInfoFlag(..)
+    , getNameInfo
+#endif
+    -- * Low level operations
+    , setNonBlockIfNeeded
+    -- * Sending and receiving data
+    , sendBuf
+    , recvBuf
+    , sendBufTo
+    , recvBufFrom
+    -- * Special constants
+    , maxListenQueue
+    -- * Deprecated
+    , htonl
+    , ntohl
     , send
     , sendTo
     , recv
     , recvFrom
     , recvLen
-
-    -- *** Sending and receiving with a buffer
-    , sendBuf
-    , recvBuf
-    , sendBufTo
-    , recvBufFrom
-
-    -- ** Misc
     , inet_addr
     , inet_ntoa
-
-    , shutdown
-    , close
-
-    -- ** Predicates on sockets
+    , SocketStatus(..) -- fixme
     , isConnected
     , isBound
     , isListening
     , isReadable
     , isWritable
-
-    -- * Socket options
-    , SocketOption(..)
-    , isSupportedSocketOption
-    , getSocketOption
-    , setSocketOption
-
-    -- * File descriptor transmission
-#ifdef DOMAIN_SOCKET_SUPPORT
-    , sendFd
-    , recvFd
-
-#endif
-
-    -- * Special constants
     , aNY_PORT
     , iNADDR_ANY
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -216,19 +210,6 @@ module Network.Socket
 #ifdef SCM_RIGHTS
     , sCM_RIGHTS
 #endif
-    , maxListenQueue
-
-    -- * Initialisation
-    , withSocketsDo
-
-    -- * Very low level operations
-    -- in case you ever want to get at the underlying file descriptor..
-    , fdSocket
-    , mkSocket
-    , setNonBlockIfNeeded
-
-    -- * Deprecated aliases
-    -- $deprecated-aliases
     , bindSocket
     , sClose
     , sIsConnected
@@ -236,12 +217,7 @@ module Network.Socket
     , sIsListening
     , sIsReadable
     , sIsWritable
-
-    -- * Internal
-
-    -- | The following are exported ONLY for use in the BSD module and
-    -- should not be used anywhere else.
-
+    -- * Internal - don't use this
     , packFamily
     , unpackFamily
     , packSocketType
