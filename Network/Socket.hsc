@@ -475,7 +475,7 @@ setNonBlockIfNeeded fd =
 -- | Bind the socket to an address. The socket must not already be
 -- bound.  The 'Family' passed to @bind@ must be the
 -- same as that passed to 'socket'.  If the special port number
--- 'aNY_PORT' is passed then the system assigns the next available
+-- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: Socket    -- Unconnected Socket
            -> SockAddr  -- Address to Bind to
@@ -1110,11 +1110,16 @@ foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 -- ---------------------------------------------------------------------------
 -- Utility Functions
 
+{-# DEPRECATED aNY_PORT "Use defaultPort instead" #-}
 aNY_PORT :: PortNumber
 aNY_PORT = 0
 
+defaultPort :: PortNumber
+defaultPort = 0
+
 -- | The IPv4 wild card address.
 
+{-# DEPRECATED iNADDR_ANY "Use getAddrInfo instead" #-}
 iNADDR_ANY :: HostAddress
 iNADDR_ANY = htonl (#const INADDR_ANY)
 
@@ -1126,17 +1131,21 @@ foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 #if defined(IPV6_SOCKET_SUPPORT)
 -- | The IPv6 wild card address.
 
+{-# DEPRECATED iN6ADDR_ANY "Use getAddrInfo instead" #-}
 iN6ADDR_ANY :: HostAddress6
 iN6ADDR_ANY = (0, 0, 0, 0)
 #endif
 
+{-# DEPRECATED sOMAXCONN "Use maxListenQueue instead" #-}
 sOMAXCONN :: Int
 sOMAXCONN = #const SOMAXCONN
 
+{-# DEPRECATED sOL_SOCKET "This is not necessary anymore" #-}
 sOL_SOCKET :: Int
 sOL_SOCKET = #const SOL_SOCKET
 
 #ifdef SCM_RIGHTS
+{-# DEPRECATED sCM_RIGHTS "This is not necessary anymore" #-}
 sCM_RIGHTS :: Int
 sCM_RIGHTS = #const SCM_RIGHTS
 #endif
@@ -1317,8 +1326,8 @@ data AddrInfoFlag =
     | AI_NUMERICSERV
     -- | If no 'HostName' value is provided, the network
     --   address in each 'SockAddr'
-    --   will be left as a "wild card", i.e. as either 'iNADDR_ANY'
-    --   or 'iN6ADDR_ANY'.  This is useful for server applications that
+    --   will be left as a "wild card".
+    --   This is useful for server applications that
     --   will accept connections from any client.
     | AI_PASSIVE
     -- | If an IPv6 lookup is performed, and no IPv6
