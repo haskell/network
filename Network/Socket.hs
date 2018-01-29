@@ -128,6 +128,7 @@ module Network.Socket
     , Socket
     , socket
     , fdSocket
+    , mkSocket
     , socketToHandle
     -- ** Types of Socket
     , SocketType(..)
@@ -138,7 +139,7 @@ module Network.Socket
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
-    -- ** Basic socket address type
+    -- * Basic socket address type
     , SockAddr(..)
     , isSupportedSockAddr
     , getPeerName
