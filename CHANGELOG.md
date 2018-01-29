@@ -1,7 +1,16 @@
+## Version 2.6.3.4
+
+ * Socket can be GCed.
+ * Don't touch IPv6Only when running on OpenBSD
+   [#227](https://github.com/haskell/network/pull/227)
+ * Do not closeFd within sendFd
+   [#271](https://github.com/haskell/network/pull/271)
+ * Updating examples and docs.
+
 ## Version 2.6.3.3
 
  * Adds a function to show the defaultHints without reading their undefined fields
-   [#291](https://github.com/haskell/network/pull/292)
+   [#291](https://github.com/haskell/network/pull/291)
  * Improve exception error messages for getAddrInfo and getNameInfo
    [#289](https://github.com/haskell/network/pull/289)
  * Deprecating SockAddrCan.
