@@ -1109,6 +1109,9 @@ foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
 -- | Converts the from network byte order to host byte order.
 foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 
+{-# DEPRECATED htonl "Use getAddrInfo instead" #-}
+{-# DEPRECATED ntohl "Use getAddrInfo instead" #-}
+
 #if defined(IPV6_SOCKET_SUPPORT)
 -- | The IPv6 wild card address.
 
