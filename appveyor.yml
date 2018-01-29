@@ -8,6 +8,7 @@ environment:
     STACK_ROOT: "c:\\sr"
   matrix:
     - stack_lts: "lts-6.2"
+    - stack_lts: "lts-9.18"
     - stack_lts: "nightly"
 
 matrix:
