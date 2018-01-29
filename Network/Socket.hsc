@@ -185,21 +185,33 @@ module Network.Socket
     -- * Special constants
     , maxListenQueue
     -- * Deprecated
-    , htonl
-    , ntohl
+    -- ** Deprecated sending and receiving
     , send
     , sendTo
     , recv
     , recvFrom
     , recvLen
+    -- ** Deprecated address functions
+    , htonl
+    , ntohl
     , inet_addr
     , inet_ntoa
+    -- ** Deprecated socket operations
+    , bindSocket
+    , sClose
+    -- ** Deprecated socket status
     , SocketStatus(..) -- fixme
     , isConnected
     , isBound
     , isListening
     , isReadable
     , isWritable
+    , sIsConnected
+    , sIsBound
+    , sIsListening
+    , sIsReadable
+    , sIsWritable
+    -- ** Deprecated special constants
     , aNY_PORT
     , iNADDR_ANY
 #if defined(IPV6_SOCKET_SUPPORT)
@@ -210,13 +222,6 @@ module Network.Socket
 #ifdef SCM_RIGHTS
     , sCM_RIGHTS
 #endif
-    , bindSocket
-    , sClose
-    , sIsConnected
-    , sIsBound
-    , sIsListening
-    , sIsReadable
-    , sIsWritable
     -- * Internal - don't use this
     , packFamily
     , unpackFamily
@@ -1180,6 +1185,7 @@ isConnected :: Socket -> IO Bool
 isConnected (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Connected)
+{-# DEPRECATED isConnected "SocketStatus will be removed" #-}
 
 -- -----------------------------------------------------------------------------
 -- Socket Predicates
@@ -1188,19 +1194,23 @@ isBound :: Socket -> IO Bool
 isBound (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Bound)
+{-# DEPRECATED isBound "SocketStatus will be removed" #-}
 
 isListening :: Socket -> IO Bool
 isListening (MkSocket _ _ _  _ status) = do
     value <- readMVar status
     return (value == Listening)
+{-# DEPRECATED isListening "SocketStatus will be removed" #-}
 
 isReadable  :: Socket -> IO Bool
 isReadable (MkSocket _ _ _ _ status) = do
     value <- readMVar status
     return (value == Listening || value == Connected)
+{-# DEPRECATED isReadable "SocketStatus will be removed" #-}
 
 isWritable  :: Socket -> IO Bool
 isWritable = isReadable -- sort of.
+{-# DEPRECATED isWritable "SocketStatus will be removed" #-}
 
 isAcceptable :: Family -> SocketType -> SocketStatus -> Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
@@ -1210,6 +1220,7 @@ isAcceptable AF_UNIX sockTyp status
 isAcceptable AF_UNIX _ _ = False
 #endif
 isAcceptable _ _ status = status == Connected || status == Listening
+{-# DEPRECATED isAcceptable "SocketStatus will be removed" #-}
 
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:
@@ -1737,32 +1748,27 @@ bindSocket = bind
 sClose :: Socket -> IO ()
 sClose = close
 
-{-# DEPRECATED sIsConnected "use 'isConnected'" #-}
+{-# DEPRECATED sIsConnected "SocketStatus will be removed" #-}
 
--- | Deprecated alias for 'isConnected'.
 sIsConnected :: Socket -> IO Bool
 sIsConnected = isConnected
 
-{-# DEPRECATED sIsBound "use 'isBound'" #-}
+{-# DEPRECATED sIsBound "SocketStatus will be removed" #-}
 
--- | Deprecated alias for 'isBound'.
 sIsBound :: Socket -> IO Bool
 sIsBound = isBound
 
-{-# DEPRECATED sIsListening "use 'isListening'" #-}
+{-# DEPRECATED sIsListening "SocketStatus will be removed" #-}
 
--- | Deprecated alias for 'isListening'.
 sIsListening :: Socket -> IO Bool
 sIsListening = isListening
 
-{-# DEPRECATED sIsReadable "use 'isReadable'" #-}
+{-# DEPRECATED sIsReadable "SocketStatus will be removed" #-}
 
--- | Deprecated alias for 'isReadable'.
 sIsReadable  :: Socket -> IO Bool
 sIsReadable = isReadable
 
-{-# DEPRECATED sIsWritable "use 'isWritable'" #-}
+{-# DEPRECATED sIsWritable "SocketStatus will be removed" #-}
 
--- | Deprecated alias for 'isWritable'.
 sIsWritable  :: Socket -> IO Bool
 sIsWritable = isWritable
