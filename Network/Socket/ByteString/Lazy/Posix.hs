@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 {-# LANGUAGE BangPatterns #-}
 module Network.Socket.ByteString.Lazy.Posix
     (

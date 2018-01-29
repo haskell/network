@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 
 #include "HsNet.h"

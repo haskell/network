@@ -72,18 +72,7 @@ import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 
--- | Represents a socket.  The fields are, respectively:
---
---   * File descriptor
---   * Socket family
---   * Socket type
---   * Protocol number
---   * Status flag
---
---   If you are calling the 'MkSocket' constructor directly you should ensure
---   you have called 'Network.withSocketsDo' and that the file descriptor is
---   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
---
+-- | A socket data type.
 --  'Socket's are not GCed unless they are closed by 'close'.
 data Socket
   = MkSocket
@@ -93,6 +82,8 @@ data Socket
             ProtocolNumber       -- Protocol Number
             (MVar SocketStatus)  -- Status Flag
   deriving Typeable
+
+{-# DEPRECATED MkSocket "Don't use this. Use fdSocket instead" #-}
 
 sockFd :: Socket -> CInt
 sockFd       (MkSocket n _ _ _ _) = n

@@ -328,6 +328,7 @@ mkSocket fd fam sType pNum stat = do
    withSocketsDo $ return ()
    return $ MkSocket fd fam sType pNum mStat
 
+-- | Obtaining the file descriptor from a socket.
 fdSocket :: Socket -> CInt
 fdSocket (MkSocket fd _ _ _ _) = fd
 
