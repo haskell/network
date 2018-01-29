@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 {-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Network.BSD

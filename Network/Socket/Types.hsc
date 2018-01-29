@@ -193,6 +193,8 @@ packSocketType' stype = case Just stype of
 #endif
     _ -> Nothing
 
+{-# DEPRECATED packSocketType "Don't use this" #-}
+
 packSocketType :: SocketType -> CInt
 packSocketType stype = fromMaybe (error errMsg) (packSocketType' stype)
   where
@@ -311,6 +313,8 @@ data Family
     | AF_BLUETOOTH        -- bluetooth sockets
     | AF_CAN              -- Controller Area Network
       deriving (Eq, Ord, Read, Show)
+
+{-# DEPRECATED packFamily "Don't use this" #-}
 
 packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
@@ -527,6 +531,8 @@ packFamily' f = case Just f of
     _ -> Nothing
 
 --------- ----------
+
+{-# DEPRECATED unpackFamily "Don't use this" #-}
 
 unpackFamily :: CInt -> Family
 unpackFamily f = case f of

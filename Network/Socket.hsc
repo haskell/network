@@ -223,7 +223,7 @@ module Network.Socket
 #ifdef SCM_RIGHTS
     , sCM_RIGHTS
 #endif
-    -- * Internal - don't use this
+    -- ** Decrecated internal functions
     , packFamily
     , unpackFamily
     , packSocketType
