@@ -9,6 +9,7 @@ import Control.Monad (when)
 import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)
 import Foreign.Ptr (Ptr)
+import System.Mem.Weak
 
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
@@ -18,7 +19,6 @@ import GHC.Conc (asyncDoProc)
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
-import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -27,6 +27,7 @@ import Data.Bits ((.|.))
 import Network.Socket.Fcntl
 #endif
 
+import Network.Socket.Close
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types
@@ -100,6 +101,7 @@ socket family stype protocol = do
       setSocketOption s IPv6Only 0 `onException` close s
 # endif
 #endif
+    addFinalizer s $ {- putStrLn "Closing socket" >> -} close s
     return s
 
 -----------------------------------------------------------------------------
