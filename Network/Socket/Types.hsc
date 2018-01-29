@@ -854,9 +854,7 @@ isSupportedSockAddr addr = case addr of
   _ -> False
 #endif
 
-#if defined(CAN_SOCKET_SUPPORT)
-{-# DEPRECATED SockAddrCan "This will be removed in 2.7" #-}
-#endif
+{-# DEPRECATED SockAddrCan "This will be removed in 3.0" #-}
 
 #if defined(WITH_WINSOCK)
 type CSaFamily = (#type unsigned short)
