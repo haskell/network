@@ -29,7 +29,7 @@ module Network.Socket.ByteString.Lazy (
   , recv
   ) where
 
-import qualified Data.ByteString.Lazy.Internal as L
+import           Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
 import           Network.Socket                (ShutdownCmd (..), shutdown)
 import           Prelude                       hiding (getContents)
 import           System.IO.Unsafe              (unsafeInterleaveIO)
@@ -58,14 +58,14 @@ import           Network.Socket.Types
 -- is not shut down.
 getContents
     :: Socket -- ^ Connected socket
-    -> IO L.ByteString -- ^ Data received
+    -> IO ByteString -- ^ Data received
 getContents s = loop
   where
     loop = unsafeInterleaveIO $ do
-        sbs <- N.recv s L.defaultChunkSize
+        sbs <- N.recv s defaultChunkSize
         if S.null sbs
-            then shutdown s ShutdownReceive >> return L.Empty
-            else L.Chunk sbs <$> loop
+            then shutdown s ShutdownReceive >> return Empty
+            else Chunk sbs <$> loop
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  This function may return fewer bytes than specified.  If
@@ -73,14 +73,14 @@ getContents s = loop
 -- discarded depending on the type of socket.  This function may block
 -- until a message arrives.
 --
--- If there is no more data to be received, returns an empty 'L.ByteString'.
+-- If there is no more data to be received, returns an empty 'ByteString'.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
 recv
     :: Socket -- ^ Connected socket
     -> Int64 -- ^ Maximum number of bytes to receive
-    -> IO L.ByteString -- ^ Data received
+    -> IO ByteString -- ^ Data received
 recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes)
   where
-    chunk k | S.null k  = L.Empty
-            | otherwise = L.Chunk k L.Empty
+    chunk k | S.null k  = Empty
+            | otherwise = Chunk k Empty

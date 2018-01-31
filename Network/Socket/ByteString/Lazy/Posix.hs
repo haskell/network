@@ -9,8 +9,6 @@ module Network.Socket.ByteString.Lazy.Posix (
 import qualified Data.ByteString.Lazy               as L
 import           Data.ByteString.Unsafe             (unsafeUseAsCStringLen)
 import           Foreign.Marshal.Array              (allocaArray)
-import           Foreign.Ptr                        (plusPtr)
-import           Foreign.Storable                   (Storable (..))
 
 import           Network.Socket.ByteString.Internal (c_writev)
 import           Network.Socket.ByteString.IOVec    (IOVec (IOVec))

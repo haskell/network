@@ -5,9 +5,7 @@ module Network.Socket.ByteString.IOVec
     ( IOVec(..)
     ) where
 
-import Foreign.C.Types (CChar, CInt, CSize)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
+import Network.Socket.Imports
 
 #include <sys/types.h>
 #include <sys/uio.h>

@@ -18,18 +18,16 @@ module Network.Socket.ByteString.Internal
 #endif
     ) where
 
+import GHC.IO.Exception (IOErrorType(..))
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
 #if !defined(mingw32_HOST_OS)
-import Foreign.C.Types (CInt(..))
 import System.Posix.Types (CSsize(..))
-import Foreign.Ptr (Ptr)
 
+import Network.Socket.Imports
 import Network.Socket.ByteString.IOVec (IOVec)
 import Network.Socket.ByteString.MsgHdr (MsgHdr)
 #endif
-
-import GHC.IO.Exception (IOErrorType(..))
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError

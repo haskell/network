@@ -1,6 +1,5 @@
 module Network.Socket.Imports (
-    ByteString
-  , module Control.Applicative
+    module Control.Applicative
   , module Control.Monad
   , module Data.Bits
   , module Data.Int
@@ -20,7 +19,6 @@ module Network.Socket.Imports (
 import Control.Applicative
 import Control.Monad
 import Data.Bits
-import Data.ByteString (ByteString)
 import Data.Int
 import Data.List
 import Data.Maybe
