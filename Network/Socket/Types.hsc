@@ -83,6 +83,8 @@ import Foreign.Storable
 --   If you are calling the 'MkSocket' constructor directly you should ensure
 --   you have called 'Network.withSocketsDo' and that the file descriptor is
 --   in non-blocking mode. See 'Network.Socket.setNonBlockIfNeeded'.
+--
+--  'Socket's are not GCed unless they are closed by 'close'.
 data Socket
   = MkSocket
             CInt                 -- File Descriptor
