@@ -21,37 +21,33 @@
 -- > import Network.Socket.ByteString.Lazy
 -- > import Prelude hiding (getContents)
 --
-module Network.Socket.ByteString.Lazy
-    (
+module Network.Socket.ByteString.Lazy (
     -- * Send data to a socket
-      send
-    , sendAll
-    ,
-
+    send
+  , sendAll
     -- * Receive data from a socket
-      getContents
-    , recv
-    ) where
+  , getContents
+  , recv
+  ) where
 
 import qualified Data.ByteString.Lazy.Internal as L
-import Network.Socket (ShutdownCmd(..), shutdown)
-import Prelude hiding (getContents)
-import System.IO.Unsafe (unsafeInterleaveIO)
-
-import qualified Data.ByteString as S
-import qualified Network.Socket.ByteString as N
-import Network.Socket.Types
-import Network.Socket.Imports
+import           Network.Socket                (ShutdownCmd (..), shutdown)
+import           Prelude                       hiding (getContents)
+import           System.IO.Unsafe              (unsafeInterleaveIO)
 
 #if defined(mingw32_HOST_OS)
-import Network.Socket.ByteString.Lazy.Windows (send, sendAll)
+import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
 #else
-import Network.Socket.ByteString.Lazy.Posix (send, sendAll)
+import Network.Socket.ByteString.Lazy.Posix    (send, sendAll)
 #endif
+
+import qualified Data.ByteString               as S
+import qualified Network.Socket.ByteString     as N
+import           Network.Socket.Imports
+import           Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
 -- Receiving
-
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  Data is received on demand, in chunks; each chunk will be
 -- sized to reflect the amount of data received by individual 'recv'
@@ -61,14 +57,17 @@ import Network.Socket.ByteString.Lazy.Posix (send, sendAll)
 -- more data to be received, the receiving side of the socket is shut
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
-getContents :: Socket        -- ^ Connected socket
-            -> IO L.ByteString  -- ^ Data received
-getContents s = loop where
-  loop = unsafeInterleaveIO $ do
-    sbs <- N.recv s L.defaultChunkSize
-    if S.null sbs
-      then shutdown s ShutdownReceive >> return L.Empty
-      else L.Chunk sbs <$> loop
+getContents ::
+     Socket -- ^ Connected socket
+  -> IO L.ByteString -- ^ Data received
+getContents s = loop
+  where
+    loop =
+      unsafeInterleaveIO $ do
+        sbs <- N.recv s L.defaultChunkSize
+        if S.null sbs
+          then shutdown s ShutdownReceive >> return L.Empty
+          else L.Chunk sbs <$> loop
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  This function may return fewer bytes than specified.  If
@@ -79,10 +78,12 @@ getContents s = loop where
 -- If there is no more data to be received, returns an empty 'L.ByteString'.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recv :: Socket        -- ^ Connected socket
-     -> Int64          -- ^ Maximum number of bytes to receive
-     -> IO L.ByteString  -- ^ Data received
-recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes) where
-  chunk k
-    | S.null k  = L.Empty
-    | otherwise = L.Chunk k L.Empty
+recv ::
+     Socket -- ^ Connected socket
+  -> Int64 -- ^ Maximum number of bytes to receive
+  -> IO L.ByteString -- ^ Data received
+recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes)
+  where
+    chunk k
+      | S.null k = L.Empty
+      | otherwise = L.Chunk k L.Empty
