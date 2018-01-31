@@ -146,9 +146,9 @@ mkEOFError :: String -> IOError
 mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
 #if !defined(mingw32_HOST_OS)
-foreign import CALLCONV unsafe "send"
+foreign import ccall unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV unsafe "recv"
+foreign import ccall unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 foreign import CALLCONV SAFE_ON_WIN "sendto"
