@@ -55,5 +55,5 @@ socketPort s = do
     case sa of
       SockAddrInet port _      -> return port
       SockAddrInet6 port _ _ _ -> return port
-      _                        -> ioError $ userError $ "Network.Socket.socketPort: AF_UNIX not supported."
+      _                        -> ioError $ userError "Network.Socket.socketPort: AF_UNIX not supported."
 
