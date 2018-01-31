@@ -33,9 +33,7 @@ module Network.Socket.ByteString.Lazy
     , recv
     ) where
 
-import Control.Monad (liftM)
-import Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
-import Data.Int (Int64)
+import qualified Data.ByteString.Lazy.Internal as L
 import Network.Socket (ShutdownCmd(..), shutdown)
 import Prelude hiding (getContents)
 import System.IO.Unsafe (unsafeInterleaveIO)
@@ -43,6 +41,7 @@ import System.IO.Unsafe (unsafeInterleaveIO)
 import qualified Data.ByteString as S
 import qualified Network.Socket.ByteString as N
 import Network.Socket.Types
+import Network.Socket.Imports
 
 #if defined(mingw32_HOST_OS)
 import Network.Socket.ByteString.Lazy.Windows (send, sendAll)
@@ -63,13 +62,13 @@ import Network.Socket.ByteString.Lazy.Posix (send, sendAll)
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
 getContents :: Socket        -- ^ Connected socket
-            -> IO ByteString  -- ^ Data received
+            -> IO L.ByteString  -- ^ Data received
 getContents s = loop where
   loop = unsafeInterleaveIO $ do
-    sbs <- N.recv s defaultChunkSize
+    sbs <- N.recv s L.defaultChunkSize
     if S.null sbs
-      then shutdown s ShutdownReceive >> return Empty
-      else Chunk sbs `liftM` loop
+      then shutdown s ShutdownReceive >> return L.Empty
+      else L.Chunk sbs <$> loop
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  This function may return fewer bytes than specified.  If
@@ -77,13 +76,13 @@ getContents s = loop where
 -- discarded depending on the type of socket.  This function may block
 -- until a message arrives.
 --
--- If there is no more data to be received, returns an empty 'ByteString'.
+-- If there is no more data to be received, returns an empty 'L.ByteString'.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
 recv :: Socket        -- ^ Connected socket
      -> Int64          -- ^ Maximum number of bytes to receive
-     -> IO ByteString  -- ^ Data received
-recv s nbytes = chunk `liftM` N.recv s (fromIntegral nbytes) where
+     -> IO L.ByteString  -- ^ Data received
+recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes) where
   chunk k
-    | S.null k  = Empty
-    | otherwise = Chunk k Empty
+    | S.null k  = L.Empty
+    | otherwise = L.Chunk k L.Empty

@@ -10,6 +10,7 @@ module Network.Socket.Imports (
   , module Data.Ord
   , module Data.Typeable
   , module Data.Word
+  , module Foreign.C.Types
   , module Numeric
   ) where
 
@@ -24,4 +25,5 @@ import Data.Monoid
 import Data.Ord
 import Data.Typeable
 import Data.Word
+import Foreign.C.Types
 import Numeric
