@@ -52,6 +52,7 @@ library
     Network.Socket.Constant
     Network.Socket.Fcntl
     Network.Socket.Handle
+    Network.Socket.Imports
     Network.Socket.If
     Network.Socket.Info
     Network.Socket.Name
