@@ -1,6 +1,6 @@
-module Network.Socket.ByteString.Lazy.Windows
+module Network.Socket.ByteString.Lazy.Windows (
     -- * Send data to a socket
-  ( send
+    send
   , sendAll
   ) where
 
@@ -13,21 +13,20 @@ import           Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
 -- Sending
-send ::
-     Socket -- ^ Connected socket
-  -> L.ByteString -- ^ Data to send
-  -> IO Int64 -- ^ Number of bytes sent
-send s lbs =
-  case L.toChunks lbs of
+send
+    :: Socket -- ^ Connected socket
+    -> L.ByteString -- ^ Data to send
+    -> IO Int64 -- ^ Number of bytes sent
+send s lbs = case L.toChunks lbs of
+    -- TODO: Consider doing nothing if the string is empty.
     []    -> fromIntegral <$> Socket.send s S.empty
     (x:_) -> fromIntegral <$> Socket.send s x
-  -- TODO: Consider doing nothing if the string is empty.
 
-sendAll ::
-     Socket -- ^ Connected socket
-  -> L.ByteString -- ^ Data to send
-  -> IO ()
+sendAll
+    :: Socket -- ^ Connected socket
+    -> L.ByteString -- ^ Data to send
+    -> IO ()
 sendAll s bs = do
-  sent <- send s bs
-  let bs' = L.drop sent bs
-  unless (L.null bs') $ sendAll s bs'
+    sent <- send s bs
+    let bs' = L.drop sent bs
+    unless (L.null bs') $ sendAll s bs'
