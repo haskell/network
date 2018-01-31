@@ -12,8 +12,6 @@ module Network.Socket.Buffer (
 
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Ptr (Ptr, castPtr)
-import Foreign.Storable (Storable(..))
 import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString)
 

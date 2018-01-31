@@ -6,11 +6,8 @@
 
 module Network.Socket.Info where
 
-import Foreign.C.String (CString, withCString, peekCString)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
-import Foreign.Ptr (Ptr, nullPtr)
-import Foreign.Storable (Storable(..))
 import GHC.IO (unsafePerformIO)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
 import System.IO.Error (ioeSetErrorString, mkIOError)

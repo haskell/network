@@ -59,10 +59,7 @@ module Network.Socket.Types
     ) where
 
 import Data.Ratio
-import Foreign.C
 import Foreign.Marshal.Alloc
-import Foreign.Ptr
-import Foreign.Storable
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array

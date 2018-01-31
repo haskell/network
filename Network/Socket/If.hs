@@ -7,10 +7,9 @@ module Network.Socket.If (
   , ifIndexToName
   ) where
 
-import Foreign.C.String (CString, withCString, peekCString)
-import Foreign.C.Types (CUInt(..))
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr (nullPtr)
+
+import Network.Socket.Imports
 
 -- | Returns the index corresponding to the interface name.
 --
@@ -27,10 +26,10 @@ ifNameToIndex ifname = do
 ifIndexToName :: Int -> IO (Maybe String)
 ifIndexToName ifn = allocaBytes 16 $ \ptr -> do -- 16 == IFNAMSIZ
     r <- c_if_indextoname (fromIntegral ifn) ptr
-    if (r == nullPtr ) then
+    if r == nullPtr then
         return Nothing
       else
-        Just `fmap` peekCString ptr
+        Just <$> peekCString ptr
 
 foreign import CALLCONV safe "if_nametoindex"
    c_if_nametoindex :: CString -> IO CUInt

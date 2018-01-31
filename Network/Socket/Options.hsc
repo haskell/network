@@ -14,8 +14,6 @@ module Network.Socket.Options (
 
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
 
 import Network.Socket.Imports
 import Network.Socket.Internal
