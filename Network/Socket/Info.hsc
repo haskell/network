@@ -6,11 +6,7 @@
 
 module Network.Socket.Info where
 
-import Data.Bits
-import Data.List (foldl')
-import Data.Typeable
 import Foreign.C.String (CString, withCString, peekCString)
-import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -19,11 +15,8 @@ import GHC.IO (unsafePerformIO)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
-#if defined(darwin_HOST_OS)
-import Data.List (delete)
-#endif
-
 import Network.Socket.Internal
+import Network.Socket.Imports
 import Network.Socket.Types
 
 -----------------------------------------------------------------------------
@@ -132,7 +125,7 @@ instance Storable AddrInfo where
 
         ai_canonname <- if ai_canonname_ptr == nullPtr
                         then return Nothing
-                        else fmap Just $ peekCString ai_canonname_ptr
+                        else Just <$> peekCString ai_canonname_ptr
 
         socktype <- unpackSocketType' "AddrInfo.peek" ai_socktype
         return (AddrInfo
@@ -310,8 +303,9 @@ getAddrInfo hints node service = withSocketsDo $
     -- (which has no effect) in that case.
   where
 #if defined(darwin_HOST_OS)
+    toHints h = h { addrFlags = delete AI_NUMERICSERV (addrFlags h) }
     filteredHints = case service of
-        Nothing -> fmap (\ h -> h { addrFlags = delete AI_NUMERICSERV (addrFlags h) }) hints
+        Nothing -> toHints <$> hints
         _       -> hints
 #else
     filteredHints = hints
@@ -378,7 +372,7 @@ getNameInfo flags doHost doService addr = withSocketsDo $
         case ret of
           0 -> do
             let peekIf doIf c_val = if doIf
-                                     then fmap Just $ peekCString c_val
+                                     then Just <$> peekCString c_val
                                      else return Nothing
             host <- peekIf doHost c_host
             serv <- peekIf doService c_serv
@@ -438,14 +432,14 @@ instance Show SockAddr where
 #endif
   showsPrec _ addr@(SockAddrInet port _)
    = showString (unsafePerformIO $
-                 fst `fmap` getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 fst <$> getNameInfo [NI_NUMERICHOST] True False addr >>=
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString ":"
    . shows port
   showsPrec _ addr@(SockAddrInet6 port _ _ _)
    = showChar '['
    . showString (unsafePerformIO $
-                 fst `fmap` getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 fst <$> getNameInfo [NI_NUMERICHOST] True False addr >>=
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
