@@ -8,11 +8,9 @@ module Network.Socket.Name (
   , socketPort
   ) where
 
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
 

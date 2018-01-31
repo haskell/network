@@ -5,10 +5,7 @@
 
 module Network.Socket.Syscall where
 
-import Control.Monad (when)
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr)
 
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
@@ -22,11 +19,11 @@ import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-import Data.Bits ((.|.))
 #else
 import Network.Socket.Fcntl
 #endif
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types

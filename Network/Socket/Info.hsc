@@ -12,8 +12,8 @@ import GHC.IO (unsafePerformIO)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
-import Network.Socket.Internal
 import Network.Socket.Imports
+import Network.Socket.Internal
 import Network.Socket.Types
 
 -----------------------------------------------------------------------------

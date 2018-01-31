@@ -49,22 +49,16 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
-import Control.Monad (void)
-import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(mingw32_HOST_OS)
 import Control.Exception (evaluate)
-import Control.Monad (when)
-import Foreign.C.String (peekCString)
-import Foreign.Ptr (Ptr)
 import System.IO.Unsafe (unsafePerformIO)
 # if __GLASGOW_HASKELL__ >= 707
 import GHC.IO.Exception (IOErrorType(..))
 # else
 import GHC.IOBase (IOErrorType(..))
 # endif
-import Foreign.C.Types (CChar)
 import System.IO.Error (ioeSetErrorString, mkIOError)
 #else
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
@@ -72,6 +66,7 @@ import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         Errno(..), errnoToIOError)
 #endif
 
+import Network.Socket.Imports
 import Network.Socket.Types
 
 -- ---------------------------------------------------------------------
