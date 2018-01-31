@@ -211,6 +211,9 @@ foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+foreign import CALLCONV unsafe "listen"
+  c_listen :: CInt -> CInt -> IO CInt
+
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
   c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
@@ -218,17 +221,12 @@ foreign import CALLCONV unsafe "accept4"
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
 #endif
-foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
   c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
-
-foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
-#endif
-
-#if defined(mingw32_HOST_OS)
+foreign import ccall unsafe "rtsSupportsBoundThreads"
+  threaded :: Bool
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"
