@@ -384,11 +384,7 @@ instance Show SockAddr where
 --
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
 -- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
--- >>> sock@(MkSocket _ fam stype _ _) <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >>> fam
--- AF_INET
--- >>> stype
--- Stream
+-- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >>> bind sock (addrAddress addr)
 -- >>> getSocketName sock
 -- 127.0.0.1:5000
