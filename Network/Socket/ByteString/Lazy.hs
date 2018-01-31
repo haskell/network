@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-
 -- |
 -- Module      : Network.Socket.ByteString.Lazy
 -- Copyright   : (c) Bryan O'Sullivan 2009
@@ -57,17 +56,16 @@ import           Network.Socket.Types
 -- more data to be received, the receiving side of the socket is shut
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
-getContents ::
-     Socket -- ^ Connected socket
-  -> IO L.ByteString -- ^ Data received
+getContents
+    :: Socket -- ^ Connected socket
+    -> IO L.ByteString -- ^ Data received
 getContents s = loop
   where
-    loop =
-      unsafeInterleaveIO $ do
+    loop = unsafeInterleaveIO $ do
         sbs <- N.recv s L.defaultChunkSize
         if S.null sbs
-          then shutdown s ShutdownReceive >> return L.Empty
-          else L.Chunk sbs <$> loop
+            then shutdown s ShutdownReceive >> return L.Empty
+            else L.Chunk sbs <$> loop
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  This function may return fewer bytes than specified.  If
@@ -78,12 +76,11 @@ getContents s = loop
 -- If there is no more data to be received, returns an empty 'L.ByteString'.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
-recv ::
-     Socket -- ^ Connected socket
-  -> Int64 -- ^ Maximum number of bytes to receive
-  -> IO L.ByteString -- ^ Data received
+recv
+    :: Socket -- ^ Connected socket
+    -> Int64 -- ^ Maximum number of bytes to receive
+    -> IO L.ByteString -- ^ Data received
 recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes)
   where
-    chunk k
-      | S.null k = L.Empty
-      | otherwise = L.Chunk k L.Empty
+    chunk k | S.null k  = L.Empty
+            | otherwise = L.Chunk k L.Empty
