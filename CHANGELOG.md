@@ -1,6 +1,5 @@
 ## Version 2.6.3.4
 
- * Socket can be GCed.
  * Don't touch IPv6Only when running on OpenBSD
    [#227](https://github.com/haskell/network/pull/227)
  * Do not closeFd within sendFd
