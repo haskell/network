@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNetDef.h"
 
@@ -89,20 +88,25 @@ sendBuf s str len =
 -- GHC ticket #1129)
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
- | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
- | otherwise   = do
-    withNewSocketAddress $ \ptr_sa sz ->
-      alloca $ \ptr_len -> do
+    | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
+    | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
-                   c_recvfrom (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
-                                ptr_sa ptr_len
+        len <-
+            throwSocketErrorWaitRead s "Network.Socket.recvBufFrom"
+                $ c_recvfrom
+                      (fdSocket s)
+                      ptr
+                      (fromIntegral nbytes)
+                      0{-flags-}
+                      ptr_sa
+                      ptr_len
         let len' = fromIntegral len
         if len' == 0
-         then ioError (mkEOFError "Network.Socket.recvFrom")
-         else do
-           sockaddr <- peekSocketAddress ptr_sa `E.catch` \(E.SomeException _) -> getPeerName s
-           return (len', sockaddr)
+            then ioError (mkEOFError "Network.Socket.recvFrom")
+            else do
+                sockaddr <- peekSocketAddress ptr_sa
+                    `E.catch` \(E.SomeException _) -> getPeerName s
+                return (len', sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
