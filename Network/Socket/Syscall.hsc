@@ -75,25 +75,28 @@ socket :: Family         -- Family Name (usually AF_INET)
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-                c_socket (packFamily family) (c_stype .|. (#const SOCK_NONBLOCK)) protocol
-    let s = mkSocket fd
+    let c_stype' = (c_stype .|. (#const SOCK_NONBLOCK))
 #else
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-                c_socket (packFamily family) c_stype protocol
-    setNonBlockIfNeeded fd
-    let s = mkSocket fd
+    let c_stype' = c_stype
 #endif
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+              c_socket (packFamily family) c_stype' protocol
+#ifndef HAVE_ADVANCED_SOCKET_FLAGS
+    setNonBlockIfNeeded fd
+#endif
+    let s = mkSocket fd
 #if HAVE_DECL_IPV6_V6ONLY
-    -- The default value of the IPv6Only option is platform specific,
-    -- so we explicitly set it to 0 to provide a common default.
+    when (family == AF_INET6 && stype `elem` [Stream, Datagram]) $
 # if defined(mingw32_HOST_OS)
-    -- The IPv6Only option is only supported on Windows Vista and later,
-    -- so trying to change it might throw an error.
-    when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
+      -- The IPv6Only option is only supported on Windows Vista and later,
+      -- so trying to change it might throw an error.
       E.catch (setSocketOption s IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
-# elif !defined(__OpenBSD__)
-    when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
+# elif defined(__OpenBSD__)
+      -- don't change IPv6Only
+      return ()
+# else
+      -- The default value of the IPv6Only option is platform specific,
+      -- so we explicitly set it to 0 to provide a common default.
       setSocketOption s IPv6Only 0 `onException` close s
 # endif
 #endif
@@ -108,10 +111,9 @@ socket family stype protocol = do
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: SocketAddress sa => Socket -> sa -> IO ()
-bind s sa = withSocketAddress sa $ \p_sa sz -> do
-   _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind (fdSocket s) p_sa (fromIntegral sz)
-   return ()
+bind s sa = withSocketAddress sa $ \p_sa sz -> void $
+  throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
+    c_bind (fdSocket s) p_sa (fromIntegral sz)
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
