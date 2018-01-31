@@ -4,12 +4,7 @@ module Network.Socket.Fcntl where
 
 import qualified System.Posix.Internals
 
-import Foreign.C.Types (CInt(..))
-
-#if defined(mingw32_HOST_OS)
-#else
-import Data.Bits ((.&.))
-#endif
+import Network.Socket.Imports
 
 -- | Set the nonblocking flag on Unix.
 --   On Windows, nothing is done.
