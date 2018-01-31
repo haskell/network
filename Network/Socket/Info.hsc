@@ -100,16 +100,14 @@ aiFlagMapping =
 addrInfoFlagImplemented :: AddrInfoFlag -> Bool
 addrInfoFlagImplemented f = packBits aiFlagMapping [f] /= 0
 
-data AddrInfo =
-    AddrInfo {
-        addrFlags :: [AddrInfoFlag],
-        addrFamily :: Family,
-        addrSocketType :: SocketType,
-        addrProtocol :: ProtocolNumber,
-        addrAddress :: SockAddr,
-        addrCanonName :: Maybe String
-        }
-    deriving (Eq, Show, Typeable)
+data AddrInfo = AddrInfo {
+    addrFlags :: [AddrInfoFlag]
+  , addrFamily :: Family
+  , addrSocketType :: SocketType
+  , addrProtocol :: ProtocolNumber
+  , addrAddress :: SockAddr
+  , addrCanonName :: Maybe String
+  } deriving (Eq, Show, Typeable)
 
 instance Storable AddrInfo where
     sizeOf    _ = #const sizeof(struct addrinfo)
@@ -200,33 +198,32 @@ niFlagMapping = [(NI_DGRAM, #const NI_DGRAM),
 
 defaultHints :: AddrInfo
 defaultHints = AddrInfo {
-                         addrFlags = [],
-                         addrFamily = AF_UNSPEC,
-                         addrSocketType = NoSocketType,
-                         addrProtocol = defaultProtocol,
-                         addrAddress = undefined,
-                         addrCanonName = undefined
-                        }
+    addrFlags      = []
+  , addrFamily     = AF_UNSPEC
+  , addrSocketType = NoSocketType
+  , addrProtocol   = defaultProtocol
+  , addrAddress    = undefined
+  , addrCanonName  = undefined
+  }
 
 -- | Shows the fields of 'defaultHints', without inspecting the by-default undefined fields 'addrAddress' and 'addrCanonName'.
 showDefaultHints :: AddrInfo -> String
-showDefaultHints AddrInfo{..} = concat
-    [ "AddrInfo {"
-    , "addrFlags = "
-    , show addrFlags
-    , ", addrFamily = "
-    , show addrFamily
-    , ", addrSocketType = "
-    , show addrSocketType
-    , ", addrProtocol = "
-    , show addrProtocol
-    , ", addrAddress = "
-    , "<assumed to be undefined>"
-    , ", addrCanonName = "
-    , "<assumed to be undefined>"
-    , "}"
-    ]
-
+showDefaultHints AddrInfo{..} = concat [
+    "AddrInfo {"
+  , "addrFlags = "
+  , show addrFlags
+  , ", addrFamily = "
+  , show addrFamily
+  , ", addrSocketType = "
+  , show addrSocketType
+  , ", addrProtocol = "
+  , show addrProtocol
+  , ", addrAddress = "
+  , "<assumed to be undefined>"
+  , ", addrCanonName = "
+  , "<assumed to be undefined>"
+  , "}"
+  ]
 
 -----------------------------------------------------------------------------
 -- | Resolve a host or service name to one or more addresses.
@@ -269,40 +266,43 @@ showDefaultHints AddrInfo{..} = concat
 -- >>> addrAddress addr
 -- 127.0.0.1:80
 
-getAddrInfo :: Maybe AddrInfo -- ^ preferred socket type or protocol
-            -> Maybe HostName -- ^ host name to look up
-            -> Maybe ServiceName -- ^ service name to look up
-            -> IO [AddrInfo] -- ^ resolved addresses, with "best" first
-
-getAddrInfo hints node service = withSocketsDo $
-  maybeWith withCString node $ \c_node ->
-    maybeWith withCString service $ \c_service ->
-      maybeWith with filteredHints $ \c_hints ->
-        alloca $ \ptr_ptr_addrs -> do
-          ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
-          case ret of
-            0 -> do ptr_addrs <- peek ptr_ptr_addrs
-                    ais <- followAddrInfo ptr_addrs
-                    c_freeaddrinfo ptr_addrs
-                    return ais
-            _ -> do err <- gai_strerror ret
-                    let message = concat
-                            [ "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
-                            , maybe (show hints) showDefaultHints hints
-                            , ", host name: "
-                            , show node
-                            , ", service name: "
-                            , show service
-                            , ")"
-                            ]
-                    ioError (ioeSetErrorString
-                             (mkIOError NoSuchThing message Nothing
-                              Nothing) err)
+getAddrInfo
+    :: Maybe AddrInfo -- ^ preferred socket type or protocol
+    -> Maybe HostName -- ^ host name to look up
+    -> Maybe ServiceName -- ^ service name to look up
+    -> IO [AddrInfo] -- ^ resolved addresses, with "best" first
+getAddrInfo hints node service = alloc getaddrinfo
+  where
+    alloc body = withSocketsDo $ maybeWith withCString node $ \c_node ->
+        maybeWith withCString service                       $ \c_service ->
+            maybeWith with filteredHints                    $ \c_hints ->
+                  alloca                                    $ \ptr_ptr_addrs ->
+                      body c_node c_service c_hints ptr_ptr_addrs
+    getaddrinfo c_node c_service c_hints ptr_ptr_addrs = do
+        ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
+        if ret == 0 then do
+            ptr_addrs <- peek ptr_ptr_addrs
+            ais       <- followAddrInfo ptr_addrs
+            c_freeaddrinfo ptr_addrs
+            return ais
+          else do
+            err <- gai_strerror ret
+            ioError $ ioeSetErrorString
+                        (mkIOError NoSuchThing message Nothing Nothing)
+                        err
+    message = concat [
+        "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
+      , maybe (show hints) showDefaultHints hints
+      , ", host name: "
+      , show node
+      , ", service name: "
+      , show service
+      , ")"
+      ]
+#if defined(darwin_HOST_OS)
     -- Leaving out the service and using AI_NUMERICSERV causes a
     -- segfault on OS X 10.8.2. This code removes AI_NUMERICSERV
     -- (which has no effect) in that case.
-  where
-#if defined(darwin_HOST_OS)
     toHints h = h { addrFlags = delete AI_NUMERICSERV (addrFlags h) }
     filteredHints = case service of
         Nothing -> toHints <$> hints
@@ -312,12 +312,12 @@ getAddrInfo hints node service = withSocketsDo $
 #endif
 
 followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
-
-followAddrInfo ptr_ai | ptr_ai == nullPtr = return []
-                      | otherwise = do
-    a <- peek ptr_ai
-    as <- (#peek struct addrinfo, ai_next) ptr_ai >>= followAddrInfo
-    return (a:as)
+followAddrInfo ptr_ai
+    | ptr_ai == nullPtr = return []
+    | otherwise = do
+        a  <- peek ptr_ai
+        as <- (# peek struct addrinfo, ai_next) ptr_ai >>= followAddrInfo
+        return (a : as)
 
 foreign import ccall safe "hsnet_getaddrinfo"
     c_getaddrinfo :: CString -> CString -> Ptr AddrInfo -> Ptr (Ptr AddrInfo)
@@ -357,47 +357,53 @@ withCStringIf True n f = allocaBytes n (f (fromIntegral n))
 -- (Just "localhost",Just "http")
 -- >>> getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True $ addrAddress addr
 -- (Just "127.0.0.1",Just "80")
-getNameInfo :: [NameInfoFlag] -- ^ flags to control lookup behaviour
-            -> Bool -- ^ whether to look up a hostname
-            -> Bool -- ^ whether to look up a service name
-            -> SockAddr -- ^ the address to look up
-            -> IO (Maybe HostName, Maybe ServiceName)
-
-getNameInfo flags doHost doService addr = withSocketsDo $
-  withCStringIf doHost (#const NI_MAXHOST) $ \c_hostlen c_host ->
-    withCStringIf doService (#const NI_MAXSERV) $ \c_servlen c_serv ->
-      withSockAddr addr $ \ptr_addr sz -> do
-        ret <- c_getnameinfo ptr_addr (fromIntegral sz) c_host c_hostlen
-                             c_serv c_servlen (packBits niFlagMapping flags)
-        case ret of
-          0 -> do
-            let peekIf doIf c_val = if doIf
-                                     then Just <$> peekCString c_val
-                                     else return Nothing
+getNameInfo
+    :: [NameInfoFlag] -- ^ flags to control lookup behaviour
+    -> Bool -- ^ whether to look up a hostname
+    -> Bool -- ^ whether to look up a service name
+    -> SockAddr -- ^ the address to look up
+    -> IO (Maybe HostName, Maybe ServiceName)
+getNameInfo flags doHost doService addr = alloc getnameinfo
+  where
+    alloc body = withSocketsDo $
+        withCStringIf doHost (# const NI_MAXHOST)        $ \c_hostlen c_host ->
+            withCStringIf doService (# const NI_MAXSERV) $ \c_servlen c_serv ->
+                withSockAddr addr                        $ \ptr_addr sz ->
+                  body c_hostlen c_host c_servlen c_serv ptr_addr sz
+    getnameinfo c_hostlen c_host c_servlen c_serv ptr_addr sz = do
+        ret <- c_getnameinfo ptr_addr
+                             (fromIntegral sz)
+                             c_host
+                             c_hostlen
+                             c_serv
+                             c_servlen
+                             (packBits niFlagMapping flags)
+        if ret == 0 then do
+            let peekIf doIf c_val =
+                    if doIf then Just <$> peekCString c_val else return Nothing
             host <- peekIf doHost c_host
             serv <- peekIf doService c_serv
             return (host, serv)
-          _ -> do err <- gai_strerror ret
-                  let message = concat
-                        [ "Network.Socket.getNameInfo (called with flags: "
-                        , show flags
-                        , ", hostname lookup: "
-                        , show doHost
-                        , ", service name lookup: "
-                        , show doService
-                        , ", socket address: "
-                        , show addr
-                        , ")"
-                        ]
-                  ioError (ioeSetErrorString
-                           (mkIOError NoSuchThing message Nothing
-                            Nothing) err)
+          else do
+            err <- gai_strerror ret
+            ioError $ ioeSetErrorString
+                        (mkIOError NoSuchThing message Nothing Nothing)
+                        err
+    message = concat [
+        "Network.Socket.getNameInfo (called with flags: "
+      , show flags
+      , ", hostname lookup: "
+      , show doHost
+      , ", service name lookup: "
+      , show doService
+      , ", socket address: "
+      , show addr
+      , ")"
+      ]
 
 foreign import ccall safe "hsnet_getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
                   -> CSize -> CInt -> IO CInt
-
-
 
 -- | Pack a list of values into a bitmask.  The possible mappings from
 -- value to bit-to-set are given as the first argument.  We assume
@@ -408,8 +414,9 @@ foreign import ccall safe "hsnet_getnameinfo"
 
 packBits :: (Eq a, Num b, Bits b) => [(a, b)] -> [a] -> b
 packBits mapping xs = foldl' pack 0 mapping
-    where pack acc (k, v) | k `elem` xs = acc .|. v
-                          | otherwise   = acc
+  where
+    pack acc (k, v) | k `elem` xs = acc .|. v
+                    | otherwise   = acc
 
 -- | Unpack a bitmask into a list of values.
 unpackBits :: (Num b, Bits b) => [(a, b)] -> b -> [a]
