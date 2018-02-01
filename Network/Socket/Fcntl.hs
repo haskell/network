@@ -2,7 +2,9 @@ module Network.Socket.Fcntl where
 
 import qualified System.Posix.Internals
 
+#if !defined(mingw32_HOST_OS)
 import Network.Socket.Cbits
+#endif
 import Network.Socket.Imports
 
 -- | Set the nonblocking flag on Unix.

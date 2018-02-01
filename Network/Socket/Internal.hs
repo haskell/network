@@ -147,7 +147,7 @@ throwSocketErrorIfMinus1Retry name act = do
   if (r == -1)
    then do
     rc <- c_getLastError
-    if rc = wsaNotInitialized then do
+    if rc == wsaNotInitialized then do
         withSocketsDo (return ())
         r' <- act
         if (r' == -1)
