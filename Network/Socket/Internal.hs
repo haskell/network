@@ -133,21 +133,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if !defined(mingw32_HOST_OS)
-
-throwSocketErrorIfMinus1RetryMayBlock name on_block act =
-    throwErrnoIfMinus1RetryMayBlock name act on_block
-
-throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
-
-throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
-
-throwSocketError = throwErrno
-
-throwSocketErrorCode loc errno =
-    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
-
-#else
+#if defined(mingw32_HOST_OS)
 
 throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
@@ -184,6 +170,21 @@ foreign import CALLCONV unsafe "WSAGetLastError"
 
 foreign import ccall unsafe "getWSErrorDescr"
   c_getWSError :: CInt -> IO (Ptr CChar)
+
+#else
+
+throwSocketErrorIfMinus1RetryMayBlock name on_block act =
+    throwErrnoIfMinus1RetryMayBlock name act on_block
+
+throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+
+throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
+
+throwSocketError = throwErrno
+
+throwSocketErrorCode loc errno =
+    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
+
 #endif
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
@@ -223,11 +224,9 @@ to always call 'withSocketsDo' (it's very cheap).
 -}
 {-# INLINE withSocketsDo #-}
 withSocketsDo :: IO a -> IO a
-#if !defined(mingw32_HOST_OS)
-withSocketsDo x = x
-#else
-withSocketsDo act = evaluate withSocketsInit >> act
+#if defined(mingw32_HOST_OS)
 
+withSocketsDo act = evaluate withSocketsInit >> act
 
 {-# NOINLINE withSocketsInit #-}
 withSocketsInit :: ()
@@ -238,5 +237,9 @@ withSocketsInit = unsafePerformIO $ do
       userError "Network.Socket.Internal.withSocketsDo: Failed to initialise WinSock"
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
+
+#else
+
+withSocketsDo x = x
 
 #endif
