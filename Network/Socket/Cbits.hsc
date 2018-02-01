@@ -22,4 +22,10 @@ fdCloexec :: CInt
 fdCloexec = #const FD_CLOEXEC
 oNonBlock :: CInt
 oNonBlock = #const O_NONBLOCK
+# if defined(HAVE_ADVANCED_SOCKET_FLAGS)
+sockNonBlock :: CInt
+sockNonBlock = #const SOCK_NONBLOCK
+sockCloexec :: CInt
+sockCloexec = #const SOCK_CLOEXEC
+# endif
 #endif

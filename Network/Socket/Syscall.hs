@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-#include "HsNet.h"
-##include "HsNetDef.h"
+#include "HsNetDef.h"
 
 module Network.Socket.Syscall where
 
@@ -75,7 +74,7 @@ socket :: Family         -- Family Name (usually AF_INET)
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    let c_stype' = (c_stype .|. (#const SOCK_NONBLOCK))
+    let c_stype' = c_stype .|. sockNonBlock
 #else
     let c_stype' = c_stype
 #endif
@@ -193,7 +192,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
-                        (c_accept4 fd sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
+                        (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
 # else
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept fd sa ptr_len)
