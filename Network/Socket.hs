@@ -191,8 +191,8 @@ module Network.Socket
     ) where
 
 import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
+import Network.Socket.Cbits
 import Network.Socket.Close
-import Network.Socket.Constant
 import Network.Socket.Fcntl
 import Network.Socket.Handle
 import Network.Socket.If
