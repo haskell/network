@@ -18,6 +18,7 @@ import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
+import Network.Socket.Cbits
 #else
 import Network.Socket.Fcntl
 #endif
