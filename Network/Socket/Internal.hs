@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-#include "HsNet.h"
-##include "HsNetDef.h"
+#include "HsNetDef.h"
 
 -----------------------------------------------------------------------------
 -- |
@@ -66,6 +65,9 @@ import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         Errno(..), errnoToIOError)
 #endif
 
+#if defined(mingw32_HOST_OS)
+import Network.Socket.Cbits
+#endif
 import Network.Socket.Imports
 import Network.Socket.Types
 
@@ -159,15 +161,15 @@ throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)
    then do
-    rc   <- c_getLastError
-    case rc of
-      #{const WSANOTINITIALISED} -> do
+    rc <- c_getLastError
+    if rc = wsaNotInitialized then do
         withSocketsDo (return ())
         r' <- act
         if (r' == -1)
            then throwSocketError name
            else return r'
-      _ -> throwSocketError name
+      else
+        throwSocketError name
    else return r
 
 throwSocketErrorCode name rc = do
