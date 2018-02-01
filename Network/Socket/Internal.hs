@@ -156,7 +156,6 @@ throwSocketErrorIfMinus1_ name act = do
   _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(mingw32_HOST_OS)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)
@@ -185,14 +184,6 @@ foreign import CALLCONV unsafe "WSAGetLastError"
 
 foreign import ccall unsafe "getWSErrorDescr"
   c_getWSError :: CInt -> IO (Ptr CChar)
-
-
-# else
-throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
-throwSocketError = throwErrno
-throwSocketErrorCode loc errno =
-    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
-# endif
 #endif
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
