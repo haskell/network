@@ -1,9 +1,8 @@
-#include "HsNet.h"
-
 module Network.Socket.Fcntl where
 
 import qualified System.Posix.Internals
 
+import Network.Socket.Cbits
 import Network.Socket.Imports
 
 -- | Set the nonblocking flag on Unix.
@@ -37,8 +36,8 @@ getCloseOnExec :: CInt -> IO Bool
 getCloseOnExec _ = return False
 #else
 getCloseOnExec fd = do
-    flags <- c_fcntl_read fd (#const F_GETFD) 0
-    let ret = flags .&. (#const FD_CLOEXEC)
+    flags <- c_fcntl_read fd fGetFd 0
+    let ret = flags .&. fdCloexec
     return (ret /= 0)
 #endif
 
@@ -51,7 +50,7 @@ getNonBlock :: CInt -> IO Bool
 getNonBlock _ = return False
 #else
 getNonBlock fd = do
-    flags <- c_fcntl_read fd (#const F_GETFL) 0
-    let ret = flags .&. (#const O_NONBLOCK)
+    flags <- c_fcntl_read fd fGetFl 0
+    let ret = flags .&. oNonBlock
     return (ret /= 0)
 #endif

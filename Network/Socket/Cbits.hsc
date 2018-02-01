@@ -13,4 +13,13 @@ maxListenQueue = #const SOMAXCONN
 #if defined(mingw32_HOST_OS)
 wsaNotInitialized :: CInt
 wsaNotInitialized = #const WSANOTINITIALISED
+#else
+fGetFd :: CInt
+fGetFd = #const F_GETFD
+fGetFl :: CInt
+fGetFl = #const F_GETFL
+fdCloexec :: CInt
+fdCloexec = #const FD_CLOEXEC
+oNonBlock :: CInt
+oNonBlock = #const O_NONBLOCK
 #endif
