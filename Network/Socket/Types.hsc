@@ -58,7 +58,7 @@ module Network.Socket.Types (
     , ntohl
     ) where
 
-import Data.IORef (IORef, newIORef, readIORef)
+import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
@@ -87,23 +87,25 @@ fdSocket (Socket ref) = readIORef ref
 
 unsafeFdSocket :: Socket -> CInt
 unsafeFdSocket = unsafePerformIO . fdSocket
-
 {-# NOINLINE unsafeFdSocket #-}
 
 -- | Creating a socket form a file descriptor.
 mkSocket :: CInt -> IO Socket
 mkSocket fd = do
     ref <- newIORef fd
-    return $ Socket ref
+    let s = Socket ref
+    void $ mkWeakIORef ref $ close s
+    return s
 
 -----------------------------------------------------------------------------
 
 -- | Close the socket. Sending data to or receiving data from closed socket
--- may lead to undefined behaviour.
+--   may lead to undefined behaviour.
 close :: Socket -> IO ()
-close s = do
-    fd <- fromIntegral <$> fdSocket s
-    closeFdWith (void . c_close . fromIntegral) fd
+close (Socket ref) = do
+    oldfd <- atomicModifyIORef' ref $ \cur -> (-1, cur)
+    when (oldfd /= -1) $
+        closeFdWith (void . c_close . fromIntegral) (fromIntegral oldfd)
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
