@@ -207,7 +207,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
        c_getsockname new_fd sa ptr_len
 #endif
-     addr <- peekSocketAddress sa
+     addr <- peekSocketAddress sa ptr_len
      let new_s = mkSocket new_fd
      return (new_s, addr)
 
