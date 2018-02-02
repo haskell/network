@@ -123,15 +123,14 @@ instance Storable AddrInfo where
                         else Just <$> peekCString ai_canonname_ptr
 
         socktype <- unpackSocketType' "AddrInfo.peek" ai_socktype
-        return (AddrInfo
-                {
-                 addrFlags = unpackBits aiFlagMapping ai_flags,
-                 addrFamily = unpackFamily ai_family,
-                 addrSocketType = socktype,
-                 addrProtocol = ai_protocol,
-                 addrAddress = ai_addr,
-                 addrCanonName = ai_canonname
-                })
+        return $ AddrInfo {
+            addrFlags = unpackBits aiFlagMapping ai_flags
+          , addrFamily = unpackFamily ai_family
+          , addrSocketType = socktype
+          , addrProtocol = ai_protocol
+          , addrAddress = ai_addr
+          , addrCanonName = ai_canonname
+          }
 
     poke p (AddrInfo flags family sockType protocol _ _) = do
         c_stype <- packSocketTypeOrThrow "AddrInfo.poke" sockType
@@ -338,7 +337,7 @@ gai_strerror n = ioError $ userError $ "Network.Socket.gai_strerror not supporte
 
 withCStringIf :: Bool -> Int -> (CSize -> CString -> IO a) -> IO a
 withCStringIf False _ f = f 0 nullPtr
-withCStringIf True n f = allocaBytes n (f (fromIntegral n))
+withCStringIf True  n f = allocaBytes n (f (fromIntegral n))
 
 -- | Resolve an address to a host or service name.
 -- This function is protocol independent.
