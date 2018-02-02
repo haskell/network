@@ -62,7 +62,7 @@ getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred s = do
   let sz = (#const sizeof(struct ucred))
-      fd = fdSocket s
+  fd <- fdSocket s
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
      _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
