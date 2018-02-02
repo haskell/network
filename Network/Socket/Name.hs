@@ -6,6 +6,8 @@ module Network.Socket.Name (
     getPeerName
   , getSocketName
   , socketPort
+
+  , c_getsockname
   ) where
 
 import Foreign.Marshal.Utils (with)

@@ -25,6 +25,7 @@ import Network.Socket.Fcntl
 
 import Network.Socket.Imports
 import Network.Socket.Internal
+import Network.Socket.Name
 import Network.Socket.Options
 import Network.Socket.Types
 
@@ -200,6 +201,11 @@ accept s = withNewSocketAddress $ \sa sz -> do
      setNonBlockIfNeeded new_fd
      setCloseOnExecIfNeeded new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
+     -- Some distros don't fill `sockaddr` appropriately in the `accept` syscall
+     -- Make an explicit call to pull the correct name
+     poke ptr_len (fromIntegral sz)
+     throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
+       c_getsockname new_fd sa ptr_len
 #endif
      addr <- peekSocketAddress sa
      let new_s = mkSocket new_fd
