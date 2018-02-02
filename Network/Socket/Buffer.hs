@@ -43,7 +43,7 @@ sendBufTo s ptr nbytes sa =
       c_sendto fd ptr n flags p_sa sz
 
 #if defined(mingw32_HOST_OS)
-socket2FD :: Socket -> FD
+socket2FD :: Socket -> IO FD
 socket2FD s = do
   fd <- fdSocket s
   -- HACK, 1 means True
