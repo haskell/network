@@ -4,6 +4,7 @@ import qualified GHC.IO.Device (IODeviceType(Stream))
 import GHC.IO.Handle.FD (fdToHandle')
 import System.IO (IOMode(..), Handle, BufferMode(..), hSetBuffering)
 
+import Network.Socket.Imports
 import Network.Socket.Types
 
 -- | Turns a Socket into an 'Handle'. By default, the new handle is
@@ -17,7 +18,7 @@ import Network.Socket.Types
 
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = do
-    let fd = fromIntegral $ fdSocket s
+    fd <- fromIntegral <$> fdSocket s
     h <- fdToHandle' fd (Just GHC.IO.Device.Stream) True (show s) mode True{-bin-}
     hSetBuffering h NoBuffering
     return h

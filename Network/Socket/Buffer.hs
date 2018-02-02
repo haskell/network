@@ -34,17 +34,20 @@ sendBufTo :: SocketAddress sa =>
           -> sa
           -> IO Int      -- Number of Bytes sent
 sendBufTo s ptr nbytes sa =
- withSocketAddress sa $ \p_sa sz ->
-   fromIntegral <$>
-     throwSocketErrorWaitWrite s "Network.Socket.sendBufTo"
-        (c_sendto (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
-                        p_sa (fromIntegral sz))
+  withSocketAddress sa $ \p_sa siz -> fromIntegral <$> do
+    fd <- fdSocket s
+    let sz = fromIntegral siz
+        n = fromIntegral nbytes
+        flags = 0
+    throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
+      c_sendto fd ptr n flags p_sa sz
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> FD
-socket2FD s =
+socket2FD s = do
+  fd <- fdSocket s
   -- HACK, 1 means True
-  FD{ fdFD = fdSocket s, fdIsSocket_ = 1 }
+  return $ FD{ fdFD = fd, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -56,24 +59,22 @@ sendBuf :: Socket    -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf s str len =
+sendBuf s str len = fromIntegral <$> do
 #if defined(mingw32_HOST_OS)
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
 -- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
 -- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
 -- bug is supported.
-   fromIntegral <$>
-    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf"
-      (writeRawBufferPtr
-       "Network.Socket.sendBuf"
-       (socket2FD s)
-       (castPtr str)
-       0
-       (fromIntegral len))
+    fd <- socket2FD s
+    let clen = fromIntegral len
+    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $
+      writeRawBufferPtr "Network.Socket.sendBuf" fd (castPtr str) 0 clen
 #else
-   fromIntegral <$>
-    throwSocketErrorWaitWrite s "Network.Socket.sendBuf"
-      (c_send (fdSocket s) str (fromIntegral len) 0{-flags-})
+    fd <- fdSocket s
+    let flags = 0
+        clen = fromIntegral len
+    throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
+      c_send fd str clen flags
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -90,16 +91,12 @@ recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
     | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len -> do
+        fd <- fdSocket s
         poke ptr_len (fromIntegral sz)
-        len <-
-            throwSocketErrorWaitRead s "Network.Socket.recvBufFrom"
-                $ c_recvfrom
-                      (fdSocket s)
-                      ptr
-                      (fromIntegral nbytes)
-                      0{-flags-}
-                      ptr_sa
-                      ptr_len
+        let cnbytes = fromIntegral nbytes
+            flags = 0
+        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
+                 c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
         let len' = fromIntegral len
         if len' == 0
             then ioError (mkEOFError "Network.Socket.recvFrom")
@@ -127,17 +124,19 @@ recvBuf s ptr nbytes
  | otherwise   = do
 #if defined(mingw32_HOST_OS)
 -- see comment in sendBuf above.
-        len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
-                  readRawBufferPtr "Network.Socket.recvBuf"
-                  (socket2FD s) ptr 0 (fromIntegral nbytes)
+    fd <- socket2FD s
+    let cnbytes = fromIntegral nbytes
+    len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
+             readRawBufferPtr "Network.Socket.recvBuf" fd ptr 0 cnbytes
 #else
-        len <- throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
-                  c_recv (fdSocket s) (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+    fd <- fdSocket s
+    len <- throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
+             c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
-        let len' = fromIntegral len
-        if len' == 0
-         then ioError (mkEOFError "Network.Socket.recvBuf")
-         else return len'
+    let len' = fromIntegral len
+    if len' == 0
+      then ioError (mkEOFError "Network.Socket.recvBuf")
+      else return len'
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError

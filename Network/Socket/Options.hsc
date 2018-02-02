@@ -189,21 +189,21 @@ setSocketOption :: Socket
 setSocketOption s Linger v = do
    (level, opt) <- packSocketOption' "setSocketOption" Linger
    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
-   with arg $ \ptr_arg -> do
-   throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-       c_setsockopt (fdSocket s) level opt
-          (ptr_arg :: Ptr StructLinger)
-          (fromIntegral (sizeOf (undefined :: StructLinger)))
-   return ()
+   with arg $ \ptr_arg -> void $ do
+     let ptr = ptr_arg :: Ptr StructLinger
+         sz = fromIntegral $ sizeOf (undefined :: StructLinger)
+     fd <- fdSocket s
+     throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
+       c_setsockopt fd level opt ptr sz
 #endif
 setSocketOption s so v = do
    (level, opt) <- packSocketOption' "setSocketOption" so
-   with (fromIntegral v) $ \ptr_v -> do
-   throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-       c_setsockopt (fdSocket s) level opt
-          (ptr_v :: Ptr CInt)
-          (fromIntegral (sizeOf (undefined :: CInt)))
-   return ()
+   with (fromIntegral v) $ \ptr_v -> void $ do
+     let ptr = ptr_v :: Ptr CInt
+         sz  = fromIntegral $ sizeOf (undefined :: CInt)
+     fd <- fdSocket s
+     throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
+       c_setsockopt fd level opt ptr sz
 
 -- | Get a socket option that gives an Int value.
 -- There is currently no API to get e.g. the timeval socket options
@@ -213,20 +213,26 @@ getSocketOption :: Socket
 #ifdef SO_LINGER
 getSocketOption s Linger = do
    (level, opt) <- packSocketOption' "getSocketOption" Linger
-   alloca $ \ptr_v ->
-     with (fromIntegral (sizeOf (undefined :: StructLinger))) $ \ptr_sz -> do
+   alloca $ \ptr_v -> do
+     let ptr = ptr_v :: Ptr StructLinger
+         sz = fromIntegral $ sizeOf (undefined :: StructLinger)
+     fd <- fdSocket s
+     with sz $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt (fdSocket s) level opt (ptr_v :: Ptr StructLinger) ptr_sz
-       StructLinger onoff linger <- peek ptr_v
+         c_getsockopt fd level opt ptr ptr_sz
+       StructLinger onoff linger <- peek ptr
        return $ fromIntegral $ if onoff == 0 then 0 else linger
 #endif
 getSocketOption s so = do
    (level, opt) <- packSocketOption' "getSocketOption" so
-   alloca $ \ptr_v ->
-     with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
+   alloca $ \ptr_v -> do
+     let ptr = ptr_v :: Ptr CInt
+         sz = fromIntegral $ sizeOf (undefined :: CInt)
+     fd <- fdSocket s
+     with sz $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt (fdSocket s) level opt (ptr_v :: Ptr CInt) ptr_sz
-       fromIntegral <$> peek ptr_v
+         c_getsockopt fd level opt ptr ptr_sz
+       fromIntegral <$> peek ptr
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt

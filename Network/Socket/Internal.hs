@@ -191,19 +191,17 @@ throwSocketErrorCode loc errno =
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
 -- and try again.
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
-throwSocketErrorWaitRead s name io =
-    throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitRead $ fromIntegral $ fdSocket s)
-        io
+throwSocketErrorWaitRead s name io = do
+    fd <- fromIntegral <$> fdSocket s
+    throwSocketErrorIfMinus1RetryMayBlock name (threadWaitRead fd) io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be write-ready,
 -- and try again.
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
-throwSocketErrorWaitWrite s name io =
-    throwSocketErrorIfMinus1RetryMayBlock name
-        (threadWaitWrite $ fromIntegral $ fdSocket s)
-        io
+throwSocketErrorWaitWrite s name io = do
+    fd <- fromIntegral <$> fdSocket s
+    throwSocketErrorIfMinus1RetryMayBlock name (threadWaitWrite fd) io
 
 -- ---------------------------------------------------------------------------
 -- WinSock support

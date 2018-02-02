@@ -58,8 +58,10 @@ module Network.Socket.Types
     , ntohl
     ) where
 
+import Data.IORef (IORef, newIORef, readIORef)
 import Data.Ratio
 import Foreign.Marshal.Alloc
+import System.IO.Unsafe (unsafePerformIO)
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -70,14 +72,28 @@ import Network.Socket.Imports
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-newtype Socket = Socket CInt deriving (Eq, Show)
+newtype Socket = Socket (IORef CInt)
+
+instance Show Socket where
+    show s = "<socket " ++ show (unsafeFdSocket s) ++ ">"
+
+instance Eq Socket where
+    Socket ref1 == Socket ref2 = ref1 == ref2
 
 -- | Getting a file descriptor from a socket.
-fdSocket :: Socket -> CInt
-fdSocket (Socket fd) = fd
+fdSocket :: Socket -> IO CInt
+fdSocket (Socket ref) = readIORef ref
 
-mkSocket :: CInt -> Socket
-mkSocket = Socket
+unsafeFdSocket :: Socket -> CInt
+unsafeFdSocket = unsafePerformIO . fdSocket
+
+{-# NOINLINE unsafeFdSocket #-}
+
+-- | Creating a socket form a file descriptor.
+mkSocket :: CInt -> IO Socket
+mkSocket fd = do
+    ref <- newIORef fd
+    return $ Socket ref
 
 -----------------------------------------------------------------------------
 
