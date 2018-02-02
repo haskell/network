@@ -8,11 +8,9 @@ module Network.Socket.Name (
   , socketPort
   ) where
 
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
 
@@ -55,5 +53,5 @@ socketPort s = do
     case sa of
       SockAddrInet port _      -> return port
       SockAddrInet6 port _ _ _ -> return port
-      _                        -> ioError $ userError $ "Network.Socket.socketPort: AF_UNIX not supported."
+      _                        -> ioError $ userError "Network.Socket.socketPort: AF_UNIX not supported."
 

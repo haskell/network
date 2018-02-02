@@ -58,20 +58,14 @@ module Network.Socket.Types
     , ntohl
     ) where
 
-import Control.Monad
-import Data.Bits
-import Data.Maybe
 import Data.Ratio
-import Data.Typeable
-import Data.Word
-import Foreign.C
 import Foreign.Marshal.Alloc
-import Foreign.Ptr
-import Foreign.Storable
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
 #endif
+
+import Network.Socket.Imports
 
 -----------------------------------------------------------------------------
 
@@ -757,7 +751,7 @@ instance Storable PortNumber where
    sizeOf    _ = sizeOf    (undefined :: Word16)
    alignment _ = alignment (undefined :: Word16)
    poke p (PortNum po) = poke (castPtr p) po
-   peek p = PortNum `liftM` peek (castPtr p)
+   peek p = PortNum <$> peek (castPtr p)
 
 -- | Default port number.
 --

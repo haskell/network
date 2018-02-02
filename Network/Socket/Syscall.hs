@@ -1,14 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-#include "HsNet.h"
-##include "HsNetDef.h"
+#include "HsNetDef.h"
 
 module Network.Socket.Syscall where
 
-import Control.Monad (when)
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr)
 
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
@@ -22,11 +18,12 @@ import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-import Data.Bits ((.|.))
+import Network.Socket.Cbits
 #else
 import Network.Socket.Fcntl
 #endif
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types
@@ -78,25 +75,28 @@ socket :: Family         -- Family Name (usually AF_INET)
 socket family stype protocol = do
     c_stype <- packSocketTypeOrThrow "socket" stype
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-                c_socket (packFamily family) (c_stype .|. (#const SOCK_NONBLOCK)) protocol
-    let s = mkSocket fd
+    let c_stype' = c_stype .|. sockNonBlock
 #else
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-                c_socket (packFamily family) c_stype protocol
-    setNonBlockIfNeeded fd
-    let s = mkSocket fd
+    let c_stype' = c_stype
 #endif
+    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+              c_socket (packFamily family) c_stype' protocol
+#ifndef HAVE_ADVANCED_SOCKET_FLAGS
+    setNonBlockIfNeeded fd
+#endif
+    let s = mkSocket fd
 #if HAVE_DECL_IPV6_V6ONLY
-    -- The default value of the IPv6Only option is platform specific,
-    -- so we explicitly set it to 0 to provide a common default.
+    when (family == AF_INET6 && stype `elem` [Stream, Datagram]) $
 # if defined(mingw32_HOST_OS)
-    -- The IPv6Only option is only supported on Windows Vista and later,
-    -- so trying to change it might throw an error.
-    when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
+      -- The IPv6Only option is only supported on Windows Vista and later,
+      -- so trying to change it might throw an error.
       E.catch (setSocketOption s IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
-# elif !defined(__OpenBSD__)
-    when (family == AF_INET6 && (stype == Stream || stype == Datagram)) $
+# elif defined(__OpenBSD__)
+      -- don't change IPv6Only
+      return ()
+# else
+      -- The default value of the IPv6Only option is platform specific,
+      -- so we explicitly set it to 0 to provide a common default.
       setSocketOption s IPv6Only 0 `onException` close s
 # endif
 #endif
@@ -111,10 +111,9 @@ socket family stype protocol = do
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: SocketAddress sa => Socket -> sa -> IO ()
-bind s sa = withSocketAddress sa $ \p_sa sz -> do
-   _status <- throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-     c_bind (fdSocket s) p_sa (fromIntegral sz)
-   return ()
+bind s sa = withSocketAddress sa $ \p_sa sz -> void $
+  throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
+    c_bind (fdSocket s) p_sa (fromIntegral sz)
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
@@ -185,7 +184,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
            else do
                 paramData <- c_newAcceptParams fd (fromIntegral sz) sa
                 rc        <- asyncDoProc c_acceptDoProc paramData
-                new_fd'  <- c_acceptNewSock    paramData
+                new_fd'   <- c_acceptNewSock paramData
                 c_free paramData
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
@@ -194,7 +193,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
-                        (c_accept4 fd sa ptr_len ((#const SOCK_NONBLOCK) .|. (#const SOCK_CLOEXEC)))
+                        (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
 # else
      new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept fd sa ptr_len)
@@ -212,6 +211,9 @@ foreign import CALLCONV unsafe "bind"
   c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
   c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+foreign import CALLCONV unsafe "listen"
+  c_listen :: CInt -> CInt -> IO CInt
+
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
   c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
@@ -219,17 +221,12 @@ foreign import CALLCONV unsafe "accept4"
 foreign import CALLCONV unsafe "accept"
   c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
 #endif
-foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
   c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
-
-foreign import ccall unsafe "rtsSupportsBoundThreads" threaded :: Bool
-#endif
-
-#if defined(mingw32_HOST_OS)
+foreign import ccall unsafe "rtsSupportsBoundThreads"
+  threaded :: Bool
 foreign import ccall unsafe "HsNet.h acceptNewSock"
   c_acceptNewSock :: Ptr () -> IO CInt
 foreign import ccall unsafe "HsNet.h newAcceptParams"

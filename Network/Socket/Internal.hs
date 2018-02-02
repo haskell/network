@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-#include "HsNet.h"
-##include "HsNetDef.h"
+#include "HsNetDef.h"
 
 -----------------------------------------------------------------------------
 -- |
@@ -49,22 +48,16 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
-import Control.Monad (void)
-import Foreign.C.Types (CInt(..))
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(mingw32_HOST_OS)
 import Control.Exception (evaluate)
-import Control.Monad (when)
-import Foreign.C.String (peekCString)
-import Foreign.Ptr (Ptr)
 import System.IO.Unsafe (unsafePerformIO)
 # if __GLASGOW_HASKELL__ >= 707
 import GHC.IO.Exception (IOErrorType(..))
 # else
 import GHC.IOBase (IOErrorType(..))
 # endif
-import Foreign.C.Types (CChar)
 import System.IO.Error (ioeSetErrorString, mkIOError)
 #else
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
@@ -72,6 +65,10 @@ import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         Errno(..), errnoToIOError)
 #endif
 
+#if defined(mingw32_HOST_OS)
+import Network.Socket.Cbits
+#endif
+import Network.Socket.Imports
 import Network.Socket.Types
 
 -- ---------------------------------------------------------------------
@@ -136,21 +133,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
-#if !defined(mingw32_HOST_OS)
-
-throwSocketErrorIfMinus1RetryMayBlock name on_block act =
-    throwErrnoIfMinus1RetryMayBlock name act on_block
-
-throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
-
-throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
-
-throwSocketError = throwErrno
-
-throwSocketErrorCode loc errno =
-    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
-
-#else
+#if defined(mingw32_HOST_OS)
 
 throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
@@ -159,20 +142,19 @@ throwSocketErrorIfMinus1_ name act = do
   _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
-# if defined(mingw32_HOST_OS)
 throwSocketErrorIfMinus1Retry name act = do
   r <- act
   if (r == -1)
    then do
-    rc   <- c_getLastError
-    case rc of
-      #{const WSANOTINITIALISED} -> do
+    rc <- c_getLastError
+    if rc == wsaNotInitialized then do
         withSocketsDo (return ())
         r' <- act
         if (r' == -1)
            then throwSocketError name
            else return r'
-      _ -> throwSocketError name
+      else
+        throwSocketError name
    else return r
 
 throwSocketErrorCode name rc = do
@@ -189,13 +171,20 @@ foreign import CALLCONV unsafe "WSAGetLastError"
 foreign import ccall unsafe "getWSErrorDescr"
   c_getWSError :: CInt -> IO (Ptr CChar)
 
+#else
 
-# else
+throwSocketErrorIfMinus1RetryMayBlock name on_block act =
+    throwErrnoIfMinus1RetryMayBlock name act on_block
+
 throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+
+throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
+
 throwSocketError = throwErrno
+
 throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
-# endif
+
 #endif
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
@@ -235,11 +224,9 @@ to always call 'withSocketsDo' (it's very cheap).
 -}
 {-# INLINE withSocketsDo #-}
 withSocketsDo :: IO a -> IO a
-#if !defined(mingw32_HOST_OS)
-withSocketsDo x = x
-#else
-withSocketsDo act = evaluate withSocketsInit >> act
+#if defined(mingw32_HOST_OS)
 
+withSocketsDo act = evaluate withSocketsInit >> act
 
 {-# NOINLINE withSocketsInit #-}
 withSocketsInit :: ()
@@ -250,5 +237,9 @@ withSocketsInit = unsafePerformIO $ do
       userError "Network.Socket.Internal.withSocketsDo: Failed to initialise WinSock"
 
 foreign import ccall unsafe "initWinSock" initWinSock :: IO Int
+
+#else
+
+withSocketsDo x = x
 
 #endif

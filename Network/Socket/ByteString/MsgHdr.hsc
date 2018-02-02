@@ -8,11 +8,9 @@ module Network.Socket.ByteString.MsgHdr
 #include <sys/types.h>
 #include <sys/socket.h>
 
-import Foreign.C.Types (CInt, CSize, CUInt)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
-import Network.Socket (SockAddr)
+import Network.Socket.Imports
 import Network.Socket.Internal (zeroMemory)
+import Network.Socket.Types (SockAddr)
 
 import Network.Socket.ByteString.IOVec (IOVec)
 

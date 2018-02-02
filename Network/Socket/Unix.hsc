@@ -11,8 +11,7 @@ module Network.Socket.Unix (
   , getPeerEid
   ) where
 
-import Foreign.C.Types (CInt(..), CUInt(..))
-
+import Network.Socket.Imports
 import Network.Socket.Types
 
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED

@@ -12,15 +12,10 @@ module Network.Socket.Options (
   , c_setsockopt
   ) where
 
-import Control.Monad (liftM)
-import Data.Maybe (isJust)
-import Data.Typeable
-import Foreign.C.Types (CInt(..))
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
 
@@ -231,7 +226,7 @@ getSocketOption s so = do
      with (fromIntegral (sizeOf (undefined :: CInt))) $ \ptr_sz -> do
        throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
          c_getsockopt (fdSocket s) level opt (ptr_v :: Ptr CInt) ptr_sz
-       fromIntegral `liftM` peek ptr_v
+       fromIntegral <$> peek ptr_v
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt

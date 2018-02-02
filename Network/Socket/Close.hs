@@ -8,20 +8,18 @@ module Network.Socket.Close (
   , close
   ) where
 
-import Data.Typeable
-import Foreign.C.Types (CInt(..))
 import GHC.Conc (closeFdWith)
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
 
-data ShutdownCmd
- = ShutdownReceive
- | ShutdownSend
- | ShutdownBoth
- deriving Typeable
+data ShutdownCmd = ShutdownReceive
+                 | ShutdownSend
+                 | ShutdownBoth
+                 deriving Typeable
 
 sdownCmdToInt :: ShutdownCmd -> CInt
 sdownCmdToInt ShutdownReceive = 0
@@ -34,10 +32,9 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown s stype = do
+shutdown s stype = void $
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
     c_shutdown (fdSocket s) (sdownCmdToInt stype)
-  return ()
 
 -- -----------------------------------------------------------------------------
 

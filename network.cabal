@@ -48,10 +48,11 @@ library
     Network.Socket.Buffer
     Network.Socket.ByteString.Internal
     Network.Socket.ByteString.IO
+    Network.Socket.Cbits
     Network.Socket.Close
-    Network.Socket.Constant
     Network.Socket.Fcntl
     Network.Socket.Handle
+    Network.Socket.Imports
     Network.Socket.If
     Network.Socket.Info
     Network.Socket.Name

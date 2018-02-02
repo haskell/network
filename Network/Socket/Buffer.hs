@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE RecordWildCards #-}
 
 #include "HsNetDef.h"
 
@@ -11,20 +10,15 @@ module Network.Socket.Buffer (
   ) where
 
 import qualified Control.Exception as E
-import Data.Word (Word8)
-import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Ptr (Ptr, castPtr)
-import Foreign.Storable (Storable(..))
 import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
-#else
-import Foreign.C.Types (CChar)
 #endif
 
+import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Types
@@ -41,10 +35,10 @@ sendBufTo :: SocketAddress sa =>
           -> IO Int      -- Number of Bytes sent
 sendBufTo s ptr nbytes sa =
  withSocketAddress sa $ \p_sa sz ->
-   fmap fromIntegral $
-     throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
-        c_sendto (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
-                        p_sa (fromIntegral sz)
+   fromIntegral <$>
+     throwSocketErrorWaitWrite s "Network.Socket.sendBufTo"
+        (c_sendto (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
+                        p_sa (fromIntegral sz))
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> FD
@@ -63,21 +57,23 @@ sendBuf :: Socket    -- Bound/Connected Socket
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
 sendBuf s str len =
-   fmap fromIntegral $
 #if defined(mingw32_HOST_OS)
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
 -- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
 -- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
 -- bug is supported.
-    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $ writeRawBufferPtr
-      "Network.Socket.sendBuf"
-      (socket2FD s)
-      (castPtr str)
-      0
-      (fromIntegral len)
+   fromIntegral <$>
+    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf"
+      (writeRawBufferPtr
+       "Network.Socket.sendBuf"
+       (socket2FD s)
+       (castPtr str)
+       0
+       (fromIntegral len))
 #else
-    throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
-      c_send (fdSocket s) str (fromIntegral len) 0{-flags-}
+   fromIntegral <$>
+    throwSocketErrorWaitWrite s "Network.Socket.sendBuf"
+      (c_send (fdSocket s) str (fromIntegral len) 0{-flags-})
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -92,20 +88,25 @@ sendBuf s str len =
 -- GHC ticket #1129)
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
- | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
- | otherwise   = do
-    withNewSocketAddress $ \ptr_sa sz ->
-      alloca $ \ptr_len -> do
+    | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
+    | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len -> do
         poke ptr_len (fromIntegral sz)
-        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
-                   c_recvfrom (fdSocket s) ptr (fromIntegral nbytes) 0{-flags-}
-                                ptr_sa ptr_len
+        len <-
+            throwSocketErrorWaitRead s "Network.Socket.recvBufFrom"
+                $ c_recvfrom
+                      (fdSocket s)
+                      ptr
+                      (fromIntegral nbytes)
+                      0{-flags-}
+                      ptr_sa
+                      ptr_len
         let len' = fromIntegral len
         if len' == 0
-         then ioError (mkEOFError "Network.Socket.recvFrom")
-         else do
-           sockaddr <- peekSocketAddress ptr_sa `E.catch` \(E.SomeException _) -> getPeerName s
-           return (len', sockaddr)
+            then ioError (mkEOFError "Network.Socket.recvFrom")
+            else do
+                sockaddr <- peekSocketAddress ptr_sa
+                    `E.catch` \(E.SomeException _) -> getPeerName s
+                return (len', sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -147,9 +148,9 @@ mkEOFError :: String -> IOError
 mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
 #if !defined(mingw32_HOST_OS)
-foreign import CALLCONV unsafe "send"
+foreign import ccall unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
-foreign import CALLCONV unsafe "recv"
+foreign import ccall unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 #endif
 foreign import CALLCONV SAFE_ON_WIN "sendto"
