@@ -5,12 +5,12 @@
 #include "HsNet.h"
 ##include "HsNetDef.h"
 
-module Network.Socket.Types
-    (
+module Network.Socket.Types (
     -- * Socket type
       Socket
     , fdSocket
     , mkSocket
+    , close
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
@@ -61,6 +61,7 @@ module Network.Socket.Types
 import Data.IORef (IORef, newIORef, readIORef)
 import Data.Ratio
 import Foreign.Marshal.Alloc
+import GHC.Conc (closeFdWith)
 import System.IO.Unsafe (unsafePerformIO)
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
@@ -94,6 +95,23 @@ mkSocket :: CInt -> IO Socket
 mkSocket fd = do
     ref <- newIORef fd
     return $ Socket ref
+
+-----------------------------------------------------------------------------
+
+-- | Close the socket. Sending data to or receiving data from closed socket
+-- may lead to undefined behaviour.
+close :: Socket -> IO ()
+close s = do
+    fd <- fromIntegral <$> fdSocket s
+    closeFdWith (void . c_close . fromIntegral) fd
+
+#if defined(mingw32_HOST_OS)
+foreign import CALLCONV unsafe "closesocket"
+  c_close :: CInt -> IO CInt
+#else
+foreign import ccall unsafe "close"
+  c_close :: CInt -> IO CInt
+#endif
 
 -----------------------------------------------------------------------------
 
