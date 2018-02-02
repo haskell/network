@@ -2,7 +2,7 @@
 
 #include "HsNetDef.h"
 
-module Network.Socket.Close (
+module Network.Socket.Shutdown (
     ShutdownCmd(..)
   , shutdown
   ) where

@@ -14,7 +14,6 @@ import GHC.Conc (asyncDoProc)
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
-import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
