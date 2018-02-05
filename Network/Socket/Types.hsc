@@ -94,14 +94,21 @@ mkSocket fd = do
     void $ mkWeakIORef ref $ close s
     return s
 
+invalidSocket :: CInt
+#if defined(mingw32_HOST_OS)
+invalidSocket = #const INVALID_SOCKET
+#else
+invalidSocket = -1
+#endif
+
 invalidateSocket ::
       Socket
    -> (CInt -> IO a)
    -> (CInt -> IO a)
    -> IO a
 invalidateSocket (Socket ref _) errorAction normalAction = do
-    oldfd <- atomicModifyIORef' ref $ \cur -> (-1, cur)
-    if oldfd == -1 then errorAction oldfd else normalAction oldfd
+    oldfd <- atomicModifyIORef' ref $ \cur -> (invalidSocket, cur)
+    if oldfd == invalidSocket then errorAction oldfd else normalAction oldfd
 
 -----------------------------------------------------------------------------
 
