@@ -765,7 +765,7 @@ defaultPort = 0
 -- | The core typeclass to unify socket addresses.
 class SocketAddress sa where
     sizeOfSocketAddress :: sa -> Int
-    peekSocketAddress :: Ptr sa -> IO sa
+    peekSocketAddress :: Ptr sa -> Ptr CInt -> IO sa
     pokeSocketAddress  :: Ptr a -> sa -> IO ()
 
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
@@ -915,14 +915,21 @@ pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
     (#poke struct sockaddr_in6, sin6_addr) p (In6Addr addr)
     (#poke struct sockaddr_in6, sin6_scope_id) p scope
 
--- | Read a 'SockAddr' from the given memory location.
-peekSockAddr :: Ptr SockAddr -> IO SockAddr
-peekSockAddr p = do
+-- | Read a 'SockAddr' from the given memory location and length identifier
+peekSockAddr :: Ptr SockAddr -> Ptr CInt -> IO SockAddr
+peekSockAddr p _len = do
   family <- (#peek struct sockaddr, sa_family) p
   case family :: CSaFamily of
 #if defined(DOMAIN_SOCKET_SUPPORT)
     (#const AF_UNIX) -> do
-        str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
+        -- Follow UNIX spec for potential non-null-terminated `sun_path`
+        addrlen <- peek _len
+        let addr_ptr = (#ptr struct sockaddr_un, sun_path) p
+            str_len = addrlen - (#offset struct sockaddr_un, sun_path)
+        addr_len <- fromIntegral <$> strnlen addr_ptr str_len
+
+        -- Unix addresses cannot have encodings
+        str <- peekCAStringLen (addr_ptr, addr_len)
         return (SockAddrUnix str)
 #endif
     (#const AF_INET) -> do
@@ -1048,6 +1055,7 @@ instance Storable In6Addr where
 -- Helper functions
 
 foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
+foreign import ccall unsafe "string.h" strnlen :: Ptr CChar -> CInt -> IO CSize
 
 -- | Zero a structure.
 zeroMemory :: Ptr a -> CSize -> IO ()

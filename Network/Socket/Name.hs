@@ -6,6 +6,8 @@ module Network.Socket.Name (
     getPeerName
   , getSocketName
   , socketPort
+
+  , c_getsockname
   ) where
 
 import Foreign.Marshal.Utils (with)
@@ -21,8 +23,7 @@ getPeerName s =
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
        c_getpeername (fdSocket s) ptr int_star
-     _sz <- peek int_star
-     peekSocketAddress ptr
+     peekSocketAddress ptr int_star
 
 -- | Getting my socket address.
 getSocketName :: SocketAddress sa => Socket -> IO sa
@@ -31,7 +32,7 @@ getSocketName s =
    with (fromIntegral sz) $ \int_star -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
        c_getsockname (fdSocket s) ptr int_star
-     peekSocketAddress ptr
+     peekSocketAddress ptr int_star
 
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr sa -> Ptr CInt -> IO CInt
