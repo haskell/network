@@ -63,7 +63,6 @@ import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
-import System.IO.Unsafe (unsafePerformIO)
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -74,27 +73,24 @@ import Network.Socket.Imports
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-newtype Socket = Socket (IORef CInt)
+data Socket = Socket (IORef CInt) String
 
 instance Show Socket where
-    show s = "<socket " ++ show (unsafeFdSocket s) ++ ">"
+    show (Socket _ str) = str
 
 instance Eq Socket where
-    Socket ref1 == Socket ref2 = ref1 == ref2
+    Socket ref1 _ == Socket ref2 _ = ref1 == ref2
 
 -- | Getting a file descriptor from a socket.
 fdSocket :: Socket -> IO CInt
-fdSocket (Socket ref) = readIORef ref
-
-unsafeFdSocket :: Socket -> CInt
-unsafeFdSocket = unsafePerformIO . fdSocket
-{-# NOINLINE unsafeFdSocket #-}
+fdSocket (Socket ref _) = readIORef ref
 
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
 mkSocket fd = do
+    let str = "<socket: " ++ show fd ++ ">"
     ref <- newIORef fd
-    let s = Socket ref
+    let s = Socket ref str
     void $ mkWeakIORef ref $ close s
     return s
 
@@ -103,7 +99,7 @@ invalidateSocket ::
    -> (CInt -> IO a)
    -> (CInt -> IO a)
    -> IO a
-invalidateSocket (Socket ref) errorAction normalAction = do
+invalidateSocket (Socket ref _) errorAction normalAction = do
     oldfd <- atomicModifyIORef' ref $ \cur -> (-1, cur)
     if oldfd == -1 then errorAction oldfd else normalAction oldfd
 
