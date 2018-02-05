@@ -89,7 +89,7 @@ unsafeFdSocket :: Socket -> CInt
 unsafeFdSocket = unsafePerformIO . fdSocket
 {-# NOINLINE unsafeFdSocket #-}
 
--- | Creating a socket form a file descriptor.
+-- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
 mkSocket fd = do
     ref <- newIORef fd
