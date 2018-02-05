@@ -115,7 +115,8 @@ instance Storable AddrInfo where
         ai_family <- (#peek struct addrinfo, ai_family) p
         ai_socktype <- (#peek struct addrinfo, ai_socktype) p
         ai_protocol <- (#peek struct addrinfo, ai_protocol) p
-        ai_addr <- (#peek struct addrinfo, ai_addr) p >>= peekSockAddr
+        ai_addr' <- (#peek struct addrinfo, ai_addr) p
+        ai_addr <-  peekSockAddr ai_addr' Nothing
         ai_canonname_ptr <- (#peek struct addrinfo, ai_canonname) p
 
         ai_canonname <- if ai_canonname_ptr == nullPtr

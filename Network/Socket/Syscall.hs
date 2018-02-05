@@ -176,11 +176,13 @@ accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept s = withNewSocketAddress $ \sa sz -> do
      let fd = fdSocket s
 #if defined(mingw32_HOST_OS)
-     new_fd <-
+     (new_fd, addr) <-
         if threaded
-           then with (fromIntegral sz) $ \ ptr_len ->
-                  throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
+           then with (fromIntegral sz) $ \ ptr_len -> do
+                  nfd <- throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                     c_accept_safe fd sa ptr_len
+                  addr' <- peekSocketAddress sa (Just ptr_len)
+                  return (nfd, Just addr')
            else do
                 paramData <- c_newAcceptParams fd (fromIntegral sz) sa
                 rc        <- asyncDoProc c_acceptDoProc paramData
@@ -188,7 +190,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
                 c_free paramData
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                return new_fd'
+                return (new_fd', Nothing)
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -200,8 +202,8 @@ accept s = withNewSocketAddress $ \sa sz -> do
      setNonBlockIfNeeded new_fd
      setCloseOnExecIfNeeded new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
+     addr <- peekSocketAddress sa (Just ptr_len)
 #endif
-     addr <- peekSocketAddress sa
      let new_s = mkSocket new_fd
      return (new_s, addr)
 
