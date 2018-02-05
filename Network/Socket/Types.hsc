@@ -10,6 +10,7 @@ module Network.Socket.Types (
       Socket
     , fdSocket
     , mkSocket
+    , invalidateSocket
     , close
     -- * Types of socket
     , SocketType(..)
@@ -97,15 +98,22 @@ mkSocket fd = do
     void $ mkWeakIORef ref $ close s
     return s
 
+invalidateSocket ::
+      Socket
+   -> (CInt -> IO a)
+   -> (CInt -> IO a)
+   -> IO a
+invalidateSocket (Socket ref) errorAction normalAction = do
+    oldfd <- atomicModifyIORef' ref $ \cur -> (-1, cur)
+    if oldfd == -1 then errorAction oldfd else normalAction oldfd
+
 -----------------------------------------------------------------------------
 
 -- | Close the socket. Sending data to or receiving data from closed socket
 --   may lead to undefined behaviour.
 close :: Socket -> IO ()
-close (Socket ref) = do
-    oldfd <- atomicModifyIORef' ref $ \cur -> (-1, cur)
-    when (oldfd /= -1) $
-        closeFdWith (void . c_close . fromIntegral) (fromIntegral oldfd)
+close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
+    closeFdWith (void . c_close . fromIntegral) (fromIntegral oldfd)
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
