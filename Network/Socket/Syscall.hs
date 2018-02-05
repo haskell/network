@@ -182,7 +182,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
                   nfd <- throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                     c_accept_safe fd sa ptr_len
                   addr' <- peekSocketAddress sa (Just ptr_len)
-                  return (nfd, Just addr')
+                  return (nfd, addr')
            else do
                 paramData <- c_newAcceptParams fd (fromIntegral sz) sa
                 rc        <- asyncDoProc c_acceptDoProc paramData
@@ -190,7 +190,8 @@ accept s = withNewSocketAddress $ \sa sz -> do
                 c_free paramData
                 when (rc /= 0) $
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                return (new_fd', Nothing)
+                addr' <- peekSocketAddress sa Nothing
+                return (new_fd', addr')
 #else
      with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
