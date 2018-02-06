@@ -188,16 +188,19 @@ unixTest clientAct serverAct = do
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
+        _ <- unlinkSock
         bind sock (SockAddrUnix unixAddr)
         listen sock 1
         return sock
 
     server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
 
+    unlinkSock = E.tryJust (guard . isDoesNotExistError) $ removeFile unixAddr
+
     killClientSock sock = do
         shutdown sock ShutdownBoth
         close sock
-        E.tryJust (guard . isDoesNotExistError) $ removeFile unixAddr
+        unlinkSock
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions
