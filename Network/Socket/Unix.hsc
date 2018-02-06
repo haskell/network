@@ -62,7 +62,7 @@ getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred s = do
   let sz = (#const sizeof(struct ucred))
-      fd = fdSocket s
+  fd <- fdSocket s
   allocaBytes sz $ \ ptr_cr ->
    with (fromIntegral sz) $ \ ptr_sz -> do
      _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
@@ -85,8 +85,9 @@ getPeerEid :: Socket -> IO (CUInt, CUInt)
 getPeerEid s = do
   alloca $ \ ptr_uid ->
     alloca $ \ ptr_gid -> do
+      fd <- fdSocket s
       throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerEid" $
-        c_getpeereid (fdSocket s) ptr_uid ptr_gid
+        c_getpeereid fd ptr_uid ptr_gid
       uid <- peek ptr_uid
       gid <- peek ptr_gid
       return (uid, gid)
@@ -114,8 +115,9 @@ isUnixDomainSocketAvailable = False
 --  'True'.
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sendFd s outfd = void $
-  throwSocketErrorWaitWrite s "Network.Socket.sendFd" $ c_sendFd (fdSocket s) outfd
+sendFd s outfd = void $ do
+  fd <- fdSocket s
+  throwSocketErrorWaitWrite s "Network.Socket.sendFd" $ c_sendFd fd outfd
 foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
@@ -128,8 +130,9 @@ sendFd _ _ = error "Network.Socket.sendFd"
 --  'True'.
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
-recvFd s =
-  throwSocketErrorWaitRead s "Network.Socket.recvFd" $ c_recvFd (fdSocket s)
+recvFd s = do
+  fd <- fdSocket s
+  throwSocketErrorWaitRead s "Network.Socket.recvFd" $ c_recvFd fd
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
 #else
 recvFd _ = error "Network.Socket.recvFd"
@@ -152,8 +155,8 @@ socketPair family stype protocol =
       [fd1,fd2] <- peekArray 2 fdArr
       setNonBlockIfNeeded fd1
       setNonBlockIfNeeded fd2
-      let s1 = mkSocket fd1
-          s2 = mkSocket fd2
+      s1 <- mkSocket fd1
+      s2 <- mkSocket fd2
       return (s1, s2)
 
 foreign import ccall unsafe "socketpair"

@@ -14,7 +14,6 @@ import GHC.Conc (asyncDoProc)
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
 import GHC.IO (onException)
-import Network.Socket.Close
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -84,7 +83,7 @@ socket family stype protocol = do
 #ifndef HAVE_ADVANCED_SOCKET_FLAGS
     setNonBlockIfNeeded fd
 #endif
-    let s = mkSocket fd
+    s <- mkSocket fd
 #if HAVE_DECL_IPV6_V6ONLY
     when (family == AF_INET6 && stype `elem` [Stream, Datagram]) $
 # if defined(mingw32_HOST_OS)
@@ -111,9 +110,10 @@ socket family stype protocol = do
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: SocketAddress sa => Socket -> sa -> IO ()
-bind s sa = withSocketAddress sa $ \p_sa sz -> void $
-  throwSocketErrorIfMinus1Retry "Network.Socket.bind" $
-    c_bind (fdSocket s) p_sa (fromIntegral sz)
+bind s sa = withSocketAddress sa $ \p_sa siz -> void $ do
+  fd <- fdSocket s
+  let sz = fromIntegral siz
+  throwSocketErrorIfMinus1Retry "Network.Socket.bind" $ c_bind fd p_sa sz
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
@@ -126,9 +126,9 @@ connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
 connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
 connectLoop s p_sa sz = loop
   where
-    fd = fdSocket s
     errLoc = "Network.Socket.connect: " ++ show s
     loop = do
+       fd <- fdSocket s
        r <- c_connect fd p_sa sz
        when (r == -1) $ do
 #if defined(mingw32_HOST_OS)
@@ -142,7 +142,8 @@ connectLoop s p_sa sz = loop
              _otherwise             -> throwSocketError errLoc
 
     connectBlocked = do
-       threadWaitWrite (fromIntegral fd)
+       fd <- fromIntegral <$> fdSocket s
+       threadWaitWrite fd
        err <- getSocketOption s SoError
        when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
@@ -154,9 +155,10 @@ connectLoop s p_sa sz = loop
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
 listen :: Socket -> Int -> IO ()
-listen s backlog =
+listen s backlog = do
+    fd <- fdSocket s
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen (fdSocket s) (fromIntegral backlog)
+        c_listen fd $ fromIntegral backlog
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -174,7 +176,7 @@ listen s backlog =
 -- to the socket on the other end of the connection.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept s = withNewSocketAddress $ \sa sz -> do
-     let fd = fdSocket s
+     fd <- fdSocket s
 #if defined(mingw32_HOST_OS)
      new_fd <-
         if threaded
@@ -202,7 +204,7 @@ accept s = withNewSocketAddress $ \sa sz -> do
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSocketAddress sa
-     let new_s = mkSocket new_fd
+     new_s <- mkSocket new_fd
      return (new_s, addr)
 
 foreign import CALLCONV unsafe "socket"

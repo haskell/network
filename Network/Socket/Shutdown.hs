@@ -2,19 +2,14 @@
 
 #include "HsNetDef.h"
 
-module Network.Socket.Close (
+module Network.Socket.Shutdown (
     ShutdownCmd(..)
   , shutdown
-  , close
   ) where
-
-import GHC.Conc (closeFdWith)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
-
--- -----------------------------------------------------------------------------
 
 data ShutdownCmd = ShutdownReceive
                  | ShutdownSend
@@ -32,27 +27,10 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown s stype = void $
+shutdown s stype = void $ do
+  fd <- fdSocket s
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown (fdSocket s) (sdownCmdToInt stype)
-
--- -----------------------------------------------------------------------------
-
--- | Close the socket. Sending data to or receiving data from closed socket
--- may lead to undefined behaviour.
-close :: Socket -> IO ()
-close s = closeFdWith (closeFd . fromIntegral) (fromIntegral $ fdSocket s)
-
-closeFd :: CInt -> IO ()
-closeFd fd = throwSocketErrorIfMinus1_ "Network.Socket.close" $ c_close fd
+    c_shutdown fd $ sdownCmdToInt stype
 
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
-
-#if defined(mingw32_HOST_OS)
-foreign import CALLCONV unsafe "closesocket"
-  c_close :: CInt -> IO CInt
-#else
-foreign import ccall unsafe "close"
-  c_close :: CInt -> IO CInt
-#endif

@@ -192,7 +192,6 @@ module Network.Socket
 
 import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
 import Network.Socket.Cbits
-import Network.Socket.Close
 import Network.Socket.Fcntl
 import Network.Socket.Handle
 import Network.Socket.If
@@ -200,6 +199,7 @@ import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
+import Network.Socket.Shutdown
 import Network.Socket.SockAddr
 import Network.Socket.Syscall hiding (connect, bind, accept)
 import Network.Socket.Types
