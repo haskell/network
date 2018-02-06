@@ -923,13 +923,7 @@ withSockAddr addr f = do
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p (SockAddrUnix path) = do
-# if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_un))
-# else
-    case path of
-      ('\0':_) -> zeroMemory p (#const sizeof(struct sockaddr_un))
-      _        -> return ()
-# endif
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
 # endif
@@ -941,9 +935,7 @@ pokeSockAddr p (SockAddrUnix path) = do
 pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
-#if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in))
-#endif
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_in, sin_len) p ((#const sizeof(struct sockaddr_in)) :: Word8)
 #endif
@@ -951,9 +943,7 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
     (#poke struct sockaddr_in, sin_port) p port
     (#poke struct sockaddr_in, sin_addr) p addr
 pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
-# if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in6))
-# endif
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_in6, sin6_len) p ((#const sizeof(struct sockaddr_in6)) :: Word8)
 # endif
