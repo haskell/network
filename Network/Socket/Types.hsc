@@ -73,10 +73,10 @@ import Network.Socket.Imports
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-data Socket = Socket (IORef CInt) String
+data Socket = Socket (IORef CInt) CInt {- for Show -}
 
 instance Show Socket where
-    show (Socket _ str) = str
+    show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
 
 instance Eq Socket where
     Socket ref1 _ == Socket ref2 _ = ref1 == ref2
@@ -88,9 +88,8 @@ fdSocket (Socket ref _) = readIORef ref
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
 mkSocket fd = do
-    let str = "<socket: " ++ show fd ++ ">"
     ref <- newIORef fd
-    let s = Socket ref str
+    let s = Socket ref fd
     void $ mkWeakIORef ref $ close s
     return s
 
