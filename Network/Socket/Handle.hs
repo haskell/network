@@ -21,4 +21,4 @@ socketToHandle s mode = invalidateSocket s err $ \oldfd -> do
     hSetBuffering h NoBuffering
     return h
   where
-    err _ = ioError $ userError $ "socketToHandle: already a Handle"
+    err _ = ioError $ userError $ "socketToHandle: socket is no longer valid"
