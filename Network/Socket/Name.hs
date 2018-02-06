@@ -22,8 +22,7 @@ getPeerName s =
      fd <- fdSocket s
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
        c_getpeername fd ptr int_star
-     _sz <- peek int_star
-     peekSocketAddress ptr
+     peekSocketAddress ptr (Just int_star)
 
 -- | Getting my socket address.
 getSocketName :: SocketAddress sa => Socket -> IO sa
@@ -33,7 +32,7 @@ getSocketName s =
      fd <- fdSocket s
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
        c_getsockname fd ptr int_star
-     peekSocketAddress ptr
+     peekSocketAddress ptr (Just int_star)
 
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr sa -> Ptr CInt -> IO CInt

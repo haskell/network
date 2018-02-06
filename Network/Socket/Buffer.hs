@@ -101,7 +101,7 @@ recvBufFrom s ptr nbytes
         if len' == 0
             then ioError (mkEOFError "Network.Socket.recvFrom")
             else do
-                sockaddr <- peekSocketAddress ptr_sa
+                sockaddr <- peekSocketAddress ptr_sa (Just ptr_len)
                     `E.catch` \(E.SomeException _) -> getPeerName s
                 return (len', sockaddr)
 
