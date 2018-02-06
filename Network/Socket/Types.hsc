@@ -895,14 +895,11 @@ type CSaFamily = (#type sa_family_t)
 -- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddr (SockAddrUnix path) =
-    case path of
-        '\0':_ -> (#const sizeof(sa_family_t)) + length path
-        _      -> #const sizeof(struct sockaddr_un)
+sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
 #else
-sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
+sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
 #endif
-sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
+sizeOfSockAddr SockAddrInet{}  = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
@@ -922,8 +919,8 @@ withSockAddr addr f = do
 -- | Write the given 'SockAddr' to the given memory location.
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-pokeSockAddr p (SockAddrUnix path) = do
-    zeroMemory p (#const sizeof(struct sockaddr_un))
+pokeSockAddr p sa@(SockAddrUnix path) = do
+    zeroMemory p $ fromIntegral $ sizeOfSockAddr sa
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
 # endif
