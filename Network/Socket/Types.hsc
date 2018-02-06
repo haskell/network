@@ -929,8 +929,8 @@ pokeSockAddr p (SockAddrUnix path) = do
 # endif
     (#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
     let pathC = map castCharToCChar path
-        poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
-    poker ((#ptr struct sockaddr_un, sun_path) p) pathC
+    -- the buffer is already filled with nulls.
+    pokeArray ((#ptr struct sockaddr_un, sun_path) p) pathC
 #else
 pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
