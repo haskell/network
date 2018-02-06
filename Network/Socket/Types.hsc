@@ -5,12 +5,13 @@
 #include "HsNet.h"
 ##include "HsNetDef.h"
 
-module Network.Socket.Types
-    (
+module Network.Socket.Types (
     -- * Socket type
       Socket
     , fdSocket
     , mkSocket
+    , invalidateSocket
+    , close
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
@@ -58,8 +59,10 @@ module Network.Socket.Types
     , ntohl
     ) where
 
+import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
 import Foreign.Marshal.Alloc
+import GHC.Conc (closeFdWith)
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -70,14 +73,57 @@ import Network.Socket.Imports
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-newtype Socket = Socket CInt deriving (Eq, Show)
+data Socket = Socket (IORef CInt) CInt {- for Show -}
+
+instance Show Socket where
+    show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
+
+instance Eq Socket where
+    Socket ref1 _ == Socket ref2 _ = ref1 == ref2
 
 -- | Getting a file descriptor from a socket.
-fdSocket :: Socket -> CInt
-fdSocket (Socket fd) = fd
+fdSocket :: Socket -> IO CInt
+fdSocket (Socket ref _) = readIORef ref
 
-mkSocket :: CInt -> Socket
-mkSocket = Socket
+-- | Creating a socket from a file descriptor.
+mkSocket :: CInt -> IO Socket
+mkSocket fd = do
+    ref <- newIORef fd
+    let s = Socket ref fd
+    void $ mkWeakIORef ref $ close s
+    return s
+
+invalidSocket :: CInt
+#if defined(mingw32_HOST_OS)
+invalidSocket = #const INVALID_SOCKET
+#else
+invalidSocket = -1
+#endif
+
+invalidateSocket ::
+      Socket
+   -> (CInt -> IO a)
+   -> (CInt -> IO a)
+   -> IO a
+invalidateSocket (Socket ref _) errorAction normalAction = do
+    oldfd <- atomicModifyIORef' ref $ \cur -> (invalidSocket, cur)
+    if oldfd == invalidSocket then errorAction oldfd else normalAction oldfd
+
+-----------------------------------------------------------------------------
+
+-- | Close the socket. Sending data to or receiving data from closed socket
+--   may lead to undefined behaviour.
+close :: Socket -> IO ()
+close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
+    closeFdWith (void . c_close . fromIntegral) (fromIntegral oldfd)
+
+#if defined(mingw32_HOST_OS)
+foreign import CALLCONV unsafe "closesocket"
+  c_close :: CInt -> IO CInt
+#else
+foreign import ccall unsafe "close"
+  c_close :: CInt -> IO CInt
+#endif
 
 -----------------------------------------------------------------------------
 
