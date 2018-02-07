@@ -820,7 +820,9 @@ withSocketAddress addr f = do
     allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
 
 withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
-withNewSocketAddress f = allocaBytes 128 $ \ptr -> f ptr 128
+withNewSocketAddress f = allocaBytes 128 $ \ptr -> do
+    zeroMemory ptr 128
+    f ptr 128
 
 ------------------------------------------------------------------------
 -- Socket addresses
