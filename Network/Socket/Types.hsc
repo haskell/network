@@ -814,15 +814,20 @@ class SocketAddress sa where
     peekSocketAddress :: Ptr sa -> IO sa
     pokeSocketAddress  :: Ptr a -> sa -> IO ()
 
+-- sizeof(struct sockaddr_storage) which has enough space to contain
+-- sockaddr_in, sockaddr_in6 and sockaddr_un.
+sockaddrStorageLen :: Int
+sockaddrStorageLen = 128
+
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
 withSocketAddress addr f = do
     let sz = sizeOfSocketAddress addr
     allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
 
 withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
-withNewSocketAddress f = allocaBytes 128 $ \ptr -> do
-    zeroMemory ptr 128
-    f ptr 128
+withNewSocketAddress f = allocaBytes sockaddrStorageLen $ \ptr -> do
+    zeroMemory ptr $ fromIntegral sockaddrStorageLen
+    f ptr sockaddrStorageLen
 
 ------------------------------------------------------------------------
 -- Socket addresses
