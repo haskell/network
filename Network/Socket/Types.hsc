@@ -914,6 +914,9 @@ withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
 
+unixPathMax :: Int
+unixPathMax = 108
+
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
 -- 'Foreign.Storable.sizeOf' is required to be constant.
@@ -925,6 +928,7 @@ withSockAddr addr f = do
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p sa@(SockAddrUnix path) = do
+    when (length path > unixPathMax) $ error "pokeSockAddr: path is too long"
     zeroMemory p $ fromIntegral $ sizeOfSockAddr sa
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
