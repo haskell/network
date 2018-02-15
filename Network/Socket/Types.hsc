@@ -966,7 +966,7 @@ peekSockAddr p = do
   case family :: CSaFamily of
 #if defined(DOMAIN_SOCKET_SUPPORT)
     (#const AF_UNIX) -> do
-        str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
+        str <- peekCAString ((#ptr struct sockaddr_un, sun_path) p)
         return (SockAddrUnix str)
 #endif
     (#const AF_INET) -> do
