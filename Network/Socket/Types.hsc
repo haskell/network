@@ -900,7 +900,7 @@ type CSaFamily = (#type sa_family_t)
 -- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddr SockAddrUnix{}  = sockaddrStorageLen
+sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
 #else
 sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
 #endif
@@ -914,8 +914,12 @@ withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
 
+-- We cannot bind sun_paths longer than than the space in the sockaddr_un
+-- structure, and attempting to do so could overflow the allocated storage
+-- space.  This constant holds the maximum allowable path length.
+--
 unixPathMax :: Int
-unixPathMax = 108
+unixPathMax = #const sizeof(((struct sockaddr_un *)0)->sun_path)
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
