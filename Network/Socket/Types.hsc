@@ -900,7 +900,7 @@ type CSaFamily = (#type sa_family_t)
 -- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
+sizeOfSockAddr SockAddrUnix{}  = sockaddrStorageLen
 #else
 sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
 #endif
