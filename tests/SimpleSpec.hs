@@ -14,7 +14,6 @@ import qualified Data.ByteString.Char8 as C
 import Network.Socket
 import Network.Socket.ByteString
 import System.Directory
-import System.IO.Error
 import System.Timeout (timeout)
 
 import Test.Hspec
@@ -188,16 +187,21 @@ unixTest clientAct serverAct = do
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
+        unlink unixAddr -- just in case
         bind sock (SockAddrUnix unixAddr)
         listen sock 1
         return sock
 
     server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
 
+    unlink file = do
+        exist <- doesFileExist file
+        when exist $ removeFile file
+
     killClientSock sock = do
         shutdown sock ShutdownBoth
         close sock
-        E.tryJust (guard . isDoesNotExistError) $ removeFile unixAddr
+        unlink unixAddr
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions
