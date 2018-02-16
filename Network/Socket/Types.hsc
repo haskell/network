@@ -919,7 +919,11 @@ withSockAddr addr f = do
 -- space.  This constant holds the maximum allowable path length.
 --
 unixPathMax :: Int
+#if defined(DOMAIN_SOCKET_SUPPORT)
 unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
+#else
+unixPathMax = 0
+#endif
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
