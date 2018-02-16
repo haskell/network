@@ -13,6 +13,7 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Network.Socket
 import Network.Socket.ByteString
+import System.Directory
 import System.Timeout (timeout)
 
 import Test.Hspec
@@ -147,6 +148,15 @@ spec = do
                 `shouldBe` (0x2001, 0x0db8, 0x85a3, 0x0000, 0x0000, 0x8a2e, 0x0370, 0x7334)
 #endif
 
+    describe "unix sockets" $ do
+        it "basic unix sockets end-to-end" $ do
+            when isUnixDomainSocketAvailable $ do
+                let client sock = send sock testMsg
+                    server (sock, addr) = do
+                      recv sock 1024 `shouldReturn` testMsg
+                      addr `shouldBe` (SockAddrUnix "")
+                unixTest client server
+
 ------------------------------------------------------------------------
 
 serverAddr :: String
@@ -155,8 +165,43 @@ serverAddr = "127.0.0.1"
 testMsg :: ByteString
 testMsg = "This is a test message."
 
+unixAddr :: String
+unixAddr = "/tmp/network-test"
+
 ------------------------------------------------------------------------
 -- Test helpers
+
+-- | Establish a connection between client and server and then run
+-- 'clientAct' and 'serverAct', in different threads.  Both actions
+-- get passed a connected 'Socket', used for communicating between
+-- client and server.  'unixTest' makes sure that the 'Socket' is
+-- closed after the actions have run.
+unixTest :: (Socket -> IO a) -> ((Socket, SockAddr) -> IO b) -> IO ()
+unixTest clientAct serverAct = do
+    test clientSetup clientAct serverSetup server
+  where
+    clientSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        connect sock (SockAddrUnix unixAddr)
+        return sock
+
+    serverSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        unlink unixAddr -- just in case
+        bind sock (SockAddrUnix unixAddr)
+        listen sock 1
+        return sock
+
+    server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
+
+    unlink file = do
+        exist <- doesFileExist file
+        when exist $ removeFile file
+
+    killClientSock sock = do
+        shutdown sock ShutdownBoth
+        close sock
+        unlink unixAddr
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions

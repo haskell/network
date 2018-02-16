@@ -814,13 +814,20 @@ class SocketAddress sa where
     peekSocketAddress :: Ptr sa -> IO sa
     pokeSocketAddress  :: Ptr a -> sa -> IO ()
 
+-- sizeof(struct sockaddr_storage) which has enough space to contain
+-- sockaddr_in, sockaddr_in6 and sockaddr_un.
+sockaddrStorageLen :: Int
+sockaddrStorageLen = 128
+
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
 withSocketAddress addr f = do
     let sz = sizeOfSocketAddress addr
     allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
 
 withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
-withNewSocketAddress f = allocaBytes 128 $ \ptr -> f ptr 128
+withNewSocketAddress f = allocaBytes sockaddrStorageLen $ \ptr -> do
+    zeroMemory ptr $ fromIntegral sockaddrStorageLen
+    f ptr sockaddrStorageLen
 
 ------------------------------------------------------------------------
 -- Socket addresses
@@ -893,14 +900,11 @@ type CSaFamily = (#type sa_family_t)
 -- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddr (SockAddrUnix path) =
-    case path of
-        '\0':_ -> (#const sizeof(sa_family_t)) + length path
-        _      -> #const sizeof(struct sockaddr_un)
+sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
 #else
-sizeOfSockAddr SockAddrUnix{} = error "sizeOfSockAddr: not supported"
+sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
 #endif
-sizeOfSockAddr SockAddrInet{} = #const sizeof(struct sockaddr_in)
+sizeOfSockAddr SockAddrInet{}  = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
 -- | Use a 'SockAddr' with a function requiring a pointer to a
@@ -909,6 +913,17 @@ withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
 withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
+
+-- We cannot bind sun_paths longer than than the space in the sockaddr_un
+-- structure, and attempting to do so could overflow the allocated storage
+-- space.  This constant holds the maximum allowable path length.
+--
+unixPathMax :: Int
+#if defined(DOMAIN_SOCKET_SUPPORT)
+unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
+#else
+unixPathMax = 0
+#endif
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
@@ -920,28 +935,21 @@ withSockAddr addr f = do
 -- | Write the given 'SockAddr' to the given memory location.
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-pokeSockAddr p (SockAddrUnix path) = do
-# if defined(darwin_HOST_OS)
-    zeroMemory p (#const sizeof(struct sockaddr_un))
-# else
-    case path of
-      ('\0':_) -> zeroMemory p (#const sizeof(struct sockaddr_un))
-      _        -> return ()
-# endif
+pokeSockAddr p sa@(SockAddrUnix path) = do
+    when (length path > unixPathMax) $ error "pokeSockAddr: path is too long"
+    zeroMemory p $ fromIntegral $ sizeOfSockAddr sa
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
 # endif
     (#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
     let pathC = map castCharToCChar path
-        poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
-    poker ((#ptr struct sockaddr_un, sun_path) p) pathC
+    -- the buffer is already filled with nulls.
+    pokeArray ((#ptr struct sockaddr_un, sun_path) p) pathC
 #else
 pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
 #endif
 pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
-#if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in))
-#endif
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_in, sin_len) p ((#const sizeof(struct sockaddr_in)) :: Word8)
 #endif
@@ -949,9 +957,7 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
     (#poke struct sockaddr_in, sin_port) p port
     (#poke struct sockaddr_in, sin_addr) p addr
 pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
-# if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in6))
-# endif
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_in6, sin6_len) p ((#const sizeof(struct sockaddr_in6)) :: Word8)
 # endif
@@ -968,7 +974,7 @@ peekSockAddr p = do
   case family :: CSaFamily of
 #if defined(DOMAIN_SOCKET_SUPPORT)
     (#const AF_UNIX) -> do
-        str <- peekCString ((#ptr struct sockaddr_un, sun_path) p)
+        str <- peekCAString ((#ptr struct sockaddr_un, sun_path) p)
         return (SockAddrUnix str)
 #endif
     (#const AF_INET) -> do
