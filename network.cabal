@@ -82,6 +82,7 @@ test-suite simple
   build-depends:
     base < 5,
     bytestring,
+    directory,
     HUnit,
     network,
     test-framework,

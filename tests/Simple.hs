@@ -1,6 +1,10 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-} -- for recv
 
+#if !defined(mingw32_HOST_OS)
+# define DOMAIN_SOCKET_SUPPORT 1
+#endif
+
 module Main where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
@@ -15,6 +19,7 @@ import Data.Maybe (fromJust)
 import Network.Socket hiding (recv, recvFrom, send, sendTo)
 import qualified Network.Socket (recv)
 import Network.Socket.ByteString
+import System.Directory
 
 --- To tests for AF_CAN on Linux, you need to bring up a virtual (or real can
 --- interface.). Run as root:
@@ -292,6 +297,17 @@ testHostAddress6ToTupleInv = do
     addr @=? (hostAddress6ToTuple . tupleToHostAddress6) addr
 #endif
 
+#if defined(DOMAIN_SOCKET_SUPPORT)
+testUnix :: Assertion
+testUnix = do
+    let client sock = send sock testMsg
+        server (sock, addr) = do
+            msg <- recv sock 1024
+            testMsg @=? msg
+            SockAddrUnix "" @=? addr
+    unixTest client server
+#endif
+
 ------------------------------------------------------------------------
 -- Other
 
@@ -313,6 +329,9 @@ basicTests = testGroup "Basic socket operations"
     , testCase "testRecvFrom" testRecvFrom
     , testCase "testOverFlowRecvFrom" testOverFlowRecvFrom
     , testCase "testUserTimeout" testUserTimeout
+#if defined(DOMAIN_SOCKET_SUPPORT)
+    , testCase "testUnix" testUnix
+#endif
 --    , testCase "testGetPeerCred" testGetPeerCred
 --    , testCase "testGetPeerEid" testGetPeerEid
     , testCase "testStringEol" testStringEol
@@ -400,6 +419,43 @@ udpTest clientAct serverAct = do
         serverPort <- socketPort sock
         putMVar portVar serverPort
         return sock
+
+#if defined(DOMAIN_SOCKET_SUPPORT)
+unixAddr :: String
+unixAddr = "/tmp/network-test"
+
+-- | Establish a connection between client and server and then run
+-- 'clientAct' and 'serverAct', in different threads.  Both actions
+-- get passed a connected 'Socket', used for communicating between
+-- client and server.  'unixTest' makes sure that the 'Socket' is
+-- closed after the actions have run.
+unixTest :: (Socket -> IO a) -> ((Socket, SockAddr) -> IO b) -> IO ()
+unixTest clientAct serverAct = do
+    test clientSetup clientAct serverSetup server
+  where
+    clientSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        connect sock (SockAddrUnix unixAddr)
+        return sock
+
+    serverSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        unlink unixAddr -- just in case
+        bind sock (SockAddrUnix unixAddr)
+        listen sock 1
+        return sock
+
+    server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
+
+    unlink file = do
+        exist <- doesFileExist file
+        when exist $ removeFile file
+
+    killClientSock sock = do
+        shutdown sock ShutdownBoth
+        close sock
+        unlink unixAddr
+#endif
 
 -- | Run a client/server pair and synchronize them so that the server
 -- is started before the client and the specified server action is
