@@ -35,4 +35,4 @@ test_script:
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap --dry all"
  - ps: Push-AppveyorArtifact dist-newstyle\cache\plan.json
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap all"
- - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap all"
+ - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap test:spec"
