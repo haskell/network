@@ -94,6 +94,7 @@ test-suite spec
                  SimpleSpec
   type: exitcode-stdio-1.0
   ghc-options: -Wall -threaded
+  build-tool-depends: hspec-discover:hspec-discover
   build-depends:
     base < 5,
     bytestring,
