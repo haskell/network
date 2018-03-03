@@ -12,7 +12,7 @@ environment:
     - GHCVER: "8.2.2"
 
 platform:
-#  - x86 # We may want to test x86 as well, but it would take a long time.
+#  - x86 # We may want to test x86 as well, but it would double the 23min build time.
   - x64
 
 cache:
@@ -35,4 +35,6 @@ test_script:
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap --dry all"
  - ps: Push-AppveyorArtifact dist-newstyle\cache\plan.json
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap all"
+ # disable doctest because it's currently broken.
  - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap network:test:spec"
+ - ps: ls network*.log -recurse | %{ Push-AppveyorArtifact $_}
