@@ -83,7 +83,7 @@ data Socket
             (MVar SocketStatus)  -- Status Flag
   deriving Typeable
 
-{-# DEPRECATED MkSocket "Don't use this. Use fdSocket instead" #-}
+{-# DEPRECATED MkSocket "'MkSocket' will not be available in version 3.0.0.0 or later. Use fdSocket instead" #-}
 
 sockFd :: Socket -> CInt
 sockFd       (MkSocket n _ _ _ _) = n
