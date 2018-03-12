@@ -1,4 +1,4 @@
-AC_INIT([Haskell network package], [2.6.3.4], [libraries@haskell.org], [network])
+AC_INIT([Haskell network package], [2.6.3.5], [libraries@haskell.org], [network])
 
 ac_includes_default="$ac_includes_default
 #ifdef HAVE_SYS_SOCKET_H
