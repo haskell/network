@@ -1,3 +1,7 @@
+## Version 2.6.3.5
+ * Reverting "Do not closeFd within sendFd"
+   [#271](https://github.com/haskell/network/pull/271)
+
 ## Version 2.6.3.4
 
  * Don't touch IPv6Only when running on OpenBSD
