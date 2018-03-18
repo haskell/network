@@ -34,10 +34,12 @@
    So, let's use ccall for Windows 64.
  */
 #if defined(mingw32_HOST_OS)
-# if defined(_WIN32)
-#   define CALLCONV stdcall
+# if defined(i386_HOST_ARCH)
+#  define CALLCONV stdcall
+# elif defined(x86_64_HOST_ARCH)
+#  define CALLCONV ccall
 # else
-#   define CALLCONV ccall
+#  error Unknown mingw32 arch
 # endif
 #else
 # define CALLCONV ccall
