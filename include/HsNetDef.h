@@ -18,12 +18,24 @@
 # define DOMAIN_SOCKET_SUPPORT 1
 #endif
 
-#if defined(WITH_WINSOCK)
-# define CALLCONV stdcall
+/* stdcall is for Windows 32.
+   Haskell FFI does not have a keyword for Windows 64.
+   If ccall/stdcall is specified on Windows 64,
+   GHC ignores it and use a proper ABI for Windows 64.
+   But if stdcall is specified, GHC displays a warning.
+   So, let's use ccall for Windows 64.
+ */
+#if defined(mingw32_HOST_OS)
+# if defined(i386_HOST_ARCH)
+#  define CALLCONV stdcall
+# elif defined(x86_64_HOST_ARCH)
+#  define CALLCONV ccall
+# else
+#  error Unknown mingw32 arch
+# endif
 #else
 # define CALLCONV ccall
 #endif
-
 #if defined(mingw32_HOST_OS)
 # define SAFE_ON_WIN safe
 #else
