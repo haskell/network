@@ -1,34 +1,41 @@
-cache:
-- c:\sr -> stack.yaml # stack root, short paths == fewer problems
-- C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows -> stack.yaml
-
+version: "{build}"
 clone_folder: "c:\\network"
+
 environment:
   global:
-    STACK_ROOT: "c:\\sr"
+    CABOPTS:  "--store-dir=C:\\SR --http-transport=plain-http"
   matrix:
-    - stack_lts: "lts-6.2"
-    - stack_lts: "lts-9.18"
-    - stack_lts: "nightly"
+    - GHCVER: "7.6.3.1"
+    - GHCVER: "7.8.4.1"
+    - GHCVER: "7.10.3.2"
+    - GHCVER: "8.0.2"
+    - GHCVER: "8.2.2"
+    - GHCVER: "8.4.1"
 
-matrix:
-  allow_failures:
-    - stack_lts: "nightly"
+platform:
+#  - x86 # We may want to test x86 as well, but it would double the 23min build time.
+  - x64
+
+cache:
+ - "C:\\SR"
 
 install:
-- set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
-- curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-x86_64
-- 7z x stack.zip stack.exe
-- stack --no-terminal setup --resolver %stack_lts% > nul
-- C:\msys64\usr\bin\bash -lc "cd $APPVEYOR_BUILD_FOLDER; autoreconf -i"
+ - "choco install -y cabal"
+ - "choco install -y ghc --version %GHCVER%"
+ - "refreshenv"
+ - "set PATH=C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;C:\\ghc\\ghc-%GHCVER%\\bin;%PATH%"
+ - "cabal --version"
+ - "ghc --version"
+ - "cabal %CABOPTS% update -vverbose+nowrap"
 
-build_script:
-- stack --no-terminal build --resolver %stack_lts% --reconfigure
+build: off
+deploy: off
 
 test_script:
-# Run all test suites except doctests, because that one assumes
-# cabal-install. TODO reenable it:
-# https://github.com/haskell/network/issues/196.
-- stack --no-terminal test --resolver %stack_lts% --reconfigure network:test:spec
-
-deploy: off
+ - IF EXIST configure.ac bash -c "autoreconf -i"
+ - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap --dry all"
+ - ps: Push-AppveyorArtifact dist-newstyle\cache\plan.json
+ - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap all"
+ # disable doctest because it's currently broken.
+ - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap network:test:spec"
+ - ps: ls network*.log -recurse | %{ Push-AppveyorArtifact $_}
