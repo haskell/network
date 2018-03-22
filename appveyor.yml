@@ -36,6 +36,7 @@ test_script:
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap --dry all"
  - ps: Push-AppveyorArtifact dist-newstyle\cache\plan.json
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap all"
+ - "cabal %CABOPTS% install hspec-discover"
  # disable doctest because it's currently broken.
  - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap network:test:spec"
  - ps: ls network*.log -recurse | %{ Push-AppveyorArtifact $_}
