@@ -184,7 +184,7 @@ packSocketType' stype = case Just stype of
 #endif
     _ -> Nothing
 
-{-# DEPRECATED packSocketType "Don't use this" #-}
+{-# DEPRECATED packSocketType "packSocketType will not be available in version 3.0.0.0 or later." #-}
 
 packSocketType :: SocketType -> CInt
 packSocketType stype = fromMaybe (error errMsg) (packSocketType' stype)
@@ -305,7 +305,7 @@ data Family
     | AF_CAN              -- Controller Area Network
       deriving (Eq, Ord, Read, Show)
 
-{-# DEPRECATED packFamily "Don't use this" #-}
+{-# DEPRECATED packFamily "packFamily will not be available in version 3.0.0.0 or later." #-}
 
 packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
@@ -523,7 +523,7 @@ packFamily' f = case Just f of
 
 --------- ----------
 
-{-# DEPRECATED unpackFamily "Don't use this" #-}
+{-# DEPRECATED unpackFamily "unpackFamily will not be available in version 3.0.0.0 or later." #-}
 
 unpackFamily :: CInt -> Family
 unpackFamily f = case f of
