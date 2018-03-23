@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNetDef.h"
@@ -192,15 +193,16 @@ accept s = withNewSocketAddress $ \sa sz -> do
                      throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
                 return new_fd'
 #else
-     with (fromIntegral sz) $ \ ptr_len -> do
+     new_fd <- with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
-     new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
+       throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
 # else
-     new_fd <- throwSocketErrorWaitRead s "Network.Socket.accept"
+       new_fd' <- throwSocketErrorWaitRead s "Network.Socket.accept"
                         (c_accept fd sa ptr_len)
-     setNonBlockIfNeeded new_fd
-     setCloseOnExecIfNeeded new_fd
+       setNonBlockIfNeeded new_fd'
+       setCloseOnExecIfNeeded new_fd'
+       return new_fd'
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
      addr <- peekSocketAddress sa

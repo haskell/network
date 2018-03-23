@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 #include "HsNet.h"
 ##include "HsNetDef.h"
 

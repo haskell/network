@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Network.Socket.Fcntl where
 
 import qualified System.Posix.Internals
