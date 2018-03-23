@@ -74,34 +74,19 @@ library
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
 
-test-suite simple
+test-suite spec
   hs-source-dirs: tests
-  main-is: Simple.hs
+  main-is: Spec.hs
+  other-modules: RegressionSpec
+                 SimpleSpec
   type: exitcode-stdio-1.0
-
-  build-depends:
-    base < 5,
-    bytestring,
-    directory,
-    HUnit,
-    network,
-    test-framework,
-    test-framework-hunit
-
-test-suite regression
-  hs-source-dirs: tests
-  main-is: Regression.hs
-  type: exitcode-stdio-1.0
-
-  build-depends:
-    base < 5,
-    bytestring,
-    HUnit,
-    network,
-    test-framework,
-    test-framework-hunit
-  -- Some of the bugs only occur in the threaded RTS
   ghc-options: -Wall -threaded
+  build-depends:
+    base < 5,
+    bytestring,
+    HUnit,
+    network,
+    hspec
 
 test-suite doctest
   hs-source-dirs: tests

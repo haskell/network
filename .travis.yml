@@ -65,6 +65,7 @@ install:
  - rm -f cabal.project.freeze
  - cabal new-build -w ${HC} ${TEST} ${BENCH} --dep -j2 all
  - cabal new-build -w ${HC} --disable-tests --disable-benchmarks --dep -j2 all
+ - cabal install hspec-discover
 
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
@@ -92,6 +93,6 @@ script:
  # we can't run `test:doctest` currently, so let's run only the other two testsuites
  #- if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} all; fi
 
- - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} test:simple test:regression; fi
+ - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} test:spec; fi
 
 # EOF
