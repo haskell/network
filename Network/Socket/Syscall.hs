@@ -176,38 +176,38 @@ listen s backlog = do
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
-accept s = withNewSocketAddress $ \sa sz -> do
-     fd <- fdSocket s
+accept listing_sock = withNewSocketAddress $ \new_sa sz -> do
+     listing_fd <- fdSocket listing_sock
+     new_sock <- callAccept listing_fd new_sa sz >>= mkSocket
+     new_addr <- peekSocketAddress new_sa
+     return (new_sock, new_addr)
+  where
 #if defined(mingw32_HOST_OS)
-     new_fd <-
-        if threaded
-           then with (fromIntegral sz) $ \ ptr_len ->
-                  throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                    c_accept_safe fd sa ptr_len
-           else do
-                paramData <- c_newAcceptParams fd (fromIntegral sz) sa
-                rc        <- asyncDoProc c_acceptDoProc paramData
-                new_fd'   <- c_acceptNewSock paramData
-                c_free paramData
-                when (rc /= 0) $
-                     throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                return new_fd'
+     callAccept fd sa sz
+       | threaded  = with (fromIntegral sz) $ \ ptr_len ->
+                       throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
+                         c_accept_safe fd sa ptr_len
+       | otherwise = do
+             paramData <- c_newAcceptParams fd (fromIntegral sz) sa
+             rc        <- asyncDoProc c_acceptDoProc paramData
+             new_fd    <- c_acceptNewSock paramData
+             c_free paramData
+             when (rc /= 0) $
+               throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
+             return new_fd
 #else
-     new_fd <- with (fromIntegral sz) $ \ ptr_len -> do
+     callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
-       throwSocketErrorWaitRead s "Network.Socket.accept"
+       throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
                         (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
 # else
-       new_fd' <- throwSocketErrorWaitRead s "Network.Socket.accept"
+       new_fd <- throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
                         (c_accept fd sa ptr_len)
-       setNonBlockIfNeeded new_fd'
-       setCloseOnExecIfNeeded new_fd'
-       return new_fd'
+       setNonBlockIfNeeded new_fd
+       setCloseOnExecIfNeeded new_fd
+       return new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
-     addr <- peekSocketAddress sa
-     new_s <- mkSocket new_fd
-     return (new_s, addr)
 
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
