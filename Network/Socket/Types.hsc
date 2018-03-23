@@ -920,11 +920,9 @@ withSockAddr addr f = do
 -- structure, and attempting to do so could overflow the allocated storage
 -- space.  This constant holds the maximum allowable path length.
 --
-unixPathMax :: Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
+unixPathMax :: Int
 unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
-#else
-unixPathMax = 0
 #endif
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
