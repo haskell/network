@@ -151,7 +151,10 @@ module Network.Socket
     , FlowInfo
     -- ** Scope ID
     , ScopeID
-    -- fixme: ifNameToIndex and ifIndexToName
+# if defined(HAVE_IF_NAMETOINDEX)
+    , ifNameToIndex
+    , ifIndexToName
+# endif
 #endif
     -- ** Port number
     , PortNumber(..)
@@ -238,7 +241,7 @@ import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable(..))
 import Foreign.C.Error
 import Foreign.C.String (CString, withCString, withCStringLen, peekCString, peekCStringLen)
-import Foreign.C.Types (CUInt, CChar)
+import Foreign.C.Types (CUInt(..), CChar)
 import Foreign.C.Types (CInt(..), CSize(..))
 import Foreign.Marshal.Alloc ( alloca, allocaBytes )
 import Foreign.Marshal.Array ( peekArray )
@@ -1773,3 +1776,31 @@ sIsReadable = isReadable
 
 sIsWritable  :: Socket -> IO Bool
 sIsWritable = isWritable
+
+#if defined(HAVE_IF_NAMETOINDEX)
+-- | Returns the index corresponding to the interface name.
+--
+--   Since 2.7.0.0.
+ifNameToIndex :: String -> IO (Maybe Int)
+ifNameToIndex ifname = do
+  index <- withCString ifname c_if_nametoindex
+  -- On failure zero is returned. We'll return Nothing.
+  return $ if index == 0 then Nothing else Just $ fromIntegral index
+
+-- | Returns the interface name corresponding to the index.
+--
+--   Since 2.7.0.0.
+ifIndexToName :: Int -> IO (Maybe String)
+ifIndexToName ifn = allocaBytes 16 $ \ptr -> do -- 16 == IFNAMSIZ
+    r <- c_if_indextoname (fromIntegral ifn) ptr
+    if r == nullPtr then
+        return Nothing
+      else
+        Just <$> peekCString ptr
+
+foreign import CALLCONV safe "if_nametoindex"
+   c_if_nametoindex :: CString -> IO CUInt
+
+foreign import CALLCONV safe "if_indextoname"
+   c_if_indextoname :: CUInt -> CString -> IO CString
+#endif
