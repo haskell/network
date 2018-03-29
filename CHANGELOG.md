@@ -1,3 +1,21 @@
+## Version 2.7.0.0
+ * Obsoleting the Network module.
+ * Obsoleting the Network.BSD module.
+ * Obsoleting APIs: MkSocket, htonl, ntohl,
+              getPeerCred, getPeerEid,
+              send, sendTo, recv, recvFrom, recvLen,
+              inet_addr, inet_ntoa,
+              isConnected, isBound, isListening, isReadable, isWritable,
+              aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN,
+	      sOL_SOCKET, sCM_RIGHTS,
+              packFamily, unpackFamily, packSocketType
+ * Do not closeFd within sendFd
+   [#271](https://github.com/haskell/network/pull/271)
+
+## Version 2.6.3.5
+ * Reverting "Do not closeFd within sendFd"
+   [#271](https://github.com/haskell/network/pull/271)
+
 ## Version 2.6.3.4
 
  * Don't touch IPv6Only when running on OpenBSD
