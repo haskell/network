@@ -40,13 +40,13 @@ import Network.Socket.Options (c_getsockopt)
 -- | Getting process ID, user ID and group ID for Unix domain sockets.
 --
 --   This is implemented with SO_PEERCRED on Linux and getpeereid()
---   on BSD variants. Unfortunately, some BSD variants returns bogus
---   credentials for AF_INET instead of causing errors. So, it's user's
---   responsibility to make sure that the socket is Unix domain.
---   Also, on some BSD variants, getpeereid() returns valid credentials
---   only for connected sockets. So, 'getPeerCredential' should not
---   be used for non-connected Unix domain socktes, for example,
---   created by 'socketPair' where its credential is trivial.
+--   on BSD variants. Unfortunately, on some BSD variants
+--   getpeereid() returns unexpected results, rather than an error,
+--   for AF_INET sockets. It is the user's responsibility to make sure
+--   that the socket is Unix domain socket.
+--   Also, on some BSD variants, getpeereid() does not return credentials
+--   for sockets created via 'socketPair', only separately created and then
+--   explicitly connected unix-domain sockets work on such systems.
 --
 --   Since 2.7.0.0.
 getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
