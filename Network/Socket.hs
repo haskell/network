@@ -164,7 +164,7 @@ module Network.Socket
     , defaultPort
     , socketPort
 
-    -- * Unix domain socket
+    -- * UNIX-domain socket
     , isUnixDomainSocketAvailable
     , socketPair
     , sendFd

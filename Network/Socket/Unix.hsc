@@ -37,16 +37,16 @@ import Network.Socket.Internal
 import Network.Socket.Options (c_getsockopt)
 #endif
 
--- | Getting process ID, user ID and group ID for Unix domain sockets.
+-- | Getting process ID, user ID and group ID for UNIX-domain sockets.
 --
 --   This is implemented with SO_PEERCRED on Linux and getpeereid()
 --   on BSD variants. Unfortunately, on some BSD variants
 --   getpeereid() returns unexpected results, rather than an error,
 --   for AF_INET sockets. It is the user's responsibility to make sure
---   that the socket is Unix domain socket.
+--   that the socket is a UNIX-domain socket.
 --   Also, on some BSD variants, getpeereid() does not return credentials
 --   for sockets created via 'socketPair', only separately created and then
---   explicitly connected unix-domain sockets work on such systems.
+--   explicitly connected UNIX-domain sockets work on such systems.
 --
 --   Since 2.7.0.0.
 getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
@@ -66,7 +66,7 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 #endif
 
 -- | Returns the processID, userID and groupID of the peer of
---   a UNIX domain socket.
+--   a UNIX-domain socket.
 --
 -- Only available on platforms that support SO_PEERCRED.
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
@@ -88,7 +88,7 @@ getPeerCred _ = return (0, 0, 0)
 {-# Deprecated getPeerCred "Use getPeerCredential instead" #-}
 
 -- | Returns the userID and groupID of the peer of
---   a UNIX domain socket.
+--   a UNIX-domain socket.
 --
 --  Only available on platforms that support getpeereid().
 getPeerEid :: Socket -> IO (CUInt, CUInt)
@@ -111,7 +111,7 @@ getPeerEid _ = return (0, 0)
 
 {-# Deprecated getPeerEid "Use getPeerCredential instead" #-}
 
--- | Whether or not Unix domain sockets are available.
+-- | Whether or not UNIX-domain sockets are available.
 --
 --   Since 3.0.0.0.
 isUnixDomainSocketAvailable :: Bool
@@ -121,7 +121,7 @@ isUnixDomainSocketAvailable = True
 isUnixDomainSocketAvailable = False
 #endif
 
--- | Send a file descriptor over a Unix domain socket.
+-- | Send a file descriptor over a UNIX-domain socket.
 --   Use this function in the case where 'isUnixDomainSocketAvailable' is
 --  'True'.
 sendFd :: Socket -> CInt -> IO ()
@@ -134,7 +134,7 @@ foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 sendFd _ _ = error "Network.Socket.sendFd"
 #endif
 
--- | Receive a file descriptor over a Unix domain socket. Note that the resulting
+-- | Receive a file descriptor over a UNIX-domain socket. Note that the resulting
 --   file descriptor may have to be put into non-blocking mode in order to be
 --   used safely. See 'setNonBlockIfNeeded'.
 --   Use this function in the case where 'isUnixDomainSocketAvailable' is
