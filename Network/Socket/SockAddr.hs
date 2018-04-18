@@ -39,6 +39,7 @@ bind = G.bind
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
+-- On Unix, FD_CLOEXEC is set to the new 'Socket'.
 accept :: Socket -> IO (Socket, SockAddr)
 accept = G.accept
 

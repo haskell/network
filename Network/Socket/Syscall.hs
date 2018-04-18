@@ -175,6 +175,7 @@ listen s backlog = do
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
+-- On Unix, FD_CLOEXEC is set to the new 'Socket'.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz -> do
      listing_fd <- fdSocket listing_sock
