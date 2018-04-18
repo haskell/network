@@ -113,7 +113,7 @@ getPeerEid _ = return (0, 0)
 
 -- | Whether or not UNIX-domain sockets are available.
 --
---   Since 3.0.0.0.
+--   Since 2.7.0.0.
 isUnixDomainSocketAvailable :: Bool
 #if defined(DOMAIN_SOCKET_SUPPORT)
 isUnixDomainSocketAvailable = True

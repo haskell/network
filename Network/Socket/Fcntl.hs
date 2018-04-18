@@ -18,7 +18,7 @@ setNonBlockIfNeeded fd =
 -- | Set the close_on_exec flag on Unix.
 --   On Windows, nothing is done.
 --
---   Since 3.0.0.0.
+--   Since 2.7.0.0.
 setCloseOnExecIfNeeded :: CInt -> IO ()
 #if defined(mingw32_HOST_OS)
 setCloseOnExecIfNeeded _ = return ()
@@ -34,7 +34,7 @@ foreign import ccall unsafe "fcntl"
 -- | Get the nonblocking flag.
 --   On Windows, this function always returns 'False'.
 --
---   Since 3.0.0.0.
+--   Since 2.7.0.0.
 getCloseOnExec :: CInt -> IO Bool
 #if defined(mingw32_HOST_OS)
 getCloseOnExec _ = return False
@@ -48,7 +48,7 @@ getCloseOnExec fd = do
 -- | Get the close_on_exec flag.
 --   On Windows, this function always returns 'False'.
 --
---   Since 3.0.0.0.
+--   Since 2.7.0.0.
 getNonBlock :: CInt -> IO Bool
 #if defined(mingw32_HOST_OS)
 getNonBlock _ = return False
