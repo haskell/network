@@ -160,7 +160,7 @@ module Network.Socket
     , PortNumber(..)
     , defaultPort
     , socketPort
-    -- * UNIX domain socket
+    -- * UNIX-domain socket
     , isUnixDomainSocketAvailable
 #if defined(DOMAIN_SOCKET_SUPPORT)
     , socketPair
@@ -224,7 +224,7 @@ module Network.Socket
     , packFamily
     , unpackFamily
     , packSocketType
-    -- ** Decrecated UNIX domain functions
+    -- ** Decrecated UNIX-domain functions
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
     -- get the credentials of our domain socket peer.
     , getPeerCred

@@ -806,11 +806,11 @@ instance Storable PortNumber where
 -- to type cast the Internet socket address into a struct sockaddr.
 -- Instances of the structure for different families might *not* be
 -- the same size. Same casting is required of other families of
--- sockets such as Xerox NS. Similarly for Unix domain sockets.
+-- sockets such as Xerox NS. Similarly for UNIX-domain sockets.
 
 -- To represent these socket addresses in Haskell-land, we do what BSD
 -- didn't do, and use a union/algebraic type for the different
--- families. Currently only Unix domain sockets and the Internet
+-- families. Currently only UNIX-domain sockets and the Internet
 -- families are supported.
 
 #if defined(IPV6_SOCKET_SUPPORT)
