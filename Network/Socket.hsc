@@ -460,7 +460,7 @@ fdCloexec :: CInt
 fdCloexec = #const FD_CLOEXEC
 oNonBlock :: CInt
 oNonBlock = #const O_NONBLOCK
-# if defined(HAVE_ADVANCED_SOCKET_FLAGS)
+# if defined(HAVE_ACCEPT4)
 sockNonBlock :: CInt
 sockNonBlock = #const SOCK_NONBLOCK
 sockCloexec :: CInt
@@ -1144,8 +1144,8 @@ getPeerCred sock = do
   return (0,uid,gid)
 #endif
 
-{-# DEPRECATED getPeerEid "Use getPeerCredential instead" #-}
 #ifdef HAVE_GETPEEREID
+{-# DEPRECATED getPeerEid "Use getPeerCredential instead" #-}
 -- | The getpeereid() function returns the effective user and group IDs of the
 -- peer connected to a UNIX-domain socket
 getPeerEid :: Socket -> IO (CUInt, CUInt)
