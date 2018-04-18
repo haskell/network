@@ -12,6 +12,9 @@
  * Do not closeFd within sendFd
    [#271](https://github.com/haskell/network/pull/271)
  * Exporting ifNameToIndex and ifIndexToName from Network.Socket.
+ * New APIs: setCloseOnExecIfNeeded, getCloseOnExec and getNonBlock
+ * New APIs: isUnixDomainSocketAvailable and getPeerCredential
+ * socketPair, sendFd and recvFd are exported even on Windows.
 
 ## Version 2.6.3.5
  * Reverting "Do not closeFd within sendFd"
