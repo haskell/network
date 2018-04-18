@@ -160,20 +160,14 @@ module Network.Socket
     , PortNumber(..)
     , defaultPort
     , socketPort
+    -- * UNIX domain socket
+    , isUnixDomainSocketAvailable
 #if defined(DOMAIN_SOCKET_SUPPORT)
-    -- * Unix domain socket
     , socketPair
     , sendFd
     , recvFd
 #endif
--- fixme
-#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
-    -- get the credentials of our domain socket peer.
-    , getPeerCred
-#if defined(HAVE_GETPEEREID)
-    , getPeerEid
-#endif
-#endif
+    , getPeerCredential
 #if defined(IPV6_SOCKET_SUPPORT)
     -- * Name information
     , NameInfoFlag(..)
@@ -230,6 +224,14 @@ module Network.Socket
     , packFamily
     , unpackFamily
     , packSocketType
+    -- ** Decrecated UNIX domain functions
+#if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
+    -- get the credentials of our domain socket peer.
+    , getPeerCred
+#if defined(HAVE_GETPEEREID)
+    , getPeerEid
+#endif
+#endif
     ) where
 
 import Data.Bits
@@ -250,6 +252,7 @@ import Foreign.Marshal.Utils ( maybeWith, with )
 import System.IO
 import Control.Monad (liftM, when)
 
+import qualified Control.Exception as E
 import Control.Concurrent.MVar
 import Data.Typeable
 import System.IO.Error
@@ -262,7 +265,6 @@ import GHC.Conc (threadWaitRead)
 import GHC.Conc (closeFdWith)
 ##endif
 # if defined(mingw32_HOST_OS)
-import qualified Control.Exception as E
 import GHC.Conc (asyncDoProc)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
 import Foreign (FunPtr)
@@ -1023,6 +1025,35 @@ getSocketOption (MkSocket s _ _ _ _) so = do
        fromIntegral `liftM` peek ptr_v
 
 
+-- | Getting process ID, user ID and group ID for UNIX-domain sockets.
+--
+--   This is implemented with SO_PEERCRED on Linux and getpeereid()
+--   on BSD variants. Unfortunately, on some BSD variants
+--   getpeereid() returns unexpected results, rather than an error,
+--   for AF_INET sockets. It is the user's responsibility to make sure
+--   that the socket is a UNIX-domain socket.
+--   Also, on some BSD variants, getpeereid() does not return credentials
+--   for sockets created via 'socketPair', only separately created and then
+--   explicitly connected UNIX-domain sockets work on such systems.
+--
+--   Since 2.7.0.0.
+getPeerCredential :: Socket -> IO (Maybe CUInt, Maybe CUInt, Maybe CUInt)
+#ifdef HAVE_STRUCT_UCRED
+getPeerCredential sock = do
+    (pid, uid, gid) <- getPeerCred sock
+    if uid == maxBound then
+        return (Nothing, Nothing, Nothing)
+      else
+        return (Just pid, Just uid, Just gid)
+#elif defined(HAVE_GETPEEREID)
+getPeerCredential sock = E.handle (\(E.SomeException _) -> return (Nothing,Nothing,Nothing)) $ do
+    (uid, gid) <- getPeerEid sock
+    return (Nothing, Just uid, Just gid)
+#else
+getPeerCredential _ = return (Nothing, Nothing, Nothing)
+#endif
+
+{-# DEPRECATED getPeerCred "Use getPeerCredential instead" #-}
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
 -- | Returns the processID, userID and groupID of the socket's peer.
 --
@@ -1047,6 +1078,7 @@ getPeerCred sock = do
   return (0,uid,gid)
 #endif
 
+{-# DEPRECATED getPeerEid "Use getPeerCredential instead" #-}
 #ifdef HAVE_GETPEEREID
 -- | The getpeereid() function returns the effective user and group IDs of the
 -- peer connected to a UNIX-domain socket
@@ -1061,6 +1093,16 @@ getPeerEid sock = do
       gid <- peek ptr_gid
       return (uid, gid)
 #endif
+#endif
+
+-- | Whether or not UNIX-domain sockets are available.
+--
+--   Since 3.0.0.0.
+isUnixDomainSocketAvailable :: Bool
+#if defined(DOMAIN_SOCKET_SUPPORT)
+isUnixDomainSocketAvailable = True
+#else
+isUnixDomainSocketAvailable = False
 #endif
 
 ##if !(MIN_VERSION_base(4,3,1))

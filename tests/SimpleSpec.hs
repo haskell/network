@@ -13,6 +13,7 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
+import System.Directory
 import System.Timeout (timeout)
 
 import Test.Hspec
@@ -119,6 +120,44 @@ spec = do
               getSocketOption sock UserTimeout `shouldReturn` 2000
               close sock
 
+    -- On various BSD systems the peer credentials are exchanged during
+    -- connect(), and this does not happen with `socketpair()`.  Therefore,
+    -- we must actually set up a listener and connect, rather than use a
+    -- socketpair().
+    --
+    describe "getPeerCredential" $ do
+        it "can return something" $ do
+            when isUnixDomainSocketAvailable $ do
+                -- It would be useful to check that we did not get garbage
+                -- back, but rather the actual uid of the test program.  For
+                -- that we'd need System.Posix.User, but that is not available
+                -- under Windows.  For now, accept the risk that we did not get
+                -- the right answer.
+                --
+                let client sock = do
+                        (_, uid, _) <- getPeerCredential sock
+                        uid `shouldNotBe` Nothing
+                    server (sock, _) = do
+                        (_, uid, _) <- getPeerCredential sock
+                        uid `shouldNotBe` Nothing
+                unixTest client server
+        {- The below test fails on many *BSD systems, because the getsockopt()
+           call that underlies getpeereid() does not have the same meaning for
+           all address families, but the C-library was not checking that the
+           provided sock is an AF_UNIX socket.  This will fixed some day, but
+           we should not fail on those systems in the mean-time.  The upstream
+           C-library fix is to call getsockname() and check the address family
+           before calling `getpeereid()`.  We could duplicate that in our own
+           code, and then this test would work on those platforms that have
+           `getpeereid()` and not the SO_PEERCRED socket option.
+
+        it "return nothing for non-UNIX-domain socket" $ do
+            when isUnixDomainSocketAvailable $ do
+                s <- socket AF_INET Stream defaultProtocol
+                cred1 <- getPeerCredential s
+                cred1 `shouldBe` (Nothing,Nothing,Nothing)
+        -}
+
     describe "getAddrInfo" $ do
         it "works for IPv4 address" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
@@ -143,8 +182,43 @@ serverAddr = "127.0.0.1"
 testMsg :: ByteString
 testMsg = "This is a test message."
 
+unixAddr :: String
+unixAddr = "/tmp/network-test"
+
 ------------------------------------------------------------------------
 -- Test helpers
+
+-- | Establish a connection between client and server and then run
+-- 'clientAct' and 'serverAct', in different threads.  Both actions
+-- get passed a connected 'Socket', used for communicating between
+-- client and server.  'unixTest' makes sure that the 'Socket' is
+-- closed after the actions have run.
+unixTest :: (Socket -> IO a) -> ((Socket, SockAddr) -> IO b) -> IO ()
+unixTest clientAct serverAct = do
+    test clientSetup clientAct serverSetup server
+  where
+    clientSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        connect sock (SockAddrUnix unixAddr)
+        return sock
+
+    serverSetup = do
+        sock <- socket AF_UNIX Stream defaultProtocol
+        unlink unixAddr -- just in case
+        bind sock (SockAddrUnix unixAddr)
+        listen sock 1
+        return sock
+
+    server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
+
+    unlink file = do
+        exist <- doesFileExist file
+        when exist $ removeFile file
+
+    killClientSock sock = do
+        shutdown sock ShutdownBoth
+        close sock
+        unlink unixAddr
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions

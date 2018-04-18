@@ -84,6 +84,7 @@ test-suite spec
   build-depends:
     base < 5,
     bytestring,
+    directory,
     HUnit,
     network,
     hspec
