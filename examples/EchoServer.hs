@@ -23,6 +23,10 @@ main = withSocketsDo $ do
     open addr = do
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
         setSocketOption sock ReuseAddr 1
+        -- If the prefork technique is not used,
+        -- set CloseOnExec for the security reasons.
+        let fd = fdSocket sock
+        setCloseOnExecIfNeeded fd
         bind sock (addrAddress addr)
         listen sock 10
         return sock

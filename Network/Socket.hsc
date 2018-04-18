@@ -45,6 +45,10 @@
 -- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >         setSocketOption sock ReuseAddr 1
 -- >         bind sock (addrAddress addr)
+-- >         -- If the prefork technique is not used,
+-- >         -- set CloseOnExec for the security reasons.
+-- >         let fd = fdSocket sock
+-- >         setCloseOnExecIfNeeded fd
 -- >         listen sock 10
 -- >         return sock
 -- >     loop sock = forever $ do
