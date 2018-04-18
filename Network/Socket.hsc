@@ -1123,8 +1123,8 @@ getPeerCredential sock = E.handle (\(E.SomeException _) -> return (Nothing,Nothi
 getPeerCredential _ = return (Nothing, Nothing, Nothing)
 #endif
 
-{-# DEPRECATED getPeerCred "Use getPeerCredential instead" #-}
 #if defined(HAVE_STRUCT_UCRED) || defined(HAVE_GETPEEREID)
+{-# DEPRECATED getPeerCred "Use getPeerCredential instead" #-}
 -- | Returns the processID, userID and groupID of the socket's peer.
 --
 -- Only available on platforms that support SO_PEERCRED or GETPEEREID(3)
