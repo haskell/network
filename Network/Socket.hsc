@@ -162,11 +162,9 @@ module Network.Socket
     , socketPort
     -- * UNIX-domain socket
     , isUnixDomainSocketAvailable
-#if defined(DOMAIN_SOCKET_SUPPORT)
     , socketPair
     , sendFd
     , recvFd
-#endif
     , getPeerCredential
 #if defined(IPV6_SOCKET_SUPPORT)
     -- * Name information
@@ -422,11 +420,11 @@ socket family stype protocol = do
 -- family, socket type, and protocol number.  Address family, socket
 -- type, and protocol number are as for the 'socket' function above.
 -- Availability: Unix.
-#if defined(DOMAIN_SOCKET_SUPPORT)
 socketPair :: Family              -- Family Name (usually AF_INET or AF_INET6)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
+#if defined(DOMAIN_SOCKET_SUPPORT)
 socketPair family stype protocol = do
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
     c_stype <- packSocketTypeOrThrow "socketPair" stype
@@ -443,6 +441,8 @@ socketPair family stype protocol = do
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
+#else
+socketPair _ _ _ = error "Network.Socket.socketPair"
 #endif
 
 -- | Set the socket to nonblocking, if applicable to this platform.
@@ -1109,26 +1109,30 @@ isUnixDomainSocketAvailable = False
 closeFdWith closer fd = closer fd
 ##endif
 
-#if defined(DOMAIN_SOCKET_SUPPORT)
 -- sending/receiving ancillary socket data; low-level mechanism
 -- for transmitting file descriptors, mainly.
 sendFd :: Socket -> CInt -> IO ()
+#if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd sock outfd = do
   _ <- throwSocketErrorWaitWrite sock "Network.Socket.sendFd" $ c_sendFd (fdSocket sock) outfd
   return ()
+foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
+#else
+sendFd _ _ = error "Network.Socket.sendFd"
+#endif
 
 -- | Receive a file descriptor over a domain socket. Note that the resulting
 -- file descriptor may have to be put into non-blocking mode in order to be
 -- used safely. See 'setNonBlockIfNeeded'.
 recvFd :: Socket -> IO CInt
+#if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd sock = do
   theFd <- throwSocketErrorWaitRead sock "Network.Socket.recvFd" $
                c_recvFd (fdSocket sock)
   return theFd
-
-foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
 foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
-
+#else
+recvFd _ = error "Network.Socket.recvFd"
 #endif
 
 -- ---------------------------------------------------------------------------
