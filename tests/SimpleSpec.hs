@@ -235,6 +235,11 @@ tcpTest clientAct serverAct = do
         serverPort <- readMVar portVar
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+#if !defined(mingw32_HOST_OS)
+        let fd = fdSocket sock
+        getNonBlock fd `shouldReturn` True
+        getCloseOnExec fd `shouldReturn` False
+#endif
         connect sock $ addrAddress addr
         return sock
 
@@ -245,7 +250,16 @@ tcpTest clientAct serverAct = do
               }
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+        let fd = fdSocket sock
+#if !defined(mingw32_HOST_OS)
+        getNonBlock fd `shouldReturn` True
+        getCloseOnExec fd `shouldReturn` False
+#endif
         setSocketOption sock ReuseAddr 1
+        setCloseOnExecIfNeeded fd
+#if !defined(mingw32_HOST_OS)
+        getCloseOnExec fd `shouldReturn` True
+#endif
         bind sock $ addrAddress addr
         listen sock 1
         serverPort <- socketPort sock
@@ -254,6 +268,11 @@ tcpTest clientAct serverAct = do
 
     server sock = do
         (clientSock, _) <- accept sock
+#if !defined(mingw32_HOST_OS)
+        let fd = fdSocket clientSock
+        getNonBlock fd `shouldReturn` True
+        getCloseOnExec fd `shouldReturn` True
+#endif
         _ <- serverAct clientSock
         close clientSock
 

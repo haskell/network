@@ -172,7 +172,10 @@ module Network.Socket
     , getNameInfo
 #endif
     -- * Low level operations
+    , setCloseOnExecIfNeeded
+    , getCloseOnExec
     , setNonBlockIfNeeded
+    , getNonBlock
     -- * Sending and receiving data
     , sendBuf
     , recvBuf
@@ -445,13 +448,75 @@ foreign import ccall unsafe "socketpair"
 socketPair _ _ _ = error "Network.Socket.socketPair"
 #endif
 
--- | Set the socket to nonblocking, if applicable to this platform.
---
--- Depending on the platform this is required when using sockets from file
--- descriptors that are passed in through 'recvFd' or other means.
+-----------------------------------------------------------------------------
+
+#if defined(mingw32_HOST_OS)
+#else
+fGetFd :: CInt
+fGetFd = #const F_GETFD
+fGetFl :: CInt
+fGetFl = #const F_GETFL
+fdCloexec :: CInt
+fdCloexec = #const FD_CLOEXEC
+oNonBlock :: CInt
+oNonBlock = #const O_NONBLOCK
+# if defined(HAVE_ADVANCED_SOCKET_FLAGS)
+sockNonBlock :: CInt
+sockNonBlock = #const SOCK_NONBLOCK
+sockCloexec :: CInt
+sockCloexec = #const SOCK_CLOEXEC
+# endif
+#endif
+
+-- | Set the nonblocking flag on Unix.
+--   On Windows, nothing is done.
 setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
+
+-- | Set the close_on_exec flag on Unix.
+--   On Windows, nothing is done.
+--
+--   Since 2.7.0.0.
+setCloseOnExecIfNeeded :: CInt -> IO ()
+#if defined(mingw32_HOST_OS)
+setCloseOnExecIfNeeded _ = return ()
+#else
+setCloseOnExecIfNeeded fd = System.Posix.Internals.setCloseOnExec fd
+#endif
+
+#if !defined(mingw32_HOST_OS)
+foreign import ccall unsafe "fcntl"
+  c_fcntl_read  :: CInt -> CInt -> CInt -> IO CInt
+#endif
+
+-- | Get the nonblocking flag.
+--   On Windows, this function always returns 'False'.
+--
+--   Since 2.7.0.0.
+getCloseOnExec :: CInt -> IO Bool
+#if defined(mingw32_HOST_OS)
+getCloseOnExec _ = return False
+#else
+getCloseOnExec fd = do
+    flags <- c_fcntl_read fd fGetFd 0
+    let ret = flags .&. fdCloexec
+    return (ret /= 0)
+#endif
+
+-- | Get the close_on_exec flag.
+--   On Windows, this function always returns 'False'.
+--
+--   Since 2.7.0.0.
+getNonBlock :: CInt -> IO Bool
+#if defined(mingw32_HOST_OS)
+getNonBlock _ = return False
+#else
+getNonBlock fd = do
+    flags <- c_fcntl_read fd fGetFl 0
+    let ret = flags .&. oNonBlock
+    return (ret /= 0)
+#endif
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -587,11 +652,12 @@ accept sock@(MkSocket s family stype protocol status) = withMVar status $ \curre
 # ifdef HAVE_ACCEPT4
      new_sock <- throwSocketErrorIfMinus1RetryMayBlock "Network.Socket.accept"
                         (threadWaitRead (fromIntegral s))
-                        (c_accept4 s sockaddr ptr_len (#const SOCK_NONBLOCK))
+                        (c_accept4 s sockaddr ptr_len (sockNonBlock .|. sockCloexec))
 # else
      new_sock <- throwSocketErrorWaitRead sock "Network.Socket.accept"
                         (c_accept s sockaddr ptr_len)
      setNonBlockIfNeeded new_sock
+     setCloseOnExecIfNeeded new_sock
 # endif /* HAVE_ACCEPT4 */
 #endif
      addr <- peekSockAddr sockaddr
