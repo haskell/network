@@ -11,6 +11,7 @@ import           Data.ByteString.Unsafe             (unsafeUseAsCStringLen)
 import           Foreign.Marshal.Array              (allocaArray)
 
 import           Network.Socket.ByteString.Internal (c_writev)
+import           Network.Socket.ByteString.IO       (waitWhen0)
 import           Network.Socket.ByteString.IOVec    (IOVec (IOVec))
 import           Network.Socket.Imports
 import           Network.Socket.Internal
@@ -51,5 +52,5 @@ sendAll
     -> IO ()
 sendAll s bs = do
     sent <- send s bs
-    let bs' = L.drop sent bs
-    unless (L.null bs') $ sendAll s bs'
+    waitWhen0 (fromIntegral sent) s
+    when (sent >= 0) $ sendAll s $ L.drop sent bs

@@ -6,9 +6,9 @@ module Network.Socket.ByteString.Lazy.Windows (
 
 import qualified Data.ByteString           as S
 import qualified Data.ByteString.Lazy      as L
-
 import qualified Network.Socket.ByteString as Socket
 import           Network.Socket.Imports
+import           Network.Socket.ByteString.IO       (waitWhen0)
 import           Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
@@ -28,5 +28,5 @@ sendAll
     -> IO ()
 sendAll s bs = do
     sent <- send s bs
-    let bs' = L.drop sent bs
-    unless (L.null bs') $ sendAll s bs'
+    waitWhen0 (fromIntegral sent) s
+    when (sent >= 0) $ sendAll s $ L.drop sent bs

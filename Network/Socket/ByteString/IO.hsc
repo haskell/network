@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 #include "HsNet.h"
 
@@ -38,10 +39,11 @@ module Network.Socket.ByteString.IO
     -- * Receive data from a socket
     , recv
     , recvFrom
+    , waitWhen0
     ) where
 
+import Control.Concurrent (threadWaitWrite)
 import Control.Exception as E (catch, throwIO)
-import Control.Monad (when)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (createAndTrim)
@@ -52,6 +54,7 @@ import System.IO.Error (isEOFError)
 
 import Network.Socket.Buffer
 import Network.Socket.ByteString.Internal
+import Network.Socket.Imports
 import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
@@ -80,6 +83,12 @@ send :: Socket     -- ^ Connected socket
 send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
     sendBuf s (castPtr str) len
 
+waitWhen0 :: Int -> Socket -> IO ()
+waitWhen0 0 s = do
+  fd <- fromIntegral <$> fdSocket s
+  threadWaitWrite fd
+waitWhen0 _ _ = return ()
+
 -- | Send data to the socket.  The socket must be connected to a
 -- remote socket.  Unlike 'send', this function continues to send data
 -- until either all data has been sent or an error occurs.  On error,
@@ -90,9 +99,11 @@ send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
 sendAll :: Socket     -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
+sendAll _ "" = return ()
 sendAll s bs = do
     sent <- send s bs
-    when (sent < B.length bs) $ sendAll s (B.drop sent bs)
+    waitWhen0 sent s
+    when (sent >= 0) $ sendAll s $ B.drop sent bs
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -121,9 +132,11 @@ sendAllTo :: SocketAddress sa =>
           -> ByteString  -- ^ Data to send
           -> sa    -- ^ Recipient address
           -> IO ()
+sendAllTo _ "" _  = return ()
 sendAllTo s xs sa = do
     sent <- sendTo s xs sa
-    when (sent < B.length xs) $ sendAllTo s (B.drop sent xs) sa
+    waitWhen0 sent s
+    when (sent >= 0) $ sendAllTo s (B.drop sent xs) sa
 
 -- | Send data to the socket.  The socket must be in a connected
 -- state.  The data is sent as if the parts have been concatenated.
@@ -137,9 +150,11 @@ sendMany :: Socket       -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
+sendMany _ [] = return ()
 sendMany s cs = do
     sent <- sendManyInner
-    when (sent < totalLength cs) $ sendMany s (remainingChunks sent cs)
+    waitWhen0 sent s
+    when (sent >= 0) $ sendMany s $ remainingChunks sent cs
   where
     sendManyInner =
       fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) -> do
@@ -164,9 +179,11 @@ sendManyTo :: Socket       -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 #if !defined(mingw32_HOST_OS)
+sendManyTo _ [] _    = return ()
 sendManyTo s cs addr = do
-    sent <- fmap fromIntegral sendManyToInner
-    when (sent < totalLength cs) $ sendManyTo s (remainingChunks sent cs) addr
+    sent <- fromIntegral <$> sendManyToInner
+    waitWhen0 sent s
+    when (sent >= 0) $ sendManyTo s (remainingChunks sent cs) addr
   where
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
@@ -238,10 +255,6 @@ remainingChunks i (x:xs)
     | otherwise      = let i' = i - len in i' `seq` remainingChunks i' xs
   where
     len = B.length x
-
--- | @totalLength cs@ is the sum of the lengths of the chunks in the list @cs@.
-totalLength :: [ByteString] -> Int
-totalLength = sum . map B.length
 
 -- | @withIOVec cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
