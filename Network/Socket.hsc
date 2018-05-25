@@ -163,6 +163,7 @@ module Network.Socket
     -- ** Port number
     , PortNumber(..)
     , defaultPort
+    , socketPortSafe
     , socketPort
     -- * UNIX-domain socket
     , isUnixDomainSocketAvailable
@@ -881,6 +882,8 @@ recvBuf sock@(MkSocket s _family _stype _protocol _status) ptr nbytes
 -- determined by calling $port$, is generally only useful when bind
 -- was given $aNY\_PORT$.
 
+-- | Getting the port of socket.
+--   `IOError` is thrown if a port is not available.
 socketPort :: Socket            -- Connected & Bound Socket
            -> IO PortNumber     -- Port Number of Socket
 socketPort sock@(MkSocket _ AF_INET _ _ _) = do
@@ -896,6 +899,20 @@ socketPort (MkSocket _ family _ _ _) =
       "Network.Socket.socketPort: address family '" ++ show family ++
       "' not supported."
 
+
+-- ---------------------------------------------------------------------------
+-- socketPortSafe
+-- | Getting the port of socket.
+socketPortSafe :: Socket                -- Connected & Bound Socket
+               -> IO (Maybe PortNumber) -- Port Number of Socket
+socketPortSafe s = do
+    sa <- getSocketName s
+    return $ case sa of
+      SockAddrInet port _      -> Just port
+#if defined(IPV6_SOCKET_SUPPORT)
+      SockAddrInet6 port _ _ _ -> Just port
+#endif
+      _                        -> Nothing
 
 -- ---------------------------------------------------------------------------
 -- getPeerName
