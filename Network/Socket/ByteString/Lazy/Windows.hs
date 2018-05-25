@@ -7,12 +7,14 @@ module Network.Socket.ByteString.Lazy.Windows
     ) where
 
 import Control.Applicative ((<$>))
-import Control.Monad (unless)
+import Control.Concurrent (threadWaitWrite)
+import Control.Monad (when)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.Int (Int64)
 
 import Network.Socket (Socket(..))
+import Network.Socket.Types (sockFd)
 import qualified Network.Socket.ByteString as Socket
 
 -- -----------------------------------------------------------------------------
@@ -32,5 +34,5 @@ sendAll :: Socket        -- ^ Connected socket
         -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
-  let bs' = L.drop sent bs
-  unless (L.null bs') $ sendAll sock bs'
+  when (sent == 0) $ threadWaitWrite $ fromIntegral $ sockFd sock
+  when (sent >= 0) $ sendAll sock $ L.drop sent bs
