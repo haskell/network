@@ -162,6 +162,7 @@ module Network.Socket
     -- ** Port number
     , PortNumber
     , defaultPort
+    , socketPortSafe
     , socketPort
 
     -- * UNIX-domain socket

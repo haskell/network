@@ -6,6 +6,7 @@ module Network.Socket.Name (
     getPeerName
   , getSocketName
   , socketPort
+  , socketPortSafe
   ) where
 
 import Foreign.Marshal.Utils (with)
@@ -48,6 +49,7 @@ foreign import CALLCONV unsafe "getsockname"
 -- was given $aNY\_PORT$.
 
 -- | Getting the port of socket.
+--   `IOError` is thrown if a port is not available.
 socketPort :: Socket            -- Connected & Bound Socket
            -> IO PortNumber     -- Port Number of Socket
 socketPort s = do
@@ -57,3 +59,14 @@ socketPort s = do
       SockAddrInet6 port _ _ _ -> return port
       _                        -> ioError $ userError "Network.Socket.socketPort: AF_UNIX not supported."
 
+-- ---------------------------------------------------------------------------
+-- socketPortSafe
+-- | Getting the port of socket.
+socketPortSafe :: Socket                -- Connected & Bound Socket
+               -> IO (Maybe PortNumber) -- Port Number of Socket
+socketPortSafe s = do
+    sa <- getSocketName s
+    return $ case sa of
+      SockAddrInet port _      -> Just port
+      SockAddrInet6 port _ _ _ -> Just port
+      _                        -> Nothing
