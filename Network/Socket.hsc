@@ -1345,7 +1345,7 @@ isAcceptable _ _ status = status == Connected || status == Listening
 -- -----------------------------------------------------------------------------
 -- Internet address manipulation routines:
 
-{-# DEPRECATED inet_addr "Use \"getNameInfo\" instead" #-}
+{-# DEPRECATED inet_addr "Use \"getAddrInfo\" instead" #-}
 inet_addr :: String -> IO HostAddress
 inet_addr ipstr = withSocketsDo $ do
    withCString ipstr $ \str -> do
