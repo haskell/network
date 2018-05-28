@@ -16,6 +16,7 @@ module Network.Socket.ByteString.Internal
     , c_writev
     , c_sendmsg
 #endif
+    , waitWhen0
     ) where
 
 import System.IO.Error (ioeSetErrorString, mkIOError)
@@ -29,7 +30,10 @@ import Network.Socket.ByteString.IOVec (IOVec)
 import Network.Socket.ByteString.MsgHdr (MsgHdr)
 #endif
 
+import Control.Concurrent (threadWaitWrite, rtsSupportsBoundThreads)
+import Control.Monad (when)
 import GHC.IO.Exception (IOErrorType(..))
+import Network.Socket.Types
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
@@ -43,3 +47,9 @@ foreign import ccall unsafe "writev"
 foreign import ccall unsafe "sendmsg"
   c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize
 #endif
+
+waitWhen0 :: Int -> Socket -> IO ()
+waitWhen0 0 s = when rtsSupportsBoundThreads $ do
+  let fd = fromIntegral $ sockFd s
+  threadWaitWrite fd
+waitWhen0 _ _ = return ()

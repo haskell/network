@@ -42,7 +42,6 @@ module Network.Socket.ByteString
     , recvFrom
     ) where
 
-import Control.Concurrent (threadWaitWrite)
 import Control.Exception as E (catch, throwIO)
 import Control.Monad (when)
 import Data.ByteString (ByteString)
@@ -97,7 +96,7 @@ sendAll :: Socket      -- ^ Connected socket
 sendAll _    "" = return ()
 sendAll sock bs = do
     sent <- send sock bs
-    when (sent == 0) $ threadWaitWrite $ fromIntegral $ sockFd sock
+    waitWhen0 sent sock
     when (sent >= 0) $ sendAll sock $ B.drop sent bs
 
 -- | Send data to the socket.  The recipient can be specified
@@ -128,7 +127,7 @@ sendAllTo :: Socket      -- ^ Socket
 sendAllTo _    "" _    = return ()
 sendAllTo sock xs addr = do
     sent <- sendTo sock xs addr
-    when (sent == 0) $ threadWaitWrite $ fromIntegral $ sockFd sock
+    waitWhen0 sent sock
     when (sent >= 0) $ sendAllTo sock (B.drop sent xs) addr
 
 -- ----------------------------------------------------------------------------
@@ -168,7 +167,7 @@ sendMany :: Socket        -- ^ Connected socket
 sendMany _                          [] = return ()
 sendMany sock@(MkSocket fd _ _ _ _) cs = do
     sent <- sendManyInner
-    when (sent == 0) $ threadWaitWrite $ fromIntegral fd
+    waitWhen0 sent sock
     when (sent >= 0) $ sendMany sock (remainingChunks sent cs)
   where
     sendManyInner =
@@ -196,7 +195,7 @@ sendManyTo :: Socket        -- ^ Socket
 sendManyTo _                          [] _    = return ()
 sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
     sent <- liftM fromIntegral sendManyToInner
-    when (sent == 0) $ threadWaitWrite $ fromIntegral fd
+    waitWhen0 sent sock
     when (sent >= 0) $ sendManyTo sock (remainingChunks sent cs) addr
   where
     sendManyToInner =
