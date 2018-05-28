@@ -91,8 +91,7 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
-
--- In order to process this file, you need to have CALLCONV defined.
+##include "HsNetDef.h"
 
 module Network.Socket
     (
