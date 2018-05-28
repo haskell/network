@@ -42,7 +42,7 @@ module Network.Socket.ByteString.IO
     , waitWhen0
     ) where
 
-import Control.Concurrent (threadWaitWrite)
+import Control.Concurrent (threadWaitWrite, rtsSupportsBoundThreads)
 import Control.Exception as E (catch, throwIO)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -84,7 +84,7 @@ send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
     sendBuf s (castPtr str) len
 
 waitWhen0 :: Int -> Socket -> IO ()
-waitWhen0 0 s = do
+waitWhen0 0 s = when rtsSupportsBoundThreads $ do
   fd <- fromIntegral <$> fdSocket s
   threadWaitWrite fd
 waitWhen0 _ _ = return ()
