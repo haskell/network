@@ -14,7 +14,7 @@ import Data.Int (Int64)
 
 import Network.Socket (Socket(..))
 import qualified Network.Socket.ByteString as Socket
-import Network.Socket.ByteString.Internal (c_writev, waitWhen0)
+import Network.Socket.ByteString.Internal (waitWhen0)
 
 -- -----------------------------------------------------------------------------
 -- Sending
