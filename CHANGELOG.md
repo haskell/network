@@ -1,4 +1,16 @@
+## Version 2.7.0.1
+
+ * A new API: socketPortSafe.
+   [#319](https://github.com/haskell/network/pull/319)
+ * Fixing a drain bug of sendAll.
+   [#320](https://github.com/haskell/network/pull/320)
+ * Porting the new CALLCONV convention from master.
+   [#313](https://github.com/haskell/network/pull/313)
+ * Withdrawing the deprecations of packFamily and unpackFamily.
+   [#324](https://github.com/haskell/network/pull/324)
+
 ## Version 2.7.0.0
+
  * Obsoleting the Network module.
  * Obsoleting the Network.BSD module.
  * Obsoleting APIs: MkSocket, htonl, ntohl,
@@ -7,9 +19,9 @@
               inet_addr, inet_ntoa,
               isConnected, isBound, isListening, isReadable, isWritable,
               aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN,
-	      sOL_SOCKET, sCM_RIGHTS,
+              sOL_SOCKET, sCM_RIGHTS,
               packFamily, unpackFamily, packSocketType
- * Do not closeFd within sendFd
+ * Do not closeFd within sendFd.
    [#271](https://github.com/haskell/network/pull/271)
  * Exporting ifNameToIndex and ifIndexToName from Network.Socket.
  * New APIs: setCloseOnExecIfNeeded, getCloseOnExec and getNonBlock
@@ -17,6 +29,7 @@
  * socketPair, sendFd and recvFd are exported even on Windows.
 
 ## Version 2.6.3.5
+
  * Reverting "Do not closeFd within sendFd"
    [#271](https://github.com/haskell/network/pull/271)
 
