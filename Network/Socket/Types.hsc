@@ -9,7 +9,7 @@ module Network.Socket.Types
     (
     -- * Socket
       Socket(..)
-    , sockFd
+    , fdSocket
     , sockFamily
     , sockType
     , sockProtocol
@@ -86,8 +86,9 @@ data Socket
 
 {-# DEPRECATED MkSocket "'MkSocket' will not be available in version 3.0.0.0 or later. Use fdSocket instead" #-}
 
-sockFd :: Socket -> CInt
-sockFd       (MkSocket n _ _ _ _) = n
+-- | Obtaining the file descriptor from a socket.
+fdSocket :: Socket -> CInt
+fdSocket (MkSocket fd _ _ _ _) = fd
 
 sockFamily :: Socket -> Family
 sockFamily   (MkSocket _ f _ _ _) = f

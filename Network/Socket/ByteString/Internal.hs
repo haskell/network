@@ -50,6 +50,6 @@ foreign import ccall unsafe "sendmsg"
 
 waitWhen0 :: Int -> Socket -> IO ()
 waitWhen0 0 s = when rtsSupportsBoundThreads $ do
-  let fd = fromIntegral $ sockFd s
+  let fd = fromIntegral $ fdSocket s
   threadWaitWrite fd
 waitWhen0 _ _ = return ()
