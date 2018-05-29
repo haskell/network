@@ -101,7 +101,7 @@ else
 fi
 
 dnl --------------------------------------------------
-dnl * test for GETPEEREID(3) 
+dnl * test for GETPEEREID(3)
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for getpeereid in unistd.h)
 AC_CHECK_FUNC( getpeereid, AC_DEFINE([HAVE_GETPEEREID], [1], [Define to 1 if you have getpeereid.] ))
@@ -173,17 +173,16 @@ case "$host" in
 *-mingw* | *-msys*)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
 	EXTRA_LIBS=ws2_32
-	CALLCONV=stdcall ;;
+	;;
 *-solaris2*)
 	EXTRA_SRCS="cbits/ancilData.c"
 	EXTRA_LIBS="nsl, socket"
-	CALLCONV=ccall ;;
+	;;
 *)
 	EXTRA_SRCS="cbits/ancilData.c"
 	EXTRA_LIBS=
-	CALLCONV=ccall ;;
+	;;
 esac
-AC_SUBST([CALLCONV])
 AC_SUBST([EXTRA_CPPFLAGS])
 AC_SUBST([EXTRA_LIBS])
 AC_SUBST([EXTRA_SRCS])

@@ -3,6 +3,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.Socket.Types
     (
