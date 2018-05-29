@@ -1,4 +1,15 @@
-## Version 2.7
+## Version 2.7.0.1
+
+ * A new API: socketPortSafe.
+   [#319](https://github.com/haskell/network/pull/319)
+ * Fixing a drain bug of sendAll.
+   [#320](https://github.com/haskell/network/pull/320)
+ * Porting the new CALLCONV convention from master.
+   [#313](https://github.com/haskell/network/pull/313)
+ * Withdrawing the deprecations of packFamily and unpackFamily.
+   [#324](https://github.com/haskell/network/pull/324)
+
+## Version 2.7.0.0
 
  * Breaking Change: Removed deprecated aliases from `Network.Socket` [#190](https://github.com/haskell/network/pull/190):
    * `bindSocket` -> `bind`
