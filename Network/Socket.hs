@@ -137,6 +137,8 @@ module Network.Socket
     -- ** Family
     , Family(..)
     , isSupportedFamily
+    , packFamily
+    , unpackFamily
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol

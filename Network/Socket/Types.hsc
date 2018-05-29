@@ -315,6 +315,7 @@ data Family
     | AF_CAN              -- ^ Controller Area Network
       deriving (Eq, Ord, Read, Show)
 
+-- | Converting 'Family' to 'CInt'.
 packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
     Just fam -> fam
@@ -531,6 +532,7 @@ packFamily' f = case Just f of
 
 --------- ----------
 
+-- | Converting 'CInt' to 'Family'.
 unpackFamily :: CInt -> Family
 unpackFamily f = case f of
         (#const AF_UNSPEC) -> AF_UNSPEC
