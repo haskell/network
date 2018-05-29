@@ -7,8 +7,7 @@ module Network.Socket.ByteString.Lazy.Posix
     , sendAll
     ) where
 
-import Control.Monad (liftM)
-import Control.Monad (unless)
+import Control.Monad (liftM, when)
 import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Lazy.Internal (ByteString(..))
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
@@ -19,7 +18,7 @@ import Foreign.Storable (Storable(..))
 
 import Network.Socket (Socket(..))
 import Network.Socket.ByteString.IOVec (IOVec(IOVec))
-import Network.Socket.ByteString.Internal (c_writev)
+import Network.Socket.ByteString.Internal (c_writev, waitWhen0)
 import Network.Socket.Internal
 
 -- -----------------------------------------------------------------------------
@@ -53,5 +52,5 @@ sendAll :: Socket      -- ^ Connected socket
         -> IO ()
 sendAll sock bs = do
   sent <- send sock bs
-  let bs' = L.drop sent bs
-  unless (L.null bs') $ sendAll sock bs'
+  waitWhen0 (fromIntegral sent) sock
+  when (sent >= 0) $ sendAll sock $ L.drop sent bs

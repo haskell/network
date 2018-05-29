@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 #include "HsNet.h"
 
@@ -92,9 +93,11 @@ send sock xs = unsafeUseAsCStringLen xs $ \(str, len) ->
 sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
+sendAll _    "" = return ()
 sendAll sock bs = do
     sent <- send sock bs
-    when (sent < B.length bs) $ sendAll sock (B.drop sent bs)
+    waitWhen0 sent sock
+    when (sent >= 0) $ sendAll sock $ B.drop sent bs
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -121,9 +124,11 @@ sendAllTo :: Socket      -- ^ Socket
           -> ByteString  -- ^ Data to send
           -> SockAddr    -- ^ Recipient address
           -> IO ()
+sendAllTo _    "" _    = return ()
 sendAllTo sock xs addr = do
     sent <- sendTo sock xs addr
-    when (sent < B.length xs) $ sendAllTo sock (B.drop sent xs) addr
+    waitWhen0 sent sock
+    when (sent >= 0) $ sendAllTo sock (B.drop sent xs) addr
 
 -- ----------------------------------------------------------------------------
 -- ** Vectored I/O
@@ -159,9 +164,11 @@ sendMany :: Socket        -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 #if !defined(mingw32_HOST_OS)
+sendMany _                          [] = return ()
 sendMany sock@(MkSocket fd _ _ _ _) cs = do
     sent <- sendManyInner
-    when (sent < totalLength cs) $ sendMany sock (remainingChunks sent cs)
+    waitWhen0 sent sock
+    when (sent >= 0) $ sendMany sock (remainingChunks sent cs)
   where
     sendManyInner =
       liftM fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) ->
@@ -185,9 +192,11 @@ sendManyTo :: Socket        -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 #if !defined(mingw32_HOST_OS)
+sendManyTo _                          [] _    = return ()
 sendManyTo sock@(MkSocket fd _ _ _ _) cs addr = do
     sent <- liftM fromIntegral sendManyToInner
-    when (sent < totalLength cs) $ sendManyTo sock (remainingChunks sent cs) addr
+    waitWhen0 sent sock
+    when (sent >= 0) $ sendManyTo sock (remainingChunks sent cs) addr
   where
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
@@ -257,10 +266,6 @@ remainingChunks i (x:xs)
     | otherwise      = let i' = i - len in i' `seq` remainingChunks i' xs
   where
     len = B.length x
-
--- | @totalLength cs@ is the sum of the lengths of the chunks in the list @cs@.
-totalLength :: [ByteString] -> Int
-totalLength = sum . map B.length
 
 -- | @withIOVec cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
