@@ -17,6 +17,7 @@
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
+##include "HsNetDef.h"
 
 module Network.BSD  {-# DEPRECATED "This platform dependent module is no longer supported." #-}
     (

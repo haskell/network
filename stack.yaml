@@ -1,8 +1,6 @@
 resolver: lts-9.18
 packages:
 - '.'
-ghc-options:
-  "*": -DCALLCONV=ccall
 nix:
   packages: [ ncurses ]
 
