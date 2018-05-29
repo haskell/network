@@ -11,29 +11,22 @@
 
 ## Version 2.7.0.0
 
- * Breaking Change: Removed deprecated aliases from `Network.Socket` [#190](https://github.com/haskell/network/pull/190):
-   * `bindSocket` -> `bind`
-   * `sClose` -> `close`
-   * `sIsConnected` -> `isConnected`
-   * `sIsBound` -> `isBound`
-   * `sIsListening` -> `isListening`
-   * `sIsReadable` -> `isReadable`
-   * `sIsWritable` -> `isWritable`
- * Breaking Change: SockAddrCan is removed.
-   [#266](https://github.com/haskell/network/pull/263)
- * Network and Network.BSD are deprecated.
-   [#265](https://github.com/haskell/network/pull/265)
-   [#275](https://github.com/haskell/network/pull/275)
- * fdSocket, inet_addr and inet_ntoa are deprecated.
- * sendTo, send, recvFrom, recv and recvLen are deprecated.
-   [#266](https://github.com/haskell/network/pull/266)
- * sendFd now does not close the file descriptor.
+ * Obsoleting the Network module.
+ * Obsoleting the Network.BSD module.
+ * Obsoleting APIs: MkSocket, htonl, ntohl,
+              getPeerCred, getPeerEid,
+              send, sendTo, recv, recvFrom, recvLen,
+              inet_addr, inet_ntoa,
+              isConnected, isBound, isListening, isReadable, isWritable,
+              aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN,
+              sOL_SOCKET, sCM_RIGHTS,
+              packFamily, unpackFamily, packSocketType
+ * Do not closeFd within sendFd.
    [#271](https://github.com/haskell/network/pull/271)
- * Socket is GCed if unreachable.
-   [#269](https://github.com/haskell/network/pull/269)
- * The accessors of Socket are exported.
-   MkSocket constructor is deprecated.
- * Updating documentations and fixes some bugs.
+ * Exporting ifNameToIndex and ifIndexToName from Network.Socket.
+ * New APIs: setCloseOnExecIfNeeded, getCloseOnExec and getNonBlock
+ * New APIs: isUnixDomainSocketAvailable and getPeerCredential
+ * socketPair, sendFd and recvFd are exported even on Windows.
 
 ## Version 2.6.3.3
 
