@@ -307,8 +307,6 @@ data Family
     | AF_CAN              -- Controller Area Network
       deriving (Eq, Ord, Read, Show)
 
-{-# DEPRECATED packFamily "packFamily will not be available in version 3.0.0.0 or later." #-}
-
 packFamily :: Family -> CInt
 packFamily f = case packFamily' f of
     Just fam -> fam
@@ -524,8 +522,6 @@ packFamily' f = case Just f of
     _ -> Nothing
 
 --------- ----------
-
-{-# DEPRECATED unpackFamily "unpackFamily will not be available in version 3.0.0.0 or later." #-}
 
 unpackFamily :: CInt -> Family
 unpackFamily f = case f of
