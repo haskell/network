@@ -173,12 +173,15 @@ case "$host" in
 *-mingw* | *-msys*)
 	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
 	EXTRA_LIBS=ws2_32
+	;;
 *-solaris2*)
 	EXTRA_SRCS="cbits/ancilData.c"
 	EXTRA_LIBS="nsl, socket"
+	;;
 *)
 	EXTRA_SRCS="cbits/ancilData.c"
 	EXTRA_LIBS=
+	;;
 esac
 AC_SUBST([EXTRA_CPPFLAGS])
 AC_SUBST([EXTRA_LIBS])
