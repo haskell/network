@@ -28,6 +28,19 @@
  * New APIs: isUnixDomainSocketAvailable and getPeerCredential
  * socketPair, sendFd and recvFd are exported even on Windows.
 
+## Version 2.6.3.5
+
+ * Reverting "Do not closeFd within sendFd"
+   [#271](https://github.com/haskell/network/pull/271)
+
+## Version 2.6.3.4
+
+ * Don't touch IPv6Only when running on OpenBSD
+   [#227](https://github.com/haskell/network/pull/227)
+ * Do not closeFd within sendFd
+   [#271](https://github.com/haskell/network/pull/271)
+ * Updating examples and docs.
+
 ## Version 2.6.3.3
 
  * Adds a function to show the defaultHints without reading their undefined fields
