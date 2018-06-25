@@ -1,3 +1,7 @@
+## Version 2.6.3.6
+ * Removed unnecessary withMVar, which caused locking on close.
+   [#330](https://github.com/haskell/network/pull/330)
+
 ## Version 2.6.3.5
  * Reverting "Do not closeFd within sendFd"
    [#271](https://github.com/haskell/network/pull/271)
