@@ -14,6 +14,7 @@ module Network.Socket.Types (
     , invalidateSocket
     , close
     , close'
+    , c_close
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
