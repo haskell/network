@@ -60,10 +60,12 @@ module Network.Socket.Types (
     , ntohl
     ) where
 
+import qualified Control.Exception as E
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
+import System.Posix.Types (Fd)
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -116,7 +118,13 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 --   may lead to undefined behaviour.
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
-    closeFdWith (void . c_close . fromIntegral) (fromIntegral oldfd)
+    -- closeFdWith avoids the deadlock of IO manager.
+    closeFdWith closeFd (toFd oldfd) `E.catch` \(E.SomeException _) -> return ()
+  where
+    toFd :: CInt -> Fd
+    toFd = fromIntegral
+    closeFd :: Fd -> IO ()
+    closeFd = void . c_close . fromIntegral
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
