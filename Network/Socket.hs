@@ -116,6 +116,7 @@ module Network.Socket
     , accept
     -- ** Closing
     , close
+    , close'
     , shutdown
     , ShutdownCmd(..)
 

@@ -13,6 +13,7 @@ module Network.Socket.Types (
     , mkSocket
     , invalidateSocket
     , close
+    , close'
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
@@ -61,8 +62,10 @@ module Network.Socket.Types (
     ) where
 
 import qualified Control.Exception as E
+import Control.Monad (when)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
+import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
 import System.Posix.Types (Fd)
@@ -125,6 +128,20 @@ close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     toFd = fromIntegral
     closeFd :: Fd -> IO ()
     closeFd = void . c_close . fromIntegral
+
+-- | Close the socket. Sending data to or receiving data from closed socket
+--   may lead to undefined behaviour.
+close' :: Socket -> IO ()
+close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
+    -- closeFdWith avoids the deadlock of IO manager.
+    closeFdWith closeFd (toFd oldfd)
+  where
+    toFd :: CInt -> Fd
+    toFd = fromIntegral
+    closeFd :: Fd -> IO ()
+    closeFd fd = do
+        ret <- c_close $ fromIntegral fd
+        when (ret == -1) $ throwErrno "System.Socket.close'"
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
