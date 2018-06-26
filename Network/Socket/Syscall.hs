@@ -6,15 +6,14 @@
 module Network.Socket.Syscall where
 
 import Foreign.Marshal.Utils (with)
+import qualified Control.Exception as E
 
 #if defined(mingw32_HOST_OS)
-import qualified Control.Exception as E
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
-import GHC.IO (onException)
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -73,20 +72,29 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
 socket family stype protocol = do
-    c_stype <- packSocketTypeOrThrow "socket" stype
-#ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    let c_stype' = c_stype .|. sockNonBlock
-#else
-    let c_stype' = c_stype
-#endif
+    c_stype <- modifyFlag <$> packSocketTypeOrThrow "socket" stype
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-              c_socket (packFamily family) c_stype' protocol
-#ifndef HAVE_ADVANCED_SOCKET_FLAGS
-    setNonBlockIfNeeded fd
-#endif
+              c_socket (packFamily family) c_stype protocol
+    setNonBlock fd `E.onException` c_close fd
     s <- mkSocket fd
+    unsetIPv6Only s `E.onException` close s
+    return s
+  where
+
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
+    modifyFlag c_stype = c_stype .|. sockNonBlock
+#else
+    modifyFlag c_stype = c_stype
+#endif
+
+#ifdef HAVE_ADVANCED_SOCKET_FLAGS
+    setNonBlock _ = return ()
+#else
+    setNonBlock fd = setNonBlockIfNeeded fd
+#endif
+
 #if HAVE_DECL_IPV6_V6ONLY
-    when (family == AF_INET6 && stype `elem` [Stream, Datagram]) $
+    unsetIPv6Only s = when (family == AF_INET6 && stype `elem` [Stream, Datagram]) $
 # if defined(mingw32_HOST_OS)
       -- The IPv6Only option is only supported on Windows Vista and later,
       -- so trying to change it might throw an error.
@@ -97,10 +105,11 @@ socket family stype protocol = do
 # else
       -- The default value of the IPv6Only option is platform specific,
       -- so we explicitly set it to 0 to provide a common default.
-      setSocketOption s IPv6Only 0 `onException` close s
+      setSocketOption s IPv6Only 0
 # endif
+#else
+    unsetIPv6Only _ = return ()
 #endif
-    return s
 
 -----------------------------------------------------------------------------
 -- Binding a socket
