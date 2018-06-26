@@ -6,15 +6,14 @@
 module Network.Socket.Syscall where
 
 import Foreign.Marshal.Utils (with)
+import qualified Control.Exception as E
 
 #if defined(mingw32_HOST_OS)
-import qualified Control.Exception as E
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
-import GHC.IO (onException)
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -76,9 +75,9 @@ socket family stype protocol = do
     c_stype <- modifyFlag <$> packSocketTypeOrThrow "socket" stype
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
               c_socket (packFamily family) c_stype protocol
-    setNonBlock fd `onException` c_close fd
+    setNonBlock fd `E.onException` c_close fd
     s <- mkSocket fd
-    unsetIPv6Only s `onException` close s
+    unsetIPv6Only s `E.onException` close s
     return s
   where
 
