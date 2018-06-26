@@ -82,7 +82,7 @@ socket family stype protocol = do
     fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
               c_socket (packFamily family) c_stype' protocol
 #ifndef HAVE_ADVANCED_SOCKET_FLAGS
-    setNonBlockIfNeeded fd
+    setNonBlockIfNeeded fd `onException` c_close fd
 #endif
     s <- mkSocket fd
 #if HAVE_DECL_IPV6_V6ONLY

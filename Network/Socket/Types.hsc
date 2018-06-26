@@ -13,6 +13,7 @@ module Network.Socket.Types (
     , mkSocket
     , invalidateSocket
     , close
+    , c_close
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
