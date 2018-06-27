@@ -87,6 +87,20 @@ instance Eq Socket where
     Socket ref1 _ == Socket ref2 _ = ref1 == ref2
 
 -- | Getting a file descriptor from a socket.
+--
+--   If a 'Socket' is shared with multiple threads and
+--   one uses 'fdSocket', unexpected issues may happen.
+--   Consider the following scenario:
+--
+--   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
+--
+--   2) Thread B close the 'Socket'.
+--
+--   3) Thread C opens a new 'Socket'. Unfortunately it gets the same 'Fd'
+--      number which thread A is holding.
+--
+--   In this case, it is safer for Thread A to clone 'Fd' by
+--   'System.Posix.IO.dup'.
 fdSocket :: Socket -> IO CInt
 fdSocket (Socket ref _) = readIORef ref
 
@@ -121,18 +135,6 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 --
 --   Sending data to or receiving data from closed socket
 --   may lead to undefined behaviour.
---
---   This function is not thread-safe. Consider the following senario.
---
---   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
---
---   2) Thread B close the 'Socket'.
---
---   3) Thread C opens a new 'Socket'. Unfortunately it gets the same 'Fd'
---      number which thread A is holding.
---
---   In this senario, thread A continues its work on the inappropriate 'Fd'.
-
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
@@ -150,8 +152,6 @@ close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
 --
 --   Sending data to or receiving data from closed socket
 --   may lead to undefined behaviour.
---
---   This function is not thread-safe.
 close' :: Socket -> IO ()
 close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
