@@ -117,7 +117,7 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 
 -----------------------------------------------------------------------------
 
--- | Close the socket. This does not throw exceptions even if
+-- | Close the socket. This function does not throw exceptions even if
 --   the underlining system call returns errors.
 --
 --   Sending data to or receiving data from closed socket
@@ -144,7 +144,7 @@ close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     closeFd :: Fd -> IO ()
     closeFd = void . c_close . fromIntegral
 
--- | Close the socket. This throws exceptions if
+-- | Close the socket. This function throws exceptions if
 --   the underlining system call returns errors.
 --
 --   Sending data to or receiving data from closed socket
