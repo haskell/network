@@ -137,12 +137,14 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
-    closeFdWith closeFd (toFd oldfd) `E.catch` \(E.SomeException _) -> return ()
+    closeFdWith closeFd (toFd oldfd) `E.catch` ignore
   where
     toFd :: CInt -> Fd
     toFd = fromIntegral
     closeFd :: Fd -> IO ()
     closeFd = void . c_close . fromIntegral
+    ignore :: E.SomeException -> IO ()
+    ignore _ = return ()
 
 -- | Close the socket. This function throws exceptions if
 --   the underlining system call returns errors.
