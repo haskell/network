@@ -122,6 +122,18 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 --
 --   Sending data to or receiving data from closed socket
 --   may lead to undefined behaviour.
+--
+--   This function is not thread-safe. Consider the following senario.
+--
+--   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
+--
+--   2) Thread B close the 'Socket'.
+--
+--   3) Thread C opens a new 'Socket'. Unfortunately it gets the same 'Fd'
+--      number which thread A is holding.
+--
+--   In this senario, thread A continues its work on the inappropriate 'Fd'.
+
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
@@ -137,6 +149,8 @@ close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
 --
 --   Sending data to or receiving data from closed socket
 --   may lead to undefined behaviour.
+--
+--   This function is not thread-safe.
 close' :: Socket -> IO ()
 close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
