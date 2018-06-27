@@ -61,7 +61,6 @@ module Network.Socket.Types (
     , ntohl
     ) where
 
-import qualified Control.Exception as E
 import Control.Monad (when)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
@@ -137,14 +136,14 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
-    closeFdWith closeFd (toFd oldfd) `E.catch` ignore
+    closeFdWith closeFd (toFd oldfd)
   where
     toFd :: CInt -> Fd
     toFd = fromIntegral
+    -- closeFd ignores the return value of c_close and
+    -- does not throw exceptions
     closeFd :: Fd -> IO ()
     closeFd = void . c_close . fromIntegral
-    ignore :: E.SomeException -> IO ()
-    ignore _ = return ()
 
 -- | Close the socket. This function throws exceptions if
 --   the underlining system call returns errors.
