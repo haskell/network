@@ -163,7 +163,7 @@ close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     closeFd :: Fd -> IO ()
     closeFd fd = do
         ret <- c_close $ fromIntegral fd
-        when (ret == -1) $ throwErrno "System.Socket.close'"
+        when (ret == -1) $ throwErrno "Network.Socket.close'"
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
