@@ -13,6 +13,7 @@ module Network.Socket.Types (
     , mkSocket
     , invalidateSocket
     , close
+    , close'
     -- * Types of socket
     , SocketType(..)
     , isSupportedSocketType
@@ -60,10 +61,13 @@ module Network.Socket.Types (
     , ntohl
     ) where
 
+import Control.Monad (when)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Data.Ratio
+import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
+import System.Posix.Types (Fd)
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -83,6 +87,20 @@ instance Eq Socket where
     Socket ref1 _ == Socket ref2 _ = ref1 == ref2
 
 -- | Getting a file descriptor from a socket.
+--
+--   If a 'Socket' is shared with multiple threads and
+--   one uses 'fdSocket', unexpected issues may happen.
+--   Consider the following scenario:
+--
+--   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
+--
+--   2) Thread B close the 'Socket'.
+--
+--   3) Thread C opens a new 'Socket'. Unfortunately it gets the same 'Fd'
+--      number which thread A is holding.
+--
+--   In this case, it is safer for Thread A to clone 'Fd' by
+--   'System.Posix.IO.dup'.
 fdSocket :: Socket -> IO CInt
 fdSocket (Socket ref _) = readIORef ref
 
@@ -112,11 +130,43 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 
 -----------------------------------------------------------------------------
 
--- | Close the socket. Sending data to or receiving data from closed socket
+-- | Close the socket. This function does not throw exceptions even if
+--   the underlying system call returns errors.
+--
+--   Sending data to or receiving data from closed socket
 --   may lead to undefined behaviour.
+--
+--   If multiple threads use the same socket and one uses 'fdSocket' and
+--   the other use 'close', unexpected behavior may happen.
+--   For more information, please refer to the documentation of 'fdSocket'.
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
-    closeFdWith (void . c_close . fromIntegral) (fromIntegral oldfd)
+    -- closeFdWith avoids the deadlock of IO manager.
+    closeFdWith closeFd (toFd oldfd)
+  where
+    toFd :: CInt -> Fd
+    toFd = fromIntegral
+    -- closeFd ignores the return value of c_close and
+    -- does not throw exceptions
+    closeFd :: Fd -> IO ()
+    closeFd = void . c_close . fromIntegral
+
+-- | Close the socket. This function throws exceptions if
+--   the underlying system call returns errors.
+--
+--   Sending data to or receiving data from closed socket
+--   may lead to undefined behaviour.
+close' :: Socket -> IO ()
+close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
+    -- closeFdWith avoids the deadlock of IO manager.
+    closeFdWith closeFd (toFd oldfd)
+  where
+    toFd :: CInt -> Fd
+    toFd = fromIntegral
+    closeFd :: Fd -> IO ()
+    closeFd fd = do
+        ret <- c_close $ fromIntegral fd
+        when (ret == -1) $ throwErrno "Network.Socket.close'"
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
