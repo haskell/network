@@ -7,10 +7,8 @@ dnl See also HsNet.h
 ac_includes_default="#define _GNU_SOURCE 1  /* for struct ucred on Linux */
 $ac_includes_default
 
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 # include <winsock2.h>
-#endif
-#ifdef HAVE_WS2TCPIP_H
 # include <ws2tcpip.h>
 # define IPV6_V6ONLY 27
 #endif
@@ -72,7 +70,6 @@ AC_PROG_CC()
 
 AC_C_CONST
 
-AC_CHECK_HEADERS([winsock2.h ws2tcpip.h])
 AC_CHECK_HEADERS([limits.h stdlib.h unistd.h sys/types.h fcntl.h])
 AC_CHECK_HEADERS([sys/uio.h sys/socket.h netinet/in.h netinet/tcp.h])
 AC_CHECK_HEADERS([sys/un.h arpa/inet.h netdb.h])
@@ -90,26 +87,5 @@ AC_CHECK_DECLS([SO_PEERCRED])
 
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len])
-
-AC_CHECK_LIB(ws2_32, _head_libws2_32_a)
-
-case "$host" in
-*-mingw* | *-msys*)
-	EXTRA_SRCS="cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c"
-	EXTRA_LIBS=ws2_32 ;;
-*-solaris2*)
-	EXTRA_SRCS="cbits/ancilData.c"
-	EXTRA_LIBS="nsl, socket" ;;
-*)
-	EXTRA_SRCS="cbits/ancilData.c"
-	EXTRA_LIBS= ;;
-esac
-
-AC_SUBST([CALLCONV])
-AC_SUBST([EXTRA_CPPFLAGS])
-AC_SUBST([EXTRA_LIBS])
-AC_SUBST([EXTRA_SRCS])
-
-AC_CONFIG_FILES([network.buildinfo])
 
 AC_OUTPUT

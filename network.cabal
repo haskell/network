@@ -63,28 +63,35 @@ library
     Network.Socket.Types
     Network.Socket.Unix
 
+  build-depends:
+    base >= 4.6 && < 5,
+    bytestring < 0.11
+
+  include-dirs: include
+  includes: HsNet.h HsNetDef.h
+  install-includes: HsNet.h HsNetDef.h HsNetworkConfig.h
+  c-sources: cbits/HsNet.c
+  ghc-options: -Wall -fwarn-tabs
+
+
+  -- Add some platform specific stuff
   if !os(windows)
     other-modules:
       Network.Socket.ByteString.IOVec
       Network.Socket.ByteString.Lazy.Posix
       Network.Socket.ByteString.MsgHdr
+    build-depends:
+      unix >= 2
+    c-sources: cbits/ancilData.c
+
+  if os(solaris)
+    extra-libraries: nsl, socket
+
   if os(windows)
     other-modules:
       Network.Socket.ByteString.Lazy.Windows
-
-  build-depends:
-    base >= 4.6 && < 5,
-    bytestring < 0.11
-
-  if !os(windows)
-    build-depends:
-      unix >= 2
-
-  include-dirs: include
-  includes: HsNet.h HsNetDef.h
-  install-includes: HsNet.h HsNetDef.h
-  c-sources: cbits/HsNet.c
-  ghc-options: -Wall -fwarn-tabs
+    c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
+    extra-libraries: ws2_32
 
 test-suite spec
   default-language: Haskell2010
