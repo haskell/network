@@ -69,7 +69,7 @@ library
 
   include-dirs: include
   includes: HsNet.h HsNetDef.h
-  install-includes: HsNet.h HsNetDef.h HsNetworkConfig.h
+  install-includes: HsNet.h HsNetDef.h include/HsNetworkConfig.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
 
