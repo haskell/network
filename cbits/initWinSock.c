@@ -1,7 +1,7 @@
 #include "HsNet.h"
 #include "HsFFI.h"
 
-#if defined(HAVE_WINSOCK2_H)
+#if defined(_WIN32)
 
 static int winsock_inited = 0;
 
@@ -16,14 +16,14 @@ int
 initWinSock ()
 {
   WORD wVersionRequested;
-  WSADATA wsaData;  
+  WSADATA wsaData;
   int err;
 
   if (!winsock_inited) {
     wVersionRequested = MAKEWORD( 2, 2 );
 
     err = WSAStartup ( wVersionRequested, &wsaData );
-    
+
     if ( err != 0 ) {
        return err;
     }
