@@ -88,6 +88,4 @@ AC_CHECK_DECLS([SO_PEERCRED])
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len])
 
-AC_CONFIG_FILES([HsNetworkConfig.h])
-
 AC_OUTPUT
