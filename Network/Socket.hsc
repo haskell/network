@@ -88,6 +88,12 @@
 -- >         msg <- recv sock 1024
 -- >         putStr "Received: "
 -- >         C.putStrLn msg
+--
+-- The proper programming model is that one 'Socket' is handled by
+-- a single thread. If multiple threads use one 'Socket' concurrently,
+-- unexpected things would happen. There is one exception for multiple
+-- threads vs a single 'Socket': one thread reads data from a 'Socket'
+-- only and the other thread writes data to the 'Socket' only.
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
@@ -114,6 +120,7 @@ module Network.Socket
     , accept
     -- ** Closing
     , close
+    , close'
     , shutdown
     , ShutdownCmd(..)
     -- * Socket options
@@ -1296,17 +1303,40 @@ shutdown (MkSocket s _ _ _ _) stype = do
 
 -- -----------------------------------------------------------------------------
 
--- | Close the socket. Sending data to or receiving data from closed socket
--- may lead to undefined behaviour.
+-- | Close the socket. This function does not throw exceptions even if
+--   the underlying system call returns errors.
+--
+--   Sending data to or receiving data from closed socket
+--   may lead to undefined behaviour.
+--
+--   If multiple threads use the same socket and one uses 'fdSocket' and
+--   the other use 'close', unexpected behavior may happen.
+--   For more information, please refer to the documentation of 'fdSocket'.
 close :: Socket -> IO ()
-close (MkSocket s _ _ _ socketStatus) = do
- modifyMVar_ socketStatus $ \ status ->
+close (MkSocket s _ _ _ socketStatus) = modifyMVar_ socketStatus $ \ status ->
    case status of
-     ConvertedToHandle ->
-         ioError (userError ("close: converted to a Handle, use hClose instead"))
-     Closed ->
-         return status
-     _ -> closeFdWith (closeFd . fromIntegral) (fromIntegral s) >> return Closed
+     ConvertedToHandle -> return ConvertedToHandle
+     Closed            -> return Closed
+     _                 -> do
+         -- closeFdWith avoids the deadlock of IO manager.
+         closeFdWith (void . c_close . fromIntegral) (fromIntegral s)
+         return Closed
+
+-- | Close the socket. This function throws exceptions if
+--   the underlying system call returns errors.
+--
+--   Sending data to or receiving data from closed socket
+--   may lead to undefined behaviour.
+close' :: Socket -> IO ()
+close' (MkSocket s _ _ _ socketStatus) = modifyMVar_ socketStatus $ \ status ->
+   case status of
+     ConvertedToHandle -> ioError (userError ("close: converted to a Handle, use hClose instead"))
+     Closed            -> return Closed
+     _                 -> do
+         -- closeFdWith avoids the deadlock of IO manager.
+         -- closeFd throws exceptions.
+         closeFdWith (closeFd . fromIntegral) (fromIntegral s)
+         return Closed
 
 -- -----------------------------------------------------------------------------
 
