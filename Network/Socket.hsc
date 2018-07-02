@@ -88,6 +88,12 @@
 -- >         msg <- recv sock 1024
 -- >         putStr "Received: "
 -- >         C.putStrLn msg
+--
+-- The proper programming model is that one 'Socket' is handled by
+-- a single thread. If multiple threads use one 'Socket' concurrently,
+-- unexpected things would happen. There is one exception for multiple
+-- threads vs a single 'Socket': one thread reads data from a 'Socket'
+-- only and the other thread writes data to the 'Socket' only.
 -----------------------------------------------------------------------------
 
 #include "HsNet.h"
