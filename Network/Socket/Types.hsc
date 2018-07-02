@@ -87,6 +87,21 @@ data Socket
 {-# DEPRECATED MkSocket "'MkSocket' will not be available in version 3.0.0.0 or later. Use fdSocket instead" #-}
 
 -- | Obtaining the file descriptor from a socket.
+--
+--   If a 'Socket' is shared with multiple threads and
+--   one uses 'fdSocket', unexpected issues may happen.
+--   Consider the following scenario:
+--
+--   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
+--
+--   2) Thread B close the 'Socket'.
+--
+--   3) Thread C opens a new 'Socket'. Unfortunately it gets the same 'Fd'
+--      number which thread A is holding.
+--
+--   In this case, it is safer for Thread A to clone 'Fd' by
+--   'System.Posix.IO.dup'. But this would still suffer from
+--   a rase condition between 'fdSocket' and 'close'.
 fdSocket :: Socket -> CInt
 fdSocket (MkSocket fd _ _ _ _) = fd
 
