@@ -100,7 +100,8 @@ instance Eq Socket where
 --      number which thread A is holding.
 --
 --   In this case, it is safer for Thread A to clone 'Fd' by
---   'System.Posix.IO.dup'.
+--   'System.Posix.IO.dup'. But this would still suffer from
+--   a rase condition between 'fdSocket' and 'close'.
 fdSocket :: Socket -> IO CInt
 fdSocket (Socket ref _) = readIORef ref
 
