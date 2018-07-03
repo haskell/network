@@ -23,7 +23,7 @@ extra-tmp-files:
 extra-source-files:
   README.md CHANGELOG.md
   examples/*.hs tests/*.hs config.guess config.sub install-sh
-  configure.ac configure network.buildinfo.in
+  configure.ac configure
   include/HsNetworkConfig.h.in include/HsNet.h include/HsNetDef.h
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
@@ -68,8 +68,8 @@ library
     bytestring < 0.11
 
   include-dirs: include
-  includes: HsNet.h HsNetDef.h
-  install-includes: HsNet.h HsNetDef.h include/HsNetworkConfig.h
+  includes: HsNet.h HsNetDef.h HsNetworkConfig.h
+  install-includes: HsNet.h HsNetDef.h HsNetworkConfig.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
 
