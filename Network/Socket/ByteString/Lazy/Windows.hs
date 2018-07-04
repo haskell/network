@@ -26,7 +26,9 @@ sendAll
     :: Socket -- ^ Connected socket
     -> L.ByteString -- ^ Data to send
     -> IO ()
-sendAll s bs = do
-    sent <- send s bs
-    waitWhen0 (fromIntegral sent) s
-    when (sent >= 0) $ sendAll s $ L.drop sent bs
+sendAll s bs
+    | L.null bs = return ()
+    | otherwise = do
+        sent <- send s bs
+        waitWhen0 (fromIntegral sent) s
+        when (sent >= 0) $ sendAll s $ L.drop sent bs
