@@ -68,8 +68,8 @@ library
     bytestring < 0.11
 
   include-dirs: include
-  includes: HsNet.h HsNetDef.h HsNetworkConfig.h
-  install-includes: HsNet.h HsNetDef.h HsNetworkConfig.h
+  includes: HsNet.h HsNetDef.h
+  install-includes: HsNet.h HsNetDef.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
 
