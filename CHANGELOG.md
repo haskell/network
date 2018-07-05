@@ -1,3 +1,15 @@
+## Version 2.7.0.2
+
+* Removing withMVar to avoid the deadlock between "accept" and "close"
+   [#330](https://github.com/haskell/network/pull/330)
+* "close" does not throw exceptions. A new API: "close'" throws
+   exceptions when necessary.
+   [#337](https://github.com/haskell/network/pull/337)
+* Fixing the hang of lazy sendAll.
+   [#340](https://github.com/haskell/network/pull/340)
+* Installing NetDef.h (#334)
+   [#334](https://github.com/haskell/network/pull/334)
+
 ## Version 2.7.0.1
 
  * A new API: socketPortSafe.
