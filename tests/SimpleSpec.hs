@@ -11,8 +11,10 @@ import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy as L
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
+import qualified Network.Socket.ByteString.Lazy as Lazy
 import System.Directory
 import System.Timeout (timeout)
 
@@ -33,6 +35,12 @@ spec = do
         it "works well" $ do
             let server sock = recv sock 1024 `shouldReturn` testMsg
                 client sock = sendAll sock testMsg
+            tcpTest client server
+
+    describe "Lazy.sendAll" $ do
+        it "works well" $ do
+            let server sock = recv sock 1024 `shouldReturn` testMsg
+                client sock = Lazy.sendAll sock $ L.fromChunks [testMsg]
             tcpTest client server
 
     describe "sendTo" $ do

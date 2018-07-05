@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Network.Socket.ByteString.Lazy.Posix
     (
     -- * Send data to a socket
@@ -50,6 +52,7 @@ send sock@(MkSocket fd _ _ _ _) s = do
 sendAll :: Socket      -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
+sendAll _    "" = return ()
 sendAll sock bs = do
   sent <- send sock bs
   waitWhen0 (fromIntegral sent) sock
