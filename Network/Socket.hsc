@@ -262,7 +262,7 @@ import Foreign.Marshal.Array ( peekArray )
 import Foreign.Marshal.Utils ( maybeWith, with )
 
 import System.IO
-import Control.Monad (liftM, when)
+import Control.Monad (liftM, when, void)
 
 import qualified Control.Exception as E
 import Control.Concurrent.MVar
