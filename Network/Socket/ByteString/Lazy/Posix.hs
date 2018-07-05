@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Network.Socket.ByteString.Lazy.Posix (
     -- * Send data to a socket
@@ -50,6 +51,7 @@ sendAll
     :: Socket -- ^ Connected socket
     -> L.ByteString -- ^ Data to send
     -> IO ()
+sendAll _ "" = return ()
 sendAll s bs = do
     sent <- send s bs
     waitWhen0 (fromIntegral sent) s
