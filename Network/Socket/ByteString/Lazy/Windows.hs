@@ -1,4 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Network.Socket.ByteString.Lazy.Windows
     (
     -- * Send data to a socket
@@ -31,6 +33,7 @@ send sock s = do
 sendAll :: Socket        -- ^ Connected socket
         -> L.ByteString  -- ^ Data to send
         -> IO ()
+sendAll _    "" = return ()
 sendAll sock bs = do
   sent <- send sock bs
   waitWhen0 (fromIntegral sent) sock
