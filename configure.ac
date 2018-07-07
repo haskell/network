@@ -1,4 +1,4 @@
-AC_INIT([Haskell network package], [2.6.3.5], [libraries@haskell.org], [network])
+AC_INIT([Haskell network package], [2.6.3.6], [libraries@haskell.org], [network])
 
 ac_includes_default="$ac_includes_default
 #ifdef HAVE_SYS_SOCKET_H
@@ -101,7 +101,7 @@ else
 fi
 
 dnl --------------------------------------------------
-dnl * test for GETPEEREID(3) 
+dnl * test for GETPEEREID(3)
 dnl --------------------------------------------------
 AC_MSG_CHECKING(for getpeereid in unistd.h)
 AC_CHECK_FUNC( getpeereid, AC_DEFINE([HAVE_GETPEEREID], [1], [Define to 1 if you have getpeereid.] ))
