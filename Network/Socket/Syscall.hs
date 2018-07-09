@@ -71,15 +71,20 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
-socket family stype protocol = do
-    c_stype <- modifyFlag <$> packSocketTypeOrThrow "socket" stype
-    fd <- throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-              c_socket (packFamily family) c_stype protocol
-    setNonBlock fd `E.onException` c_close fd
+socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
+    -- Let's ensure that the socket (file descriptor) is closed even on
+    -- asynchronous exceptions.
+    setNonBlock fd
     s <- mkSocket fd
-    unsetIPv6Only s `E.onException` close s
+    -- This socket is not managed by the IO manager yet.
+    -- So, we don't have to call "close" which uses "closeFdWith".
+    unsetIPv6Only s
     return s
   where
+    create = do
+        c_stype <- modifyFlag <$> packSocketTypeOrThrow "socket" stype
+        throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
+            c_socket (packFamily family) c_stype protocol
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
     modifyFlag c_stype = c_stype .|. sockNonBlock
