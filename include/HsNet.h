@@ -21,10 +21,8 @@
 
 #define _GNU_SOURCE 1 /* for struct ucred on Linux */
 
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 # include <winsock2.h>
-#endif
-#ifdef HAVE_WS2TCPIP_H
 # include <ws2tcpip.h>
 # define IPV6_V6ONLY 27
 #endif
@@ -72,7 +70,7 @@
 # include <netioapi.h>
 #endif
 
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 extern int   initWinSock ();
 extern const char* getWSErrorDescr(int err);
 extern void* newAcceptParams(int sock,
@@ -80,17 +78,17 @@ extern void* newAcceptParams(int sock,
 			     void* sockaddr);
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
-#else  /* HAVE_WINSOCK2_H */
+#else  /* _WIN32 */
 extern int
 sendFd(int sock, int outfd);
 
 extern int
 recvFd(int sock);
-#endif /* HAVE_WINSOCK2_H */
+#endif /* _WIN32 */
 
 INLINE char *
 hsnet_inet_ntoa(
-#if defined(HAVE_WINSOCK2_H)
+#if defined(_WIN32)
              u_long addr
 #elif defined(HAVE_IN_ADDR_T)
              in_addr_t addr
@@ -108,7 +106,7 @@ hsnet_inet_ntoa(
 
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
-# if defined(HAVE_WINSOCK2_H)
+# if defined(_WIN32)
                   DWORD d, char* e, DWORD f, int g)
 # else
                   socklen_t d, char* e, socklen_t f, int g)

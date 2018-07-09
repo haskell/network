@@ -5,14 +5,14 @@
 #include "HsNet.h"
 #include "HsFFI.h"
 
-#if defined(HAVE_WINSOCK2_H)
+#if defined(_WIN32)
 
 /* all the way to the end */
 
 /*
  * To support non-blocking accept()s with WinSock, we use the asyncDoProc#
  * primop, which lets a Haskell thread call an external routine without
- * blocking the progress of other threads. 
+ * blocking the progress of other threads.
  *
  * As can readily be seen, this is a low-level mechanism.
  *
@@ -26,7 +26,7 @@ typedef struct AcceptData {
 } AcceptData;
 
 /*
- * Fill in parameter block that's passed along when the RTS invokes the 
+ * Fill in parameter block that's passed along when the RTS invokes the
  * accept()-calling proc below (acceptDoProc())
  */
 void*
@@ -40,7 +40,7 @@ newAcceptParams(int sock,
     data->newSock  = 0;
     data->sockAddr = sockaddr;
     data->size     = sz;
-    
+
     return data;
 }
 

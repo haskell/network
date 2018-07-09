@@ -1,7 +1,7 @@
 #include "HsNet.h"
 #include "HsFFI.h"
 
-#if defined(HAVE_WINSOCK2_H)
+#if defined(_WIN32)
 #include <stdio.h>
 
 /* to the end */
