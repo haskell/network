@@ -58,7 +58,7 @@ library
       Network.Socket.ByteString.Lazy.Windows
 
   build-depends:
-    base >= 4.6 && < 5,
+    base >= 4.7 && < 5,
     bytestring < 0.11
 
   if !os(windows)
@@ -81,7 +81,7 @@ test-suite spec
   type: exitcode-stdio-1.0
   ghc-options: -Wall -threaded
   build-depends:
-    base < 5,
+    base >= 4.7 && < 5,
     bytestring,
     directory,
     HUnit,
@@ -94,7 +94,7 @@ test-suite doctest
   type: exitcode-stdio-1.0
 
   build-depends:
-    base < 5,
+    base >= 4.7 && < 5,
     doctest >= 0.10.1
 
   ghc-options: -Wall
