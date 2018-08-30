@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -63,7 +64,6 @@ import Control.Concurrent.MVar
 import Control.Monad
 import Data.Bits
 import Data.Maybe
-import Data.Ratio
 import Data.Typeable
 import Data.Word
 import Data.Int
@@ -746,7 +746,7 @@ unpackFamily f = case f of
 -- Port Numbers
 
 -- | Use the @Num@ instance (i.e. use a literal) to create a
--- @PortNumber@ value with the correct network-byte-ordering. You
+-- @PortNumber@ value. You
 -- should not use the PortNum constructor. It will be removed in the
 -- next release.
 --
@@ -754,57 +754,36 @@ unpackFamily f = case f of
 -- 1
 -- >>> read "1" :: PortNumber
 -- 1
-newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable)
--- newtyped to prevent accidental use of sane-looking
--- port numbers that haven't actually been converted to
--- network-byte-order first.
+-- >>> show (12345 :: PortNumber)
+-- "12345"
+-- >>> 50000 < (51000 :: PortNumber)
+-- True
+-- >>> 50000 < (52000 :: PortNumber)
+-- True
+-- >>> 50000 + (10000 :: PortNumber)
+-- 60000
+newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable, Num, Enum, Real, Integral)
 
 {-# DEPRECATED PortNum "Do not use the PortNum constructor. Use the Num instance. PortNum will be removed in the next release." #-}
 
+-- Print "n" instead of "PortNum n".
 instance Show PortNumber where
-  showsPrec p pn = showsPrec p (portNumberToInt pn)
+  showsPrec p (PortNum pn) = showsPrec p (fromIntegral pn :: Int)
 
+-- Read "n" instead of "PortNum n".
 instance Read PortNumber where
-  readsPrec n = map (\(x,y) -> (intToPortNumber x, y)) . readsPrec n
-
-intToPortNumber :: Int -> PortNumber
-intToPortNumber v = PortNum (htons (fromIntegral v))
-
-portNumberToInt :: PortNumber -> Int
-portNumberToInt (PortNum po) = fromIntegral (ntohs po)
+  readsPrec n = map (\(x,y) -> (fromIntegral (x :: Int), y)) . readsPrec n
 
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
 foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
 
-instance Enum PortNumber where
-    toEnum   = intToPortNumber
-    fromEnum = portNumberToInt
-
-instance Num PortNumber where
-   fromInteger i = intToPortNumber (fromInteger i)
-    -- for completeness.
-   (+) x y   = intToPortNumber (portNumberToInt x + portNumberToInt y)
-   (-) x y   = intToPortNumber (portNumberToInt x - portNumberToInt y)
-   negate x  = intToPortNumber (-portNumberToInt x)
-   (*) x y   = intToPortNumber (portNumberToInt x * portNumberToInt y)
-   abs n     = intToPortNumber (abs (portNumberToInt n))
-   signum n  = intToPortNumber (signum (portNumberToInt n))
-
-instance Real PortNumber where
-    toRational x = toInteger x % 1
-
-instance Integral PortNumber where
-    quotRem a b = let (c,d) = quotRem (portNumberToInt a) (portNumberToInt b) in
-                  (intToPortNumber c, intToPortNumber d)
-    toInteger a = toInteger (portNumberToInt a)
-
 instance Storable PortNumber where
    sizeOf    _ = sizeOf    (undefined :: Word16)
    alignment _ = alignment (undefined :: Word16)
-   poke p (PortNum po) = poke (castPtr p) po
-   peek p = PortNum `liftM` peek (castPtr p)
+   poke p (PortNum po) = poke (castPtr p) (htons po)
+   peek p = (PortNum . ntohs) `liftM` peek (castPtr p)
 
 ------------------------------------------------------------------------
 -- Socket addresses
@@ -836,10 +815,10 @@ type ScopeID = Word32
 -- 'isSupportedSockAddr'.
 data SockAddr       -- C Names
   = SockAddrInet
-    PortNumber  -- sin_port  (network byte order)
+    PortNumber  -- sin_port
     HostAddress -- sin_addr  (ditto)
   | SockAddrInet6
-        PortNumber      -- sin6_port (network byte order)
+        PortNumber      -- sin6_port
         FlowInfo        -- sin6_flowinfo (ditto)
         HostAddress6    -- sin6_addr (ditto)
         ScopeID         -- sin6_scope_id (ditto)
@@ -957,7 +936,7 @@ pokeSockAddr p (SockAddrUnix path) = do
         poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
     poker ((#ptr struct sockaddr_un, sun_path) p) pathC
 #endif
-pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
+pokeSockAddr p (SockAddrInet port addr) = do
 #if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in))
 #endif
@@ -968,7 +947,7 @@ pokeSockAddr p (SockAddrInet (PortNum port) addr) = do
     (#poke struct sockaddr_in, sin_port) p port
     (#poke struct sockaddr_in, sin_addr) p addr
 #if defined(IPV6_SOCKET_SUPPORT)
-pokeSockAddr p (SockAddrInet6 (PortNum port) flow addr scope) = do
+pokeSockAddr p (SockAddrInet6 port flow addr scope) = do
 #if defined(darwin_HOST_OS)
     zeroMemory p (#const sizeof(struct sockaddr_in6))
 #endif
@@ -1006,14 +985,14 @@ peekSockAddr p = do
     (#const AF_INET) -> do
         addr <- (#peek struct sockaddr_in, sin_addr) p
         port <- (#peek struct sockaddr_in, sin_port) p
-        return (SockAddrInet (PortNum port) addr)
+        return (SockAddrInet port addr)
 #if defined(IPV6_SOCKET_SUPPORT)
     (#const AF_INET6) -> do
         port <- (#peek struct sockaddr_in6, sin6_port) p
         flow <- (#peek struct sockaddr_in6, sin6_flowinfo) p
         In6Addr addr <- (#peek struct sockaddr_in6, sin6_addr) p
         scope <- (#peek struct sockaddr_in6, sin6_scope_id) p
-        return (SockAddrInet6 (PortNum port) flow addr scope)
+        return (SockAddrInet6 port flow addr scope)
 #endif
 #if defined(CAN_SOCKET_SUPPORT)
     (#const AF_CAN) -> do
