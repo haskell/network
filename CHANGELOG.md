@@ -1,3 +1,12 @@
+## Version 2.8.0.0
+
+* Breaking change: PortNumber originally contained Word32 in network
+  byte order and used "deriving Ord". This results in strange behavior
+  on the Ord instance. Now PortNumber holds Word32 in host byte order.
+  [#347](https://github.com/haskell/network/pull/347)
+* Use bytestring == 0.10.* only.
+* Use base >= 4.7 && < 5.
+
 ## Version 2.7.0.2
 
 * Removing withMVar to avoid the deadlock between "accept" and "close"
