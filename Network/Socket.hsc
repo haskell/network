@@ -167,7 +167,7 @@ module Network.Socket
 # endif
 #endif
     -- ** Port number
-    , PortNumber(..)
+    , PortNumber
     , defaultPort
     , socketPortSafe
     , socketPort

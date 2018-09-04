@@ -746,9 +746,7 @@ unpackFamily f = case f of
 -- Port Numbers
 
 -- | Use the @Num@ instance (i.e. use a literal) to create a
--- @PortNumber@ value. You
--- should not use the PortNum constructor. It will be removed in the
--- next release.
+-- @PortNumber@ value.
 --
 -- >>> 1 :: PortNumber
 -- 1
@@ -763,8 +761,6 @@ unpackFamily f = case f of
 -- >>> 50000 + (10000 :: PortNumber)
 -- 60000
 newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable, Num, Enum, Real, Integral)
-
-{-# DEPRECATED PortNum "Do not use the PortNum constructor. Use the Num instance. PortNum will be removed in the next release." #-}
 
 -- Print "n" instead of "PortNum n".
 instance Show PortNumber where
