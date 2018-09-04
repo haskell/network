@@ -4,6 +4,8 @@
   byte order and used "deriving Ord". This results in strange behavior
   on the Ord instance. Now PortNumber holds Word32 in host byte order.
   [#347](https://github.com/haskell/network/pull/347)
+* Breaking change: stopping the export of the PortNum constructor in
+  PortNumber.
 * Use bytestring == 0.10.* only.
 * Use base >= 4.7 && < 5.
 
