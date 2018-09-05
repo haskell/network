@@ -801,10 +801,8 @@ instance Storable PortNumber where
 -- families. Currently only UNIX-domain sockets and the Internet
 -- families are supported.
 
-#if defined(IPV6_SOCKET_SUPPORT)
 type FlowInfo = Word32
 type ScopeID = Word32
-#endif
 
 -- | The existence of a constructor does not necessarily imply that
 -- that socket address type is supported on your system: see
@@ -1025,13 +1023,13 @@ tupleToHostAddress (b3, b2, b1, b0) =
     let x `sl` i = fromIntegral x `shiftL` i :: Word32
     in ntohl $ (b3 `sl` 24) .|. (b2 `sl` 16) .|. (b1 `sl` 8) .|. (b0 `sl` 0)
 
-#if defined(IPV6_SOCKET_SUPPORT)
 -- | Independent of endianness. For example @::1@ is stored as @(0, 0, 0, 1)@.
 --
 -- For direct manipulation prefer 'hostAddress6ToTuple' and
 -- 'tupleToHostAddress6'.
 type HostAddress6 = (Word32, Word32, Word32, Word32)
 
+#if defined(IPV6_SOCKET_SUPPORT)
 hostAddress6ToTuple :: HostAddress6 -> (Word16, Word16, Word16, Word16,
                                         Word16, Word16, Word16, Word16)
 hostAddress6ToTuple (w3, w2, w1, w0) =
