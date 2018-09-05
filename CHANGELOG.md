@@ -1,8 +1,8 @@
 ## Version 2.8.0.0
 
-* Breaking change: PortNumber originally contained Word32 in network
+* Breaking change: PortNumber originally contained Word16 in network
   byte order and used "deriving Ord". This results in strange behavior
-  on the Ord instance. Now PortNumber holds Word32 in host byte order.
+  on the Ord instance. Now PortNumber holds Word16 in host byte order.
   [#347](https://github.com/haskell/network/pull/347)
 * Breaking change: stopping the export of the PortNum constructor in
   PortNumber.
