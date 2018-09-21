@@ -3,6 +3,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE BangPatterns #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -64,11 +67,16 @@ module Network.Socket.Types (
     ) where
 
 import Control.Monad (when)
-import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
+import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
 import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
 import System.Posix.Types (Fd)
+import GHC.Weak (Weak (..))
+import GHC.Exts (mkWeak##)
+import GHC.IORef (IORef (..))
+import GHC.STRef (STRef (..))
+import GHC.IO (IO (..))
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -79,7 +87,7 @@ import Network.Socket.Imports
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-data Socket = Socket (IORef CInt) CInt {- for Show -}
+data Socket = Socket !(IORef CInt) !CInt {- for Show -}
 
 instance Show Socket where
     show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
@@ -108,11 +116,18 @@ fdSocket (Socket ref _) = readIORef ref
 
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
-mkSocket fd = do
+mkSocket !fd = do
     ref <- newIORef fd
     let s = Socket ref fd
-    void $ mkWeakIORef ref $ close s
+    void $ mkWeakFromIORef ref () $ close s
     return s
+
+-- | Make a weak pointer from an 'IORef' key to an arbitrary
+-- value. This is similar to 'Data.IORef.mkWeakIORef', but we use it
+-- to avoid keeping the useless 'IORef' wrapper alive.
+mkWeakFromIORef :: IORef a -> b -> IO () -> IO (Weak b)
+mkWeakFromIORef (IORef (STRef r##)) b (IO finalizer) = IO $ \s ->
+  case mkWeak## r## b finalizer s of (## s1, w ##) -> (## s1, Weak w ##)
 
 invalidSocket :: CInt
 #if defined(mingw32_HOST_OS)
@@ -196,7 +211,7 @@ defaultProtocol = 0
 -- There are a few possible ways to do this.  The first is convert the
 -- structs used in the C library into an equivalent Haskell type. An
 -- other possible implementation is to keep all the internals in the C
--- code and use an Int## and a status flag. The second method is used
+-- code and use an Int# and a status flag. The second method is used
 -- here since a lot of the C structures are not required to be
 -- manipulated.
 
@@ -897,10 +912,10 @@ data SockAddr       -- C Names
     PortNumber  -- sin_port
     HostAddress -- sin_addr  (ditto)
   | SockAddrInet6
-        PortNumber      -- sin6_port
-        FlowInfo        -- sin6_flowinfo (ditto)
-        HostAddress6    -- sin6_addr (ditto)
-        ScopeID         -- sin6_scope_id (ditto)
+        !PortNumber      -- sin6_port
+        !FlowInfo        -- sin6_flowinfo (ditto)
+        !HostAddress6    -- sin6_addr (ditto)
+        !ScopeID         -- sin6_scope_id (ditto)
   -- | 'String' must be a list of 0-255 values and its length should be less than 104.
   | SockAddrUnix
         String          -- sun_path
