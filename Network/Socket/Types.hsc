@@ -79,7 +79,7 @@ import Network.Socket.Imports
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-data Socket = Socket (IORef CInt) CInt {- for Show -}
+data Socket = Socket !(IORef CInt) !CInt {- for Show -}
 
 instance Show Socket where
     show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
@@ -892,18 +892,18 @@ type ScopeID = Word32
 --  The existence of a constructor does not necessarily imply that
 --  that socket address type is supported on your system: see
 -- 'isSupportedSockAddr'.
-data SockAddr       -- C Names
+data SockAddr
   = SockAddrInet
-    PortNumber  -- sin_port
-    HostAddress -- sin_addr  (ditto)
+        !PortNumber      -- sin_port
+        !HostAddress     -- sin_addr  (ditto)
   | SockAddrInet6
-        PortNumber      -- sin6_port
-        FlowInfo        -- sin6_flowinfo (ditto)
-        HostAddress6    -- sin6_addr (ditto)
-        ScopeID         -- sin6_scope_id (ditto)
+        !PortNumber      -- sin6_port
+        !FlowInfo        -- sin6_flowinfo (ditto)
+        !HostAddress6    -- sin6_addr (ditto)
+        !ScopeID         -- sin6_scope_id (ditto)
   -- | 'String' must be a list of 0-255 values and its length should be less than 104.
   | SockAddrUnix
-        String          -- sun_path
+        String           -- sun_path
   deriving (Eq, Ord, Typeable)
 
 -- | Is the socket address type supported on this system?
