@@ -9,14 +9,12 @@ new fdSocket :: Socket -> IO CInt
 old mkSocket :: CInt -> Family -> SocketType -> ProtocolNumber -> SocketStatus -> IO Socket
 new mkSocket :: CInt Socket
 ```
-* Breaking change: the deprecated APIs are removed: send, sendTo, recv, recvFrom, recvLen, htonl, ntohl, inet_addr, int_ntoa, bindSocket, sClose, SocketStatus, isConnected, isBound, isListening, isReadable, isWritable, sIsConnected, sIsBound, sIsListening, sIsReadable, sIsWritable, aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN, sOL_SOCKET, sCM_RIGHTS, packSocketType, getPeerCred
+* Breaking change: the deprecated APIs are removed: send, sendTo, recv, recvFrom, recvLen, htonl, ntohl, inet_addr, int_ntoa, bindSocket, sClose, SocketStatus, isConnected, isBound, isListening, isReadable, isWritable, sIsConnected, sIsBound, sIsListening, sIsReadable, sIsWritable, aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN, sOL_SOCKET, sCM_RIGHTS, packSocketType, getPeerCred.
 * Breaking chage: SockAddrCan is removed from SockAddr.
-* Socket addresses are extendable with Network.Socket.Address
-* "socket" is now asynchronous-exception-safe
+* Socket addresses are extendable with Network.Socket.Address.
+* "socket" is now asynchronous-exception-safe.
   [#336](https://github.com/haskell/network/pull/336)
 * All APIs are available on any platforms.
-* New API: close'
-  [#337](https://github.com/haskell/network/pull/337)
 * Build system is simplified.
 * Bug fixes.
 
@@ -66,7 +64,7 @@ new mkSocket :: CInt Socket
               aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN,
               sOL_SOCKET, sCM_RIGHTS,
               packFamily, unpackFamily, packSocketType
- * Do not closeFd within sendFd.
+ * Breaking change: do not closeFd within sendFd.
    [#271](https://github.com/haskell/network/pull/271)
  * Exporting ifNameToIndex and ifIndexToName from Network.Socket.
  * New APIs: setCloseOnExecIfNeeded, getCloseOnExec and getNonBlock
