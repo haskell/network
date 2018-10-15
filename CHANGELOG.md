@@ -1,3 +1,25 @@
+## Version 3.0.0.0
+
+* Breaking change: the Network and Network.BSD are removed.
+* Breaking change: the signatures are changed:
+```
+old fdSocket :: Socket -> CInt
+new fdSocket :: Socket -> IO CInt
+
+old mkSocket :: CInt -> Family -> SocketType -> ProtocolNumber -> SocketStatus -> IO Socket
+new mkSocket :: CInt Socket
+```
+* Breaking change: the deprecated APIs are removed: send, sendTo, recv, recvFrom, recvLen, htonl, ntohl, inet_addr, int_ntoa, bindSocket, sClose, SocketStatus, isConnected, isBound, isListening, isReadable, isWritable, sIsConnected, sIsBound, sIsListening, sIsReadable, sIsWritable, aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN, sOL_SOCKET, sCM_RIGHTS, packSocketType, getPeerCred
+* Breaking chage: SockAddrCan is removed from SockAddr.
+* Socket addresses are extendable with Network.Socket.Address
+* "socket" is now asynchronous-exception-safe
+  [#336](https://github.com/haskell/network/pull/336)
+* All APIs are available on any platforms.
+* New API: close'
+  [#337](https://github.com/haskell/network/pull/337)
+* Build system is simplified.
+* Bug fixes.
+
 ## Version 2.8.0.0
 
 * Breaking change: PortNumber originally contained Word16 in network
