@@ -9,6 +9,7 @@ main = doctest [
   , "-Idist/build/autogen"
   , "-Idist/build"
   , "-Iinclude"
+  , "-Idist/build/include"
   , "-optP-include"
   , "-optPdist/build/autogen/cabal_macros.h"
   , "-DCALLCONV=ccall"
