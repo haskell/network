@@ -69,6 +69,7 @@ import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
 import System.Posix.Types (Fd)
+import Control.DeepSeq (NFData (..))
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -905,6 +906,10 @@ data SockAddr
   | SockAddrUnix
         String           -- sun_path
   deriving (Eq, Ord, Typeable)
+
+instance NFData SockAddr where
+  rnf (SockAddrUnix str) = rnf str
+  rnf _ = ()
 
 -- | Is the socket address type supported on this system?
 isSupportedSockAddr :: SockAddr -> Bool
