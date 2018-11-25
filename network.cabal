@@ -7,10 +7,23 @@ synopsis:       Low-level networking interface
 description:
   This package provides a low-level networking interface.
   .
-  In network-2.6 the @Network.URI@ module was split off into its own
-  package, network-uri-2.6. If you're using the @Network.URI@ module
-  you can automatically get it from the right package by adding this
-  to your .cabal file:
+  === High-Level Packages
+  Other packages provide higher level interfaces:
+  .
+  * connection
+  * hookup
+  * network-simple
+  .
+  === Related Packages
+  ==== @network-bsd@
+  In @network-3.0.0.0@ the @Network.BSD@ module was split off into its own
+  package, @network-bsd-3.0.0.0@.
+  .
+  ==== @network-uri@
+  In @network-2.6@ the @Network.URI@ module was split off into its own package,
+  @network-uri-2.6@. If you're using the @Network.URI@ module you can
+  automatically get it from the right package by adding this to your @.cabal@
+  file:
   .
   > library
   >   build-depends: network-uri-flag
