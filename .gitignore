@@ -11,9 +11,11 @@ config.mk
 config.status
 configure
 dist/*
+dist-newstyle/*
 include/HsNetworkConfig.h
 include/HsNetworkConfig.h.in
 network.buildinfo
 cabal.sandbox.config
 .cabal-sandbox
 .stack-work/
+.ghc.*
