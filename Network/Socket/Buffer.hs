@@ -11,7 +11,7 @@ module Network.Socket.Buffer (
 
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (alloca)
-import GHC.IO.Exception (IOErrorType(EOF, InvalidArgument))
+import GHC.IO.Exception (IOErrorType(InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString)
 
 #if defined(mingw32_HOST_OS)
@@ -97,13 +97,9 @@ recvBufFrom s ptr nbytes
             flags = 0
         len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
                  c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
-        let len' = fromIntegral len
-        if len' == 0
-            then ioError (mkEOFError "Network.Socket.recvFrom")
-            else do
-                sockaddr <- peekSocketAddress ptr_sa
-                    `E.catch` \(E.SomeException _) -> getPeerName s
-                return (len', sockaddr)
+        sockaddr <- peekSocketAddress ptr_sa
+            `E.catch` \(E.SomeException _) -> getPeerName s
+        return (fromIntegral len, sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -133,18 +129,12 @@ recvBuf s ptr nbytes
     len <- throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
              c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
-    let len' = fromIntegral len
-    if len' == 0
-      then ioError (mkEOFError "Network.Socket.recvBuf")
-      else return len'
+    return $ fromIntegral len
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
                                     loc Nothing Nothing) "non-positive length"
-
-mkEOFError :: String -> IOError
-mkEOFError loc = ioeSetErrorString (mkIOError EOF loc Nothing Nothing) "end of file"
 
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "send"

@@ -43,14 +43,12 @@ module Network.Socket.ByteString.IO
     ) where
 
 import Control.Concurrent (threadWaitWrite, rtsSupportsBoundThreads)
-import Control.Exception as E (catch, throwIO)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr)
-import System.IO.Error (isEOFError)
 
 import Network.Socket.Buffer
 import Network.Socket.ByteString.Internal
@@ -220,10 +218,7 @@ recv :: Socket        -- ^ Connected socket
      -> IO ByteString  -- ^ Data received
 recv s nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ \ptr ->
-        E.catch
-          (recvBuf s ptr nbytes)
-          (\e -> if isEOFError e then return 0 else throwIO e)
+    | otherwise  = createAndTrim nbytes $ \ptr -> recvBuf s ptr nbytes
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
