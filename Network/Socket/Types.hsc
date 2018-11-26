@@ -908,8 +908,9 @@ data SockAddr
   deriving (Eq, Ord, Typeable)
 
 instance NFData SockAddr where
+  rnf (SockAddrInet _ _) = ()
+  rnf (SockAddrInet6 _ _ _ _) = ()
   rnf (SockAddrUnix str) = rnf str
-  rnf _ = ()
 
 -- | Is the socket address type supported on this system?
 isSupportedSockAddr :: SockAddr -> Bool
