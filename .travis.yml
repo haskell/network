@@ -53,11 +53,7 @@ matrix:
 before_install:
  - HC=${CC}
  - unset CC
-# For GHC 7.10.3
-# "The program 'hsc2hs' is required but it could not be found "
-# See https://github.com/haskell-CI/haskell-ci/issues/66
- - HCVER=`echo $HC | sed 's/ghc-//'`
- - "PATH=/opt/ghc/${HCVER}/bin:/opt/ghc/bin:/opt/ghc-ppa-tools/bin:$PATH"
+ - "PATH=/opt/ghc/bin:/opt/ghc-ppa-tools/bin:$PATH"
  - echo $PATH
  - PKGNAME='network'
 
