@@ -95,9 +95,6 @@ script:
  # build & run tests
  - cabal new-build -w ${HC} ${TEST} ${BENCH} all
 
- # we can't run `test:doctest` currently, so let's run only the other two testsuites
- #- if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} all; fi
-
- - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} test:spec; fi
+ - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} all; fi
 
 # EOF
