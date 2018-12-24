@@ -89,6 +89,7 @@ library
   install-includes: HsNet.h HsNetDef.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
+  build-tools: hsc2hs
 
 
   -- Add some platform specific stuff
