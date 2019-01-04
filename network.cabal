@@ -110,6 +110,8 @@ library
       Network.Socket.ByteString.Lazy.Windows
     c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
     extra-libraries: ws2_32
+    -- See https://github.com/haskell/network/pull/362
+    cpp-options: -D_WIN32_WINNT=0x0600
 
 test-suite spec
   default-language: Haskell2010
