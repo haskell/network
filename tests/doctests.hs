@@ -1,21 +1,15 @@
-import Test.DocTest
+module Main where
+
+import Build_doctests (flags, pkgs, module_sources)
+import Data.Foldable (traverse_)
+import Data.List (isSuffixOf, isPrefixOf)
+import Test.DocTest (doctest)
 
 main :: IO ()
-main = doctest [
-    "-i"
-  , "-idist/build"
-  , "-i."
-  , "-idist/build/autogen"
-  , "-Idist/build/autogen"
-  , "-Idist/build"
-  , "-Iinclude"
-  , "-Idist/build/include"
-  , "-optP-include"
-  , "-optPdist/build/autogen/cabal_macros.h"
-  , "-DCALLCONV=ccall"
-  , "-XCPP"
-  , "-XDeriveDataTypeable"
-  , "-package-db dist/package.conf.inplace"
-  , "-package network"
-  , "Network"
-  ]
+main = do
+    traverse_ putStrLn args
+    doctest args
+  where
+    builddir = filter ("build" `isSuffixOf`) $ filter ("-i" `isPrefixOf`) flags
+    addinc path = "-I" ++ drop 2 path ++ "/include"
+    args = map addinc builddir ++ flags ++ pkgs ++ module_sources

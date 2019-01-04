@@ -6,10 +6,17 @@ environment:
     CABOPTS:  "--store-dir=C:\\SR --http-transport=plain-http"
   matrix:
     - GHCVER: "7.8.4.1"
+      DOCTEST: "NO"
     - GHCVER: "7.10.3.2"
+      DOCTEST: "NO"
     - GHCVER: "8.0.2"
+      DOCTEST: "YES"
     - GHCVER: "8.2.2"
-    - GHCVER: "8.4.3"
+      DOCTEST: "YES"
+    - GHCVER: "8.4.4"
+      DOCTEST: "YES"
+    - GHCVER: "8.6.3"
+      DOCTEST: "YES"
 
 platform:
 #  - x86 # We may want to test x86 as well, but it would double the 23min build time.
@@ -26,6 +33,8 @@ install:
  - "cabal --version"
  - "ghc --version"
  - "cabal %CABOPTS% update -vverbose+nowrap"
+ - "cabal %CABOPTS% install hspec-discover"
+ - "cabal %CABOPTS% install cabal-doctest"
 
 build: off
 deploy: off
@@ -35,7 +44,6 @@ test_script:
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap --dry all"
  - ps: Push-AppveyorArtifact dist-newstyle\cache\plan.json
  - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap all"
- - "cabal %CABOPTS% install hspec-discover"
- # disable doctest because it's currently broken.
- - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap network:test:spec"
+ - IF "%DOCTEST%"=="YES" (set TESTSUITE=all) ELSE (set TESTSUITE=network:test:spec)
+ - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap %TESTSUITE%"
  - ps: ls network*.log -recurse | %{ Push-AppveyorArtifact $_}

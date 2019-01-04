@@ -41,9 +41,9 @@ matrix:
     - compiler: "ghc-8.4.4"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.4.4], sources: [hvr-ghc]}}
-    - compiler: "ghc-8.6.2"
+    - compiler: "ghc-8.6.3"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
-      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.6.2], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.6.3], sources: [hvr-ghc]}}
     - compiler: "ghc-head"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-head], sources: [hvr-ghc]}}
@@ -53,7 +53,8 @@ matrix:
 before_install:
  - HC=${CC}
  - unset CC
- - PATH=/opt/ghc/bin:/opt/ghc-ppa-tools/bin:$PATH
+ - "PATH=/opt/ghc/bin:/opt/ghc-ppa-tools/bin:$PATH"
+ - echo $PATH
  - PKGNAME='network'
 
 install:
@@ -66,9 +67,10 @@ install:
  - rm -fv cabal.project.local
  - "echo 'packages: .' > cabal.project"
  - rm -f cabal.project.freeze
+ - cabal install hspec-discover
+ - cabal install cabal-doctest
  - cabal new-build -w ${HC} ${TEST} ${BENCH} --dep -j2 all
  - cabal new-build -w ${HC} --disable-tests --disable-benchmarks --dep -j2 all
- - cabal install hspec-discover
 
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
@@ -93,9 +95,6 @@ script:
  # build & run tests
  - cabal new-build -w ${HC} ${TEST} ${BENCH} all
 
- # we can't run `test:doctest` currently, so let's run only the other two testsuites
- #- if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} all; fi
-
- - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} test:spec; fi
+ - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} all; fi
 
 # EOF

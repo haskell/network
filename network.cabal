@@ -28,7 +28,7 @@ description:
   > library
   >   build-depends: network-uri-flag
 category:       Network
-build-type:     Configure
+build-type:     Custom
 cabal-version:  >=1.10
 extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
@@ -49,6 +49,9 @@ tested-with:   GHC == 7.8.4
              , GHC == 8.2.2
              , GHC == 8.4.4
              , GHC == 8.6.2
+
+custom-setup
+  setup-depends:        base, Cabal, cabal-doctest >=1.0.6 && <1.1
 
 library
   default-language: Haskell2010
@@ -86,6 +89,7 @@ library
   install-includes: HsNet.h HsNetDef.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
+  build-tools: hsc2hs
 
 
   -- Add some platform specific stuff
@@ -106,6 +110,9 @@ library
       Network.Socket.ByteString.Lazy.Windows
     c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
     extra-libraries: ws2_32
+    -- See https://github.com/haskell/network/pull/362
+    if impl(ghc >= 7.10)
+      cpp-options: -D_WIN32_WINNT=0x0600
 
 test-suite spec
   default-language: Haskell2010
@@ -123,7 +130,7 @@ test-suite spec
     network,
     hspec
 
-test-suite doctest
+test-suite doctests
   default-language: Haskell2010
   hs-source-dirs: tests
   main-is: doctests.hs
@@ -131,7 +138,8 @@ test-suite doctest
 
   build-depends:
     base >= 4.7 && < 5,
-    doctest >= 0.10.1
+    doctest >= 0.10.1,
+    network
 
   ghc-options: -Wall
 
