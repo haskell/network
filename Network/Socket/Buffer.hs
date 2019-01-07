@@ -83,6 +83,8 @@ sendBuf s str len = fromIntegral <$> do
 -- bytes received and @address@ is a 'SockAddr' representing the
 -- address of the sending socket.
 --
+-- If the first return value is zero, it means EOF.
+--
 -- For 'Stream' sockets, the second return value would be invalid.
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
@@ -110,8 +112,9 @@ recvBufFrom s ptr nbytes
 -- Considering hardware and network realities, the maximum number of
 -- bytes to receive should be a small power of 2, e.g., 4096.
 --
--- For TCP sockets, a zero length return value means the peer has
--- closed its half side of the connection.
+-- The return value is the length of received data. Zero means
+-- EOF. Historical note: Version 2.8.x.y or earlier,
+-- an EOF error was thrown. This was changed in version 3.0.
 --
 -- Receiving data from closed socket may lead to undefined behaviour.
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int

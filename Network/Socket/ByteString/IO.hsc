@@ -225,6 +225,8 @@ recv s nbytes
 -- 'ByteString' representing the data received and @address@ is a
 -- 'SockAddr' representing the address of the sending socket.
 --
+-- If the first return value is zero, it means EOF.
+--
 -- Receiving data from closed socket may lead to undefined behaviour.
 recvFrom :: SocketAddress sa =>
             Socket                     -- ^ Socket

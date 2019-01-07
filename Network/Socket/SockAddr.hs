@@ -56,6 +56,8 @@ sendBufTo = G.sendBufTo
 -- bytes received and @address@ is a 'SockAddr' representing the
 -- address of the sending socket.
 --
+-- If the first return value is zero, it means EOF.
+--
 -- For 'Stream' sockets, the second return value would be invalid.
 --
 -- NOTE: blocking on Windows unless you compile with -threaded (see
