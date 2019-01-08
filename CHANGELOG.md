@@ -14,6 +14,8 @@ new mkSocket :: CInt Socket
 * Socket addresses are extendable with Network.Socket.Address.
 * "socket" is now asynchronous-exception-safe.
   [#336](https://github.com/haskell/network/pull/336)
+* "recvFrom" returns (0, addr) instead of throwing an error on EOF.
+  [#360](https://github.com/haskell/network/pull/360)
 * All APIs are available on any platforms.
 * Build system is simplified.
 * Bug fixes.
