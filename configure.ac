@@ -88,4 +88,8 @@ AC_CHECK_DECLS([SO_PEERCRED])
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len])
 
+dnl This is a necessary hack
+AC_MSG_NOTICE([creating ./network.buildinfo])
+echo "install-includes: HsNetworkConfig.h" > network.buildinfo
+
 AC_OUTPUT
