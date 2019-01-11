@@ -33,17 +33,15 @@ install:
  - "cabal --version"
  - "ghc --version"
  - "cabal %CABOPTS% update -vverbose+nowrap"
- - "cabal %CABOPTS% install hspec-discover"
- - "cabal %CABOPTS% install cabal-doctest"
 
 build: off
 deploy: off
 
 test_script:
  - IF EXIST configure.ac bash -c "autoreconf -i"
- - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap --dry all"
+ - "cabal %CABOPTS% v2-build -j1 -vnormal+nowrap --dry all"
  - ps: Push-AppveyorArtifact dist-newstyle\cache\plan.json
- - "cabal %CABOPTS% new-build -j1 -vnormal+nowrap all"
- - IF "%DOCTEST%"=="YES" (set TESTSUITE=all) ELSE (set TESTSUITE=network:test:spec)
- - "cabal %CABOPTS% new-test  -j1 -vnormal+nowrap %TESTSUITE%"
+ - "cabal %CABOPTS% v2-build -j1 -vnormal+nowrap all"
+ - IF "%DOCTEST%"=="YES" bash enable_doctest.sh
+ - "cabal %CABOPTS% v2-test  -j1 -vnormal+nowrap all"
  - ps: ls network*.log -recurse | %{ Push-AppveyorArtifact $_}
