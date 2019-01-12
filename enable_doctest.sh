@@ -1,8 +1,10 @@
 #!/bin/sh
 
-sed -i '/^library/i custom-setup { setup-depends: base, Cabal >= 2, cabal-doctest >=1.0.6 && <1.1 }\n' network.cabal
-sed -i 's/^build-type:.*$/build-type: Custom/' network.cabal
-sed -i 's/buildable: False/buildable: True/' network.cabal
+sed -i~ '/^library/i\
+custom-setup { setup-depends: base, Cabal >= 2, cabal-doctest >=1.0.6 && <1.1 }
+' network.cabal
+sed -i~ 's/^build-type:.*$/build-type: Custom/' network.cabal
+sed -i~ 's/buildable: False/buildable: True/' network.cabal
 
 cat > Setup.hs <<EOF
 {-# LANGUAGE CPP #-}
