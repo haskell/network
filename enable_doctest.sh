@@ -1,3 +1,12 @@
+#!/bin/sh
+
+sed -i~ '/^library/i\
+custom-setup { setup-depends: base, Cabal >= 2, cabal-doctest >=1.0.6 && <1.1 }
+' network.cabal
+sed -i~ 's/^build-type:.*$/build-type: Custom/' network.cabal
+sed -i~ 's/buildable: False/buildable: True/' network.cabal
+
+cat > Setup.hs <<EOF
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wall #-}
 module Main (main) where
@@ -20,8 +29,8 @@ main = defaultMainAutoconfWithDoctests "doctests"
 --
 -- Probably we are running cabal sdist, when otherwise using new-build
 -- workflow
-#warning You are configuring this package without cabal-doctest installed. \
-         The doctests test-suite will not work as a result. \
+#warning You are configuring this package without cabal-doctest installed. \\
+         The doctests test-suite will not work as a result. \\
          To fix this, install cabal-doctest before configuring.
 #endif
 
@@ -31,3 +40,5 @@ main :: IO ()
 main = defaultMain
 
 #endif
+EOF
+
