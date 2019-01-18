@@ -15,7 +15,7 @@ setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
 
--- | Set the close_on_exec flag on Unix.
+-- | Set the nonblocking flag on Unix.
 --   On Windows, nothing is done.
 --
 --   Since 2.7.0.0.
@@ -31,7 +31,7 @@ foreign import ccall unsafe "fcntl"
   c_fcntl_read  :: CInt -> CInt -> CInt -> IO CInt
 #endif
 
--- | Get the nonblocking flag.
+-- | Get the close_on_exec flag.
 --   On Windows, this function always returns 'False'.
 --
 --   Since 2.7.0.0.
