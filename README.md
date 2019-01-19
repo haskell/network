@@ -53,14 +53,16 @@ So, if you use `CALLCONV`/`SAFE_ON_WIN`, the following is also necessary:
 
 See https://github.com/haskell/network/issues/296
 
-- Making `Network` deprecated
-- Making `Network.BSD` deprecated
-- Making `MkSocket` deprecated
-- Making many APIs deprecated
+- [x] Making `Network` deprecated
+- [x] Making `Network.BSD` deprecated
+- [x] Making `MkSocket` deprecated
+- [x] Making many APIs deprecated
 
 ### 3.0
 
-- Removing `Network`
-- Removing `Network.BSD`
-- Removing `SockAddrCan`
-- Changing the internal structure of `Socket`.
+- [x] Removing `Network`
+- [x] Removing `Network.BSD`
+- [x] Removing `SockAddrCan`
+- [x] Changing the internal structure of `Socket`.
+- [x] Make address extensible.
+- [x] Remove EOF errors
