@@ -1,6 +1,7 @@
 ## Version 3.0.0.0
 
 * Breaking change: the Network and Network.BSD are removed.
+  Network.BSD is provided a new package: network-bsd.
 * Breaking change: the signatures are changed:
 ```
 old fdSocket :: Socket -> CInt
