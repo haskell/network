@@ -122,14 +122,14 @@ test-suite spec
   -- NB: make sure to versions of hspec and hspec-discover
   --     that work together; easiest way is to constraint
   --     both packages to a small enough version range.
-  build-tools: hspec-discover == 2.6.*
+  build-tools: hspec-discover >= 2.6
   build-depends:
     base >= 4.7 && < 5,
     bytestring,
     directory,
     HUnit,
     network,
-    hspec == 2.6.*
+    hspec >= 2.6
 
 test-suite doctests
   buildable: False
