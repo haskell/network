@@ -8,7 +8,7 @@ old fdSocket :: Socket -> CInt
 new fdSocket :: Socket -> IO CInt
 
 old mkSocket :: CInt -> Family -> SocketType -> ProtocolNumber -> SocketStatus -> IO Socket
-new mkSocket :: CInt Socket
+new mkSocket :: CInt -> IO Socket
 ```
 * Breaking change: the deprecated APIs are removed: send, sendTo, recv, recvFrom, recvLen, htonl, ntohl, inet_addr, int_ntoa, bindSocket, sClose, SocketStatus, isConnected, isBound, isListening, isReadable, isWritable, sIsConnected, sIsBound, sIsListening, sIsReadable, sIsWritable, aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN, sOL_SOCKET, sCM_RIGHTS, packSocketType, getPeerCred.
 * Breaking chage: SockAddrCan is removed from SockAddr.
