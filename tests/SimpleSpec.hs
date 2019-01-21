@@ -5,7 +5,7 @@
 module SimpleSpec (main, spec) where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, readMVar)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar, readMVar)
 import qualified Control.Exception as E
 import Control.Monad
 import Data.ByteString (ByteString)
@@ -111,6 +111,18 @@ spec = do
 
                 client sock = send sock testMsg
             tcpTest client server
+    describe "connect" $ do
+        let
+          hints = defaultHints { addrSocketType = Stream }
+          connect' serverPort = do
+              addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+              sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+              connect sock (addrAddress addr)
+              return sock
+        it "fails to connect and throws an IOException" $ do
+            connect' (8080 :: Int) `shouldThrow` anyIOException
+        it "successfully connects to a socket with no exception" $ do
+            tcpTestUsingClient return return $ readMVar >=> connect'
 
     describe "UserTimeout" $ do
         it "can be set" $ do
@@ -244,8 +256,7 @@ unixTest clientAct serverAct = do
 -- closed after the actions have run.
 tcpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
 tcpTest clientAct serverAct = do
-    portVar <- newEmptyMVar
-    test (clientSetup portVar) clientAct (serverSetup portVar) server
+    tcpTestUsingClient serverAct clientAct clientSetup
   where
     clientSetup portVar = do
         let hints = defaultHints { addrSocketType = Stream }
@@ -260,6 +271,12 @@ tcpTest clientAct serverAct = do
         connect sock $ addrAddress addr
         return sock
 
+tcpTestUsingClient
+    :: (Socket -> IO a) -> (Socket -> IO b) -> (MVar PortNumber -> IO Socket) -> IO ()
+tcpTestUsingClient serverAct clientAct clientSetup = do
+    portVar <- newEmptyMVar
+    test (clientSetup portVar) clientAct (serverSetup portVar) server
+  where
     serverSetup portVar = do
         let hints = defaultHints {
                 addrFlags = [AI_PASSIVE]
