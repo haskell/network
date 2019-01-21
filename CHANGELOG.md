@@ -1,3 +1,8 @@
+## Version 3.0.1.0
+
+* Fixing a bag of `connect`.
+  [#368](https://github.com/haskell/network/pull/368)
+
 ## Version 3.0.0.0
 
 * Breaking change: the Network and Network.BSD are removed.
