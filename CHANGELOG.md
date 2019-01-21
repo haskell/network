@@ -1,4 +1,4 @@
-## Version 3.0.1.0
+## Version 3.0.0.1
 
 * Fixing a bag of `connect`.
   [#368](https://github.com/haskell/network/pull/368)
