@@ -160,7 +160,7 @@ connectLoop s p_sa sz = loop
        fd <- fromIntegral <$> fdSocket s
        threadWaitWrite fd
        err <- getSocketOption s SoError
-       when (err == -1) $ throwSocketErrorCode errLoc (fromIntegral err)
+       when (err /= 0) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
 
 -----------------------------------------------------------------------------
