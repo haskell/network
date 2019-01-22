@@ -58,6 +58,10 @@ See https://github.com/haskell/network/issues/296
 - [x] Making `MkSocket` deprecated
 - [x] Making many APIs deprecated
 
+### 2.8
+
+- [x] Stop exporting the `PortNum` Constructor in `PortNumber`
+
 ### 3.0
 
 - [x] Removing `Network`
