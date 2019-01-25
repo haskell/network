@@ -29,7 +29,7 @@ description:
   > library
   >   build-depends: network-uri-flag
 category:       Network
-build-type:     Configure
+build-type:     Simple
 extra-tmp-files:
   config.log config.status autom4te.cache network.buildinfo
   include/HsNetworkConfig.h
