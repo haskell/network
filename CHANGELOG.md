@@ -1,6 +1,6 @@
 ## Version 3.0.0.1
 
-* Fixing a bag of `connect`.
+* Fixed a bug in `connect` where exceptions were not thrown
   [#368](https://github.com/haskell/network/pull/368)
 
 ## Version 3.0.0.0
