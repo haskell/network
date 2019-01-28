@@ -1,3 +1,7 @@
+## Version 3.0.1.0
+
+* Added `getSocketType :: Socket -> IO SocketType`.
+
 ## Version 3.0.0.1
 
 * Fixed a bug in `connect` where exceptions were not thrown
