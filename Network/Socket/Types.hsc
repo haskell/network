@@ -935,7 +935,10 @@ type CSaFamily = (#type sa_family_t)
 -- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
+sizeOfSockAddr (SockAddrUnix path) =
+    case path of
+        '\0':_ -> (#const sizeof(sa_family_t)) + length path
+        _      -> #const sizeof(struct sockaddr_un)
 #else
 sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
 #endif
