@@ -61,6 +61,8 @@ isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption = isJust . packSocketOption
 
 -- | Get the 'SocketType' of an active socket.
+--
+--   Since: 3.0.1.0
 getSocketType :: Socket -> IO SocketType
 getSocketType s = (fromMaybe NoSocketType . unpackSocketType . fromIntegral)
                     <$> getSocketOption s Type
