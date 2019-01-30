@@ -8,6 +8,7 @@
 module Network.Socket.Options (
     SocketOption(..)
   , isSupportedSocketOption
+  , getSocketType
   , getSocketOption
   , setSocketOption
   , c_getsockopt
@@ -58,6 +59,13 @@ data SocketOption
 -- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption = isJust . packSocketOption
+
+-- | Get the 'SocketType' of an active socket.
+--
+--   Since: 3.0.1.0
+getSocketType :: Socket -> IO SocketType
+getSocketType s = (fromMaybe NoSocketType . unpackSocketType . fromIntegral)
+                    <$> getSocketOption s Type
 
 -- | For a socket option, return Just (level, value) where level is the
 -- corresponding C option level constant (e.g. SOL_SOCKET) and value is

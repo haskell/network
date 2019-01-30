@@ -141,6 +141,7 @@ module Network.Socket
     -- ** Types of Socket
     , SocketType(..)
     , isSupportedSocketType
+    , getSocketType
     -- ** Family
     , Family(..)
     , isSupportedFamily
