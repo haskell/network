@@ -136,9 +136,6 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 -- | Close the socket. This function does not throw exceptions even if
 --   the underlying system call returns errors.
 --
---   Sending data to or receiving data from closed socket
---   may lead to undefined behaviour.
---
 --   If multiple threads use the same socket and one uses 'fdSocket' and
 --   the other use 'close', unexpected behavior may happen.
 --   For more information, please refer to the documentation of 'fdSocket'.
@@ -156,9 +153,6 @@ close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
 
 -- | Close the socket. This function throws exceptions if
 --   the underlying system call returns errors.
---
---   Sending data to or receiving data from closed socket
---   may lead to undefined behaviour.
 close' :: Socket -> IO ()
 close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.

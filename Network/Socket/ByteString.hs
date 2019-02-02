@@ -68,8 +68,6 @@ import Network.Socket.Types
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent. Applications are responsible for
 -- ensuring that all data has been sent.
---
--- Sending data to closed socket may lead to undefined behaviour.
 sendTo :: Socket -> ByteString -> SockAddr -> IO Int
 sendTo = G.sendTo
 
@@ -79,8 +77,6 @@ sendTo = G.sendTo
 -- data has been sent or an error occurs.  On error, an exception is
 -- raised, and there is no way to determine how much data, if any, was
 -- successfully sent.
---
--- Sending data to closed socket may lead to undefined behaviour.
 sendAllTo :: Socket -> ByteString -> SockAddr -> IO ()
 sendAllTo = G.sendAllTo
 
@@ -88,8 +84,6 @@ sendAllTo = G.sendAllTo
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
 -- 'ByteString' representing the data received and @address@ is a
 -- 'SockAddr' representing the address of the sending socket.
---
--- Receiving data from closed socket may lead to undefined behaviour.
 recvFrom :: Socket -> Int -> IO (ByteString, SockAddr)
 recvFrom = G.recvFrom
 
