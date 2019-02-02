@@ -30,6 +30,7 @@ spec = do
             let server sock = recv sock 1024 `shouldReturn` testMsg
                 client sock = send sock testMsg
             tcpTest client server
+
         it "throws when closed" $ do
             let server _ = pure ()
                 client sock = do
@@ -42,6 +43,7 @@ spec = do
             let server sock = recv sock 1024 `shouldReturn` testMsg
                 client sock = sendAll sock testMsg
             tcpTest client server
+
         it "throws when closed" $ do
             let server _ = pure ()
                 client sock = do
@@ -57,6 +59,7 @@ spec = do
                     addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
                     sendTo sock testMsg $ addrAddress addr
             udpTest client server
+
         it "throws when closed" $ do
             let server _ = pure ()
                 client sock serverPort = do
@@ -74,6 +77,7 @@ spec = do
                     addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
                     sendAllTo sock testMsg $ addrAddress addr
             udpTest client server
+
         it "throws when closed" $ do
             let server _ = pure ()
                 client sock serverPort = do
@@ -91,6 +95,7 @@ spec = do
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
             tcpTest client server
+
         it "throws when closed" $ do
             let server _ = pure ()
                 client sock = do
@@ -112,6 +117,7 @@ spec = do
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
             udpTest client server
+
         it "throws when closed" $ do
             let server _ = pure ()
                 client sock serverPort = do
@@ -191,8 +197,10 @@ spec = do
               sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
               connect sock (addrAddress addr)
               return sock
+
         it "fails to connect and throws an IOException" $ do
             connect' (8080 :: Int) `shouldThrow` anyIOException
+
         it "successfully connects to a socket with no exception" $ do
             tcpTestUsingClient return return $ readMVar >=> connect'
 
@@ -250,6 +258,7 @@ spec = do
             AddrInfo{addrAddress = (SockAddrInet _ hostAddr)}:_ <-
                 getAddrInfo (Just hints) (Just "127.128.129.130") Nothing
             hostAddressToTuple hostAddr `shouldBe` (0x7f, 0x80, 0x81, 0x82)
+
 #if defined(IPV6_SOCKET_SUPPORT)
         it "works for IPv6 address" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
