@@ -70,10 +70,11 @@ spec = do
             tcpTest client server
 
         it "can treat overflow" $ do
-            let server sock = do seg1 <- recv sock (L.length lazyTestMsg - 3)
-                                 seg2 <- recv sock 1024
-                                 let msg = L.append seg1 seg2
-                                 msg `shouldBe` lazyTestMsg
+            let server sock = do
+                    seg1 <- recv sock (L.length lazyTestMsg - 3)
+                    seg2 <- recv sock 1024
+                    let msg = L.append seg1 seg2
+                    msg `shouldBe` lazyTestMsg
                 client sock = send sock lazyTestMsg
             tcpTest client server
 

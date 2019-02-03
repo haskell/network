@@ -138,10 +138,11 @@ spec = do
             tcpTest client server
 
         it "can treat overflow" $ do
-            let server sock = do seg1 <- recv sock (S.length testMsg - 3)
-                                 seg2 <- recv sock 1024
-                                 let msg = S.append seg1 seg2
-                                 msg `shouldBe` testMsg
+            let server sock = do
+                    seg1 <- recv sock (S.length testMsg - 3)
+                    seg2 <- recv sock 1024
+                    let msg = S.append seg1 seg2
+                    msg `shouldBe` testMsg
                 client sock = send sock testMsg
             tcpTest client server
 
@@ -156,8 +157,9 @@ spec = do
 
     describe "recvFrom" $ do
         it "works well" $ do
-            let server sock = do (msg, _) <- recvFrom sock 1024
-                                 testMsg `shouldBe` msg
+            let server sock = do
+                    (msg, _) <- recvFrom sock 1024
+                    testMsg `shouldBe` msg
                 client sock = do
                     addr <- getPeerName sock
                     sendTo sock testMsg addr
@@ -173,16 +175,17 @@ spec = do
             tcpTest client server
 
         it "can treat overflow" $ do
-            let server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
-                                 (seg2, _) <- recvFrom sock 1024
-                                 let msg = S.append seg1 seg2
-                                 testMsg `shouldBe` msg
-
+            let server sock = do
+                    (seg1, _) <- recvFrom sock (S.length testMsg - 3)
+                    (seg2, _) <- recvFrom sock 1024
+                    let msg = S.append seg1 seg2
+                    testMsg `shouldBe` msg
                 client sock = send sock testMsg
             tcpTest client server
 
         it "returns empty string at EOF" $ do
-            let server sock = do (seg1, _) <- recvFrom sock (S.length testMsg - 3)
-                                 seg1 `shouldBe` S.empty
+            let server sock = do
+                    (seg1, _) <- recvFrom sock (S.length testMsg - 3)
+                    seg1 `shouldBe` S.empty
                 client sock = shutdown sock ShutdownSend
             tcpTest client server
