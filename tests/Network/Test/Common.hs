@@ -22,6 +22,8 @@ import System.Directory
 import qualified Data.ByteString.Lazy as L
 import System.Timeout (timeout)
 
+import Test.Hspec
+
 serverAddr :: String
 serverAddr = "127.0.0.1"
 
