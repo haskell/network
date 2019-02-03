@@ -32,7 +32,7 @@ spec = do
             tcpTest client server
 
         it "throws when closed" $ do
-            let server _ = pure ()
+            let server _ = return ()
                 client sock = do
                     close sock
                     send sock testMsg `shouldThrow` anyException
@@ -45,7 +45,7 @@ spec = do
             tcpTest client server
 
         it "throws when closed" $ do
-            let server _ = pure ()
+            let server _ = return ()
                 client sock = do
                     close sock
                     sendAll sock testMsg `shouldThrow` anyException
@@ -61,7 +61,7 @@ spec = do
             udpTest client server
 
         it "throws when closed" $ do
-            let server _ = pure ()
+            let server _ = return ()
                 client sock serverPort = do
                     let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
                     addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
@@ -79,7 +79,7 @@ spec = do
             udpTest client server
 
         it "throws when closed" $ do
-            let server _ = pure ()
+            let server _ = return ()
                 client sock serverPort = do
                     let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
                     addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
@@ -97,7 +97,7 @@ spec = do
             tcpTest client server
 
         it "throws when closed" $ do
-            let server _ = pure ()
+            let server _ = return ()
                 client sock = do
                     close sock
                     sendMany sock [seg1, seg2] `shouldThrow` anyException
@@ -119,7 +119,7 @@ spec = do
             udpTest client server
 
         it "throws when closed" $ do
-            let server _ = pure ()
+            let server _ = return ()
                 client sock serverPort = do
                     let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
                     addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
