@@ -53,14 +53,6 @@ spec = do
                     shutdown sock ShutdownSend
             tcpTest client server
 
-        it "throws when closed" $ do
-            pendingWith "Does not throw on closed socket"
-            let server sock = do
-                    close sock
-                    getContents sock `shouldThrow` anyException
-                client sock = send sock lazyTestMsg
-            tcpTest client server
-
         it "returns empty string at EOF" $ do
             let client s = getContents s `shouldReturn` L.empty
                 server s = shutdown s ShutdownSend
