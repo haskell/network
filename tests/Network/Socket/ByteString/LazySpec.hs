@@ -43,6 +43,7 @@ spec = do
                     sendAll sock lazyTestMsg `shouldThrow` anyException
             tcpTest client server
 
+#if !defined(darwin_HOST_OS)
     describe "getContents" $ do
         it "works well" $ do
             let server sock = getContents sock `shouldReturn` lazyTestMsg
@@ -55,6 +56,7 @@ spec = do
             let client s = getContents s `shouldReturn` L.empty
                 server s = shutdown s ShutdownSend
             tcpTest client server
+#endif
 
     describe "recv" $ do
         it "works well" $ do
