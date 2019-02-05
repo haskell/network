@@ -33,7 +33,7 @@ import           Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize
 import           Network.Socket                (ShutdownCmd (..), shutdown)
 import           Prelude                       hiding (getContents)
 import           System.IO.Unsafe              (unsafeInterleaveIO)
-import           Control.Exception             (onException)
+import           System.IO.Error               (catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
@@ -66,7 +66,7 @@ getContents s = loop
         sbs <- N.recv s defaultChunkSize
         if S.null sbs
             then do
-              shutdown s ShutdownReceive `onException` return ()
+              shutdown s ShutdownReceive `catchIOError` const (return ())
               return Empty
             else Chunk sbs <$> loop
 
