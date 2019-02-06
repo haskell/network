@@ -4,6 +4,8 @@
   [#372](https://github.com/haskell/network/pull/372)
 * Correcting manual and brushing up test cases
   [#375](https://github.com/haskell/network/pull/375)
+* Fixed longstanded bug in `getContents` on mac
+  [#375](https://github.com/haskell/network/pull/375)
 * Fixing regression: set correct sockaddr length for abstract addresses
   for Linux.
   [#374](https://github.com/haskell/network/pull/374)
