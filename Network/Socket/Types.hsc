@@ -936,6 +936,17 @@ type CSaFamily = (#type sa_family_t)
 sizeOfSockAddr :: SockAddr -> Int
 #if defined(DOMAIN_SOCKET_SUPPORT)
 # ifdef linux_HOST_OS
+-- http://man7.org/linux/man-pages/man7/unix.7.html says:
+-- "an abstract socket address is distinguished (from a
+-- pathname socket) by the fact that sun_path[0] is a null byte
+-- ('\0').  The socket's address in this namespace is given by the
+-- additional bytes in sun_path that are covered by the specified
+-- length of the address structure.  (Null bytes in the name have no
+-- special significance.)  The name has no connection with filesystem
+-- pathnames.  When the address of an abstract socket is returned,
+-- the returned addrlen is greater than sizeof(sa_family_t) (i.e.,
+-- greater than 2), and the name of the socket is contained in the
+-- first (addrlen - sizeof(sa_family_t)) bytes of sun_path."
 sizeOfSockAddr (SockAddrUnix path) =
     case path of
         '\0':_ -> (#const sizeof(sa_family_t)) + length path
