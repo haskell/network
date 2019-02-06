@@ -1,6 +1,12 @@
 ## Version 3.0.1.0
 
 * Added `getSocketType :: Socket -> IO SocketType`.
+  [#372](https://github.com/haskell/network/pull/372)
+* Correcting manual and brushing up test cases
+  [#375](https://github.com/haskell/network/pull/375)
+* Fixing regression: set correct sockaddr length for abstract addresses
+  for Linux.
+  [#374](https://github.com/haskell/network/pull/374)
 
 ## Version 3.0.0.1
 
