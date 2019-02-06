@@ -53,8 +53,6 @@ socket2FD s = do
 -- | Send data to the socket. The socket must be connected to a remote
 -- socket. Returns the number of bytes sent.  Applications are
 -- responsible for ensuring that all data has been sent.
---
--- Sending data to closed socket may lead to undefined behaviour.
 sendBuf :: Socket    -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
@@ -115,8 +113,6 @@ recvBufFrom s ptr nbytes
 -- The return value is the length of received data. Zero means
 -- EOF. Historical note: Version 2.8.x.y or earlier,
 -- an EOF error was thrown. This was changed in version 3.0.
---
--- Receiving data from closed socket may lead to undefined behaviour.
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")

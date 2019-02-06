@@ -33,6 +33,7 @@ import           Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize
 import           Network.Socket                (ShutdownCmd (..), shutdown)
 import           Prelude                       hiding (getContents)
 import           System.IO.Unsafe              (unsafeInterleaveIO)
+import           System.IO.Error               (catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
@@ -64,7 +65,9 @@ getContents s = loop
     loop = unsafeInterleaveIO $ do
         sbs <- N.recv s defaultChunkSize
         if S.null sbs
-            then shutdown s ShutdownReceive >> return Empty
+            then do
+              shutdown s ShutdownReceive `catchIOError` const (return ())
+              return Empty
             else Chunk sbs <$> loop
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -74,8 +77,6 @@ getContents s = loop
 -- until a message arrives.
 --
 -- If there is no more data to be received, returns an empty 'ByteString'.
---
--- Receiving data from closed socket may lead to undefined behaviour.
 recv
     :: Socket -- ^ Connected socket
     -> Int64 -- ^ Maximum number of bytes to receive
