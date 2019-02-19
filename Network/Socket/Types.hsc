@@ -904,6 +904,15 @@ withNewSockAddr family f = do
     let sz = sizeOfSockAddrByFamily family
     allocaBytes sz $ \ptr -> f ptr sz
 
+-- We cannot bind sun_paths longer than than the space in the sockaddr_un
+-- structure, and attempting to do so could overflow the allocated storage
+-- space.  This constant holds the maximum allowable path length.
+--
+#if defined(DOMAIN_SOCKET_SUPPORT)
+unixPathMax :: Int
+unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
+#endif
+
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
 -- 'Foreign.Storable.sizeOf' is required to be constant.
@@ -914,21 +923,15 @@ withNewSockAddr family f = do
 -- | Write the given 'SockAddr' to the given memory location.
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-pokeSockAddr p (SockAddrUnix path) = do
-#if defined(darwin_HOST_OS)
-    zeroMemory p (#const sizeof(struct sockaddr_un))
-#else
-    case path of
-      ('\0':_) -> zeroMemory p (#const sizeof(struct sockaddr_un))
-      _        -> return ()
-#endif
+pokeSockAddr p sa@(SockAddrUnix path) = do
+    when (length path > unixPathMax) $ error "pokeSockAddr: path is too long"
+    zeroMemory p $ fromIntegral $ sizeOfSockAddr sa
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
 #endif
     (#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
     let pathC = map castCharToCChar path
-        poker = case path of ('\0':_) -> pokeArray; _ -> pokeArray0 0
-    poker ((#ptr struct sockaddr_un, sun_path) p) pathC
+    pokeArray ((#ptr struct sockaddr_un, sun_path) p) pathC
 #endif
 pokeSockAddr p (SockAddrInet port addr) = do
 #if defined(darwin_HOST_OS)
