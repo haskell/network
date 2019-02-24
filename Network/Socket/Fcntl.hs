@@ -15,7 +15,7 @@ setNonBlockIfNeeded :: CInt -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD fd True
 
--- | Set the nonblocking flag on Unix.
+-- | Set the close_on_exec flag on Unix.
 --   On Windows, nothing is done.
 --
 --   Since 2.7.0.0.
@@ -45,7 +45,7 @@ getCloseOnExec fd = do
     return (ret /= 0)
 #endif
 
--- | Get the close_on_exec flag.
+-- | Get the nonblocking flag.
 --   On Windows, this function always returns 'False'.
 --
 --   Since 2.7.0.0.
