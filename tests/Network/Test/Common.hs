@@ -163,6 +163,8 @@ test clientSetup clientAct serverSetup serverAct = do
     tid <- myThreadId
     barrier <- newEmptyMVar
     _ <- forkIO $ server barrier
+        -- Release MVar if server setup fails
+        `E.onException` putMVar barrier ()
     client tid barrier
   where
     server barrier =
