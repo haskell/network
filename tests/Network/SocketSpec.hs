@@ -6,6 +6,7 @@ module Network.SocketSpec (main, spec) where
 import Control.Concurrent.MVar (readMVar)
 import Control.Monad
 import Network.Socket hiding (recv, send)
+import Network.Socket.ByteString
 import Network.Test.Common
 
 import Test.Hspec
@@ -98,3 +99,23 @@ spec = do
         it "does not cause segfault on macOS 10.8.2 due to AI_NUMERICSERV" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
             void $ getAddrInfo (Just hints) (Just "localhost") Nothing
+
+    describe "unix sockets" $ do
+        it "basic unix sockets end-to-end" $ do
+            when isUnixDomainSocketAvailable $ do
+                let client sock = send sock testMsg
+                    server (sock, addr) = do
+                      recv sock 1024 `shouldReturn` testMsg
+                      addr `shouldBe` (SockAddrUnix "")
+                unixTest client server
+#ifdef linux_HOST_OS
+        it "can end-to-end with an abstract socket" $ do
+            when isUnixDomainSocketAvailable $ do
+                let
+                    abstractAddress = toEnum 0:"/haskell/network/long-abstract"
+                    clientAct sock = send sock testMsg
+                    server (sock, addr) = do
+                      recv sock 1024 `shouldReturn` testMsg
+                      addr `shouldBe` (SockAddrUnix "")
+                unixTestWith abstractAddress (const $ return ()) clientAct server
+#endif

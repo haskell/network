@@ -7,9 +7,10 @@ module Network.Test.Common
   , testMsg
   , lazyTestMsg
   , tcpTest
-  , unixTest
-  , udpTest
   , tcpTestUsingClient
+  , unixTest
+  , unixTestWith
+  , udpTest
   ) where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
@@ -42,31 +43,39 @@ unixAddr = "/tmp/network-test"
 -- client and server.  'unixTest' makes sure that the 'Socket' is
 -- closed after the actions have run.
 unixTest :: (Socket -> IO a) -> ((Socket, SockAddr) -> IO b) -> IO ()
-unixTest clientAct serverAct =
+unixTest = unixTestWith unixAddr unlink
+  where
+    unlink file = do
+        exist <- doesFileExist file
+        when exist $ removeFile file
+
+unixTestWith
+    :: String -- ^ address
+    -> (String -> IO ()) -- ^ clean up action
+    -> (Socket -> IO a) -- ^ client action
+    -> ((Socket, SockAddr) -> IO b) -- ^ server action
+    -> IO ()
+unixTestWith address cleanupAct clientAct serverAct =
     test clientSetup clientAct serverSetup server
   where
     clientSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        connect sock (SockAddrUnix unixAddr)
+        connect sock (SockAddrUnix address)
         return sock
 
     serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
-        unlink unixAddr -- just in case
-        bind sock (SockAddrUnix unixAddr)
+        cleanupAct address -- just in case
+        bind sock (SockAddrUnix address)
         listen sock 1
         return sock
 
     server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
 
-    unlink file = do
-        exist <- doesFileExist file
-        when exist $ removeFile file
-
     killClientSock sock = do
         shutdown sock ShutdownBoth
         close sock
-        unlink unixAddr
+        cleanupAct address
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions
