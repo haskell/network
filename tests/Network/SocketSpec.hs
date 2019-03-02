@@ -108,3 +108,12 @@ spec = do
                       recv sock 1024 `shouldReturn` testMsg
                       addr `shouldBe` (SockAddrUnix "")
                 unixTest client server
+        it "can end-to-end with an abstract socket" $ do
+            when isUnixDomainSocketAvailable $ do
+                let
+                    abstractAddress = toEnum 0:"/haskell/network/long-abstract"
+                    clientAct sock = send sock testMsg
+                    server (sock, addr) = do
+                      recv sock 1024 `shouldReturn` testMsg
+                      addr `shouldBe` (SockAddrUnix "")
+                unixTestWith abstractAddress (const $ pure ()) clientAct server
