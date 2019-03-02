@@ -173,24 +173,25 @@ test clientSetup clientAct serverSetup serverAct = do
     barrier <- newEmptyMVar
     _ <- forkIO $ server barrier
         -- Release MVar if server setup fails
-        `E.onException` putMVar barrier ()
+        `E.catch` \(e :: E.SomeException) -> do
+            putMVar barrier (Just e)
     client tid barrier
   where
     server barrier =
         E.bracket serverSetup close $ \sock -> do
         serverReady
         Just _ <- timeout 1000000 $ serverAct sock
-        putMVar barrier ()
+        putMVar barrier Nothing
       where
         -- | Signal to the client that it can proceed.
-        serverReady = putMVar barrier ()
+        serverReady = putMVar barrier Nothing
 
     client tid barrier = do
-        takeMVar barrier
+        maybe (return ()) E.throwIO =<< takeMVar barrier
         -- Transfer exceptions to the main thread.
         bracketWithReraise tid clientSetup close $ \res -> do
             Just _ <- timeout 1000000 $ clientAct res
-            takeMVar barrier
+            maybe (return ()) E.throwIO =<< takeMVar barrier
 
 -- | Like 'bracket' but catches and reraises the exception in another
 -- thread, specified by the first argument.
