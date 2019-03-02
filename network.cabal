@@ -76,17 +76,24 @@ library
 test-suite spec
   hs-source-dirs: tests
   main-is: Spec.hs
-  other-modules: RegressionSpec
-                 SimpleSpec
+  other-modules:
+    Network.Test.Common
+    Network.SocketSpec
+    Network.Socket.ByteStringSpec
+    Network.Socket.ByteString.LazySpec
   type: exitcode-stdio-1.0
   ghc-options: -Wall -threaded
+  -- NB: make sure to versions of hspec and hspec-discover
+  --     that work together; easiest way is to constraint
+  --     both packages to a small enough version range.
+  build-tools: hspec-discover >= 2.6
   build-depends:
     base >= 4.7 && < 5,
     bytestring,
     directory,
     HUnit,
     network,
-    hspec
+    hspec >= 2.6
 
 test-suite doctest
   hs-source-dirs: tests
