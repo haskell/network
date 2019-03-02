@@ -116,4 +116,4 @@ spec = do
                     server (sock, addr) = do
                       recv sock 1024 `shouldReturn` testMsg
                       addr `shouldBe` (SockAddrUnix "")
-                unixTestWith abstractAddress (const $ pure ()) clientAct server
+                unixTestWith abstractAddress (const $ return ()) clientAct server
