@@ -29,7 +29,9 @@ spec = do
             connect' (8080 :: Int) `shouldThrow` anyIOException
 
         it "successfully connects to a socket with no exception" $ do
-            tcpTestUsingClient return return $ readMVar >=> connect'
+            withPort $ \portVar -> test (tcp return portVar)
+                { clientSetup = readMVar portVar >>= connect'
+                }
 
     describe "UserTimeout" $ do
         it "can be set" $ do
@@ -55,13 +57,13 @@ spec = do
                 -- under Windows.  For now, accept the risk that we did not get
                 -- the right answer.
                 --
-                let client sock = do
+                let server (sock, _) = do
                         (_, uid, _) <- getPeerCredential sock
                         uid `shouldNotBe` Nothing
-                    server (sock, _) = do
+                    client sock = do
                         (_, uid, _) <- getPeerCredential sock
                         uid `shouldNotBe` Nothing
-                unixTest client server
+                test . setClientAction client $ unixWithUnlink unixAddr server
         {- The below test fails on many *BSD systems, because the getsockopt()
            call that underlies getpeereid() does not have the same meaning for
            all address families, but the C-library was not checking that the
@@ -107,13 +109,14 @@ spec = do
                     server (sock, addr) = do
                       recv sock 1024 `shouldReturn` testMsg
                       addr `shouldBe` (SockAddrUnix "")
-                unixTest client server
+                test . setClientAction client $ unixWithUnlink unixAddr server
         it "can end-to-end with an abstract socket" $ do
             when isUnixDomainSocketAvailable $ do
                 let
-                    abstractAddress = toEnum 0:"/haskell/network/long-abstract"
-                    clientAct sock = send sock testMsg
+                    abstractAddress = toEnum 0:"/haskell/network/abstract"
+                    client sock = send sock testMsg
                     server (sock, addr) = do
                       recv sock 1024 `shouldReturn` testMsg
                       addr `shouldBe` (SockAddrUnix "")
-                unixTestWith abstractAddress (const $ return ()) clientAct server
+                test . setClientAction client $
+                    unix abstractAddress (const $ return ()) $ server

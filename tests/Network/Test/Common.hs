@@ -6,11 +6,17 @@ module Network.Test.Common
   ( serverAddr
   , testMsg
   , lazyTestMsg
+  , ClientServer(..)
+  , setClientAction
+  , tcp
+  , unix
+  , unixWithUnlink
+  , unixAddr
+  , udp
+  , test
   , tcpTest
-  , tcpTestUsingClient
-  , unixTest
-  , unixTestWith
   , udpTest
+  , withPort
   ) where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
@@ -42,36 +48,36 @@ unixAddr = "/tmp/network-test"
 -- get passed a connected 'Socket', used for communicating between
 -- client and server.  'unixTest' makes sure that the 'Socket' is
 -- closed after the actions have run.
-unixTest :: (Socket -> IO a) -> ((Socket, SockAddr) -> IO b) -> IO ()
-unixTest = unixTestWith unixAddr unlink
+unixWithUnlink :: String -> ((Socket, SockAddr) -> IO b) -> (ClientServer a b)
+unixWithUnlink address = unix address unlink
   where
     unlink file = do
         exist <- doesFileExist file
         when exist $ removeFile file
 
-unixTestWith
+unix
     :: String -- ^ address
     -> (String -> IO ()) -- ^ clean up action
-    -> (Socket -> IO a) -- ^ client action
     -> ((Socket, SockAddr) -> IO b) -- ^ server action
-    -> IO ()
-unixTestWith address cleanupAct clientAct serverAct =
-    test clientSetup clientAct serverSetup server
-  where
-    clientSetup = do
+    -> (ClientServer a b)
+unix address cleanupAct serverAct = ClientServer
+    { clientSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
         connect sock (SockAddrUnix address)
         return sock
-
-    serverSetup = do
+    , clientAction =
+        const $ E.throwIO $ userError "no client defined"
+    , serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
         cleanupAct address -- just in case
         bind sock (SockAddrUnix address)
         listen sock 1
         return sock
 
-    server sock = E.bracket (accept sock) (killClientSock . fst) serverAct
-
+    , serverAction = \sock ->
+        E.bracket (accept sock) (killClientSock . fst) serverAct
+    }
+  where
     killClientSock sock = do
         shutdown sock ShutdownBoth
         close sock
@@ -83,10 +89,11 @@ unixTestWith address cleanupAct clientAct serverAct =
 -- client and server.  'tcpTest' makes sure that the 'Socket' is
 -- closed after the actions have run.
 tcpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-tcpTest clientAct serverAct =
-    tcpTestUsingClient serverAct clientAct clientSetup
-  where
-    clientSetup portVar = do
+tcpTest client server = withPort $ test . setClientAction client . tcp server
+
+tcp :: (Socket -> IO b) -> MVar PortNumber -> ClientServer Socket ()
+tcp serverAct portVar = defaultClient
+    { clientSetup = do
         let hints = defaultHints { addrSocketType = Stream }
         serverPort <- readMVar portVar
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
@@ -98,18 +105,11 @@ tcpTest clientAct serverAct =
 #endif
         connect sock $ addrAddress addr
         return sock
-
-tcpTestUsingClient
-    :: (Socket -> IO a) -> (Socket -> IO b) -> (MVar PortNumber -> IO Socket) -> IO ()
-tcpTestUsingClient serverAct clientAct clientSetup = do
-    portVar <- newEmptyMVar
-    test (clientSetup portVar) clientAct (serverSetup portVar) server
-  where
-    serverSetup portVar = do
+    , serverSetup = do
         let hints = defaultHints {
                 addrFlags = [AI_PASSIVE]
-              , addrSocketType = Stream
-              }
+            , addrSocketType = Stream
+            }
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
         fd <- fdSocket sock
@@ -128,7 +128,7 @@ tcpTestUsingClient serverAct clientAct clientSetup = do
         putMVar portVar serverPort
         return sock
 
-    server sock = do
+    , serverAction = \sock -> do
         (clientSock, _) <- accept sock
 #if !defined(mingw32_HOST_OS)
         fd <- fdSocket clientSock
@@ -137,25 +137,28 @@ tcpTestUsingClient serverAct clientAct clientSetup = do
 #endif
         _ <- serverAct clientSock
         close clientSock
+    }
 
 -- | Create an unconnected 'Socket' for sending UDP and receiving
 -- datagrams and then run 'clientAct' and 'serverAct'.
 udpTest :: (Socket -> PortNumber -> IO a) -> (Socket -> IO b) -> IO ()
-udpTest clientAct serverAct = do
-    portVar <- newEmptyMVar
-    test clientSetup (client portVar) (serverSetup portVar) serverAct
-  where
-    clientSetup = socket AF_INET Datagram defaultProtocol
+udpTest client server = withPort $ test . udp client server
 
-    client portVar sock = do
+udp
+    :: (Socket -> PortNumber -> IO a)
+    -> (Socket -> IO b)
+    -> MVar PortNumber
+    -> ClientServer a b
+udp clientAct serverAct portVar = ClientServer
+    { clientSetup = socket AF_INET Datagram defaultProtocol
+    , clientAction = \sock -> do
         serverPort <- readMVar portVar
         clientAct sock serverPort
-
-    serverSetup portVar = do
+    , serverSetup = do
         let hints = defaultHints {
                 addrFlags = [AI_PASSIVE]
-              , addrSocketType = Datagram
-              }
+            , addrSocketType = Datagram
+            }
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
         setSocketOption sock ReuseAddr 1
@@ -163,24 +166,46 @@ udpTest clientAct serverAct = do
         serverPort <- socketPort sock
         putMVar portVar serverPort
         return sock
+    , serverAction = serverAct
+    }
+
+data ClientServer a b
+    = ClientServer
+    { clientSetup :: IO Socket
+    , clientAction :: Socket -> IO a
+    , serverSetup :: IO Socket
+    , serverAction :: Socket -> IO b
+    }
+
+setClientAction
+    :: (Socket -> IO b)
+    -> ClientServer a c
+    -> ClientServer b c
+setClientAction f c = c { clientAction = f }
+
+defaultClient :: ClientServer Socket Socket
+defaultClient = ClientServer
+    { clientSetup =
+        E.throwIO $ userError "no client setup defined"
+    , clientAction = return
+    , serverSetup = E.throwIO $ userError "no server setup defined"
+    , serverAction = return
+    }
 
 -- | Run a client/server pair and synchronize them so that the server
 -- is started before the client and the specified server action is
 -- finished before the client closes the 'Socket'.
-test :: IO Socket -> (Socket -> IO b) -> IO Socket -> (Socket -> IO c) -> IO ()
-test clientSetup clientAct serverSetup serverAct = do
+test :: ClientServer a b -> IO ()
+test conf = do
     tid <- myThreadId
     barrier <- newEmptyMVar
-    _ <- forkIO $ server barrier
-        -- Release MVar if server setup fails
-        `E.catch` \(e :: E.SomeException) -> do
-            E.throwTo tid e
+    _ <- forkIO $ server tid barrier
     client tid barrier
   where
-    server barrier =
-        E.bracket serverSetup close $ \sock -> do
+    server tid barrier =
+        bracketWithReraise tid (serverSetup conf) close $ \sock -> do
         serverReady
-        Just _ <- timeout 1000000 $ serverAct sock
+        Just _ <- timeout 1000000 $ (serverAction conf) sock
         putMVar barrier ()
       where
         -- | Signal to the client that it can proceed.
@@ -189,9 +214,12 @@ test clientSetup clientAct serverSetup serverAct = do
     client tid barrier = do
         takeMVar barrier
         -- Transfer exceptions to the main thread.
-        bracketWithReraise tid clientSetup close $ \res -> do
-            Just _ <- timeout 1000000 $ clientAct res
+        bracketWithReraise tid (clientSetup conf) close $ \res -> do
+            Just _ <- timeout 1000000 $ (clientAction conf) res
             takeMVar barrier
+
+withPort :: (MVar PortNumber -> IO a) -> IO a
+withPort f = f =<< newEmptyMVar
 
 -- | Like 'bracket' but catches and reraises the exception in another
 -- thread, specified by the first argument.
