@@ -102,21 +102,40 @@ spec = do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
             void $ getAddrInfo (Just hints) (Just "localhost") Nothing
 
-    describe "unix sockets" $ do
-        it "basic unix sockets end-to-end" $ do
-            when isUnixDomainSocketAvailable $ do
+    when isUnixDomainSocketAvailable $ do
+        context "unix sockets" $ do
+            it "basic unix sockets end-to-end" $ do
                 let client sock = send sock testMsg
                     server (sock, addr) = do
-                      recv sock 1024 `shouldReturn` testMsg
-                      addr `shouldBe` (SockAddrUnix "")
+                        recv sock 1024 `shouldReturn` testMsg
+                        addr `shouldBe` (SockAddrUnix "")
                 test . setClientAction client $ unixWithUnlink unixAddr server
-        it "can end-to-end with an abstract socket" $ do
-            when isUnixDomainSocketAvailable $ do
+
+            it "can end-to-end with an abstract socket" $ do
                 let
                     abstractAddress = toEnum 0:"/haskell/network/abstract"
                     client sock = send sock testMsg
                     server (sock, addr) = do
-                      recv sock 1024 `shouldReturn` testMsg
-                      addr `shouldBe` (SockAddrUnix "")
+                        recv sock 1024 `shouldReturn` testMsg
+                        addr `shouldBe` (SockAddrUnix "")
                 test . setClientAction client $
                     unix abstractAddress (const $ return ()) $ server
+
+            describe "socketPair" $ do
+                it "can send and recieve bi-directionally" $ do
+                    (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
+                    void $ send s1 testMsg
+                    recv s2 1024 `shouldReturn` testMsg
+                    void $ send s2 testMsg
+                    recv s1 1024 `shouldReturn` testMsg
+
+            describe "sendFd/recvFd" $ do
+                it "can send and recieve a file descriptor" $ do
+                    (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
+                    (s3, s4) <- socketPair AF_UNIX Stream defaultProtocol
+                    fd1 <- fdSocket s1
+                    void $ sendFd s3 fd1
+                    fd1' <- recvFd s4
+                    s1' <- mkSocket fd1'
+                    void $ send s1' testMsg
+                    recv s2 1024 `shouldReturn` testMsg
