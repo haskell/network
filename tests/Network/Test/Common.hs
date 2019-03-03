@@ -51,7 +51,7 @@ unixAddr = "/tmp/network-test"
 -- get passed a connected 'Socket', used for communicating between
 -- client and server.  'unixTest' makes sure that the 'Socket' is
 -- closed after the actions have run.
-unixWithUnlink :: String -> ((Socket, SockAddr) -> IO b) -> (ClientServer a b)
+unixWithUnlink :: String -> ((Socket, SockAddr) -> IO b) -> (ClientServer Socket b)
 unixWithUnlink address = unix address unlink
   where
     unlink file = do
@@ -62,14 +62,12 @@ unix
     :: String -- ^ address
     -> (String -> IO ()) -- ^ clean up action
     -> ((Socket, SockAddr) -> IO b) -- ^ server action
-    -> (ClientServer a b)
-unix address cleanupAct serverAct = ClientServer
+    -> (ClientServer Socket b)
+unix address cleanupAct serverAct = defaultClientServer
     { clientSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
         connect sock (SockAddrUnix address)
         return sock
-    , clientAction =
-        const $ E.throwIO $ userError "no client defined"
     , serverSetup = do
         sock <- socket AF_UNIX Stream defaultProtocol
         cleanupAct address -- just in case
@@ -95,7 +93,7 @@ tcpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
 tcpTest client server = withPort $ test . setClientAction client . tcp server
 
 tcp :: (Socket -> IO b) -> MVar PortNumber -> ClientServer Socket ()
-tcp serverAct portVar = defaultClient
+tcp serverAct portVar = defaultClientServer
     { clientSetup = do
         let hints = defaultHints { addrSocketType = Stream }
         serverPort <- readMVar portVar
@@ -186,8 +184,8 @@ setClientAction
     -> ClientServer b c
 setClientAction f c = c { clientAction = f }
 
-defaultClient :: ClientServer Socket Socket
-defaultClient = ClientServer
+defaultClientServer :: ClientServer Socket Socket
+defaultClientServer = ClientServer
     { clientSetup =
         E.throwIO $ userError "no client setup defined"
     , clientAction = return
