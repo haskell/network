@@ -75,7 +75,6 @@ unix address cleanupAct serverAct = defaultClientServer
         bind sock (SockAddrUnix address)
         listen sock 1
         return sock
-
     , serverAction = \sock ->
         E.bracket (accept sock) (killClientSock . fst) serverAct
     }
@@ -129,7 +128,6 @@ tcp serverAct portVar = defaultClientServer
         serverPort <- socketPort sock
         putMVar portVar serverPort
         return sock
-
     , serverAction = \sock -> do
         (clientSock, _) <- accept sock
 #if !defined(mingw32_HOST_OS)
@@ -217,7 +215,6 @@ test conf = do
       where
         -- | Signal to the client that it can proceed.
         serverReady = putMVar barrier ()
-
     client tid barrier = do
         takeMVar barrier
         -- Transfer exceptions to the main thread.
