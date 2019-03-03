@@ -3,20 +3,23 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.Test.Common
-  ( serverAddr
-  , testMsg
-  , lazyTestMsg
-  , ClientServer(..)
+  ( -- * Client server configuration
+    ClientServer(..)
   , setClientAction
   , tcp
   , unix
   , unixWithUnlink
-  , unixAddr
   , udp
+  , withPort
+  -- * Run a ClientServer configuration
   , test
   , tcpTest
   , udpTest
-  , withPort
+  -- * Common constants
+  , serverAddr
+  , unixAddr
+  , testMsg
+  , lazyTestMsg
   ) where
 
 import Control.Concurrent (ThreadId, forkIO, myThreadId)
