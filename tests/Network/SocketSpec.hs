@@ -33,6 +33,21 @@ spec = do
                 { clientSetup = readMVar portVar >>= connect'
                 }
 
+    describe "bind" $ do
+        let hints = defaultHints
+                { addrFlags = [AI_PASSIVE]
+                , addrSocketType = Stream
+                }
+        it "successfully binds to an ipv6 socket" $ do
+            addr:_ <- getAddrInfo (Just hints) (Just serverAddr6) Nothing
+            sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+            bind sock $ addrAddress addr
+
+        it "fails to bind to unknown ipv6 socket" $ do
+            addr:_ <- getAddrInfo (Just hints) (Just "::6") Nothing
+            sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+            bind sock (addrAddress addr) `shouldThrow` anyIOException
+
     describe "UserTimeout" $ do
         it "can be set" $ do
             when (isSupportedSocketOption UserTimeout) $ do
