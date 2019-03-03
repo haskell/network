@@ -6,6 +6,7 @@ module Network.Test.Common
   ( -- * Client server configuration
     ClientServer(..)
   , setClientAction
+  , setServerAction
   , tcp
   , unix
   , unixWithUnlink
@@ -143,14 +144,14 @@ tcp serverAct portVar = defaultClientServer
 -- | Create an unconnected 'Socket' for sending UDP and receiving
 -- datagrams and then run 'clientAct' and 'serverAct'.
 udpTest :: (Socket -> PortNumber -> IO a) -> (Socket -> IO b) -> IO ()
-udpTest client server = withPort $ test . udp client server
+udpTest client server =
+    withPort $ test . setServerAction server . udp client
 
 udp
     :: (Socket -> PortNumber -> IO a)
-    -> (Socket -> IO b)
     -> MVar PortNumber
-    -> ClientServer a b
-udp clientAct serverAct portVar = ClientServer
+    -> ClientServer a Socket
+udp clientAct portVar = defaultClientServer
     { clientSetup = socket AF_INET Datagram defaultProtocol
     , clientAction = \sock -> do
         serverPort <- readMVar portVar
@@ -167,7 +168,6 @@ udp clientAct serverAct portVar = ClientServer
         serverPort <- socketPort sock
         putMVar portVar serverPort
         return sock
-    , serverAction = serverAct
     }
 
 data ClientServer a b
@@ -183,6 +183,12 @@ setClientAction
     -> ClientServer a c
     -> ClientServer b c
 setClientAction f c = c { clientAction = f }
+
+setServerAction
+    :: (Socket -> IO c)
+    -> ClientServer a b
+    -> ClientServer a c
+setServerAction f c = c { serverAction = f }
 
 defaultClientServer :: ClientServer Socket Socket
 defaultClientServer = ClientServer
