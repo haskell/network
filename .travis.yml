@@ -70,6 +70,13 @@ install:
  - cabal v2-build -w ${HC} ${TEST} ${BENCH} --dep -j2 all
  - cabal v2-build -w ${HC} --disable-tests --disable-benchmarks --dep -j2 all
 
+before_script:
+  # Add an IPv6 config - see the corresponding Travis issue
+  # https://github.com/travis-ci/travis-ci/issues/8361
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
+      sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6';
+    fi
+
 # Here starts the actual work to be performed for the package under test;
 # any command which exits with a non-zero exit code causes the build to fail.
 script:

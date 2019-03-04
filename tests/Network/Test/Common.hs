@@ -18,6 +18,7 @@ module Network.Test.Common
   , udpTest
   -- * Common constants
   , serverAddr
+  , serverAddr6
   , unixAddr
   , testMsg
   , lazyTestMsg
@@ -37,6 +38,9 @@ import Test.Hspec
 
 serverAddr :: String
 serverAddr = "127.0.0.1"
+
+serverAddr6 :: String
+serverAddr6 = "::1"
 
 testMsg :: ByteString
 testMsg = "This is a test message."
