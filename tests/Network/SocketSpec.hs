@@ -73,6 +73,7 @@ spec = do
                         addr `shouldBe` (SockAddrUnix "")
                 test . setClientAction client $ unixWithUnlink unixAddr server
 
+#ifdef linux_HOST_OS
             it "can end-to-end with an abstract socket" $ do
                 let
                     abstractAddress = toEnum 0:"/haskell/network/abstract"
@@ -82,6 +83,7 @@ spec = do
                         addr `shouldBe` (SockAddrUnix "")
                 test . setClientAction client $
                     unix abstractAddress (const $ return ()) $ server
+#endif
 
             describe "socketPair" $ do
                 it "can send and recieve bi-directionally" $ do
