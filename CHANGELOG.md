@@ -28,7 +28,7 @@ old mkSocket :: CInt -> Family -> SocketType -> ProtocolNumber -> SocketStatus -
 new mkSocket :: CInt -> IO Socket
 ```
 * Breaking change: the deprecated APIs are removed: send, sendTo, recv, recvFrom, recvLen, htonl, ntohl, inet_addr, int_ntoa, bindSocket, sClose, SocketStatus, isConnected, isBound, isListening, isReadable, isWritable, sIsConnected, sIsBound, sIsListening, sIsReadable, sIsWritable, aNY_PORT, iNADDR_ANY, iN6ADDR_ANY, sOMAXCONN, sOL_SOCKET, sCM_RIGHTS, packSocketType, getPeerCred.
-* Breaking chage: SockAddrCan is removed from SockAddr.
+* Breaking change: SockAddrCan is removed from SockAddr.
 * Socket addresses are extendable with Network.Socket.Address.
 * "socket" is now asynchronous-exception-safe.
   [#336](https://github.com/haskell/network/pull/336)
