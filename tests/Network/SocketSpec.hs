@@ -79,6 +79,13 @@ spec = do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
             void $ getAddrInfo (Just hints) (Just "localhost") Nothing
 
+    describe "ifNameToIndex" $ do
+        it "converts a name to an index" $
+            ifNameToIndex "lo" `shouldReturn` Just 1
+        it "converts an index to a name" $
+            ifIndexToName 1 `shouldReturn` Just "lo"
+
+
     when isUnixDomainSocketAvailable $ do
         context "unix sockets" $ do
             it "basic unix sockets end-to-end" $ do
