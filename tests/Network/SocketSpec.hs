@@ -82,6 +82,8 @@ spec = do
     describe "ifNameToIndex" $ do
         it "converts a name to an index" $
             ifNameToIndex "lo" `shouldReturn` Just 1
+
+    describe "ifIndexToName" $ do
         it "converts an index to a name" $
             ifIndexToName 1 `shouldReturn` Just "lo"
 
