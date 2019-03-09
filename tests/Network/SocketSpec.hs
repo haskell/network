@@ -79,13 +79,19 @@ spec = do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
             void $ getAddrInfo (Just hints) (Just "localhost") Nothing
 
+#if defined(mingw32_HOST_OS)
+    let lpdevname = "loopback_0"
+#else
+    let lpdevname = "lo"
+#endif
+
     describe "ifNameToIndex" $ do
         it "converts a name to an index" $
-            ifNameToIndex "lo" `shouldReturn` Just 1
+            ifNameToIndex lpdevname `shouldReturn` Just 1
 
     describe "ifIndexToName" $ do
         it "converts an index to a name" $
-            ifIndexToName 1 `shouldReturn` Just "lo"
+            ifIndexToName 1 `shouldReturn` Just lpdevname
 
 
     when isUnixDomainSocketAvailable $ do
