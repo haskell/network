@@ -104,7 +104,7 @@ library
     other-modules:
       Network.Socket.ByteString.Lazy.Windows
     c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
-    extra-libraries: ws2_32
+    extra-libraries: ws2_32, iphlpapi
     -- See https://github.com/haskell/network/pull/362
     if impl(ghc >= 7.10)
       cpp-options: -D_WIN32_WINNT=0x0600
