@@ -1,3 +1,8 @@
+## Version 3.0.1.1
+
+* Fix blocking `if_nametoindex` errors on Windows
+  [#391](https://github.com/haskell/network/pull/391)
+
 ## Version 3.0.1.0
 
 * Added `getSocketType :: Socket -> IO SocketType`.
