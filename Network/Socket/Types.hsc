@@ -896,7 +896,7 @@ data SockAddr
         !FlowInfo        -- sin6_flowinfo (ditto)
         !HostAddress6    -- sin6_addr (ditto)
         !ScopeID         -- sin6_scope_id (ditto)
-  -- | 'String' must be a list of 0-255 values and its length should be less than 104.
+  -- | The path must have less than 104 characters. All of these characters must have code points less than 256.
   | SockAddrUnix
         String           -- sun_path
   deriving (Eq, Ord, Typeable)
