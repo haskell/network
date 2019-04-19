@@ -127,8 +127,7 @@ spec = do
                 it "can send and recieve a file descriptor" $ do
                     (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
                     (s3, s4) <- socketPair AF_UNIX Stream defaultProtocol
-                    fd1 <- fdSocket s1
-                    void $ sendFd s3 fd1
+                    withFdSocket s1 $ \fd1 -> void $ sendFd s3 fd1
                     fd1' <- recvFd s4
                     s1' <- mkSocket fd1'
                     void $ send s1' testMsg
