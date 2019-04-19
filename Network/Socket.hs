@@ -136,6 +136,7 @@ module Network.Socket
     , Socket
     , socket
     , fdSocket
+    , withFdSocket
     , mkSocket
     , socketToHandle
     -- ** Types of Socket

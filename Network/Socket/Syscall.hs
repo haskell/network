@@ -125,8 +125,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: SocketAddress sa => Socket -> sa -> IO ()
-bind s sa = withSocketAddress sa $ \p_sa siz -> void $ do
-  fd <- fdSocket s
+bind s sa = withSocketAddress sa $ \p_sa siz -> void $ withFdSocket s $ \fd -> do
   let sz = fromIntegral siz
   throwSocketErrorIfMinus1Retry "Network.Socket.bind" $ c_bind fd p_sa sz
 
@@ -139,11 +138,10 @@ connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
     connectLoop s p_sa (fromIntegral sz)
 
 connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
-connectLoop s p_sa sz = loop
+connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
   where
     errLoc = "Network.Socket.connect: " ++ show s
-    loop = do
-       fd <- fdSocket s
+    loop fd = do
        r <- c_connect fd p_sa sz
        when (r == -1) $ do
 #if defined(mingw32_HOST_OS)
@@ -151,14 +149,13 @@ connectLoop s p_sa sz = loop
 #else
            err <- getErrno
            case () of
-             _ | err == eINTR       -> loop
+             _ | err == eINTR       -> loop fd
              _ | err == eINPROGRESS -> connectBlocked
 --           _ | err == eAGAIN      -> connectBlocked
              _otherwise             -> throwSocketError errLoc
 
     connectBlocked = do
-       fd <- fromIntegral <$> fdSocket s
-       threadWaitWrite fd
+       withFdSocket s $ threadWaitWrite . fromIntegral
        err <- getSocketOption s SoError
        when (err /= 0) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif
@@ -170,8 +167,7 @@ connectLoop s p_sa sz = loop
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
 listen :: Socket -> Int -> IO ()
-listen s backlog = do
-    fd <- fdSocket s
+listen s backlog = withFdSocket s $ \fd -> do
     throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
         c_listen fd $ fromIntegral backlog
 
@@ -191,11 +187,11 @@ listen s backlog = do
 -- to the socket on the other end of the connection.
 -- On Unix, FD_CLOEXEC is set to the new 'Socket'.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
-accept listing_sock = withNewSocketAddress $ \new_sa sz -> do
-     listing_fd <- fdSocket listing_sock
-     new_sock <- callAccept listing_fd new_sa sz >>= mkSocket
-     new_addr <- peekSocketAddress new_sa
-     return (new_sock, new_addr)
+accept listing_sock = withNewSocketAddress $ \new_sa sz ->
+    withFdSocket listing_sock $ \listing_fd -> do
+ new_sock <- callAccept listing_fd new_sa sz >>= mkSocket
+ new_addr <- peekSocketAddress new_sa
+ return (new_sock, new_addr)
   where
 #if defined(mingw32_HOST_OS)
      callAccept fd sa sz
