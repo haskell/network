@@ -81,6 +81,8 @@ spec = do
 
 #if defined(mingw32_HOST_OS)
     let lpdevname = "loopback_0"
+#elif defined(darwin_HOST_OS)
+    let lpdevname = "lo0"
 #else
     let lpdevname = "lo"
 #endif
