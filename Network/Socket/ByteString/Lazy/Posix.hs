@@ -27,8 +27,7 @@ send
 send s lbs = do
     let cs  = take maxNumChunks (L.toChunks lbs)
         len = length cs
-    fd <- fdSocket s
-    siz <- allocaArray len $ \ptr ->
+    siz <- withFdSocket s $ \fd -> allocaArray len $ \ptr ->
              withPokes cs ptr $ \niovs ->
                throwSocketErrorWaitWrite s "writev" $ c_writev fd ptr niovs
     return $ fromIntegral siz

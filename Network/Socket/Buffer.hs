@@ -35,12 +35,12 @@ sendBufTo :: SocketAddress sa =>
           -> IO Int      -- Number of Bytes sent
 sendBufTo s ptr nbytes sa =
   withSocketAddress sa $ \p_sa siz -> fromIntegral <$> do
-    fd <- fdSocket s
-    let sz = fromIntegral siz
-        n = fromIntegral nbytes
-        flags = 0
-    throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
-      c_sendto fd ptr n flags p_sa sz
+    withFdSocket s $ \fd -> do
+        let sz = fromIntegral siz
+            n = fromIntegral nbytes
+            flags = 0
+        throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
+          c_sendto fd ptr n flags p_sa sz
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> IO FD
@@ -68,11 +68,11 @@ sendBuf s str len = fromIntegral <$> do
     throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $
       writeRawBufferPtr "Network.Socket.sendBuf" fd (castPtr str) 0 clen
 #else
-    fd <- fdSocket s
-    let flags = 0
-        clen = fromIntegral len
-    throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
-      c_send fd str clen flags
+    withFdSocket s $ \fd -> do
+        let flags = 0
+            clen = fromIntegral len
+        throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
+          c_send fd str clen flags
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -90,16 +90,16 @@ sendBuf s str len = fromIntegral <$> do
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
-    | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len -> do
-        fd <- fdSocket s
-        poke ptr_len (fromIntegral sz)
-        let cnbytes = fromIntegral nbytes
-            flags = 0
-        len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
-                 c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
-        sockaddr <- peekSocketAddress ptr_sa
-            `E.catch` \(E.SomeException _) -> getPeerName s
-        return (fromIntegral len, sockaddr)
+    | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
+        withFdSocket s $ \fd -> do
+            poke ptr_len (fromIntegral sz)
+            let cnbytes = fromIntegral nbytes
+                flags = 0
+            len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
+                     c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
+            sockaddr <- peekSocketAddress ptr_sa
+                `E.catch` \(E.SomeException _) -> getPeerName s
+            return (fromIntegral len, sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -124,8 +124,8 @@ recvBuf s ptr nbytes
     len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
              readRawBufferPtr "Network.Socket.recvBuf" fd ptr 0 cnbytes
 #else
-    fd <- fdSocket s
-    len <- throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
+    len <- withFdSocket s $ \fd ->
+        throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
              c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
     return $ fromIntegral len

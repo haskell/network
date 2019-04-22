@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -11,6 +12,7 @@ module Network.Socket.Types (
     -- * Socket type
       Socket
     , fdSocket
+    , withFdSocket
     , mkSocket
     , invalidateSocket
     , close
@@ -70,6 +72,10 @@ import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
 import System.Posix.Types (Fd)
 import Control.DeepSeq (NFData (..))
+import GHC.Exts (touch##)
+import GHC.IORef (IORef (..))
+import GHC.STRef (STRef (..))
+import GHC.IO (IO (..))
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -103,9 +109,36 @@ instance Eq Socket where
 --
 --   In this case, it is safer for Thread A to clone 'Fd' by
 --   'System.Posix.IO.dup'. But this would still suffer from
---   a rase condition between 'fdSocket' and 'close'.
+--   a race condition between 'fdSocket' and 'close'.
+--
+--   A safer option is to use 'withFdSocket' instead.
+{-# DEPRECATED fdSocket "Use withFdSocket instead" #-}
 fdSocket :: Socket -> IO CInt
 fdSocket (Socket ref _) = readIORef ref
+
+-- | Get a file descriptor from a 'Socket'. The socket will never
+-- be closed automatically before @withFdSocket@ completes, but
+-- it may still be closed by an explicit call to 'close' or `close'`,
+-- either before or during the call.
+--
+-- The file descriptor must not be used after @withFdSocket@ returns;
+-- see the documentation for 'fdSocket' to see why that is.
+withFdSocket :: Socket -> (CInt -> IO r) -> IO r
+withFdSocket (Socket ref@(IORef (STRef ref##)) _) f = do
+  fd <- readIORef ref
+  -- Should we throw an exception if the socket is already invalid?
+  -- That will catch some mistakes but certainly not all.
+
+  r <- f fd
+
+  -- Thanks to a GHC issue, this touch# may not be quite guaranteed
+  -- to work. There's talk of replacing the touch# primop with one
+  -- that works better with the optimizer. But this seems to be the
+  -- "right" way to do it for now.
+
+  IO $ \s -> (## touch## ref## s, () ##)
+  return r
+
 
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket

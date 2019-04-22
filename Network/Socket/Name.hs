@@ -19,8 +19,7 @@ import Network.Socket.Types
 getPeerName :: SocketAddress sa => Socket -> IO sa
 getPeerName s =
  withNewSocketAddress $ \ptr sz ->
-   with (fromIntegral sz) $ \int_star -> do
-     fd <- fdSocket s
+   with (fromIntegral sz) $ \int_star -> withFdSocket s $ \fd -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
        c_getpeername fd ptr int_star
      _sz <- peek int_star
@@ -30,8 +29,7 @@ getPeerName s =
 getSocketName :: SocketAddress sa => Socket -> IO sa
 getSocketName s =
  withNewSocketAddress $ \ptr sz ->
-   with (fromIntegral sz) $ \int_star -> do
-     fd <- fdSocket s
+   with (fromIntegral sz) $ \int_star -> withFdSocket s $ \fd -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
        c_getsockname fd ptr int_star
      peekSocketAddress ptr

@@ -28,8 +28,7 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown s stype = void $ do
-  fd <- fdSocket s
+shutdown s stype = void $ withFdSocket s $ \fd ->
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
     c_shutdown fd $ sdownCmdToInt stype
 

@@ -104,9 +104,9 @@ tcp serverAct portVar = defaultClientServer
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 #if !defined(mingw32_HOST_OS)
-        fd <- fdSocket sock
-        getNonBlock fd `shouldReturn` True
-        getCloseOnExec fd `shouldReturn` False
+        withFdSocket sock $ \fd -> do
+          getNonBlock fd `shouldReturn` True
+          getCloseOnExec fd `shouldReturn` False
 #endif
         connect sock $ addrAddress addr
         return sock
@@ -117,15 +117,15 @@ tcp serverAct portVar = defaultClientServer
             }
         addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-        fd <- fdSocket sock
+        withFdSocket sock $ \fd -> do
 #if !defined(mingw32_HOST_OS)
-        getNonBlock fd `shouldReturn` True
-        getCloseOnExec fd `shouldReturn` False
+          getNonBlock fd `shouldReturn` True
+          getCloseOnExec fd `shouldReturn` False
 #endif
-        setSocketOption sock ReuseAddr 1
-        setCloseOnExecIfNeeded fd
+          setSocketOption sock ReuseAddr 1
+          setCloseOnExecIfNeeded fd
 #if !defined(mingw32_HOST_OS)
-        getCloseOnExec fd `shouldReturn` True
+          getCloseOnExec fd `shouldReturn` True
 #endif
         bind sock $ addrAddress addr
         listen sock 1
@@ -135,9 +135,9 @@ tcp serverAct portVar = defaultClientServer
     , serverAction = \sock -> do
         (clientSock, _) <- accept sock
 #if !defined(mingw32_HOST_OS)
-        fd <- fdSocket clientSock
-        getNonBlock fd `shouldReturn` True
-        getCloseOnExec fd `shouldReturn` True
+        withFdSocket sock $ \fd -> do
+          getNonBlock fd `shouldReturn` True
+          getCloseOnExec fd `shouldReturn` True
 #endif
         _ <- serverAct clientSock
         close clientSock

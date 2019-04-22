@@ -3,11 +3,13 @@
 
 module Network.SocketSpec (main, spec) where
 
+import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (readMVar)
 import Control.Monad
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
+import System.Mem (performGC)
 
 import Test.Hspec
 
@@ -95,6 +97,24 @@ spec = do
         it "converts an index to a name" $
             ifIndexToName 1 `shouldReturn` Just lpdevname
 
+    describe "socket" $ do
+        let gc = do
+                threadDelay 100000
+                performGC
+            connect' = do
+                threadDelay 200000
+                sock <- socket AF_INET Stream defaultProtocol
+                connect sock $ SockAddrInet 6000 $ tupleToHostAddress (127, 0, 0, 1)
+        it "should not be GCed while blocking" $ do
+            sock <- socket AF_INET Stream defaultProtocol
+            setSocketOption sock ReuseAddr 1
+            bind sock $ SockAddrInet 6000 $ tupleToHostAddress (127, 0, 0, 1)
+            listen sock 1
+            _ <- forkIO gc
+            _ <- forkIO connect'
+            (_sock', addr) <- accept sock
+            -- check if an exception is not thrown.
+            isSupportedSockAddr addr `shouldBe` True
 
     when isUnixDomainSocketAvailable $ do
         context "unix sockets" $ do
@@ -129,8 +149,7 @@ spec = do
                 it "can send and recieve a file descriptor" $ do
                     (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
                     (s3, s4) <- socketPair AF_UNIX Stream defaultProtocol
-                    fd1 <- fdSocket s1
-                    void $ sendFd s3 fd1
+                    withFdSocket s1 $ \fd1 -> void $ sendFd s3 fd1
                     fd1' <- recvFd s4
                     s1' <- mkSocket fd1'
                     void $ send s1' testMsg
