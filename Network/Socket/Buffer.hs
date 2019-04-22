@@ -33,9 +33,8 @@ sendBufTo :: SocketAddress sa =>
           -> Int         -- Data to send
           -> sa
           -> IO Int      -- Number of Bytes sent
-sendBufTo s ptr nbytes sa =
+sendBufTo s ptr nbytes sa = withFdSocket s $ \fd ->
   withSocketAddress sa $ \p_sa siz -> fromIntegral <$> do
-    fd <- fdSocket s
     let sz = fromIntegral siz
         n = fromIntegral nbytes
         flags = 0
@@ -43,11 +42,10 @@ sendBufTo s ptr nbytes sa =
       c_sendto fd ptr n flags p_sa sz
 
 #if defined(mingw32_HOST_OS)
-socket2FD :: Socket -> IO FD
-socket2FD s = do
-  fd <- fdSocket s
+socket2FD :: Socket -> (FD -> IO a) -> IO FD
+socket2FD s k = withFdSocket s $ \fd ->
   -- HACK, 1 means True
-  return $ FD{ fdFD = fd, fdIsSocket_ = 1 }
+  k FD{ fdFD = fd, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -63,16 +61,16 @@ sendBuf s str len = fromIntegral <$> do
 -- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
 -- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
 -- bug is supported.
-    fd <- socket2FD s
-    let clen = fromIntegral len
-    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $
-      writeRawBufferPtr "Network.Socket.sendBuf" fd (castPtr str) 0 clen
+    socket2FD s $ \fd -> do
+      let clen = fromIntegral len
+      throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $
+        writeRawBufferPtr "Network.Socket.sendBuf" fd (castPtr str) 0 clen
 #else
-    fd <- fdSocket s
-    let flags = 0
-        clen = fromIntegral len
-    throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
-      c_send fd str clen flags
+    withFdSocket s $ \fd -> do
+      let flags = 0
+          clen = fromIntegral len
+      throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
+        c_send fd str clen flags
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -90,8 +88,8 @@ sendBuf s str len = fromIntegral <$> do
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
-    | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len -> do
-        fd <- fdSocket s
+    | otherwise = withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
+      withFdSocket s $ \fd -> do
         poke ptr_len (fromIntegral sz)
         let cnbytes = fromIntegral nbytes
             flags = 0
@@ -116,15 +114,14 @@ recvBufFrom s ptr nbytes
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
- | otherwise   = do
+ | otherwise = withFdSocket s $ \fd -> do
 #if defined(mingw32_HOST_OS)
 -- see comment in sendBuf above.
-    fd <- socket2FD s
-    let cnbytes = fromIntegral nbytes
-    len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
-             readRawBufferPtr "Network.Socket.recvBuf" fd ptr 0 cnbytes
+    socket2FD s $ \fd -> do
+      let cnbytes = fromIntegral nbytes
+      len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
+               readRawBufferPtr "Network.Socket.recvBuf" fd ptr 0 cnbytes
 #else
-    fd <- fdSocket s
     len <- throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
              c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif

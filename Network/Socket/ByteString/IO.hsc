@@ -80,9 +80,8 @@ send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
     sendBuf s (castPtr str) len
 
 waitWhen0 :: Int -> Socket -> IO ()
-waitWhen0 0 s = when rtsSupportsBoundThreads $ do
-  fd <- fromIntegral <$> fdSocket s
-  threadWaitWrite fd
+waitWhen0 0 s = when rtsSupportsBoundThreads $ withFdSocket s
+  $ threadWaitWrite . fromIntegral
 waitWhen0 _ _ = return ()
 
 -- | Send data to the socket.  The socket must be connected to a
@@ -144,9 +143,8 @@ sendMany s cs = do
     waitWhen0 sent s
     when (sent >= 0) $ sendMany s $ remainingChunks sent cs
   where
-    sendManyInner =
+    sendManyInner = withFdSocket s $ \fd ->
       fmap fromIntegral . withIOVec cs $ \(iovsPtr, iovsLen) -> do
-          fd <- fdSocket s
           let len =  fromIntegral $ min iovsLen (#const IOV_MAX)
           throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
               c_writev fd iovsPtr len
@@ -177,8 +175,7 @@ sendManyTo s cs addr = do
           let msgHdr = MsgHdr
                 addrPtr (fromIntegral addrSize)
                 iovsPtr (fromIntegral iovsLen)
-          fd <- fdSocket s
-          with msgHdr $ \msgHdrPtr ->
+          withFdSocket s $ \fd -> with msgHdr $ \msgHdrPtr ->
             throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
               c_sendmsg fd msgHdrPtr 0
 #else
