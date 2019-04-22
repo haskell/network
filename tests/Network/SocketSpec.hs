@@ -105,7 +105,7 @@ spec = do
                 threadDelay 200000
                 sock <- socket AF_INET Stream defaultProtocol
                 connect sock $ SockAddrInet 6000 $ tupleToHostAddress (127, 0, 0, 1)
-        it "can be GCed but not GCed when blocking" $ do
+        it "should not be GCed while blocking" $ do
             sock <- socket AF_INET Stream defaultProtocol
             setSocketOption sock ReuseAddr 1
             bind sock $ SockAddrInet 6000 $ tupleToHostAddress (127, 0, 0, 1)
@@ -113,7 +113,7 @@ spec = do
             _ <- forkIO gc
             _ <- forkIO connect'
             (_sock', addr) <- accept sock
-            -- check if an exception did not thrown.
+            -- check if an exception is not thrown.
             isSupportedSockAddr addr `shouldBe` True
 
     when isUnixDomainSocketAvailable $ do
