@@ -641,6 +641,7 @@ accept sock@(MkSocket s family stype protocol status) = do
    else do
      let sz = sizeOfSockAddrByFamily family
      allocaBytes sz $ \ sockaddr -> do
+     zeroMemory sockaddr $ fromIntegral sz
 #if defined(mingw32_HOST_OS)
      new_sock <-
         if threaded
