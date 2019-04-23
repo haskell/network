@@ -135,6 +135,11 @@ spec = do
                         addr `shouldBe` (SockAddrUnix "")
                 test . setClientAction client $
                     unix abstractAddress (const $ return ()) $ server
+            it "safely throws an exception" $ do
+                when isUnixDomainSocketAvailable $ do
+                    let abstractAddress = toEnum 0:"/haskell/network/abstract-longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong"
+                    sock <- socket AF_UNIX Stream defaultProtocol
+                    bind sock (SockAddrUnix abstractAddress) `shouldThrow` anyErrorCall
 #endif
 
             describe "socketPair" $ do
