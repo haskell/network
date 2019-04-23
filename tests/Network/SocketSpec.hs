@@ -112,10 +112,15 @@ spec = do
         it "can end-to-end with an abstract socket" $ do
             when isUnixDomainSocketAvailable $ do
                 let
-                    abstractAddress = toEnum 0:"/haskell/network/long-abstract"
+                    abstractAddress = toEnum 0:"/haskell/network/abstract"
                     clientAct sock = send sock testMsg
                     server (sock, addr) = do
                       recv sock 1024 `shouldReturn` testMsg
                       addr `shouldBe` (SockAddrUnix "")
                 unixTestWith abstractAddress (const $ return ()) clientAct server
+        it "safely throws an exception" $ do
+            when isUnixDomainSocketAvailable $ do
+                let abstractAddress = toEnum 0:"/haskell/network/abstract-longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong"
+                sock <- socket AF_UNIX Stream defaultProtocol
+                bind sock (SockAddrUnix abstractAddress) `shouldThrow` anyErrorCall
 #endif
