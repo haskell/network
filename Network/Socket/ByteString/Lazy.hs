@@ -39,6 +39,7 @@ import Data.Int (Int64)
 import Network.Socket (Socket(..), ShutdownCmd(..), shutdown)
 import Prelude hiding (getContents)
 import System.IO.Unsafe (unsafeInterleaveIO)
+import System.IO.Error (catchIOError)
 
 import qualified Data.ByteString as S
 import qualified Network.Socket.ByteString as N
@@ -67,7 +68,9 @@ getContents sock = loop where
   loop = unsafeInterleaveIO $ do
     s <- N.recv sock defaultChunkSize
     if S.null s
-      then shutdown sock ShutdownReceive >> return Empty
+      then do
+        shutdown sock ShutdownReceive `catchIOError` const (return ())
+        return Empty
       else Chunk s `liftM` loop
 
 -- | Receive data from the socket.  The socket must be in a connected
