@@ -1,3 +1,11 @@
+## Version 3.1.0.0
+
+* Making GC of socket safer.
+  [#399](https://github.com/haskell/network/pull/399)
+* Deprecating fdSocket. Use withFdSocket instead to ensure
+  that sockets are GCed in proper time.
+  [#399](https://github.com/haskell/network/pull/399)
+
 ## Version 3.0.1.1
 
 * Fix blocking `if_nametoindex` errors on Windows
