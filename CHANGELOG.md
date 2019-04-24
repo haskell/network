@@ -43,6 +43,13 @@ new mkSocket :: CInt -> IO Socket
 * Build system is simplified.
 * Bug fixes.
 
+## Version 2.8.0.1
+
+* Eensuring that accept returns a correct sockaddr for unix domain.
+  [#400](https://github.com/haskell/network/pull/400)
+* Avoid out of bounds writes in pokeSockAddr.
+  [#400](https://github.com/haskell/network/pull/400)
+
 ## Version 2.8.0.0
 
 * Breaking change: PortNumber originally contained Word16 in network
