@@ -208,7 +208,7 @@ foreign import ccall unsafe "close"
 
 -----------------------------------------------------------------------------
 
--- | Protocl number.
+-- | Protocol number.
 type ProtocolNumber = CInt
 
 -- | This is the default protocol for a given service.
