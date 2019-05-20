@@ -208,7 +208,7 @@ foreign import ccall unsafe "close"
 
 -----------------------------------------------------------------------------
 
--- | Protocl number.
+-- | Protocol number.
 type ProtocolNumber = CInt
 
 -- | This is the default protocol for a given service.
@@ -929,7 +929,7 @@ data SockAddr
         !FlowInfo        -- sin6_flowinfo (ditto)
         !HostAddress6    -- sin6_addr (ditto)
         !ScopeID         -- sin6_scope_id (ditto)
-  -- | The path must have less than 104 characters. All of these characters must have code points less than 256.
+  -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
   | SockAddrUnix
         String           -- sun_path
   deriving (Eq, Ord, Typeable)
