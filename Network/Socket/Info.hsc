@@ -282,7 +282,11 @@ getAddrInfo hints node service = alloc getaddrinfo
             ptr_addrs <- peek ptr_ptr_addrs
             ais       <- followAddrInfo ptr_addrs
             c_freeaddrinfo ptr_addrs
-            return ais
+            -- POSIX requires that getaddrinfo(3) returns at least one addrinfo.
+            -- See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html
+            case ais of
+              [] -> ioError $ mkIOError NoSuchThing message Nothing Nothing
+              _ -> pure ais
           else do
             err <- gai_strerror ret
             ioError $ ioeSetErrorString
