@@ -15,7 +15,11 @@ description:
   * hookup
   * network-simple
   .
-  === Related Packages
+  === Extended Packages
+  @network@ seeks to provide a cross-platform core for networking. As such some
+  APIs live in extended libraries. Packages in the @network@ ecosystem are
+  often prefixed with @network-@.
+  .
   ==== @network-bsd@
   In @network-3.0.0.0@ the @Network.BSD@ module was split off into its own
   package, @network-bsd-3.0.0.0@.
