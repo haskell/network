@@ -9,10 +9,9 @@ module Network.Socket.Buffer (
   , recvBuf
   ) where
 
-import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (alloca)
 import GHC.IO.Exception (IOErrorType(InvalidArgument))
-import System.IO.Error (mkIOError, ioeSetErrorString)
+import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
@@ -98,7 +97,7 @@ recvBufFrom s ptr nbytes
             len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
                      c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
             sockaddr <- peekSocketAddress ptr_sa
-                `E.catch` \(E.SomeException _) -> getPeerName s
+                `catchIOError` \_ -> getPeerName s
             return (fromIntegral len, sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected

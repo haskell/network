@@ -16,6 +16,9 @@ module Network.Socket.Unix (
 import Network.Socket.Imports
 import Network.Socket.Types
 
+#if defined(HAVE_GETPEEREID)
+import System.IO.Error (catchIOError)
+#endif
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 import Foreign.Marshal.Utils (with)
 #endif
@@ -58,9 +61,12 @@ getPeerCredential sock = do
       else
         return (Just pid, Just uid, Just gid)
 #elif defined(HAVE_GETPEEREID)
-getPeerCredential sock = E.handle (\(E.SomeException _) -> return (Nothing,Nothing,Nothing)) $ do
-    (uid, gid) <- getPeerEid sock
-    return (Nothing, Just uid, Just gid)
+getPeerCredential sock =
+    go `catchIOError` \_ -> return (Nothing,Nothing,Nothing)
+  where
+    go = do
+        (uid, gid) <- getPeerEid sock
+        return (Nothing, Just uid, Just gid)
 #else
 getPeerCredential _ = return (Nothing, Nothing, Nothing)
 #endif
