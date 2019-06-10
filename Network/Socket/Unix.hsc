@@ -23,7 +23,6 @@ import System.IO.Error (catchIOError)
 import Foreign.Marshal.Utils (with)
 #endif
 #ifdef HAVE_GETPEEREID
-import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (alloca)
 #endif
 #ifdef DOMAIN_SOCKET_SUPPORT
