@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNetDef.h"
 
@@ -7,6 +6,9 @@ module Network.Socket.Syscall where
 
 import Foreign.Marshal.Utils (with)
 import qualified Control.Exception as E
+# if defined(mingw32_HOST_OS)
+import System.IO.Error (catchIOError)
+#endif
 
 #if defined(mingw32_HOST_OS)
 import Foreign (FunPtr)
@@ -103,7 +105,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
 # if defined(mingw32_HOST_OS)
       -- The IPv6Only option is only supported on Windows Vista and later,
       -- so trying to change it might throw an error.
-      E.catch (setSocketOption s IPv6Only 0) $ (\(_ :: E.IOException) -> return ())
+      setSocketOption s IPv6Only 0 `catchIOError` \_ -> return ()
 # elif defined(__OpenBSD__)
       -- don't change IPv6Only
       return ()
