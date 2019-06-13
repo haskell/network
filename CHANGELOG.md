@@ -1,3 +1,8 @@
+## Version 3.1.0.1
+
+* getAddrInfo: raise exception if no AddrInfo returned.
+  [#410](https://github.com/haskell/network/pull/410)
+
 ## Version 3.1.0.0
 
 * Making GC of socket safer.
