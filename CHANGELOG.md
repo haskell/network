@@ -2,6 +2,8 @@
 
 * getAddrInfo: raise exception if no AddrInfo returned.
   [#410](https://github.com/haskell/network/pull/410)
+* Avoid catching SomeException.
+  [#411](https://github.com/haskell/network/pull/411)
 
 ## Version 3.1.0.0
 
