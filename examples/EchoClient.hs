@@ -8,20 +8,21 @@ import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 
 main :: IO ()
-main = withSocketsDo $ do
-    addr <- resolve "127.0.0.1" "3000"
-    E.bracket (open addr) close talk
+main = runTCPClient "127.0.0.1" "3000" $ \s -> do
+    sendAll s "Hello, world!"
+    msg <- recv s 1024
+    putStr "Received: "
+    C.putStrLn msg
+
+runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
+runTCPClient host port client = withSocketsDo $ do
+    addr <- resolve
+    E.bracket (open addr) close client
   where
-    resolve host port = do
+    resolve = do
         let hints = defaultHints { addrSocketType = Stream }
-        addr:_ <- getAddrInfo (Just hints) (Just host) (Just port)
-        return addr
+        head <$> getAddrInfo (Just hints) (Just host) (Just port)
     open addr = do
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
         connect sock $ addrAddress addr
         return sock
-    talk sock = do
-        sendAll sock "Hello, world!"
-        msg <- recv sock 1024
-        putStr "Received: "
-        C.putStrLn msg
