@@ -7,8 +7,10 @@ module Network.Socket.Buffer (
   , sendBuf
   , recvBufFrom
   , recvBuf
+  , recvBufNoWait
   ) where
 
+import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
 import Foreign.Marshal.Alloc (alloca)
 import GHC.IO.Exception (IOErrorType(InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
@@ -128,6 +130,23 @@ recvBuf s ptr nbytes
              c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
 #endif
     return $ fromIntegral len
+
+-- | Receive data from the socket. This function returns immediately
+--   even if data is not available. In other words, IO manager is NOT
+--   involved. The length of data is returned if received.
+--   -1 is returned in the case of EAGAIN or EWOULDBLOCK.
+--   -2 is returned in other error cases.
+recvBufNoWait :: Socket -> Ptr Word8 -> Int -> IO Int
+recvBufNoWait s ptr nbytes = withFdSocket s $ \fd -> do
+    r <- c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+    if r >= 0 then
+        return $ fromIntegral r
+      else do
+        err <- getErrno
+        if err == eAGAIN || err == eWOULDBLOCK then
+            return (-1)
+          else
+            return (-2)
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError

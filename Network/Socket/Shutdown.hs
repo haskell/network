@@ -6,8 +6,14 @@
 module Network.Socket.Shutdown (
     ShutdownCmd(..)
   , shutdown
+  , gracefulClose
   ) where
 
+import Control.Concurrent (threadDelay)
+import qualified Control.Exception as E
+import Foreign.Marshal.Alloc (mallocBytes, free)
+
+import Network.Socket.Buffer
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
@@ -34,3 +40,40 @@ shutdown s stype = void $ withFdSocket s $ \fd ->
 
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
+
+
+-- | Closing a socket gracefully.
+--   This sends TCP FIN and check if TCP FIN is received from the peer.
+--   The second argument is time out to receive TCP FIN in millisecond.
+--   In both normal cases and error cases, socket is deallocated finally.
+--
+--   Since: 3.1.1.0
+gracefulClose :: Socket -> Int -> IO ()
+gracefulClose s tm = (sendRecvFIN `E.finally` close s) `E.catch` ignore
+  where
+    sendRecvFIN = do
+        -- Sending TCP FIN.
+        shutdown s ShutdownSend
+        -- Waiting TCP FIN.
+        E.bracket (mallocBytes bufSize) free recvEOF
+    recvEOF buf = loop 0
+      where
+        loop delay = do
+            -- We don't check the (positive) length.
+            -- In normal case, it's 0. That is, only FIN is received.
+            -- In error cases, data is available. But there is no
+            -- application which can read it. So, let's stop receiving
+            -- to prevent attacks.
+            r <- recvBufNoWait s buf bufSize
+            let delay' = delay + clock
+            when (r == -1 && delay' < tm) $ do
+                threadDelay (clock * 1000)
+                loop delay'
+    -- Don't use 4092 here. The GHC runtime takes the global lock
+    -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
+    bufSize = 1024
+    -- milliseconds. Taken from BSD fast clock value.
+    clock = 200
+    -- shutdown sometime returns ENOTCONN.
+    -- Probably, we don't want to log this error.
+    ignore (E.SomeException _e) = return ()
