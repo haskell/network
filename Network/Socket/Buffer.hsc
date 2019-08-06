@@ -145,15 +145,16 @@ recvBufNoWait :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBufNoWait s ptr nbytes = withFdSocket s $ \fd -> do
 #if defined(mingw32_HOST_OS)
     alloca $ \ptr_bytes -> do
-      avail <- c_ioctlsocket fd #{const FIONREAD} ptr_bytes
-      r <- if avail > 0 then
+      res <- c_ioctlsocket fd #{const FIONREAD} ptr_bytes
+      avail <- peek ptr_bytes
+      r <- if res == #{const NO_ERROR} then
                c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
            else if avail == 0 then
                -- Socket would block, could also mean socket is closed but
                -- can't distinguish
                return (-1)
-           else return avail
-      if r >= 0 then
+           else return $ fromIntegral avail
+      if r >= 0 || avail == 0 then
         return $ fromIntegral r
         else do
           err <- c_WSAGetLastError
