@@ -76,4 +76,5 @@ gracefulClose s tm = (sendRecvFIN `E.finally` close s) `E.catch` ignore
     clock = 200
     -- shutdown sometime returns ENOTCONN.
     -- Probably, we don't want to log this error.
-    ignore (E.SomeException _e) = return ()
+    ignore :: E.IOException -> IO ()
+    ignore _e = return ()
