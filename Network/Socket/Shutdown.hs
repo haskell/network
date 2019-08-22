@@ -58,8 +58,8 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
         -- Sending TCP FIN.
         shutdown s ShutdownSend
         -- Waiting TCP FIN.
-        E.bracket (mallocBytes bufSize) free recvEOF
-    recvEOF buf = do
+        recvEOF
+    recvEOF = do
         Just evmgr <- Ev.getSystemEventManager
         tmmgr <- Ev.getSystemTimerManager
         mvar <- newEmptyMVar
@@ -72,7 +72,9 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
               -- In error cases, data is available. But there is no
               -- application which can read it. So, let's stop receiving
               -- to prevent attacks.
-              MoreData       -> void $ recvBufNoWait s buf bufSize
+              MoreData       -> E.bracket (mallocBytes bufSize)
+                                          free
+                                          (\buf -> void $ recvBufNoWait s buf bufSize)
     setup evmgr tmmgr mvar = do
         -- millisecond to microsecond
         key1 <- Ev.registerTimeout tmmgr (tmout * 1000) $
