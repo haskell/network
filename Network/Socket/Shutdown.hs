@@ -82,7 +82,11 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
         key2 <- withFdSocket s $ \fd' -> do
             let callback _ _ = putMVar mvar MoreData
                 fd = Fd fd'
+#if __GLASGOW_HASKELL__ < 709
+            Ev.registerFd evmgr callback fd Ev.evtRead
+#else
             Ev.registerFd evmgr callback fd Ev.evtRead Ev.OneShot
+#endif
         return (key1, key2)
     unregister evmgr tmmgr (key1,key2) = do
         Ev.unregisterTimeout tmmgr key1
