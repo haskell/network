@@ -59,7 +59,7 @@ data Wait = MoreData | TimeoutTripped
 --
 --   Since: 3.1.1.0
 gracefulClose :: Socket -> Int -> IO ()
-gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
+gracefulClose s tmout = sendRecvFIN `E.finally` close s
   where
     sendRecvFIN = do
         -- Sending TCP FIN.
@@ -119,7 +119,3 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
     -- Don't use 4092 here. The GHC runtime takes the global lock
     -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
     bufSize = 1024
-    -- shutdown sometime returns ENOTCONN.
-    -- Probably, we don't want to log this error.
-    ignore :: E.IOException -> IO ()
-    ignore _e = return ()
