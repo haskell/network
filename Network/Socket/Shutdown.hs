@@ -9,11 +9,16 @@ module Network.Socket.Shutdown (
   , gracefulClose
   ) where
 
-import Control.Concurrent (putMVar, takeMVar, newEmptyMVar)
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
+
+#if defined(mingw32_HOST_OS)
+import Control.Concurrent (threadDelay)
+#else
+import Control.Concurrent (putMVar, takeMVar, newEmptyMVar)
 import qualified GHC.Event as Ev
 import System.Posix.Types (Fd(..))
+#endif
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
@@ -43,7 +48,9 @@ shutdown s stype = void $ withFdSocket s $ \fd ->
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
 
+#if !defined(mingw32_HOST_OS)
 data Wait = MoreData | TimeoutTripped
+#endif
 
 -- | Closing a socket gracefully.
 --   This sends TCP FIN and check if TCP FIN is received from the peer.
@@ -59,6 +66,23 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
         shutdown s ShutdownSend
         -- Waiting TCP FIN.
         recvEOF
+#if defined(mingw32_HOST_OS)
+    -- milliseconds. Taken from BSD fast clock value.
+    clock = 200
+    recvEOF buf = loop 0
+      where
+        loop delay = do
+            -- We don't check the (positive) length.
+            -- In normal case, it's 0. That is, only FIN is received.
+            -- In error cases, data is available. But there is no
+            -- application which can read it. So, let's stop receiving
+            -- to prevent attacks.
+            r <- recvBufNoWait s buf bufSize
+            let delay' = delay + clock
+            when (r == -1 && delay' < tmout) $ do
+                threadDelay (clock * 1000)
+                loop delay'
+#else
     recvEOF = do
         Just evmgr <- Ev.getSystemEventManager
         tmmgr <- Ev.getSystemTimerManager
@@ -91,6 +115,7 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
     unregister evmgr tmmgr (key1,key2) = do
         Ev.unregisterTimeout tmmgr key1
         Ev.unregisterFd evmgr key2
+#endif
     -- Don't use 4092 here. The GHC runtime takes the global lock
     -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
     bufSize = 1024
