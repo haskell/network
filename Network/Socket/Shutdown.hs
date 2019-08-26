@@ -63,7 +63,7 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
         Just evmgr <- Ev.getSystemEventManager
         tmmgr <- Ev.getSystemTimerManager
         mvar <- newEmptyMVar
-        E.bracket (setup evmgr tmmgr mvar) (teardown evmgr tmmgr) $ \_ -> do
+        E.bracket (register evmgr tmmgr mvar) (unregister evmgr tmmgr) $ \_ -> do
             wait <- takeMVar mvar
             case wait of
               TimeoutTripped -> return ()
@@ -75,7 +75,7 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
               MoreData       -> E.bracket (mallocBytes bufSize)
                                           free
                                           (\buf -> void $ recvBufNoWait s buf bufSize)
-    setup evmgr tmmgr mvar = do
+    register evmgr tmmgr mvar = do
         -- millisecond to microsecond
         key1 <- Ev.registerTimeout tmmgr (tmout * 1000) $
             putMVar mvar TimeoutTripped
@@ -84,7 +84,7 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
                 fd = Fd fd'
             Ev.registerFd evmgr callback fd Ev.evtRead Ev.OneShot
         return (key1, key2)
-    teardown evmgr tmmgr (key1,key2) = do
+    unregister evmgr tmmgr (key1,key2) = do
         Ev.unregisterTimeout tmmgr key1
         Ev.unregisterFd evmgr key2
     -- Don't use 4092 here. The GHC runtime takes the global lock
