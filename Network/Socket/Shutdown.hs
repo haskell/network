@@ -69,9 +69,9 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
 #if defined(mingw32_HOST_OS)
     -- milliseconds. Taken from BSD fast clock value.
     clock = 200
-    recvEOF buf = loop 0
+    recvEOF = E.bracket (mallocBytes bufSize) free $ loop 0
       where
-        loop delay = do
+        loop delay buf = do
             -- We don't check the (positive) length.
             -- In normal case, it's 0. That is, only FIN is received.
             -- In error cases, data is available. But there is no
@@ -81,7 +81,7 @@ gracefulClose s tmout = (sendRecvFIN `E.finally` close s) `E.catch` ignore
             let delay' = delay + clock
             when (r == -1 && delay' < tmout) $ do
                 threadDelay (clock * 1000)
-                loop delay'
+                loop delay' buf
 #else
     recvEOF = do
         Just evmgr <- Ev.getSystemEventManager
