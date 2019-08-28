@@ -31,35 +31,35 @@
 -- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
--- > main = withSocketsDo $ do
--- >     addr <- resolve "3000"
+-- > main = runTCPServer Nothing "3000" talk
+-- >   where
+-- >     talk s = do
+-- >         msg <- recv s 1024
+-- >         unless (S.null msg) $ do
+-- >           sendAll s msg
+-- >           talk s
+-- >
+-- > runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
+-- > runTCPServer mhost port server = withSocketsDo $ do
+-- >     addr <- resolve
 -- >     E.bracket (open addr) close loop
 -- >   where
--- >     resolve port = do
+-- >     resolve = do
 -- >         let hints = defaultHints {
 -- >                 addrFlags = [AI_PASSIVE]
 -- >               , addrSocketType = Stream
 -- >               }
--- >         addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
--- >         return addr
+-- >         head <$> getAddrInfo (Just hints) mhost (Just port)
 -- >     open addr = do
 -- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >         setSocketOption sock ReuseAddr 1
--- >         -- If the prefork technique is not used,
--- >         -- set CloseOnExec for the security reasons.
 -- >         withFdSocket sock $ setCloseOnExecIfNeeded
--- >         bind sock (addrAddress addr)
--- >         listen sock 10
+-- >         bind sock $ addrAddress addr
+-- >         listen sock 1024
 -- >         return sock
 -- >     loop sock = forever $ do
--- >         (conn, peer) <- accept sock
--- >         putStrLn $ "Connection from " ++ show peer
--- >         void $ forkFinally (talk conn) (\_ -> close conn)
--- >     talk conn = do
--- >         msg <- recv conn 1024
--- >         unless (S.null msg) $ do
--- >           sendAll conn msg
--- >           talk conn
+-- >         (conn, _peer) <- accept sock
+-- >         void $ forkFinally (server conn) (const $ gracefulClose conn 5000)
 --
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- > -- Echo client program
@@ -71,23 +71,24 @@
 -- > import Network.Socket.ByteString (recv, sendAll)
 -- >
 -- > main :: IO ()
--- > main = withSocketsDo $ do
--- >     addr <- resolve "127.0.0.1" "3000"
--- >     E.bracket (open addr) close talk
+-- > main = runTCPClient "127.0.0.1" "3000" $ \s -> do
+-- >     sendAll s "Hello, world!"
+-- >     msg <- recv s 1024
+-- >     putStr "Received: "
+-- >     C.putStrLn msg
+-- >
+-- > runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
+-- > runTCPClient host port client = withSocketsDo $ do
+-- >     addr <- resolve
+-- >     E.bracket (open addr) close client
 -- >   where
--- >     resolve host port = do
+-- >     resolve = do
 -- >         let hints = defaultHints { addrSocketType = Stream }
--- >         addr:_ <- getAddrInfo (Just hints) (Just host) (Just port)
--- >         return addr
+-- >         head <$> getAddrInfo (Just hints) (Just host) (Just port)
 -- >     open addr = do
 -- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >         connect sock $ addrAddress addr
 -- >         return sock
--- >     talk sock = do
--- >         sendAll sock "Hello, world!"
--- >         msg <- recv sock 1024
--- >         putStr "Received: "
--- >         C.putStrLn msg
 --
 -- The proper programming model is that one 'Socket' is handled by
 -- a single thread. If multiple threads use one 'Socket' concurrently,

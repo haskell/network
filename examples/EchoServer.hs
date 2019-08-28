@@ -9,32 +9,32 @@ import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 
 main :: IO ()
-main = withSocketsDo $ do
-    addr <- resolve "3000"
+main = runTCPServer Nothing "3000" talk
+  where
+    talk s = do
+        msg <- recv s 1024
+        unless (S.null msg) $ do
+          sendAll s msg
+          talk s
+
+runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
+runTCPServer mhost port server = withSocketsDo $ do
+    addr <- resolve
     E.bracket (open addr) close loop
   where
-    resolve port = do
+    resolve = do
         let hints = defaultHints {
                 addrFlags = [AI_PASSIVE]
               , addrSocketType = Stream
               }
-        addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
-        return addr
+        head <$> getAddrInfo (Just hints) mhost (Just port)
     open addr = do
         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
         setSocketOption sock ReuseAddr 1
-        -- If the prefork technique is not used,
-        -- set CloseOnExec for the security reasons.
         withFdSocket sock $ setCloseOnExecIfNeeded
-        bind sock (addrAddress addr)
-        listen sock 10
+        bind sock $ addrAddress addr
+        listen sock 1024
         return sock
     loop sock = forever $ do
-        (conn, peer) <- accept sock
-        putStrLn $ "Connection from " ++ show peer
-        void $ forkFinally (talk conn) (\_ -> close conn)
-    talk conn = do
-        msg <- recv conn 1024
-        unless (S.null msg) $ do
-          sendAll conn msg
-          talk conn
+        (conn, _peer) <- accept sock
+        void $ forkFinally (server conn) (const $ gracefulClose conn 5000)
