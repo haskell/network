@@ -1,3 +1,8 @@
+## Version 3.1.1.0
+
+* A new API: gracefulClose.
+  [#417](https://github.com/haskell/network/pull/417)
+
 ## Version 3.1.0.1
 
 * getAddrInfo: raise exception if no AddrInfo returned.
