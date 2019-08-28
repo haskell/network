@@ -122,6 +122,7 @@ module Network.Socket
     -- ** Closing
     , close
     , close'
+    , gracefulClose
     , shutdown
     , ShutdownCmd(..)
 

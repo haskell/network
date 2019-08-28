@@ -196,3 +196,16 @@ spec = do
                     cred1 <- getPeerCredential s
                     cred1 `shouldBe` (Nothing,Nothing,Nothing)
             -}
+
+    describe "gracefulClose" $ do
+        it "does not send TCP RST back" $ do
+            let server sock = do
+                    void $ recv sock 1024 -- receiving "GOAWAY"
+                    gracefulClose sock 3000
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 10000
+                    sendAll sock "PING"
+                    threadDelay 10000
+                    void $ recv sock 1024
+            tcpTest client server

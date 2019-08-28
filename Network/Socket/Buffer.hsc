@@ -1,14 +1,21 @@
 {-# LANGUAGE CPP #-}
 
-#include "HsNetDef.h"
+##include "HsNetDef.h"
+#if defined(mingw32_HOST_OS)
+#  include "windows.h"
+#endif
 
 module Network.Socket.Buffer (
     sendBufTo
   , sendBuf
   , recvBufFrom
   , recvBuf
+  , recvBufNoWait
   ) where
 
+#if !defined(mingw32_HOST_OS)
+import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
+#endif
 import Foreign.Marshal.Alloc (alloca)
 import GHC.IO.Exception (IOErrorType(InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
@@ -129,6 +136,43 @@ recvBuf s ptr nbytes
 #endif
     return $ fromIntegral len
 
+-- | Receive data from the socket. This function returns immediately
+--   even if data is not available. In other words, IO manager is NOT
+--   involved. The length of data is returned if received.
+--   -1 is returned in the case of EAGAIN or EWOULDBLOCK.
+--   -2 is returned in other error cases.
+recvBufNoWait :: Socket -> Ptr Word8 -> Int -> IO Int
+recvBufNoWait s ptr nbytes = withFdSocket s $ \fd -> do
+#if defined(mingw32_HOST_OS)
+    alloca $ \ptr_bytes -> do
+      res <- c_ioctlsocket fd #{const FIONREAD} ptr_bytes
+      avail <- peek ptr_bytes
+      r <- if res == #{const NO_ERROR} && avail > 0 then
+               c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+           else if avail == 0 then
+               -- Socket would block, could also mean socket is closed but
+               -- can't distinguish
+               return (-1)
+           else do err <- c_WSAGetLastError
+                   if err == #{const WSAEWOULDBLOCK}
+                       || err == #{const WSAEINPROGRESS} then
+                       return (-1)
+                     else
+                        return (-2)
+      return $ fromIntegral r
+
+#else
+    r <- c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+    if r >= 0 then
+        return $ fromIntegral r
+      else do
+        err <- getErrno
+        if err == eAGAIN || err == eWOULDBLOCK then
+            return (-1)
+          else
+            return (-2)
+#endif
+
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
@@ -137,9 +181,14 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
+#else
+foreign import CALLCONV SAFE_ON_WIN "ioctlsocket"
+  c_ioctlsocket :: CInt -> CLong -> Ptr CULong -> IO CInt
+foreign import CALLCONV SAFE_ON_WIN "WSAGetLastError"
+  c_WSAGetLastError :: IO CInt
+#endif
 foreign import ccall unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
-#endif
 foreign import CALLCONV SAFE_ON_WIN "sendto"
   c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
