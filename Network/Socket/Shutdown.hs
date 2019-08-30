@@ -12,9 +12,8 @@ module Network.Socket.Shutdown (
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
 
-#if defined(mingw32_HOST_OS)
 import Control.Concurrent (threadDelay)
-#else
+#if !defined(mingw32_HOST_OS)
 import Control.Concurrent (putMVar, takeMVar, newEmptyMVar)
 import qualified GHC.Event as Ev
 import System.Posix.Types (Fd(..))
@@ -65,11 +64,17 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
         -- Sending TCP FIN.
         shutdown s ShutdownSend
         -- Waiting TCP FIN.
-        recvEOF
 #if defined(mingw32_HOST_OS)
+        recvEOFloop
+#else
+        mevmgr <- Ev.getSystemEventManager
+        case mevmgr of
+          Nothing    -> recvEOFloop     -- non-threaded RTS
+          Just evmgr -> recvEOFev evmgr
+#endif
     -- milliseconds. Taken from BSD fast clock value.
     clock = 200
-    recvEOF = E.bracket (mallocBytes bufSize) free $ loop 0
+    recvEOFloop = E.bracket (mallocBytes bufSize) free $ loop 0
       where
         loop delay buf = do
             -- We don't check the (positive) length.
@@ -82,9 +87,8 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
             when (r == -1 && delay' < tmout) $ do
                 threadDelay (clock * 1000)
                 loop delay' buf
-#else
-    recvEOF = do
-        Just evmgr <- Ev.getSystemEventManager
+#if !defined(mingw32_HOST_OS)
+    recvEOFev evmgr = do
         tmmgr <- Ev.getSystemTimerManager
         mvar <- newEmptyMVar
         E.bracket (register evmgr tmmgr mvar) (unregister evmgr tmmgr) $ \_ -> do
