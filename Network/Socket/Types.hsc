@@ -123,6 +123,8 @@ fdSocket (Socket ref _) = readIORef ref
 --
 -- The file descriptor must not be used after @withFdSocket@ returns;
 -- see the documentation for 'fdSocket' to see why that is.
+--
+-- Since: 3.1.0.0
 withFdSocket :: Socket -> (CInt -> IO r) -> IO r
 withFdSocket (Socket ref@(IORef (STRef ref##)) _) f = do
   fd <- readIORef ref
