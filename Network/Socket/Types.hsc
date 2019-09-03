@@ -13,7 +13,7 @@ module Network.Socket.Types (
       Socket
     , withFdSocket
     , unsafeFdSocket
-    , touchFdSocket
+    , touchSocket
     , fdSocket
     , mkSocket
     , invalidateSocket
@@ -130,8 +130,8 @@ unsafeFdSocket (Socket ref _) = readIORef ref
 --   at the given place in the sequence of IO actions. This function can be
 --   used in conjunction with 'unsafeFdSocket' to guarantee that the file
 --   descriptor is not prematurely freed.
-touchFdSocket :: Socket -> IO ()
-touchFdSocket (Socket ref _) = touch ref
+touchSocket :: Socket -> IO ()
+touchSocket (Socket ref _) = touch ref
 
 touch :: IORef a -> IO ()
 touch (IORef (STRef mutVar)) =

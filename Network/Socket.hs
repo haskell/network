@@ -138,7 +138,7 @@ module Network.Socket
     , socket
     , withFdSocket
     , unsafeFdSocket
-    , touchFdSocket
+    , touchSocket
     , fdSocket
     , mkSocket
     , socketToHandle
