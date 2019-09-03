@@ -51,7 +51,7 @@ sendBufTo s ptr nbytes sa =
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> IO FD
 socket2FD s = do
-  fd <- fdSocket s
+  fd <- unsafeFdSocket s
   -- HACK, 1 means True
   return $ FD{ fdFD = fd, fdIsSocket_ = 1 }
 #endif

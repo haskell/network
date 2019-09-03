@@ -11,8 +11,10 @@
 module Network.Socket.Types (
     -- * Socket type
       Socket
-    , fdSocket
     , withFdSocket
+    , unsafeFdSocket
+    , touchSocket
+    , fdSocket
     , mkSocket
     , invalidateSocket
     , close
@@ -94,13 +96,18 @@ instance Show Socket where
 instance Eq Socket where
     Socket ref1 _ == Socket ref2 _ = ref1 == ref2
 
+{-# DEPRECATED fdSocket "Use withFdSocket or unsafeFdSocket instead" #-}
+-- | Currently, this is an alias of `unsafeFdSocket`.
+fdSocket :: Socket -> IO CInt
+fdSocket = unsafeFdSocket
+
 -- | Getting a file descriptor from a socket.
 --
 --   If a 'Socket' is shared with multiple threads and
---   one uses 'fdSocket', unexpected issues may happen.
+--   one uses 'unsafeFdSocket', unexpected issues may happen.
 --   Consider the following scenario:
 --
---   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
+--   1) Thread A acquires a 'Fd' from 'Socket' by 'unsafeFdSocket'.
 --
 --   2) Thread B close the 'Socket'.
 --
@@ -109,38 +116,51 @@ instance Eq Socket where
 --
 --   In this case, it is safer for Thread A to clone 'Fd' by
 --   'System.Posix.IO.dup'. But this would still suffer from
---   a race condition between 'fdSocket' and 'close'.
+--   a race condition between 'unsafeFdSocket' and 'close'.
+--
+--   If you use this function, you need to guarantee that the 'Socket' does not
+--   get garbage-collected until after you finish using the file descriptor.
+--   'touchSocket' can be used for this purpose.
 --
 --   A safer option is to use 'withFdSocket' instead.
-{-# DEPRECATED fdSocket "Use withFdSocket instead" #-}
-fdSocket :: Socket -> IO CInt
-fdSocket (Socket ref _) = readIORef ref
+unsafeFdSocket :: Socket -> IO CInt
+unsafeFdSocket (Socket ref _) = readIORef ref
+
+-- | Ensure that the given 'Socket' stays alive (i.e. not garbage-collected)
+--   at the given place in the sequence of IO actions. This function can be
+--   used in conjunction with 'unsafeFdSocket' to guarantee that the file
+--   descriptor is not prematurely freed.
+touchSocket :: Socket -> IO ()
+touchSocket (Socket ref _) = touch ref
+
+touch :: IORef a -> IO ()
+touch (IORef (STRef mutVar)) =
+  -- Thanks to a GHC issue, this touch# may not be quite guaranteed
+  -- to work. There's talk of replacing the touch# primop with one
+  -- that works better with the optimizer. But this seems to be the
+  -- "right" way to do it for now.
+  IO $ \s -> (## touch## mutVar s, () ##)
 
 -- | Get a file descriptor from a 'Socket'. The socket will never
 -- be closed automatically before @withFdSocket@ completes, but
 -- it may still be closed by an explicit call to 'close' or `close'`,
 -- either before or during the call.
 --
--- The file descriptor must not be used after @withFdSocket@ returns;
--- see the documentation for 'fdSocket' to see why that is.
+-- The file descriptor must not be used after @withFdSocket@ returns, because
+-- the 'Socket' may have been garbage-collected, invalidating the file
+-- descriptor.
 --
 -- Since: 3.1.0.0
 withFdSocket :: Socket -> (CInt -> IO r) -> IO r
-withFdSocket (Socket ref@(IORef (STRef ref##)) _) f = do
+withFdSocket (Socket ref _) f = do
   fd <- readIORef ref
   -- Should we throw an exception if the socket is already invalid?
   -- That will catch some mistakes but certainly not all.
 
   r <- f fd
 
-  -- Thanks to a GHC issue, this touch# may not be quite guaranteed
-  -- to work. There's talk of replacing the touch# primop with one
-  -- that works better with the optimizer. But this seems to be the
-  -- "right" way to do it for now.
-
-  IO $ \s -> (## touch## ref## s, () ##)
+  touch ref
   return r
-
 
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
@@ -171,9 +191,9 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 -- | Close the socket. This function does not throw exceptions even if
 --   the underlying system call returns errors.
 --
---   If multiple threads use the same socket and one uses 'fdSocket' and
+--   If multiple threads use the same socket and one uses 'unsafeFdSocket' and
 --   the other use 'close', unexpected behavior may happen.
---   For more information, please refer to the documentation of 'fdSocket'.
+--   For more information, please refer to the documentation of 'unsafeFdSocket'.
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
