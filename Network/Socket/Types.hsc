@@ -14,6 +14,7 @@ module Network.Socket.Types (
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
+    , socketToFd
     , fdSocket
     , mkSocket
     , invalidateSocket
@@ -165,6 +166,18 @@ withFdSocket (Socket ref _) f = do
 
   touch ref
   return r
+
+-- | Socket is closed and a duplicated file descriptor is returned.
+socketToFd :: Socket -> IO CInt
+socketToFd s = do
+    fd <- unsafeFdSocket s
+    -- FIXME: throw error no if -1
+    fd2 <- c_dup fd
+    close s
+    return fd2
+
+foreign import ccall unsafe "dup"
+   c_dup :: CInt -> IO CInt
 
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
