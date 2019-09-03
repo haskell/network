@@ -97,16 +97,17 @@ instance Eq Socket where
     Socket ref1 _ == Socket ref2 _ = ref1 == ref2
 
 {-# DEPRECATED fdSocket "Use withFdSocket or unsafeFdSocket instead" #-}
+-- | Currently, this is an alias of `unsafeFdSocket`.
 fdSocket :: Socket -> IO CInt
 fdSocket = unsafeFdSocket
 
 -- | Getting a file descriptor from a socket.
 --
 --   If a 'Socket' is shared with multiple threads and
---   one uses 'fdSocket', unexpected issues may happen.
+--   one uses 'unsafeFdSocket', unexpected issues may happen.
 --   Consider the following scenario:
 --
---   1) Thread A acquires a 'Fd' from 'Socket' by 'fdSocket'.
+--   1) Thread A acquires a 'Fd' from 'Socket' by 'unsafeFdSocket'.
 --
 --   2) Thread B close the 'Socket'.
 --
@@ -115,7 +116,7 @@ fdSocket = unsafeFdSocket
 --
 --   In this case, it is safer for Thread A to clone 'Fd' by
 --   'System.Posix.IO.dup'. But this would still suffer from
---   a race condition between 'fdSocket' and 'close'.
+--   a race condition between 'unsafeFdSocket' and 'close'.
 --
 --   If you use this function, you need to guarantee that the 'Socket' does not
 --   get garbage-collected until after you finish using the file descriptor.
@@ -190,9 +191,9 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 -- | Close the socket. This function does not throw exceptions even if
 --   the underlying system call returns errors.
 --
---   If multiple threads use the same socket and one uses 'fdSocket' and
+--   If multiple threads use the same socket and one uses 'unsafeFdSocket' and
 --   the other use 'close', unexpected behavior may happen.
---   For more information, please refer to the documentation of 'fdSocket'.
+--   For more information, please refer to the documentation of 'unsafeFdSocket'.
 close :: Socket -> IO ()
 close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
