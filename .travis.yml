@@ -41,9 +41,12 @@ matrix:
     - compiler: "ghc-8.4.4"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.4.4], sources: [hvr-ghc]}}
-    - compiler: "ghc-8.6.3"
+    - compiler: "ghc-8.6.5"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
-      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.6.3], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.6.5], sources: [hvr-ghc]}}
+    - compiler: "ghc-8.8.1"
+    # env: TEST=--disable-tests BENCH=--disable-benchmarks
+      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-3.0,ghc-8.8.1], sources: [hvr-ghc]}}
     - compiler: "ghc-head"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-head], sources: [hvr-ghc]}}
@@ -83,7 +86,8 @@ script:
  - if [ -f configure.ac ]; then autoreconf -i; fi
  - rm -rf .ghc.environment.* dist/
  - cabal sdist # test that a source-distribution can be generated
- - cd dist/
+ - if [ -d dist-newstyle/sdist ]; then cd dist-newstyle/sdist; cp ../../enable_doctest.sh .; fi
+ - if [ -d dist ]; then cd dist/; cp ../enable_doctest.sh .; fi
  - SRCTAR=(${PKGNAME}-*.tar.gz)
  - SRC_BASENAME="${SRCTAR/%.tar.gz}"
  - tar -xvf "./$SRC_BASENAME.tar.gz"
@@ -98,7 +102,7 @@ script:
  # - rm -rf ./dist-newstyle
 
  # build & run tests
- - ../../enable_doctest.sh
+ - ../enable_doctest.sh
  - cabal v2-build -w ${HC} ${TEST} ${BENCH} all
  - if [ "x$TEST" = "x--enable-tests" ]; then cabal v2-test -w ${HC} ${TEST} all; fi
 
