@@ -168,6 +168,10 @@ withFdSocket (Socket ref _) f = do
   return r
 
 -- | Socket is closed and a duplicated file descriptor is returned.
+--   The duplicated descriptor is no longer subject to the possibility
+--   of unexpectedly being closed if the socket is finalized. It is
+--   now the caller's responsibility to ultimately close the
+--   duplicated file descriptor.
 socketToFd :: Socket -> IO CInt
 socketToFd s = do
     fd <- unsafeFdSocket s
