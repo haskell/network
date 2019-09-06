@@ -39,6 +39,7 @@
 -- >           sendAll s msg
 -- >           talk s
 -- >
+-- > -- from the "network-run" package.
 -- > runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
 -- > runTCPServer mhost port server = withSocketsDo $ do
 -- >     addr <- resolve
@@ -77,6 +78,7 @@
 -- >     putStr "Received: "
 -- >     C.putStrLn msg
 -- >
+-- > -- from the "network-run" package.
 -- > runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
 -- > runTCPClient host port client = withSocketsDo $ do
 -- >     addr <- resolve

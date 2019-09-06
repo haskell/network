@@ -14,6 +14,7 @@ main = runTCPClient "127.0.0.1" "3000" $ \s -> do
     putStr "Received: "
     C.putStrLn msg
 
+-- from the "network-run" package.
 runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
 runTCPClient host port client = withSocketsDo $ do
     addr <- resolve

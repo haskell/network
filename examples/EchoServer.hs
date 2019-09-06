@@ -17,6 +17,7 @@ main = runTCPServer Nothing "3000" talk
           sendAll s msg
           talk s
 
+-- from the "network-run" package.
 runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
 runTCPServer mhost port server = withSocketsDo $ do
     addr <- resolve
