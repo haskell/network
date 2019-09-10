@@ -130,6 +130,10 @@ unsafeFdSocket (Socket ref _) = readIORef ref
 --   at the given place in the sequence of IO actions. This function can be
 --   used in conjunction with 'unsafeFdSocket' to guarantee that the file
 --   descriptor is not prematurely freed.
+--
+-- > fd <- unsafeFdSocket sock
+-- > -- using fd with blocking operations such as accept(2)
+-- > touchSocket sock
 touchSocket :: Socket -> IO ()
 touchSocket (Socket ref _) = touch ref
 
