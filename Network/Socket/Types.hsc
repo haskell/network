@@ -14,6 +14,7 @@ module Network.Socket.Types (
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
+    , socketToFd
     , fdSocket
     , mkSocket
     , invalidateSocket
@@ -165,6 +166,33 @@ withFdSocket (Socket ref _) f = do
 
   touch ref
   return r
+
+-- | Socket is closed and a duplicated file descriptor is returned.
+--   The duplicated descriptor is no longer subject to the possibility
+--   of unexpectedly being closed if the socket is finalized. It is
+--   now the caller's responsibility to ultimately close the
+--   duplicated file descriptor.
+socketToFd :: Socket -> IO CInt
+socketToFd s = do
+#if defined(mingw32_HOST_OS)
+    fd <- unsafeFdSocket s
+    fd2 <- c_wsaDuplicate fd
+    -- FIXME: throw error no if -1
+    close s
+    return fd2
+
+foreign import ccall unsafe "wsaDuplicate"
+   c_wsaDuplicate :: CInt -> IO CInt
+#else
+    fd <- unsafeFdSocket s
+    -- FIXME: throw error no if -1
+    fd2 <- c_dup fd
+    close s
+    return fd2
+
+foreign import ccall unsafe "dup"
+   c_dup :: CInt -> IO CInt
+#endif
 
 -- | Creating a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
