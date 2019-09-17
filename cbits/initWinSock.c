@@ -40,4 +40,19 @@ initWinSock ()
   return 0;
 }
 
+SOCKET
+wsaDuplicate (SOCKET s)
+{
+  WSAPROTOCOL_INFOW protocolInfo;
+  if (WSADuplicateSocketW (s, GetCurrentProcessId (), &protocolInfo) != 0)
+    return -1;
+
+  SOCKET res = WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO,
+                          FROM_PROTOCOL_INFO, &protocolInfo, 0, 0);
+  if (res == SOCKET_ERROR)
+    return -1;
+
+  return res;
+}
+
 #endif

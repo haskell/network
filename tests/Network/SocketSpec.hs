@@ -209,3 +209,13 @@ spec = do
                     threadDelay 10000
                     void $ recv sock 1024
             tcpTest client server
+
+    describe "socketToFd" $ do
+        it "socketToFd can send using fd" $ do
+            let server sock = do
+                    void $ recv sock 1024
+                client sock = do
+                    fd <- socketToFd sock
+                    s <- mkSocket fd
+                    sendAll s "HELLO WORLD"
+            tcpTest client server
