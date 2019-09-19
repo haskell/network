@@ -1,5 +1,8 @@
 ## Version 3.1.1.0
 
+* socketToFd: Allows converting a socket to a file desriptor without risking
+  closing the socket.
+  [#424](https://github.com/haskell/network/pull/424)
 * A new API: gracefulClose.
   [#417](https://github.com/haskell/network/pull/417)
 
