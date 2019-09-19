@@ -16,9 +16,10 @@
 -- used with either "Network.Socket.ByteString" or
 -- "Network.Socket.ByteString.Lazy" for sending/receiving.
 --
--- Here are two minimal example programs using the TCP/IP protocol: a
--- server that echoes all data that it receives back (servicing only
--- one client) and a client using it.
+-- Here are two minimal example programs using the TCP/IP protocol:
+--
+-- * a server that echoes all data that it receives back
+-- * a client using it
 --
 -- > -- Echo server program
 -- > module Main (main) where
