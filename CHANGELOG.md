@@ -1,10 +1,15 @@
 ## Version 3.1.1.0
 
-* socketToFd: Duplicates a socket as a file desriptor and closes the source
+* A new API: `gracefulClose`.
+  [#417](https://github.com/haskell/network/pull/417)
+* `touchSocket`, `unsafeFdSocket`: Allow direct access to a socket's file
+  descriptor while providing tools to prevent it from being garbage collected.
+  This also deprecated `fdSocket` in favor of `unsafeFdSocket` and
+  `withFdSocket`.
+  [#423](https://github.com/haskell/network/pull/423)
+* `socketToFd`: Duplicates a socket as a file desriptor and closes the source
   socket.
   [#424](https://github.com/haskell/network/pull/424)
-* A new API: gracefulClose.
-  [#417](https://github.com/haskell/network/pull/417)
 
 ## Version 3.1.0.1
 
