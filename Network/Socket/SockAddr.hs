@@ -8,6 +8,10 @@ module Network.Socket.SockAddr (
     , recvBufFrom
     ) where
 
+import Control.Exception (try, throwIO, IOException)
+import System.Directory (removeFile)
+import System.IO.Error (isAlreadyInUseError, isDoesNotExistError)
+
 import qualified Network.Socket.Buffer as G
 import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
@@ -32,7 +36,27 @@ connect = G.connect
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: Socket -> SockAddr -> IO ()
-bind = G.bind
+bind s a = case a of
+  SockAddrUnix p -> do
+    -- gracefully handle the fact that UNIX systems don't clean up closed UNIX
+    -- domain sockets, inspired by https://stackoverflow.com/a/13719866
+    res <- try (G.bind s a)
+    case res of
+      Right () -> pure ()
+      Left e -> if not (isAlreadyInUseError (e :: IOException))
+        then throwIO e
+        else do
+          -- socket might be in use, try to connect
+          res2 <- try (G.connect s a)
+          case res2 of
+            Right () -> close s >> throwIO e
+            Left e2 -> if not (isDoesNotExistError (e2 :: IOException))
+              then throwIO e
+              else do
+                -- socket not actually in use, remove it and retry bind
+                removeFile p
+                G.bind s a
+  _ -> G.bind s a
 
 -- | Accept a connection.  The socket must be bound to an address and
 -- listening for connections.  The return value is a pair @(conn,
