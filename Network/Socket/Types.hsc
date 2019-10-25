@@ -981,7 +981,7 @@ type ScopeID = Word32
 data SockName
   = SockName !String !PortNumber
   | SockAddr !SockAddr
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Typeable, Read, Show)
 
 -- | Socket addresses.
 --  The existence of a constructor does not necessarily imply that
@@ -999,7 +999,7 @@ data SockAddr
   -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
   | SockAddrUnix
         String           -- sun_path
-  deriving (Eq, Ord, Typeable)
+  deriving (Eq, Ord, Typeable, Read, Show)
 
 instance NFData SockAddr where
   rnf (SockAddrInet _ _) = ()

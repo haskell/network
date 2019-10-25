@@ -68,7 +68,7 @@ import Network.Socket.Types
 -- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >>> Network.Socket.bind sock (addrAddress addr)
 -- >>> getSocketName sock
--- 127.0.0.1:5000
+-- SockAddrInet 5000 16777343
 socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)

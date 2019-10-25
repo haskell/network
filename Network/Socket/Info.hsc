@@ -265,7 +265,9 @@ showDefaultHints AddrInfo{..} = concat [
 --
 -- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
 -- >>> addrAddress addr
--- 127.0.0.1:80
+-- SockAddrInet 80 16777343
+-- >>> showSockAddr (addrAddress addr)
+-- "127.0.0.1:80"
 
 getAddrInfo
     :: Maybe AddrInfo -- ^ preferred socket type or protocol
@@ -436,27 +438,7 @@ unpackBits ((k,v):xs) r
     | otherwise    = unpackBits xs r
 
 -----------------------------------------------------------------------------
--- SockAddr
-
-instance Show SockAddr where
-#if defined(DOMAIN_SOCKET_SUPPORT)
-  showsPrec _ (SockAddrUnix str) = showString str
-#else
-  showsPrec _ SockAddrUnix{} = error "showsPrec: not supported"
-#endif
-  showsPrec _ addr@(SockAddrInet port _)
-   = showString (unsafePerformIO $
-                 fst <$> getNameInfo [NI_NUMERICHOST] True False addr >>=
-                 maybe (fail "showsPrec: impossible internal error") return)
-   . showString ":"
-   . shows port
-  showsPrec _ addr@(SockAddrInet6 port _ _ _)
-   = showChar '['
-   . showString (unsafePerformIO $
-                 fst <$> getNameInfo [NI_NUMERICHOST] True False addr >>=
-                 maybe (fail "showsPrec: impossible internal error") return)
-   . showString "]:"
-   . shows port
+-- SockName, SockAddr
 
 -- | Read a string representing a socket name.
 readSockName :: PortNumber -> String -> Either String SockName
@@ -499,7 +481,21 @@ readSockAddr defPort hostport = readSockName defPort hostport >>= \r -> case r o
   SockAddr a -> Right a
 
 showSockAddr :: SockAddr -> String
-showSockAddr = show
+showSockAddr sa = showsAddr sa "" where
+  showsAddr (SockAddrUnix str) = showString str
+  showsAddr addr@(SockAddrInet port _)
+   = showString (unsafePerformIO $
+                 fst <$> getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 maybe (fail "showsPrec: impossible internal error") return)
+   . showString ":"
+   . shows port
+  showsAddr addr@(SockAddrInet6 port _ _ _)
+   = showChar '['
+   . showString (unsafePerformIO $
+                 fst <$> getNameInfo [NI_NUMERICHOST] True False addr >>=
+                 maybe (fail "showsPrec: impossible internal error") return)
+   . showString "]:"
+   . shows port
 
 -- | Resolve a socket name into a list of socket addresses.
 --  The result is always non-empty; Haskell throws an exception if name
