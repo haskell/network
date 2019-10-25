@@ -139,6 +139,7 @@ module Network.Socket
     -- * Socket
     , Socket
     , socket
+    , socketFromName
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
@@ -158,8 +159,14 @@ module Network.Socket
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
+    -- * Basic socket name type
+    , SockName(..)
+    , readSockName
+    , showSockName
+    , sockNameToAddr
     -- * Basic socket address type
     , SockAddr(..)
+    , sockAddrFamily
     , isSupportedSockAddr
     , getPeerName
     , getSocketName

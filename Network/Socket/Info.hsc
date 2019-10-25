@@ -8,14 +8,17 @@
 
 module Network.Socket.Info where
 
+import Control.Exception (try, IOException)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
 import GHC.IO (unsafePerformIO)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
 import System.IO.Error (ioeSetErrorString, mkIOError)
+import Text.Read (readEither)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
+import Network.Socket.Syscall (socket)
 import Network.Socket.Types
 
 -----------------------------------------------------------------------------
@@ -454,3 +457,74 @@ instance Show SockAddr where
                  maybe (fail "showsPrec: impossible internal error") return)
    . showString "]:"
    . shows port
+
+-- | Read a string representing a socket name.
+readSockName :: PortNumber -> String -> Either String SockName
+readSockName defPort hostport = case hostport of
+  '/':_ -> Right $ SockAddr $ SockAddrUnix hostport
+  '[':tl -> case span ((/=) ']') tl of
+    (_, []) -> Left $ "unterminated IPv6 address: " <> hostport
+    (ipv6, _:port) -> case readAddr ipv6 of
+      Nothing -> Left $ "invalid IPv6 address: " <> ipv6
+      Just addr -> SockAddr . sockAddrPort addr <$> readPort port
+  _ -> case span ((/=) ':') hostport of
+    (host, port) -> case readAddr host of
+      Nothing -> SockName host <$> readPort port
+      Just addr -> SockAddr . sockAddrPort addr <$> readPort port
+ where
+  readPort "" = Right defPort
+  readPort ":" = Right defPort
+  readPort (':':port) = case readEither port of
+    Right p -> Right p
+    Left _ -> Left $ "bad port: " <> port
+  readPort x = Left $ "bad port: " <> x
+  hints = Just $ defaultHints { addrFlags = [AI_NUMERICHOST] }
+  readAddr host = case unsafePerformIO (try (getAddrInfo hints (Just host) Nothing)) of
+    Left e -> Nothing where _ = e :: IOException
+    Right r -> Just (addrAddress (head r))
+  sockAddrPort h p = case h of
+    SockAddrInet _ a -> SockAddrInet p a
+    SockAddrInet6 _ f a s -> SockAddrInet6 p f a s
+    x -> x
+
+showSockName :: SockName -> String
+showSockName n = case n of
+  SockName h p -> h <> ":" <> show p
+  SockAddr a -> showSockAddr a
+
+-- | Read a string representing a socket address.
+readSockAddr :: PortNumber -> String -> Either String SockAddr
+readSockAddr defPort hostport = readSockName defPort hostport >>= \r -> case r of
+  SockName h _ -> Left $ "expected address but got hostname: " <> h
+  SockAddr a -> Right a
+
+showSockAddr :: SockAddr -> String
+showSockAddr = show
+
+-- | Resolve a socket name into a list of socket addresses.
+--  The result is always non-empty; Haskell throws an exception if name
+--  resolution fails.
+sockNameToAddr :: SockName -> IO [SockAddr]
+sockNameToAddr name = case name of
+  SockAddr a -> pure [a]
+  SockName host port -> fmap addrAddress <$> getAddrInfo hints (Just host) (Just (show port))
+ where
+  hints = Just $ defaultHints { addrSocketType = Stream }
+  -- prevents duplicates, otherwise getAddrInfo returns all socket types
+
+-- | Shortcut for creating a socket from a socket name.
+--
+-- >>> import Network.Socket
+-- >>> let Right sn = readSockName 0 "0.0.0.0:0"
+-- >>> (s, a) <- socketFromName sn head Stream defaultProtocol
+-- >>> bind s a
+socketFromName
+  :: SockName
+  -> ([SockAddr] -> SockAddr)
+  -> SocketType
+  -> ProtocolNumber
+  -> IO (Socket, SockAddr)
+socketFromName sname select stype protocol = do
+  a <- select <$> sockNameToAddr sname
+  s <- socket (sockAddrFamily a) stype protocol
+  pure (s, a)

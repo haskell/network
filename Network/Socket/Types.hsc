@@ -42,7 +42,9 @@ module Network.Socket.Types (
     , withNewSocketAddress
 
     -- * Socket address type
+    , SockName(..)
     , SockAddr(..)
+    , sockAddrFamily
     , isSupportedSockAddr
     , HostAddress
     , hostAddressToTuple
@@ -970,6 +972,17 @@ type FlowInfo = Word32
 -- | Scope identifier.
 type ScopeID = Word32
 
+-- | Socket names.
+--  A wrapper around socket addresses that also accommodates the
+--  popular usage of specifying them by name, e.g. "example.com:80".
+--  Note that we don't support service names here because they also
+--  imply a particular socket type, which is outside of the scope of
+--  what this data type represents.
+data SockName
+  = SockName !String !PortNumber
+  | SockAddr !SockAddr
+  deriving (Eq, Ord)
+
 -- | Socket addresses.
 --  The existence of a constructor does not necessarily imply that
 --  that socket address type is supported on your system: see
@@ -992,6 +1005,12 @@ instance NFData SockAddr where
   rnf (SockAddrInet _ _) = ()
   rnf (SockAddrInet6 _ _ _ _) = ()
   rnf (SockAddrUnix str) = rnf str
+
+sockAddrFamily :: SockAddr -> Family
+sockAddrFamily addr = case addr of
+  SockAddrInet _ _ -> AF_INET
+  SockAddrInet6 _ _ _ _ -> AF_INET6
+  SockAddrUnix _ -> AF_UNIX
 
 -- | Is the socket address type supported on this system?
 isSupportedSockAddr :: SockAddr -> Bool
