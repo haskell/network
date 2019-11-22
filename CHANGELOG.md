@@ -1,3 +1,8 @@
+## Version 3.1.1.1
+
+* Fix for GHCJS.
+  [#431](https://github.com/haskell/network/pull/431)
+
 ## Version 3.1.1.0
 
 * A new API: `gracefulClose`.
