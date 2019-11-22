@@ -20,7 +20,7 @@ setNonBlockIfNeeded fd =
 --
 --   Since 2.7.0.0.
 setCloseOnExecIfNeeded :: CInt -> IO ()
-#if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 setCloseOnExecIfNeeded _ = return ()
 #else
 setCloseOnExecIfNeeded fd = System.Posix.Internals.setCloseOnExec fd
@@ -36,7 +36,7 @@ foreign import ccall unsafe "fcntl"
 --
 --   Since 2.7.0.0.
 getCloseOnExec :: CInt -> IO Bool
-#if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 getCloseOnExec _ = return False
 #else
 getCloseOnExec fd = do
