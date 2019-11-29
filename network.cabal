@@ -96,6 +96,7 @@ library
   -- Add some platform specific stuff
   if !os(windows)
     other-modules:
+      Network.Socket.ByteString.Flag
       Network.Socket.ByteString.IOVec
       Network.Socket.ByteString.Lazy.Posix
       Network.Socket.ByteString.MsgHdr
