@@ -52,6 +52,12 @@ data SocketOption
     | UseLoopBack   -- ^ SO_USELOOPBACK
     | UserTimeout   -- ^ TCP_USER_TIMEOUT
     | IPv6Only      -- ^ IPV6_V6ONLY: don't use this on OpenBSD.
+    | RecvIPv4TTL      -- ^ Receiving IPv4 TTL.
+    | RecvIPv4TOS      -- ^ Receiving IPv4 TOS.
+    | RecvIPv4PktInfo  -- ^ Receiving IP_PKTINFO (struct in_pktinfo).
+    | RecvIPv6HopLimit -- ^ Receiving IPv6 hop limit.
+    | RecvIPv6TClass   -- ^ Receiving IPv6 traffic class.
+    | RecvIPv6PktInfo  -- ^ Receiving IPV6_PKTINFO (struct in6_pktinfo).
     | CustomSockOpt (CInt, CInt)
     deriving (Show, Typeable)
 
@@ -157,6 +163,40 @@ packSocketOption so =
 #if HAVE_DECL_IPPROTO_IPV6
 #if HAVE_DECL_IPV6_V6ONLY
     Just IPv6Only      -> Just ((#const IPPROTO_IPV6), (#const IPV6_V6ONLY))
+#endif
+#endif // HAVE_DECL_IPPROTO_IPV6
+#if HAVE_DECL_IPPROTO_IP
+#ifdef IP_RECVTTL
+    Just RecvIPv4TTL -> Just ((#const IPPROTO_IP), (#const IP_RECVTTL))
+#endif
+#endif // HAVE_DECL_IPPROTO_IP
+#if HAVE_DECL_IPPROTO_IP
+#ifdef IP_RECVTOS
+    Just RecvIPv4TOS -> Just ((#const IPPROTO_IP), (#const IP_RECVTOS))
+#endif
+#endif // HAVE_DECL_IPPROTO_IP
+#if HAVE_DECL_IPPROTO_IP
+#if defined(IP_RECVPKTINFO)
+    Just RecvIPv4PktInfo -> Just ((#const IPPROTO_IP), (#const IP_RECVPKTINFO))
+#elif defined(IP_PKTINFO)
+    Just RecvIPv4PktInfo -> Just ((#const IPPROTO_IP), (#const IP_PKTINFO))
+#endif
+#endif // HAVE_DECL_IPPROTO_IP
+#if HAVE_DECL_IPPROTO_IPV6
+#ifdef IPV6_RECVHOPLIMIT
+    Just RecvIPv6HopLimit -> Just ((#const IPPROTO_IPV6), (#const IPV6_RECVHOPLIMIT))
+#endif
+#endif // HAVE_DECL_IPPROTO_IPV6
+#if HAVE_DECL_IPPROTO_IPV6
+#ifdef IPV6_RECVTCLASS
+    Just RecvIPv6TClass -> Just ((#const IPPROTO_IPV6), (#const IPV6_RECVTCLASS))
+#endif
+#endif // HAVE_DECL_IPPROTO_IPV6
+#if HAVE_DECL_IPPROTO_IPV6
+#ifdef IPV6_RECVPKTINFO
+    Just RecvIPv6PktInfo -> Just ((#const IPPROTO_IPV6), (#const IPV6_RECVPKTINFO))
+#elif defined(IPV6_PKTINFO)
+    Just RecvIPv6PktInfo -> Just ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
 #endif
 #endif // HAVE_DECL_IPPROTO_IPV6
     Just (CustomSockOpt opt) -> Just opt

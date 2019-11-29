@@ -20,6 +20,7 @@
 #endif
 
 #define _GNU_SOURCE 1 /* for struct ucred on Linux */
+#define __APPLE_USE_RFC_3542 1 /* for IPV6_RECVPKTINFO */
 
 #ifdef _WIN32
 # include <winsock2.h>
