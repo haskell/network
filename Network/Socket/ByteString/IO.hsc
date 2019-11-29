@@ -158,9 +158,15 @@ sendManyTo s cs addr = do
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
         withIOVec cs $ \(iovsPtr, iovsLen) -> do
-          let msgHdr = MsgHdr
-                addrPtr (fromIntegral addrSize)
-                iovsPtr (fromIntegral iovsLen)
+          let msgHdr = MsgHdr {
+                  msgName    = addrPtr
+                , msgNameLen = fromIntegral addrSize
+                , msgIov     = iovsPtr
+                , msgIovLen  = fromIntegral iovsLen
+                , msgCtrl    = nullPtr
+                , msgCtrlLen = 0
+                , msgFlags   = 0
+                }
           withFdSocket s $ \fd ->
               with msgHdr $ \msgHdrPtr ->
                 throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $

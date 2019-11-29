@@ -21,6 +21,9 @@ data MsgHdr = MsgHdr
     , msgNameLen :: !CUInt
     , msgIov     :: !(Ptr IOVec)
     , msgIovLen  :: !CSize
+    , msgCtrl    :: !(Ptr Word8)
+    , msgCtrlLen :: !CInt
+    , msgFlags   :: !CInt
     }
 
 instance Storable MsgHdr where
@@ -32,7 +35,10 @@ instance Storable MsgHdr where
     nameLen    <- (#peek struct msghdr, msg_namelen)    p
     iov        <- (#peek struct msghdr, msg_iov)        p
     iovLen     <- (#peek struct msghdr, msg_iovlen)     p
-    return $ MsgHdr name nameLen iov iovLen
+    ctrl       <- (#peek struct msghdr, msg_control)    p
+    ctrlLen    <- (#peek struct msghdr, msg_controllen) p
+    flags      <- (#peek struct msghdr, msg_flags)      p
+    return $ MsgHdr name nameLen iov iovLen ctrl ctrlLen flags
 
   poke p mh = do
     -- We need to zero the msg_control, msg_controllen, and msg_flags
@@ -43,3 +49,6 @@ instance Storable MsgHdr where
     (#poke struct msghdr, msg_namelen)    p (msgNameLen    mh)
     (#poke struct msghdr, msg_iov)        p (msgIov        mh)
     (#poke struct msghdr, msg_iovlen)     p (msgIovLen     mh)
+    (#poke struct msghdr, msg_control)    p (msgCtrl       mh)
+    (#poke struct msghdr, msg_controllen) p (msgCtrlLen    mh)
+    (#poke struct msghdr, msg_flags)      p (msgFlags      mh)
