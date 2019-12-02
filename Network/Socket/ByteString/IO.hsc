@@ -34,6 +34,7 @@ module Network.Socket.ByteString.IO
     , sendMsg
     , recvMsg
     , MsgFlag(..)
+    , Cmsg(..)
     ) where
 
 import Control.Concurrent (threadWaitWrite, rtsSupportsBoundThreads)
@@ -58,6 +59,7 @@ import Network.Socket.Info (packBits, unpackBits)
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
 import Network.Socket.ByteString.Flag
+import Network.Socket.ByteString.Cmsg
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -256,26 +258,28 @@ withIOVec cs f =
 sendMsg :: Socket       -- ^ Socket
         -> SockAddr     -- ^ Destination address
         -> [ByteString] -- ^ Data to be sent
+        -> [Cmsg]       -- ^ Control messages
         -> [MsgFlag]    -- ^ Message flags
         -> IO Int       -- ^ The length actually sent
-sendMsg _ _    []  _ = return 0
-sendMsg s addr bss flags = do
+sendMsg _ _    []  _ _ = return 0
+sendMsg s addr bss cmsgs flags = do
   sz <- withSockAddr addr $ \addrPtr addrSize ->
     withIOVec bss $ \(iovsPtr, iovsLen) -> do
-      let msgHdr = MsgHdr {
-              msgName    = addrPtr
-            , msgNameLen = fromIntegral addrSize
-            , msgIov     = iovsPtr
-            , msgIovLen  = fromIntegral iovsLen
-            , msgCtrl    = nullPtr
-            , msgCtrlLen = 0
-            , msgFlags   = 0
-            }
+      withCmsgs cmsgs $ \ctrlPtr ctrlLen -> do
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+              , msgIov     = iovsPtr
+              , msgIovLen  = fromIntegral iovsLen
+              , msgCtrl    = castPtr ctrlPtr
+              , msgCtrlLen = fromIntegral ctrlLen
+              , msgFlags   = 0
+              }
             cflags = packBits msgFlagMapping flags
-      withFdSocket s $ \fd ->
-        with msgHdr $ \msgHdrPtr ->
-          throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMsg" $
-            c_sendmsg fd msgHdrPtr cflags
+        withFdSocket s $ \fd ->
+          with msgHdr $ \msgHdrPtr ->
+            throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMsg" $
+              c_sendmsg fd msgHdrPtr cflags
   return $ fromIntegral sz
 
 -- | Receive data from the socket using recvmsg(2).
@@ -284,23 +288,27 @@ sendMsg s addr bss flags = do
 --   the second argument, the buffers are truncated properly.
 --   So, only the received data can be seen.
 recvMsg :: Socket    -- ^ Socket
-        -> [Int]     -- ^ a list of length of data to be received
+        -> [Int]     -- ^ A list of length of data to be received
                      --   If the total length is not large enough,
                      --   'MSG_TRUNC' is returned
+        -> Int       -- ^ The buffer size for control messages.
+                     --   If the length is not large enough,
+                     --   'MSG_CTRUNC' is returned
         -> [MsgFlag] -- ^ Message flags
-        -> IO (SockAddr, [ByteString], [MsgFlag]) -- ^ Source address, received data and received message flags
-recvMsg _ [] _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
-recvMsg s sizs flags = do
+        -> IO (SockAddr, [ByteString], [Cmsg], [MsgFlag]) -- ^ Source address, received data, control messages and message flags
+recvMsg _ [] _ _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
+recvMsg s sizs clen flags = do
   bss <- mapM newBS sizs
   withNewSocketAddress $ \addrPtr addrSize ->
+    allocaBytes clen $ \ctrlPtr ->
       withIOVec bss $ \(iovsPtr, iovsLen) -> do
         let msgHdr = MsgHdr {
                 msgName    = addrPtr
               , msgNameLen = fromIntegral addrSize
               , msgIov     = iovsPtr
               , msgIovLen  = fromIntegral iovsLen
-              , msgCtrl    = nullPtr
-              , msgCtrlLen = 0
+              , msgCtrl    = castPtr ctrlPtr
+              , msgCtrlLen = fromIntegral clen
               , msgFlags   = 0
               }
             cflags = packBits msgFlagMapping flags
@@ -314,8 +322,9 @@ recvMsg s sizs flags = do
                   GT -> error "recvMsg" -- never reach
             sockaddr <- peekSocketAddress addrPtr
             hdr <- peek msgHdrPtr
+            cmsgs <- parseCmsgs msgHdrPtr
             let flags' = unpackBits msgFlagMapping $ msgFlags hdr
-            return (sockaddr, bss', flags')
+            return (sockaddr, bss', cmsgs, flags')
 
 newBS :: Int -> IO ByteString
 newBS n = create n $ \ptr -> zeroMemory ptr (fromIntegral n)

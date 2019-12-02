@@ -44,7 +44,7 @@ extra-source-files:
   include/HsNetworkConfig.h.in include/HsNet.h include/HsNetDef.h
   -- C sources only used on some systems
   cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
-  cbits/winSockErr.c
+  cbits/winSockErr.c cbits/cmsg.c
 homepage:       https://github.com/haskell/network
 bug-reports:    https://github.com/haskell/network/issues
 tested-with:   GHC == 7.8.4
@@ -100,7 +100,8 @@ library
       Network.Socket.ByteString.IOVec
       Network.Socket.ByteString.Lazy.Posix
       Network.Socket.ByteString.MsgHdr
-    c-sources: cbits/ancilData.c
+      Network.Socket.ByteString.Cmsg
+    c-sources: cbits/ancilData.c cbits/cmsg.c
 
   if os(solaris)
     extra-libraries: nsl, socket

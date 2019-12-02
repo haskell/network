@@ -38,6 +38,7 @@ module Network.Socket.ByteString
     , sendMsg
     , recvMsg
     , MsgFlag(..)
+    , Cmsg(..)
     ) where
 
 import Data.ByteString (ByteString)

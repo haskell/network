@@ -85,6 +85,21 @@ sendFd(int sock, int outfd);
 
 extern int
 recvFd(int sock);
+
+extern struct cmsghdr *
+cmsg_firsthdr(struct msghdr *mhdr);
+
+extern struct cmsghdr *
+cmsg_nxthdr(struct msghdr *mhdr, struct cmsghdr *cmsg);
+
+extern unsigned char *
+cmsg_data(struct cmsghdr *cmsg);
+
+extern int
+cmsg_space(int l);
+
+extern int
+cmsg_len(int l);
 #endif /* _WIN32 */
 
 INLINE char *
