@@ -26,11 +26,8 @@ import Foreign.Marshal.Utils (with)
 import Foreign.Marshal.Alloc (alloca)
 #endif
 #ifdef DOMAIN_SOCKET_SUPPORT
-import Control.Monad (void)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Marshal.Array (peekArray)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable(..))
 
 import Network.Socket.Fcntl
 import Network.Socket.Internal

@@ -68,7 +68,6 @@ module Network.Socket.Types (
     , ntohl
     ) where
 
-import Control.Monad (when)
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
