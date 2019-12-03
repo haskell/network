@@ -39,6 +39,23 @@ module Network.Socket.ByteString
     , recvMsg
     , MsgFlag(..)
     , Cmsg(..)
+    -- ** Auxiliary data
+    , Auxiliary(..)
+    , AuxiliaryID
+    , auxiliaryIPv4TTL
+    , auxiliaryIPv6HopLimit
+    , auxiliaryIPv4TOS
+    , auxiliaryIPv6TClass
+    , auxiliaryIPv4PktInfo
+    , auxiliaryIPv6PktInfo
+    , lookupAuxiliary
+    -- ** Types
+    , IPv4TTL(..)
+    , IPv6HopLimit(..)
+    , IPv4TOS(..)
+    , IPv6TClass(..)
+    , IPv4PktInfo(..)
+    , IPv6PktInfo(..)
     ) where
 
 import Data.ByteString (ByteString)
@@ -46,6 +63,7 @@ import Data.ByteString (ByteString)
 import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
 import qualified Network.Socket.ByteString.IO as G
 import Network.Socket.Types
+import Network.Socket.ByteString.Auxiliary
 
 -- ----------------------------------------------------------------------------
 -- ** Vectored I/O

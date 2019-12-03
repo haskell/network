@@ -66,6 +66,7 @@ module Network.Socket.Types (
     , zeroMemory
     , htonl
     , ntohl
+    , In6Addr(..)
     ) where
 
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
