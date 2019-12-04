@@ -31,7 +31,7 @@ spec = do
             connect' (8080 :: Int) `shouldThrow` anyIOException
 
         it "successfully connects to a socket with no exception" $ do
-            withPort $ \portVar -> test (tcp return portVar)
+            withPort $ \portVar -> test (tcp serverAddr return portVar)
                 { clientSetup = readMVar portVar >>= connect'
                 }
 

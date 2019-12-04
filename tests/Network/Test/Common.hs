@@ -15,7 +15,9 @@ module Network.Test.Common
   -- * Run a ClientServer configuration
   , test
   , tcpTest
+  , tcpTest6
   , udpTest
+  , udpTest6
   -- * Common constants
   , serverAddr
   , serverAddr6
@@ -94,13 +96,16 @@ unix address cleanupAct serverAct = defaultClientServer
 -- client and server.  'tcpTest' makes sure that the 'Socket' is
 -- closed after the actions have run.
 tcpTest :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
-tcpTest client server = withPort $ test . setClientAction client . tcp server
+tcpTest client server = withPort $ test . setClientAction client . tcp serverAddr server
 
-tcp :: (Socket -> IO b) -> MVar PortNumber -> ClientServer Socket ()
-tcp serverAct portVar = defaultClientServer
+tcpTest6 :: (Socket -> IO a) -> (Socket -> IO b) -> IO ()
+tcpTest6 client server = withPort $ test . setClientAction client . tcp serverAddr6 server
+
+tcp :: HostName -> (Socket -> IO b) -> MVar PortNumber -> ClientServer Socket ()
+tcp serverAddress serverAct portVar = defaultClientServer
     { clientSetup = do
         serverPort <- readMVar portVar
-        addr <- resolveClient Stream serverAddr serverPort
+        addr <- resolveClient Stream serverAddress serverPort
         sock <- socketWithAddrInfo addr
 #if !defined(mingw32_HOST_OS)
         withFdSocket sock $ \fd -> do
@@ -110,7 +115,7 @@ tcp serverAct portVar = defaultClientServer
         connect sock $ addrAddress addr
         return sock
     , serverSetup = do
-        addr <- resolveServer Stream serverAddr
+        addr <- resolveServer Stream serverAddress
         sock <- socketWithAddrInfo addr
         withFdSocket sock $ \fd -> do
 #if !defined(mingw32_HOST_OS)
@@ -142,22 +147,27 @@ tcp serverAct portVar = defaultClientServer
 -- datagrams and then run 'clientAct' and 'serverAct'.
 udpTest :: (Socket -> SockAddr -> IO a) -> (Socket -> IO b) -> IO ()
 udpTest client server =
-    withPort $ test . setServerAction server . udp client
+    withPort $ test . setServerAction server . udp serverAddr client
+
+udpTest6 :: (Socket -> SockAddr -> IO a) -> (Socket -> IO b) -> IO ()
+udpTest6 client server =
+    withPort $ test . setServerAction server . udp serverAddr6 client
 
 udp
-    :: (Socket -> SockAddr -> IO a)
+    :: HostName
+    -> (Socket -> SockAddr -> IO a)
     -> MVar PortNumber
     -> ClientServer a Socket
-udp clientAct portVar = defaultClientServer
+udp serverAddress clientAct portVar = defaultClientServer
     { clientSetup = do
-        addr <- resolveClient Datagram serverAddr 8000 -- dummy port
+        addr <- resolveClient Datagram serverAddress 8000 -- dummy port
         socketWithAddrInfo addr
     , clientAction = \sock -> do
         serverPort <- readMVar portVar
-        addr <- resolveClient Datagram serverAddr serverPort
+        addr <- resolveClient Datagram serverAddress serverPort
         clientAct sock $ addrAddress addr
     , serverSetup = do
-        addr <- resolveServer Datagram serverAddr
+        addr <- resolveServer Datagram serverAddress
         sock <- socketWithAddrInfo addr
         setSocketOption sock ReuseAddr 1
         bind sock $ addrAddress addr
