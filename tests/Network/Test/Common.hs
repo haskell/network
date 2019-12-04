@@ -145,19 +145,21 @@ tcp serverAct portVar = defaultClientServer
 
 -- | Create an unconnected 'Socket' for sending UDP and receiving
 -- datagrams and then run 'clientAct' and 'serverAct'.
-udpTest :: (Socket -> PortNumber -> IO a) -> (Socket -> IO b) -> IO ()
+udpTest :: (Socket -> SockAddr -> IO a) -> (Socket -> IO b) -> IO ()
 udpTest client server =
     withPort $ test . setServerAction server . udp client
 
 udp
-    :: (Socket -> PortNumber -> IO a)
+    :: (Socket -> SockAddr -> IO a)
     -> MVar PortNumber
     -> ClientServer a Socket
 udp clientAct portVar = defaultClientServer
     { clientSetup = socket AF_INET Datagram defaultProtocol
     , clientAction = \sock -> do
         serverPort <- readMVar portVar
-        clientAct sock serverPort
+        let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
+        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+        clientAct sock $ addrAddress addr
     , serverSetup = do
         let hints = defaultHints {
                 addrFlags = [AI_PASSIVE]

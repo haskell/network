@@ -48,37 +48,27 @@ spec = do
     describe "sendTo" $ do
         it "works well" $ do
             let server sock = recv sock 1024 `shouldReturn` testMsg
-                client sock serverPort = do
-                    let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-                    addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
-                    sendTo sock testMsg $ addrAddress addr
+                client sock addr = sendTo sock testMsg addr
             udpTest client server
 
         it "throws when closed" $ do
             let server _ = return ()
-                client sock serverPort = do
-                    let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-                    addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+                client sock addr = do
                     close sock
-                    sendTo sock testMsg (addrAddress addr) `shouldThrow` anyException
+                    sendTo sock testMsg addr `shouldThrow` anyException
             udpTest client server
 
     describe "sendAllTo" $ do
         it "works well" $ do
             let server sock = recv sock 1024 `shouldReturn` testMsg
-                client sock serverPort = do
-                    let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-                    addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
-                    sendAllTo sock testMsg $ addrAddress addr
+                client sock addr = sendAllTo sock testMsg addr
             udpTest client server
 
         it "throws when closed" $ do
             let server _ = return ()
-                client sock serverPort = do
-                    let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-                    addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+                client sock addr = do
                     close sock
-                    sendAllTo sock testMsg (addrAddress addr) `shouldThrow` anyException
+                    sendAllTo sock testMsg addr `shouldThrow` anyException
             udpTest client server
 
     describe "sendMany" $ do
@@ -103,10 +93,7 @@ spec = do
     describe "sendManyTo" $ do
         it "works well" $ do
             let server sock = recv sock 1024 `shouldReturn` S.append seg1 seg2
-                client sock serverPort = do
-                    let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-                    addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
-                    sendManyTo sock [seg1, seg2] $ addrAddress addr
+                client sock addr = sendManyTo sock [seg1, seg2] addr
 
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
@@ -114,11 +101,9 @@ spec = do
 
         it "throws when closed" $ do
             let server _ = return ()
-                client sock serverPort = do
-                    let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-                    addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+                client sock addr = do
                     close sock
-                    sendManyTo sock [seg1, seg2] (addrAddress addr) `shouldThrow` anyException
+                    sendManyTo sock [seg1, seg2] addr `shouldThrow` anyException
 
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
