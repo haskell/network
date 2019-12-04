@@ -174,3 +174,115 @@ spec = do
                     seg1 `shouldBe` S.empty
                 client sock = shutdown sock ShutdownSend
             tcpTest client server
+
+    describe "sendMsg" $ do
+        it "works well" $ do
+            let server sock = recv sock 1024 `shouldReturn` S.append seg1 seg2
+                client sock addr = sendMsg sock addr [seg1, seg2] [] []
+
+                seg1 = C.pack "This is a "
+                seg2 = C.pack "test message."
+            udpTest client server
+
+        it "throws when closed" $ do
+            let server _ = return ()
+                client sock addr = do
+                    close sock
+                    sendMsg sock addr [seg1, seg2] [] [] `shouldThrow` anyException
+
+                seg1 = C.pack "This is a "
+                seg2 = C.pack "test message."
+            udpTest client server
+
+    describe "recvMsg" $ do
+        it "works well" $ do
+            let server sock = do
+                    (_, msgs, cmsgs, flags) <- recvMsg sock [1024] 0 []
+                    S.concat msgs `shouldBe` seg
+                    cmsgs `shouldBe` []
+                    flags `shouldBe` []
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "receives message fragments" $ do
+            let server sock = do
+                    (_, msgs, _, _) <- recvMsg sock [1,2,3,4] 0 []
+                    S.concat msgs `shouldBe` S.take 10 seg
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "receives message fragments with truncation" $ do
+            let server sock = do
+                    (_, msgs, _, _) <- recvMsg sock [10,10,10,10] 0 []
+                    msgs `shouldBe` ["0123456789", "0123456789", "012345"]
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "01234567890123456789012345"
+            udpTest client server
+
+        it "receives truncated flag" $ do
+            let server sock = do
+                    (_, _, _, flags) <- recvMsg sock [S.length seg - 2] 0 []
+                    flags `shouldContain` [MSG_TRUNC]
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "peek" $ do
+            let server sock = do
+                    (_, msgs, _, _flags) <- recvMsg sock [1024] 0 [MSG_PEEK]
+                    -- flags `shouldContain` [MSG_PEEK] -- Mac only
+                    (_, msgs', _, _) <- recvMsg sock [1024] 0 []
+                    msgs `shouldBe` msgs'
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "receives control messages for IPv4" $ do
+            let server sock = do
+                    setSocketOption sock RecvIPv4TTL 1
+                    setSocketOption sock RecvIPv4TOS 1
+                    setSocketOption sock RecvIPv4PktInfo 1
+                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 []
+
+                    ((lookupAuxiliary auxiliaryIPv4TTL cmsgs >>= auxiliaryDecode) :: Maybe IPv4TTL) `shouldNotBe` Nothing
+                    ((lookupAuxiliary auxiliaryIPv4TOS cmsgs >>= auxiliaryDecode) :: Maybe IPv4TOS) `shouldNotBe` Nothing
+                    ((lookupAuxiliary auxiliaryIPv4PktInfo cmsgs >>= auxiliaryDecode) :: Maybe IPv4PktInfo) `shouldNotBe` Nothing
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "receives control messages for IPv6" $ do
+            let server sock = do
+                    setSocketOption sock RecvIPv6HopLimit 1
+                    setSocketOption sock RecvIPv6TClass 1
+                    setSocketOption sock RecvIPv6PktInfo 1
+                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 []
+
+                    ((lookupAuxiliary auxiliaryIPv6HopLimit cmsgs >>= auxiliaryDecode) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
+                    ((lookupAuxiliary auxiliaryIPv6TClass cmsgs >>= auxiliaryDecode) :: Maybe IPv6TClass) `shouldNotBe` Nothing
+                    ((lookupAuxiliary auxiliaryIPv6PktInfo cmsgs >>= auxiliaryDecode) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest6 client server
+
+        it "receives truncated control messages" $ do
+            let server sock = do
+                    setSocketOption sock RecvIPv4TTL 1
+                    setSocketOption sock RecvIPv4TOS 1
+                    setSocketOption sock RecvIPv4PktInfo 1
+                    (_, _, _, flags) <- recvMsg sock [1024] 10 []
+                    flags `shouldContain` [MSG_CTRUNC]
+
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
