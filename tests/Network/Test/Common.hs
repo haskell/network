@@ -99,10 +99,9 @@ tcpTest client server = withPort $ test . setClientAction client . tcp server
 tcp :: (Socket -> IO b) -> MVar PortNumber -> ClientServer Socket ()
 tcp serverAct portVar = defaultClientServer
     { clientSetup = do
-        let hints = defaultHints { addrSocketType = Stream }
         serverPort <- readMVar portVar
-        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
-        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+        addr <- resolveClient Stream serverAddr serverPort
+        sock <- socketWithAddrInfo addr
 #if !defined(mingw32_HOST_OS)
         withFdSocket sock $ \fd -> do
           getNonBlock fd `shouldReturn` True
@@ -111,12 +110,8 @@ tcp serverAct portVar = defaultClientServer
         connect sock $ addrAddress addr
         return sock
     , serverSetup = do
-        let hints = defaultHints {
-                addrFlags = [AI_PASSIVE]
-            , addrSocketType = Stream
-            }
-        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
-        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+        addr <- resolveServer Stream serverAddr
+        sock <- socketWithAddrInfo addr
         withFdSocket sock $ \fd -> do
 #if !defined(mingw32_HOST_OS)
           getNonBlock fd `shouldReturn` True
@@ -154,19 +149,16 @@ udp
     -> MVar PortNumber
     -> ClientServer a Socket
 udp clientAct portVar = defaultClientServer
-    { clientSetup = socket AF_INET Datagram defaultProtocol
+    { clientSetup = do
+        addr <- resolveClient Datagram serverAddr 8000 -- dummy port
+        socketWithAddrInfo addr
     , clientAction = \sock -> do
         serverPort <- readMVar portVar
-        let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Datagram }
-        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+        addr <- resolveClient Datagram serverAddr serverPort
         clientAct sock $ addrAddress addr
     , serverSetup = do
-        let hints = defaultHints {
-                addrFlags = [AI_PASSIVE]
-            , addrSocketType = Datagram
-            }
-        addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
-        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+        addr <- resolveServer Datagram serverAddr
+        sock <- socketWithAddrInfo addr
         setSocketOption sock ReuseAddr 1
         bind sock $ addrAddress addr
         serverPort <- socketPort sock
@@ -237,3 +229,24 @@ bracketWithReraise :: ThreadId -> IO a -> (a -> IO b) -> (a -> IO ()) -> IO ()
 bracketWithReraise tid setup teardown thing =
     E.bracket setup teardown thing
     `E.catch` \ (e :: E.SomeException) -> E.throwTo tid e
+
+resolveClient :: SocketType -> HostName -> PortNumber -> IO AddrInfo
+resolveClient socketType host port =
+    head <$> getAddrInfo (Just hints) (Just host) (Just $ show port)
+  where
+    hints = defaultHints {
+        addrSocketType = socketType
+      , addrFlags = [AI_NUMERICHOST]
+      }
+
+resolveServer :: SocketType -> HostName -> IO AddrInfo
+resolveServer socketType host =
+    head <$> getAddrInfo (Just hints) (Just host) Nothing
+  where
+    hints = defaultHints {
+        addrSocketType = socketType
+      , addrFlags = [AI_PASSIVE]
+      }
+
+socketWithAddrInfo :: AddrInfo -> IO Socket
+socketWithAddrInfo addr = socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
