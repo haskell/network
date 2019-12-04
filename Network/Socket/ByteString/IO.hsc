@@ -54,12 +54,14 @@ import Data.ByteString.Internal (create, ByteString(..))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Network.Socket.Internal
+import System.IO.Error (catchIOError)
 
-import Network.Socket.Info (packBits, unpackBits)
+import Network.Socket.ByteString.Cmsg
+import Network.Socket.ByteString.Flag
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
-import Network.Socket.ByteString.Flag
-import Network.Socket.ByteString.Cmsg
+import Network.Socket.Info (packBits, unpackBits)
+import Network.Socket.Name (getPeerName)
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -320,7 +322,7 @@ recvMsg s sizs clen flags = do
                   EQ -> bss
                   LT -> trunc bss len
                   GT -> error "recvMsg" -- never reach
-            sockaddr <- peekSocketAddress addrPtr
+            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
             cmsgs <- parseCmsgs msgHdrPtr
             let flags' = unpackBits msgFlagMapping $ msgFlags hdr
