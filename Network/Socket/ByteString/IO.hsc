@@ -29,6 +29,11 @@ module Network.Socket.ByteString.IO
     , recv
     , recvFrom
     , waitWhen0
+
+    -- * Advanced send and recv
+    , sendMsg
+    , recvMsg
+    , MsgFlag(..)
     ) where
 
 import Control.Concurrent (threadWaitWrite, rtsSupportsBoundThreads)
@@ -44,12 +49,15 @@ import Network.Socket.Imports
 import Network.Socket.Types
 
 #if !defined(mingw32_HOST_OS)
+import Data.ByteString.Internal (create, ByteString(..))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (with)
 import Network.Socket.Internal
 
+import Network.Socket.Info (packBits, unpackBits)
 import Network.Socket.ByteString.IOVec (IOVec(..))
 import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
+import Network.Socket.ByteString.Flag
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -243,3 +251,80 @@ withIOVec cs f =
         unsafeUseAsCStringLen s $ \(sPtr, sLen) ->
         poke ptr $ IOVec sPtr (fromIntegral sLen)
 #endif
+
+-- | Send data from the socket using sendmsg(2).
+sendMsg :: Socket       -- ^ Socket
+        -> SockAddr     -- ^ Destination address
+        -> [ByteString] -- ^ Data to be sent
+        -> [MsgFlag]    -- ^ Message flags
+        -> IO Int       -- ^ The length actually sent
+sendMsg _ _    []  _ = return 0
+sendMsg s addr bss flags = do
+  sz <- withSockAddr addr $ \addrPtr addrSize ->
+    withIOVec bss $ \(iovsPtr, iovsLen) -> do
+      let msgHdr = MsgHdr {
+              msgName    = addrPtr
+            , msgNameLen = fromIntegral addrSize
+            , msgIov     = iovsPtr
+            , msgIovLen  = fromIntegral iovsLen
+            , msgCtrl    = nullPtr
+            , msgCtrlLen = 0
+            , msgFlags   = 0
+            }
+            cflags = packBits msgFlagMapping flags
+      withFdSocket s $ \fd ->
+        with msgHdr $ \msgHdrPtr ->
+          throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMsg" $
+            c_sendmsg fd msgHdrPtr cflags
+  return $ fromIntegral sz
+
+-- | Receive data from the socket using recvmsg(2).
+--   The receive buffers are created according to the second argument.
+--   If the length of received data is less than the total of
+--   the second argument, the buffers are truncated properly.
+--   So, only the received data can be seen.
+recvMsg :: Socket    -- ^ Socket
+        -> [Int]     -- ^ a list of length of data to be received
+                     --   If the total length is not large enough,
+                     --   'MSG_TRUNC' is returned
+        -> [MsgFlag] -- ^ Message flags
+        -> IO (SockAddr, [ByteString], [MsgFlag]) -- ^ Source address, received data and received message flags
+recvMsg _ [] _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
+recvMsg s sizs flags = do
+  bss <- mapM newBS sizs
+  withNewSocketAddress $ \addrPtr addrSize ->
+      withIOVec bss $ \(iovsPtr, iovsLen) -> do
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+              , msgIov     = iovsPtr
+              , msgIovLen  = fromIntegral iovsLen
+              , msgCtrl    = nullPtr
+              , msgCtrlLen = 0
+              , msgFlags   = 0
+              }
+            cflags = packBits msgFlagMapping flags
+        withFdSocket s $ \fd -> do
+          with msgHdr $ \msgHdrPtr -> do
+            len <- fromIntegral <$> throwSocketErrorWaitRead s "Network.Socket.ByteString.recvmg" (c_recvmsg fd msgHdrPtr cflags)
+            let total = sum sizs
+            let bss' = case len `compare` total of
+                  EQ -> bss
+                  LT -> trunc bss len
+                  GT -> error "recvMsg" -- never reach
+            sockaddr <- peekSocketAddress addrPtr
+            hdr <- peek msgHdrPtr
+            let flags' = unpackBits msgFlagMapping $ msgFlags hdr
+            return (sockaddr, bss', flags')
+
+newBS :: Int -> IO ByteString
+newBS n = create n $ \ptr -> zeroMemory ptr (fromIntegral n)
+
+trunc :: [ByteString] -> Int -> [ByteString]
+trunc bss0 siz0 = loop bss0 siz0 id
+  where
+    -- off is always 0
+    loop (bs@(PS buf off len):bss) siz build
+      | siz >= len = loop bss (siz - len) (build . (bs :))
+      | otherwise  = build [PS buf off siz]
+    loop _ _ build = build []

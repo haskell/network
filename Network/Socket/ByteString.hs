@@ -33,6 +33,11 @@ module Network.Socket.ByteString
     -- * Receive data from a socket
     , recv
     , recvFrom
+
+    -- * Advanced send and recv
+    , sendMsg
+    , recvMsg
+    , MsgFlag(..)
     ) where
 
 import Data.ByteString (ByteString)

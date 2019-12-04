@@ -15,6 +15,7 @@ module Network.Socket.ByteString.Internal
 #if !defined(mingw32_HOST_OS)
     , c_writev
     , c_sendmsg
+    , c_recvmsg
 #endif
     ) where
 
@@ -40,4 +41,7 @@ foreign import ccall unsafe "writev"
 
 foreign import ccall unsafe "sendmsg"
   c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize
+
+foreign import ccall unsafe "recvmsg"
+  c_recvmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize
 #endif
