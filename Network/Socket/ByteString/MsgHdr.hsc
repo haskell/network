@@ -14,8 +14,6 @@ import Network.Socket.Types (SockAddr)
 
 import Network.Socket.ByteString.IOVec (IOVec)
 
--- We don't use msg_control, msg_controllen, and msg_flags as these
--- don't exist on OpenSolaris.
 data MsgHdr = MsgHdr
     { msgName    :: !(Ptr SockAddr)
     , msgNameLen :: !CUInt
