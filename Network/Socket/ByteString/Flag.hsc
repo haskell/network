@@ -1,59 +1,74 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
+
 #include "HsNet.h"
 
 module Network.Socket.ByteString.Flag where
 
 import Network.Socket.Imports
-import Network.Socket.Info
 
--- | Message flags.
-data MsgFlag =
-    MSG_OOB        -- ^ Send or receive OOB(out-of-bound) data.
-  | MSG_DONTROUTE  -- ^ Bypass routing table lookup.
-  | MSG_PEEK       -- ^ Peek at incoming message without removing it from the queue.
-  | MSG_EOR        -- ^ End of record.
-  | MSG_TRUNC      -- ^ Received data is truncated. More data exist.
-  | MSG_CTRUNC     -- ^ Received control message is truncated. More control message exist.
-  | MSG_WAITALL    -- ^ Wait until the requested number of bytes have been read.
-  deriving (Eq, Show)
+-- | Message flags. To combine flags, use '(<>)'.
+newtype MsgFlag = MsgFlag { fromMsgFlag :: CInt }
+                deriving (Show, Eq, Ord, Num, Bits)
 
-msgFlagMapping :: [(MsgFlag, CInt)]
-msgFlagMapping = [
+instance Semigroup MsgFlag where
+  (<>) = (.|.)
+
+instance Monoid MsgFlag where
+  mempty = 0
+
+-- | Send or receive OOB(out-of-bound) data.
+pattern MSG_OOB :: MsgFlag
 #ifdef MSG_OOB
-    (MSG_OOB, #const MSG_OOB)
+pattern MSG_OOB = MsgFlag (#const MSG_OOB)
 #else
-    (MSG_OOB, 0)
+pattern MSG_OOB = mempty
 #endif
-#ifdef MSG_DONTROUTE
-  , (MSG_DONTROUTE, #const MSG_DONTROUTE)
-#else
-  , (MSG_DONTROUTE, 0)
-#endif
-#ifdef MSG_PEEK
-  , (MSG_PEEK, #const MSG_PEEK)
-#else
-  , (MSG_PEEK, 0)
-#endif
-#ifdef MSG_EOR
-  , (MSG_EOR, #const MSG_EOR)
-#else
-  , (MSG_EOR, 0)
-#endif
-#ifdef MSG_TRUNC
-  , (MSG_TRUNC, #const MSG_TRUNC)
-#else
-  , (MSG_TRUNC, 0)
-#endif
-#ifdef MSG_CTRUNC
-  , (MSG_CTRUNC, #const MSG_CTRUNC)
-#else
-  , (MSG_CTRUNC, 0)
-#endif
-#ifdef MSG_WAITALL
-  , (MSG_WAITALL, #const MSG_WAITALL)
-#else
-  , (MSG_WAITALL, 0)
-#endif
-  ]
 
-msgFlagImplemented :: MsgFlag -> Bool
-msgFlagImplemented f = packBits msgFlagMapping [f] /= 0
+-- | Bypass routing table lookup.
+pattern MSG_DONTROUTE :: MsgFlag
+#ifdef MSG_DONTROUTE
+pattern MSG_DONTROUTE = MsgFlag (#const MSG_DONTROUTE)
+#else
+pattern MSG_DONTROUTE = mempty
+#endif
+
+-- | Peek at incoming message without removing it from the queue.
+pattern MSG_PEEK :: MsgFlag
+#ifdef MSG_PEEK
+pattern MSG_PEEK = MsgFlag (#const MSG_PEEK)
+#else
+pattern MSG_PEEK = mempty
+#endif
+
+-- | End of record.
+pattern MSG_EOR :: MsgFlag
+#ifdef MSG_EOR
+pattern MSG_EOR = MsgFlag (#const MSG_EOR)
+#else
+pattern MSG_EOR = mempty
+#endif
+
+-- | Received data is truncated. More data exist.
+pattern MSG_TRUNC :: MsgFlag
+#ifdef MSG_TRUNC
+pattern MSG_TRUNC = MsgFlag (#const MSG_TRUNC)
+#else
+pattern MSG_TRUNC = mempty
+#endif
+
+-- | Received control message is truncated. More control message exist.
+pattern MSG_CTRUNC :: MsgFlag
+#ifdef MSG_CTRUNC
+pattern MSG_CTRUNC = MsgFlag (#const MSG_CTRUNC)
+#else
+pattern MSG_CTRUNC = mempty
+#endif
+
+-- | Wait until the requested number of bytes have been read.
+pattern MSG_WAITALL :: MsgFlag
+#ifdef MSG_WAITALL
+pattern MSG_WAITALL = MsgFlag (#const MSG_WAITALL)
+#else
+pattern MSG_WAITALL = mempty
+#endif

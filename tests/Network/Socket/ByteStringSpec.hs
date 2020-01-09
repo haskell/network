@@ -2,6 +2,7 @@
 
 module Network.Socket.ByteStringSpec (main, spec) where
 
+import Data.Bits
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
 import Network.Socket
@@ -178,7 +179,7 @@ spec = do
     describe "sendMsg" $ do
         it "works well" $ do
             let server sock = recv sock 1024 `shouldReturn` S.append seg1 seg2
-                client sock addr = sendMsg sock addr [seg1, seg2] [] []
+                client sock addr = sendMsg sock addr [seg1, seg2] [] mempty
 
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
@@ -188,7 +189,7 @@ spec = do
             let server _ = return ()
                 client sock addr = do
                     close sock
-                    sendMsg sock addr [seg1, seg2] [] [] `shouldThrow` anyException
+                    sendMsg sock addr [seg1, seg2] [] mempty `shouldThrow` anyException
 
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
@@ -197,10 +198,10 @@ spec = do
     describe "recvMsg" $ do
         it "works well" $ do
             let server sock = do
-                    (_, msgs, cmsgs, flags) <- recvMsg sock [1024] 0 []
+                    (_, msgs, cmsgs, flags) <- recvMsg sock [1024] 0 mempty
                     S.concat msgs `shouldBe` seg
                     cmsgs `shouldBe` []
-                    flags `shouldBe` []
+                    flags `shouldBe` mempty
                 client sock addr = sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -208,7 +209,7 @@ spec = do
 
         it "receives message fragments" $ do
             let server sock = do
-                    (_, msgs, _, _) <- recvMsg sock [1,2,3,4] 0 []
+                    (_, msgs, _, _) <- recvMsg sock [1,2,3,4] 0 mempty
                     S.concat msgs `shouldBe` S.take 10 seg
                 client sock addr = sendTo sock seg addr
 
@@ -217,7 +218,7 @@ spec = do
 
         it "receives message fragments with truncation" $ do
             let server sock = do
-                    (_, msgs, _, _) <- recvMsg sock [10,10,10,10] 0 []
+                    (_, msgs, _, _) <- recvMsg sock [10,10,10,10] 0 mempty
                     msgs `shouldBe` ["0123456789", "0123456789", "012345"]
                 client sock addr = sendTo sock seg addr
 
@@ -226,8 +227,8 @@ spec = do
 
         it "receives truncated flag" $ do
             let server sock = do
-                    (_, _, _, flags) <- recvMsg sock [S.length seg - 2] 0 []
-                    flags `shouldContain` [MSG_TRUNC]
+                    (_, _, _, flags) <- recvMsg sock [S.length seg - 2] 0 mempty
+                    flags .&. MSG_TRUNC `shouldBe` MSG_TRUNC
                 client sock addr = sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -235,9 +236,9 @@ spec = do
 
         it "peek" $ do
             let server sock = do
-                    (_, msgs, _, _flags) <- recvMsg sock [1024] 0 [MSG_PEEK]
-                    -- flags `shouldContain` [MSG_PEEK] -- Mac only
-                    (_, msgs', _, _) <- recvMsg sock [1024] 0 []
+                    (_, msgs, _, _flags) <- recvMsg sock [1024] 0 MSG_PEEK
+                    -- flags .&. MSG_PEEK `shouldBe` MSG_PEEK -- Mac only
+                    (_, msgs', _, _) <- recvMsg sock [1024] 0 mempty
                     msgs `shouldBe` msgs'
                 client sock addr = sendTo sock seg addr
 
@@ -249,7 +250,7 @@ spec = do
                     setSocketOption sock RecvIPv4TTL 1
                     setSocketOption sock RecvIPv4TOS 1
                     setSocketOption sock RecvIPv4PktInfo 1
-                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 []
+                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 mempty
 
                     ((lookupAncillary ancillaryIPv4TTL cmsgs >>= ancillaryDecode) :: Maybe IPv4TTL) `shouldNotBe` Nothing
                     ((lookupAncillary ancillaryIPv4TOS cmsgs >>= ancillaryDecode) :: Maybe IPv4TOS) `shouldNotBe` Nothing
@@ -264,7 +265,7 @@ spec = do
                     setSocketOption sock RecvIPv6HopLimit 1
                     setSocketOption sock RecvIPv6TClass 1
                     setSocketOption sock RecvIPv6PktInfo 1
-                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 []
+                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 mempty
 
                     ((lookupAncillary ancillaryIPv6HopLimit cmsgs >>= ancillaryDecode) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
                     ((lookupAncillary ancillaryIPv6TClass cmsgs >>= ancillaryDecode) :: Maybe IPv6TClass) `shouldNotBe` Nothing
@@ -279,8 +280,8 @@ spec = do
                     setSocketOption sock RecvIPv4TTL 1
                     setSocketOption sock RecvIPv4TOS 1
                     setSocketOption sock RecvIPv4PktInfo 1
-                    (_, _, _, flags) <- recvMsg sock [1024] 10 []
-                    flags `shouldContain` [MSG_CTRUNC]
+                    (_, _, _, flags) <- recvMsg sock [1024] 10 mempty
+                    flags .&. MSG_CTRUNC `shouldBe` MSG_CTRUNC
 
                 client sock addr = sendTo sock seg addr
 

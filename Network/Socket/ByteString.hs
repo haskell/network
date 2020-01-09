@@ -37,7 +37,7 @@ module Network.Socket.ByteString
     -- * Advanced send and recv
     , sendMsg
     , recvMsg
-    , MsgFlag(..)
+    , MsgFlag(MSG_OOB,MSG_DONTROUTE,MSG_PEEK,MSG_EOR,MSG_TRUNC,MSG_CTRUNC,MSG_WAITALL)
     , Cmsg(..)
     -- ** Ancillary data
     , Ancillary(..)
@@ -60,10 +60,11 @@ module Network.Socket.ByteString
 
 import Data.ByteString (ByteString)
 
-import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
-import qualified Network.Socket.ByteString.IO as G
-import Network.Socket.Types
 import Network.Socket.ByteString.Ancillary
+import Network.Socket.ByteString.Flag
+import qualified Network.Socket.ByteString.IO as G
+import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
+import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------
 -- ** Vectored I/O
