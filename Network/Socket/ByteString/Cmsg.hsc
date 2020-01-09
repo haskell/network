@@ -26,7 +26,11 @@ data Cmsg = Cmsg {
   , cmsgBody      :: ByteString
   } deriving (Eq, Show)
 
-data CmsgHdr = CmsgHdr CInt CInt CInt deriving (Eq, Show)
+data CmsgHdr = CmsgHdr {
+    cmsgHdrLen   :: !CInt
+  , cmsgHdrLevel :: !CInt
+  , cmsgHdrType  :: !CInt
+  } deriving (Eq, Show)
 
 instance Storable CmsgHdr where
   sizeOf _    = (#size struct cmsghdr)
