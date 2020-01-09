@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Network.Socket.ByteString.Auxiliary where
+module Network.Socket.ByteString.Ancillary where
 
 #include "HsNet.h"
 
@@ -18,58 +18,58 @@ import Network.Socket.Types
 
 ----------------------------------------------------------------
 
--- | Identifier of auxiliary data. A pair of level and type.
-type AuxiliaryID = (CInt, CInt)
+-- | Identifier of ancillary data. A pair of level and type.
+type AncillaryID = (CInt, CInt)
 
 -- | The identifier for 'IPv4TTL'.
-auxiliaryIPv4TTL :: AuxiliaryID
+ancillaryIPv4TTL :: AncillaryID
 #if defined(darwin_HOST_OS)
-auxiliaryIPv4TTL = ((#const IPPROTO_IP), (#const IP_RECVTTL))
+ancillaryIPv4TTL = ((#const IPPROTO_IP), (#const IP_RECVTTL))
 #else
-auxiliaryIPv4TTL = ((#const IPPROTO_IP), (#const IP_TTL))
+ancillaryIPv4TTL = ((#const IPPROTO_IP), (#const IP_TTL))
 #endif
 
 -- | The identifier for 'IPv6HopLimit'.
-auxiliaryIPv6HopLimit :: AuxiliaryID
-auxiliaryIPv6HopLimit = ((#const IPPROTO_IPV6), (#const IPV6_HOPLIMIT))
+ancillaryIPv6HopLimit :: AncillaryID
+ancillaryIPv6HopLimit = ((#const IPPROTO_IPV6), (#const IPV6_HOPLIMIT))
 
 -- | The identifier for 'IPv4TOS'.
-auxiliaryIPv4TOS :: AuxiliaryID
+ancillaryIPv4TOS :: AncillaryID
 #if defined(darwin_HOST_OS)
-auxiliaryIPv4TOS = ((#const IPPROTO_IP), (#const IP_RECVTOS))
+ancillaryIPv4TOS = ((#const IPPROTO_IP), (#const IP_RECVTOS))
 #else
-auxiliaryIPv4TOS = ((#const IPPROTO_IP), (#const IP_TOS))
+ancillaryIPv4TOS = ((#const IPPROTO_IP), (#const IP_TOS))
 #endif
 
 -- | The identifier for 'IPv6TClass'.
-auxiliaryIPv6TClass :: AuxiliaryID
-auxiliaryIPv6TClass = ((#const IPPROTO_IPV6), (#const IPV6_TCLASS))
+ancillaryIPv6TClass :: AncillaryID
+ancillaryIPv6TClass = ((#const IPPROTO_IPV6), (#const IPV6_TCLASS))
 
 -- | The identifier for 'IPv4PktInfo'.
-auxiliaryIPv4PktInfo :: AuxiliaryID
-auxiliaryIPv4PktInfo = ((#const IPPROTO_IP), (#const IP_PKTINFO))
+ancillaryIPv4PktInfo :: AncillaryID
+ancillaryIPv4PktInfo = ((#const IPPROTO_IP), (#const IP_PKTINFO))
 
 -- | The identifier for 'IPv6PktInfo'.
-auxiliaryIPv6PktInfo :: AuxiliaryID
-auxiliaryIPv6PktInfo = ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
+ancillaryIPv6PktInfo :: AncillaryID
+ancillaryIPv6PktInfo = ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
 
 ----------------------------------------------------------------
 
--- | Looking up auxiliary data. The following shows an example usage:
+-- | Looking up ancillary data. The following shows an example usage:
 --
--- > (lookupAuxiliary auxiliaryIPv4TOS cmsgs >>= auxiliaryDecode) :: Maybe IPv4TOS
-lookupAuxiliary :: AuxiliaryID -> [Cmsg] -> Maybe Cmsg
-lookupAuxiliary _   [] = Nothing
-lookupAuxiliary aid (cmsg@(Cmsg cid _):cmsgs)
+-- > (lookupAncillary ancillaryIPv4TOS cmsgs >>= ancillaryDecode) :: Maybe IPv4TOS
+lookupAncillary :: AncillaryID -> [Cmsg] -> Maybe Cmsg
+lookupAncillary _   [] = Nothing
+lookupAncillary aid (cmsg@(Cmsg cid _):cmsgs)
   | aid == cid = Just cmsg
-  | otherwise  = lookupAuxiliary aid cmsgs
+  | otherwise  = lookupAncillary aid cmsgs
 
 ----------------------------------------------------------------
 
--- | A class to encode and decode auxiliary data.
-class Auxiliary a where
-    auxiliaryEncode :: a -> Cmsg
-    auxiliaryDecode :: Cmsg -> Maybe a
+-- | A class to encode and decode ancillary data.
+class Ancillary a where
+    ancillaryEncode :: a -> Cmsg
+    ancillaryDecode :: Cmsg -> Maybe a
 
 ----------------------------------------------------------------
 
@@ -110,16 +110,16 @@ unpackCChar (PS fptr off len)
 -- | Time to live of IPv4.
 newtype IPv4TTL = IPv4TTL Int deriving (Eq, Show)
 
-instance Auxiliary IPv4TTL where
+instance Ancillary IPv4TTL where
 #if defined(darwin_HOST_OS)
-    auxiliaryEncode (IPv4TTL ttl) = Cmsg auxiliaryIPv4TTL $ packCChar $ fromIntegral ttl
+    ancillaryEncode (IPv4TTL ttl) = Cmsg ancillaryIPv4TTL $ packCChar $ fromIntegral ttl
 #else
-    auxiliaryEncode (IPv4TTL ttl) = Cmsg auxiliaryIPv4TTL $ packCInt $ fromIntegral ttl
+    ancillaryEncode (IPv4TTL ttl) = Cmsg ancillaryIPv4TTL $ packCInt $ fromIntegral ttl
 #endif
 #if defined(darwin_HOST_OS)
-    auxiliaryDecode (Cmsg _ bs)   = IPv4TTL . fromIntegral <$> unpackCChar bs
+    ancillaryDecode (Cmsg _ bs)   = IPv4TTL . fromIntegral <$> unpackCChar bs
 #else
-    auxiliaryDecode (Cmsg _ bs)   = IPv4TTL . fromIntegral <$> unpackCInt bs
+    ancillaryDecode (Cmsg _ bs)   = IPv4TTL . fromIntegral <$> unpackCInt bs
 #endif
 
 ----------------------------------------------------------------
@@ -127,27 +127,27 @@ instance Auxiliary IPv4TTL where
 -- | Hop limit of IPv6.
 newtype IPv6HopLimit = IPv6HopLimit Int deriving (Eq, Show)
 
-instance Auxiliary IPv6HopLimit where
-    auxiliaryEncode (IPv6HopLimit ttl) = Cmsg auxiliaryIPv6HopLimit $ packCInt $ fromIntegral ttl
-    auxiliaryDecode (Cmsg _ bs)        = IPv6HopLimit . fromIntegral <$> unpackCInt bs
+instance Ancillary IPv6HopLimit where
+    ancillaryEncode (IPv6HopLimit ttl) = Cmsg ancillaryIPv6HopLimit $ packCInt $ fromIntegral ttl
+    ancillaryDecode (Cmsg _ bs)        = IPv6HopLimit . fromIntegral <$> unpackCInt bs
 
 ----------------------------------------------------------------
 
 -- | TOS of IPv4.
 newtype IPv4TOS = IPv4TOS Int deriving (Eq, Show)
 
-instance Auxiliary IPv4TOS where
-    auxiliaryEncode (IPv4TOS ttl) = Cmsg auxiliaryIPv4TOS $ packCChar $ fromIntegral ttl
-    auxiliaryDecode (Cmsg _ bs)   = IPv4TOS . fromIntegral <$> unpackCChar bs
+instance Ancillary IPv4TOS where
+    ancillaryEncode (IPv4TOS ttl) = Cmsg ancillaryIPv4TOS $ packCChar $ fromIntegral ttl
+    ancillaryDecode (Cmsg _ bs)   = IPv4TOS . fromIntegral <$> unpackCChar bs
 
 ----------------------------------------------------------------
 
 -- | Traffic class of IPv6.
 newtype IPv6TClass = IPv6TClass Int deriving (Eq, Show)
 
-instance Auxiliary IPv6TClass where
-    auxiliaryEncode (IPv6TClass ttl) = Cmsg auxiliaryIPv6TClass $ packCInt $ fromIntegral ttl
-    auxiliaryDecode (Cmsg _ bs)      = IPv6TClass . fromIntegral <$> unpackCInt bs
+instance Ancillary IPv6TClass where
+    ancillaryEncode (IPv6TClass ttl) = Cmsg ancillaryIPv6TClass $ packCInt $ fromIntegral ttl
+    ancillaryDecode (Cmsg _ bs)      = IPv6TClass . fromIntegral <$> unpackCInt bs
 
 ----------------------------------------------------------------
 
@@ -157,9 +157,9 @@ data IPv4PktInfo = IPv4PktInfo Int HostAddress deriving (Eq)
 instance Show IPv4PktInfo where
     show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
 
-instance Auxiliary IPv4PktInfo where
-    auxiliaryEncode pktinfo = Cmsg auxiliaryIPv4PktInfo $ packIPv4PktInfo pktinfo
-    auxiliaryDecode (Cmsg _ bs) = unpackIPv4PktInfo bs
+instance Ancillary IPv4PktInfo where
+    ancillaryEncode pktinfo = Cmsg ancillaryIPv4PktInfo $ packIPv4PktInfo pktinfo
+    ancillaryDecode (Cmsg _ bs) = unpackIPv4PktInfo bs
 
 {-# NOINLINE packIPv4PktInfo #-}
 packIPv4PktInfo :: IPv4PktInfo -> ByteString
@@ -191,9 +191,9 @@ data IPv6PktInfo = IPv6PktInfo Int HostAddress6 deriving (Eq)
 instance Show IPv6PktInfo where
     show (IPv6PktInfo n ha6) = "IPv6PktInfo " ++ show n ++ " " ++ show (hostAddress6ToTuple ha6)
 
-instance Auxiliary IPv6PktInfo where
-    auxiliaryEncode pktinfo = Cmsg auxiliaryIPv6PktInfo $ packIPv6PktInfo pktinfo
-    auxiliaryDecode (Cmsg _ bs) = unpackIPv6PktInfo bs
+instance Ancillary IPv6PktInfo where
+    ancillaryEncode pktinfo = Cmsg ancillaryIPv6PktInfo $ packIPv6PktInfo pktinfo
+    ancillaryDecode (Cmsg _ bs) = unpackIPv6PktInfo bs
 
 {-# NOINLINE packIPv6PktInfo #-}
 packIPv6PktInfo :: IPv6PktInfo -> ByteString
