@@ -60,10 +60,10 @@ module Network.Socket.ByteString
 
 import Data.ByteString (ByteString)
 
-import Network.Socket.ByteString.Ancillary
-import Network.Socket.ByteString.Flag
 import qualified Network.Socket.ByteString.IO as G
 import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
+import Network.Socket.Flag
+import Network.Socket.Posix.Ancillary
 import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------

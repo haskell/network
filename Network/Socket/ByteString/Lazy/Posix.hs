@@ -11,11 +11,11 @@ import qualified Data.ByteString.Lazy               as L
 import           Data.ByteString.Unsafe             (unsafeUseAsCStringLen)
 import           Foreign.Marshal.Array              (allocaArray)
 
-import           Network.Socket.ByteString.Internal (c_writev)
 import           Network.Socket.ByteString.IO       (waitWhen0)
-import           Network.Socket.ByteString.IOVec    (IOVec (IOVec))
+import           Network.Socket.ByteString.Internal (c_writev)
 import           Network.Socket.Imports
 import           Network.Socket.Internal
+import           Network.Socket.Posix.IOVec    (IOVec (IOVec))
 import           Network.Socket.Types
 
 -- -----------------------------------------------------------------------------

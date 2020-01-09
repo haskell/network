@@ -26,8 +26,8 @@ import System.IO.Error (ioeSetErrorString, mkIOError)
 import System.Posix.Types (CSsize(..))
 
 import Network.Socket.Imports
-import Network.Socket.ByteString.IOVec (IOVec)
-import Network.Socket.ByteString.MsgHdr (MsgHdr)
+import Network.Socket.Posix.IOVec (IOVec)
+import Network.Socket.Posix.MsgHdr (MsgHdr)
 #endif
 
 mkInvalidRecvArgError :: String -> IOError

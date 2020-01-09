@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- | Support module for the POSIX writev system call.
-module Network.Socket.ByteString.IOVec
+module Network.Socket.Posix.IOVec
     ( IOVec(..)
     ) where
 

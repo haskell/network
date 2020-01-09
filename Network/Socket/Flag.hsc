@@ -3,7 +3,7 @@
 
 #include "HsNet.h"
 
-module Network.Socket.ByteString.Flag where
+module Network.Socket.Flag where
 
 import Network.Socket.Imports
 

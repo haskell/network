@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Network.Socket.ByteString.Ancillary where
+module Network.Socket.Posix.Ancillary where
 
 #include "HsNet.h"
 
@@ -12,8 +12,8 @@ import Data.ByteString.Internal
 import Foreign.ForeignPtr
 import System.IO.Unsafe (unsafeDupablePerformIO)
 
-import Network.Socket.ByteString.Cmsg
 import Network.Socket.Imports
+import Network.Socket.Posix.Cmsg
 import Network.Socket.Types
 
 ----------------------------------------------------------------

@@ -56,11 +56,11 @@ import Foreign.Marshal.Utils (with)
 import Network.Socket.Internal
 import System.IO.Error (catchIOError)
 
-import Network.Socket.ByteString.Cmsg
-import Network.Socket.ByteString.Flag
-import Network.Socket.ByteString.IOVec (IOVec(..))
-import Network.Socket.ByteString.MsgHdr (MsgHdr(..))
+import Network.Socket.Flag
 import Network.Socket.Name (getPeerName)
+import Network.Socket.Posix.Cmsg
+import Network.Socket.Posix.IOVec (IOVec(..))
+import Network.Socket.Posix.MsgHdr (MsgHdr(..))
 #endif
 
 -- ----------------------------------------------------------------------------

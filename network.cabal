@@ -64,13 +64,14 @@ library
     Network.Socket.Internal
   other-modules:
     Network.Socket.Buffer
-    Network.Socket.ByteString.Internal
     Network.Socket.ByteString.IO
+    Network.Socket.ByteString.Internal
     Network.Socket.Cbits
     Network.Socket.Fcntl
+    Network.Socket.Flag
     Network.Socket.Handle
-    Network.Socket.Imports
     Network.Socket.If
+    Network.Socket.Imports
     Network.Socket.Info
     Network.Socket.Name
     Network.Socket.Options
@@ -96,12 +97,11 @@ library
   -- Add some platform specific stuff
   if !os(windows)
     other-modules:
-      Network.Socket.ByteString.Flag
-      Network.Socket.ByteString.IOVec
       Network.Socket.ByteString.Lazy.Posix
-      Network.Socket.ByteString.MsgHdr
-      Network.Socket.ByteString.Cmsg
-      Network.Socket.ByteString.Ancillary
+      Network.Socket.Posix.Ancillary
+      Network.Socket.Posix.Cmsg
+      Network.Socket.Posix.IOVec
+      Network.Socket.Posix.MsgHdr
     c-sources: cbits/ancilData.c cbits/cmsg.c
 
   if os(solaris)

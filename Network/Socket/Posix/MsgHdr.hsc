@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 -- | Support module for the POSIX 'sendmsg' system call.
-module Network.Socket.ByteString.MsgHdr
+module Network.Socket.Posix.MsgHdr
     ( MsgHdr(..)
     ) where
 
@@ -12,7 +12,7 @@ import Network.Socket.Imports
 import Network.Socket.Internal (zeroMemory)
 import Network.Socket.Types (SockAddr)
 
-import Network.Socket.ByteString.IOVec (IOVec)
+import Network.Socket.Posix.IOVec (IOVec)
 
 data MsgHdr = MsgHdr
     { msgName    :: !(Ptr SockAddr)

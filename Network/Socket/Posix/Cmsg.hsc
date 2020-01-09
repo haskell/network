@@ -2,7 +2,7 @@
 
 #include "HsNet.h"
 
-module Network.Socket.ByteString.Cmsg (
+module Network.Socket.Posix.Cmsg (
     Cmsg(..)
   , withCmsgs
   , parseCmsgs
@@ -16,8 +16,8 @@ import Foreign.ForeignPtr
 import qualified Data.ByteString as B
 import Data.ByteString.Internal
 
-import Network.Socket.ByteString.MsgHdr
 import Network.Socket.Imports
+import Network.Socket.Posix.MsgHdr
 import Network.Socket.Types
 
 -- | Control message including a pair of level and type.
