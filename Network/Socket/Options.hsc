@@ -21,8 +21,6 @@ module Network.Socket.Options (
   , setSocketOption
   , getSockOpt
   , setSockOpt
-  , c_getsockopt
-  , c_setsockopt
   ) where
 
 import Foreign.Marshal.Alloc (alloca)

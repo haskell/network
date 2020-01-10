@@ -78,15 +78,20 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred s = do
-  let sz = (#const sizeof(struct ucred))
-  withFdSocket s $ \fd -> allocaBytes sz $ \ ptr_cr ->
-   with (fromIntegral sz) $ \ ptr_sz -> do
-     _ <- ($) throwSocketErrorIfMinus1Retry "Network.Socket.getPeerCred" $
-       c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
-     pid <- (#peek struct ucred, pid) ptr_cr
-     uid <- (#peek struct ucred, uid) ptr_cr
-     gid <- (#peek struct ucred, gid) ptr_cr
-     return (pid, uid, gid)
+    let opt = SockOpt (#const SOL_SOCKET) (#const SO_PEERCRED)
+    PeerCred cred <- getSockOpt s opt
+    return cred
+
+newtype PeerCred = PeerCred (CUInt, CUInt, CUInt)
+instance Storable PeerCred where
+    sizeOf _ = (#const sizeof(struct ucred))
+    alignment = undefined
+    poke = undefined
+    peek p (PeerCred (pid, uid, gid)) = do
+        pid <- (#peek struct ucred, pid) ptr_cr
+        uid <- (#peek struct ucred, uid) ptr_cr
+        gid <- (#peek struct ucred, gid) ptr_cr
+        return $ PeerCred (pid, uid, gid)
 #else
 getPeerCred _ = return (0, 0, 0)
 #endif
