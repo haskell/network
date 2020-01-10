@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -18,6 +19,8 @@ module Network.Socket.Options (
   , getSocketType
   , getSocketOption
   , setSocketOption
+  , getSockOpt
+  , setSockOpt
   , c_getsockopt
   , c_setsockopt
   ) where
@@ -297,22 +300,23 @@ setSocketOption :: Socket
                 -> IO ()
 #ifdef SO_LINGER
 setSocketOption s so@Linger v = do
-   let SockOpt (level,opt) = so
-   let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
-   with arg $ \ptr_arg -> void $ do
-     let ptr = ptr_arg :: Ptr StructLinger
-         sz = fromIntegral $ sizeOf (undefined :: StructLinger)
-     withFdSocket s $ \fd ->
-       throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-         c_setsockopt fd level opt ptr sz
+    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
+    setSockOpt s so arg
 #endif
-setSocketOption s (SockOpt (level,opt)) v = do
-   with (fromIntegral v) $ \ptr_v -> void $ do
-     let ptr = ptr_v :: Ptr CInt
-         sz  = fromIntegral $ sizeOf (undefined :: CInt)
-     withFdSocket s $ \fd ->
-       throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
-         c_setsockopt fd level opt ptr sz
+setSocketOption s sa v = setSockOpt s sa (fromIntegral v :: CInt)
+
+-- | Set a socket option.
+setSockOpt :: Storable a
+           => Socket
+           -> SocketOption
+           -> a
+           -> IO ()
+setSockOpt s (SockOpt (level,opt)) v = do
+    with v $ \ptr -> void $ do
+        let sz = fromIntegral $ sizeOf v
+        withFdSocket s $ \fd ->
+          throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
+          c_setsockopt fd level opt ptr sz
 
 -- | Get a socket option that gives an Int value.
 -- There is currently no API to get e.g. the timeval socket options
@@ -321,24 +325,25 @@ getSocketOption :: Socket
                 -> IO Int        -- Option Value
 #ifdef SO_LINGER
 getSocketOption s so@Linger = do
-   let SockOpt (level,opt) = so
-   alloca $ \ptr_v -> do
-     let ptr = ptr_v :: Ptr StructLinger
-         sz = fromIntegral $ sizeOf (undefined :: StructLinger)
-     withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
-       throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt fd level opt ptr ptr_sz
-       StructLinger onoff linger <- peek ptr
-       return $ fromIntegral $ if onoff == 0 then 0 else linger
+    StructLinger onoff linger <- getSockOpt s so
+    return $ fromIntegral $ if onoff == 0 then 0 else linger
 #endif
-getSocketOption s (SockOpt (level,opt)) = do
-   alloca $ \ptr_v -> do
-     let ptr = ptr_v :: Ptr CInt
-         sz = fromIntegral $ sizeOf (undefined :: CInt)
-     withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
-       throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketOption" $
-         c_getsockopt fd level opt ptr ptr_sz
-       fromIntegral <$> peek ptr
+getSocketOption s so = do
+    n :: CInt <- getSockOpt s so
+    return $ fromIntegral n
+
+-- | Get a socket option.
+getSockOpt :: forall a . Storable a
+           => Socket
+           -> SocketOption  -- Option Name
+           -> IO a        -- Option Value
+getSockOpt s (SockOpt (level,opt)) = do
+    alloca $ \ptr -> do
+        let sz = fromIntegral $ sizeOf (undefined :: a)
+        withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
+            throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
+                c_getsockopt fd level opt ptr ptr_sz
+        peek ptr
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt

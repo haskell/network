@@ -142,6 +142,8 @@ module Network.Socket
     , isSupportedSocketOption
     , getSocketOption
     , setSocketOption
+    , getSockOpt
+    , setSockOpt
 
     -- * Socket
     , Socket
