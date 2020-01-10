@@ -198,8 +198,8 @@ spec = do
     describe "recvMsg" $ do
         it "works well" $ do
             let server sock = do
-                    (_, msgs, cmsgs, flags) <- recvMsg sock [1024] 0 mempty
-                    S.concat msgs `shouldBe` seg
+                    (_, msg, cmsgs, flags) <- recvMsg sock 1024 0 mempty
+                    msg `shouldBe` seg
                     cmsgs `shouldBe` []
                     flags `shouldBe` mempty
                 client sock addr = sendTo sock seg addr
@@ -207,27 +207,9 @@ spec = do
                 seg = C.pack "This is a test message"
             udpTest client server
 
-        it "receives message fragments" $ do
-            let server sock = do
-                    (_, msgs, _, _) <- recvMsg sock [1,2,3,4] 0 mempty
-                    S.concat msgs `shouldBe` S.take 10 seg
-                client sock addr = sendTo sock seg addr
-
-                seg = C.pack "This is a test message"
-            udpTest client server
-
-        it "receives message fragments with truncation" $ do
-            let server sock = do
-                    (_, msgs, _, _) <- recvMsg sock [10,10,10,10] 0 mempty
-                    msgs `shouldBe` ["0123456789", "0123456789", "012345"]
-                client sock addr = sendTo sock seg addr
-
-                seg = C.pack "01234567890123456789012345"
-            udpTest client server
-
         it "receives truncated flag" $ do
             let server sock = do
-                    (_, _, _, flags) <- recvMsg sock [S.length seg - 2] 0 mempty
+                    (_, _, _, flags) <- recvMsg sock (S.length seg - 2) 0 mempty
                     flags .&. MSG_TRUNC `shouldBe` MSG_TRUNC
                 client sock addr = sendTo sock seg addr
 
@@ -236,9 +218,9 @@ spec = do
 
         it "peek" $ do
             let server sock = do
-                    (_, msgs, _, _flags) <- recvMsg sock [1024] 0 MSG_PEEK
+                    (_, msgs, _, _flags) <- recvMsg sock 1024 0 MSG_PEEK
                     -- flags .&. MSG_PEEK `shouldBe` MSG_PEEK -- Mac only
-                    (_, msgs', _, _) <- recvMsg sock [1024] 0 mempty
+                    (_, msgs', _, _) <- recvMsg sock 1024 0 mempty
                     msgs `shouldBe` msgs'
                 client sock addr = sendTo sock seg addr
 
@@ -250,7 +232,7 @@ spec = do
                     setSocketOption sock RecvIPv4TTL 1
                     setSocketOption sock RecvIPv4TOS 1
                     setSocketOption sock RecvIPv4PktInfo 1
-                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 mempty
+                    (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
                     ((lookupAncillary ancillaryIPv4TTL cmsgs >>= ancillaryDecode) :: Maybe IPv4TTL) `shouldNotBe` Nothing
                     ((lookupAncillary ancillaryIPv4TOS cmsgs >>= ancillaryDecode) :: Maybe IPv4TOS) `shouldNotBe` Nothing
@@ -265,7 +247,7 @@ spec = do
                     setSocketOption sock RecvIPv6HopLimit 1
                     setSocketOption sock RecvIPv6TClass 1
                     setSocketOption sock RecvIPv6PktInfo 1
-                    (_, _, cmsgs, _) <- recvMsg sock [1024] 128 mempty
+                    (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
                     ((lookupAncillary ancillaryIPv6HopLimit cmsgs >>= ancillaryDecode) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
                     ((lookupAncillary ancillaryIPv6TClass cmsgs >>= ancillaryDecode) :: Maybe IPv6TClass) `shouldNotBe` Nothing
@@ -280,7 +262,7 @@ spec = do
                     setSocketOption sock RecvIPv4TTL 1
                     setSocketOption sock RecvIPv4TOS 1
                     setSocketOption sock RecvIPv4PktInfo 1
-                    (_, _, _, flags) <- recvMsg sock [1024] 10 mempty
+                    (_, _, _, flags) <- recvMsg sock 1024 10 mempty
                     flags .&. MSG_CTRUNC `shouldBe` MSG_CTRUNC
 
                 client sock addr = sendTo sock seg addr

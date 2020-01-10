@@ -262,39 +262,19 @@ sendMsg s addr bss cmsgs flags = do
     sendBufMsg s addr bufsizs cmsgs flags
 
 -- | Receive data from the socket using recvmsg(2).
---   The receive buffers are created according to the second argument.
---   If the length of received data is less than the total of
---   the second argument, the buffers are truncated properly.
---   So, only the received data can be seen.
 recvMsg :: Socket  -- ^ Socket
-        -> [Int]   -- ^ A list of length of data to be received
+        -> Int     -- ^ The maximum length of data to be received
                    --   If the total length is not large enough,
                    --   'MSG_TRUNC' is returned
         -> Int     -- ^ The buffer size for control messages.
                    --   If the length is not large enough,
                    --   'MSG_CTRUNC' is returned
         -> MsgFlag -- ^ Message flags
-        -> IO (SockAddr, [ByteString], [Cmsg], MsgFlag) -- ^ Source address, received data, control messages and message flags
-recvMsg _ [] _ _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
-recvMsg s sizs clen flags = do
-    bss <- mapM newBS sizs
-    bufsizs <- mapM getBufsiz bss
-    (addr,len,cmsgs,flags') <- recvBufMsg s bufsizs clen flags
-    let total = sum sizs
-    let bss' = case len `compare` total of
-          EQ -> bss
-          LT -> trunc bss len
-          GT -> error "recvMsg" -- never reach
-    return (addr, bss', cmsgs, flags')
-
-newBS :: Int -> IO ByteString
-newBS n = create n $ \ptr -> zeroMemory ptr (fromIntegral n)
-
-trunc :: [ByteString] -> Int -> [ByteString]
-trunc bss0 siz0 = loop bss0 siz0 id
-  where
-    -- off is always 0
-    loop (bs@(PS buf off len):bss) siz build
-      | siz >= len = loop bss (siz - len) (build . (bs :))
-      | otherwise  = build [PS buf off siz]
-    loop _ _ build = build []
+        -> IO (SockAddr, ByteString, [Cmsg], MsgFlag) -- ^ Source address, received data, control messages and message flags
+recvMsg s siz clen flags = do
+    bs <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
+    bufsiz <- getBufsiz bs
+    (addr,len,cmsgs,flags') <- recvBufMsg s [bufsiz] clen flags
+    let bs' | len < siz = let PS buf 0 _ = bs in PS buf 0 len
+            | otherwise = bs
+    return (addr, bs', cmsgs, flags')
