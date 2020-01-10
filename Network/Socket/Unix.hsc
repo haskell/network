@@ -23,9 +23,6 @@ import Network.Socket.Types
 #if defined(HAVE_GETPEEREID)
 import System.IO.Error (catchIOError)
 #endif
-#ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
-import Foreign.Marshal.Utils (with)
-#endif
 #ifdef HAVE_GETPEEREID
 import Foreign.Marshal.Alloc (alloca)
 #endif
@@ -37,7 +34,7 @@ import Network.Socket.Fcntl
 import Network.Socket.Internal
 #endif
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
-import Network.Socket.Options (getSockOpt)
+import Network.Socket.Options
 #endif
 
 -- | Getting process ID, user ID and group ID for UNIX-domain sockets.
@@ -78,19 +75,19 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred s = do
-    let opt = SockOpt (#const SOL_SOCKET) (#const SO_PEERCRED)
+    let opt = SockOpt ((#const SOL_SOCKET),(#const SO_PEERCRED))
     PeerCred cred <- getSockOpt s opt
     return cred
 
 newtype PeerCred = PeerCred (CUInt, CUInt, CUInt)
 instance Storable PeerCred where
     sizeOf _ = (#const sizeof(struct ucred))
-    alignment = undefined
+    alignment _ =  (#const sizeof(int))
     poke = undefined
-    peek p (PeerCred (pid, uid, gid)) = do
-        pid <- (#peek struct ucred, pid) ptr_cr
-        uid <- (#peek struct ucred, uid) ptr_cr
-        gid <- (#peek struct ucred, gid) ptr_cr
+    peek p = do
+        pid <- (#peek struct ucred, pid) p
+        uid <- (#peek struct ucred, uid) p
+        gid <- (#peek struct ucred, gid) p
         return $ PeerCred (pid, uid, gid)
 #else
 getPeerCred _ = return (0, 0, 0)
