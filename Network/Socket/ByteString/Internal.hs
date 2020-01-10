@@ -28,6 +28,7 @@ import System.Posix.Types (CSsize(..))
 import Network.Socket.Imports
 import Network.Socket.Posix.IOVec (IOVec)
 import Network.Socket.Posix.MsgHdr (MsgHdr)
+import Network.Socket.Types
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
@@ -40,8 +41,8 @@ foreign import ccall unsafe "writev"
   c_writev :: CInt -> Ptr IOVec -> CInt -> IO CSsize
 
 foreign import ccall unsafe "sendmsg"
-  c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize
+  c_sendmsg :: CInt -> Ptr (MsgHdr SockAddr) -> CInt -> IO CSsize
 
 foreign import ccall unsafe "recvmsg"
-  c_recvmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CSsize
+  c_recvmsg :: CInt -> Ptr (MsgHdr SockAddr) -> CInt -> IO CSsize
 #endif

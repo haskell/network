@@ -72,7 +72,7 @@ encodeCmsg ctrlPtr (Cmsg (lvl,typ) (PS fptr off len)) = do
         dst <- c_cmsg_data ctrlPtr
         memcpy dst src len
 
-parseCmsgs :: Ptr MsgHdr -> IO [Cmsg]
+parseCmsgs :: SocketAddress sa => Ptr (MsgHdr sa) -> IO [Cmsg]
 parseCmsgs msgptr = do
     ptr <- c_cmsg_firsthdr msgptr
     loop ptr id
@@ -92,10 +92,10 @@ decodeCmsg ptr = do
     Cmsg (lvl,typ) <$> create (fromIntegral siz) (\dst -> memcpy dst src siz)
 
 foreign import ccall unsafe "cmsg_firsthdr"
-  c_cmsg_firsthdr :: Ptr MsgHdr -> IO (Ptr CmsgHdr)
+  c_cmsg_firsthdr :: Ptr (MsgHdr sa) -> IO (Ptr CmsgHdr)
 
 foreign import ccall unsafe "cmsg_nxthdr"
-  c_cmsg_nxthdr :: Ptr MsgHdr -> Ptr CmsgHdr -> IO (Ptr CmsgHdr)
+  c_cmsg_nxthdr :: Ptr (MsgHdr sa) -> Ptr CmsgHdr -> IO (Ptr CmsgHdr)
 
 foreign import ccall unsafe "cmsg_data"
   c_cmsg_data :: Ptr CmsgHdr -> IO (Ptr Word8)

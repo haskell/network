@@ -10,12 +10,11 @@ module Network.Socket.Posix.MsgHdr
 
 import Network.Socket.Imports
 import Network.Socket.Internal (zeroMemory)
-import Network.Socket.Types (SockAddr)
 
 import Network.Socket.Posix.IOVec (IOVec)
 
-data MsgHdr = MsgHdr
-    { msgName    :: !(Ptr SockAddr)
+data MsgHdr sa = MsgHdr
+    { msgName    :: !(Ptr sa)
     , msgNameLen :: !CUInt
     , msgIov     :: !(Ptr IOVec)
     , msgIovLen  :: !CSize
@@ -24,7 +23,7 @@ data MsgHdr = MsgHdr
     , msgFlags   :: !CInt
     }
 
-instance Storable MsgHdr where
+instance Storable (MsgHdr sa) where
   sizeOf _    = (#const sizeof(struct msghdr))
   alignment _ = alignment (undefined :: CInt)
 

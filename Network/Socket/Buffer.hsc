@@ -186,15 +186,16 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     loc Nothing Nothing) "non-positive length"
 
 -- | Send data from the socket using sendmsg(2).
-sendBufMsg :: Socket            -- ^ Socket
-           -> SockAddr          -- ^ Destination address -- fixme
+sendBufMsg :: SocketAddress sa
+           => Socket            -- ^ Socket
+           -> sa                -- ^ Destination address
            -> [(Ptr Word8,Int)] -- ^ Data to be sent
            -> [Cmsg]            -- ^ Control messages
            -> MsgFlag           -- ^ Message flags
            -> IO Int            -- ^ The length actually sent
 sendBufMsg _ _    []  _ _ = return 0
-sendBufMsg s addr bufsizs cmsgs flags = do
-  sz <- withSockAddr addr $ \addrPtr addrSize ->
+sendBufMsg s sa bufsizs cmsgs flags = do
+  sz <- withSocketAddress sa $ \addrPtr addrSize ->
     withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
       withCmsgs cmsgs $ \ctrlPtr ctrlLen -> do
         let msgHdr = MsgHdr {
@@ -214,19 +215,16 @@ sendBufMsg s addr bufsizs cmsgs flags = do
   return $ fromIntegral sz
 
 -- | Receive data from the socket using recvmsg(2).
---   The receive buffers are created according to the second argument.
---   If the length of received data is less than the total of
---   the second argument, the buffers are truncated properly.
---   So, only the received data can be seen.
-recvBufMsg :: Socket            -- ^ Socket
-        -> [(Ptr Word8,Int)] -- ^ A list of a pair of buffer and its size
-                             --   If the total length is not large enough,
-                             --   'MSG_TRUNC' is returned
-        -> Int       -- ^ The buffer size for control messages.
-                     --   If the length is not large enough,
-                     --   'MSG_CTRUNC' is returned
-        -> MsgFlag   -- ^ Message flags
-        -> IO (SockAddr,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
+recvBufMsg :: SocketAddress sa
+           => Socket            -- ^ Socket
+           -> [(Ptr Word8,Int)] -- ^ A list of a pair of buffer and its size.
+                                --   If the total length is not large enough,
+                                --   'MSG_TRUNC' is returned
+           -> Int               -- ^ The buffer size for control messages.
+                                --   If the length is not large enough,
+                                --   'MSG_CTRUNC' is returned
+           -> MsgFlag           -- ^ Message flags
+           -> IO (sa,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
 recvBufMsg _ [] _ _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
 recvBufMsg s bufsizs clen flags = do
   withNewSocketAddress $ \addrPtr addrSize ->
@@ -268,6 +266,6 @@ foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
 
 foreign import ccall unsafe "sendmsg"
-  c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CInt -- fixme CSsize
+  c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> CInt -> IO CInt -- fixme CSsize
 foreign import ccall unsafe "recvmsg"
-  c_recvmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CInt
+  c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> CInt -> IO CInt

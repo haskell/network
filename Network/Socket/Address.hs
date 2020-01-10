@@ -16,6 +16,9 @@ module Network.Socket.Address (
     -- * Sending and receiving data from a buffer
     , sendBufTo
     , recvBufFrom
+    -- * IO with ancillary data
+    , sendBufMsg
+    , recvBufMsg
     ) where
 
 import Network.Socket.ByteString.IO

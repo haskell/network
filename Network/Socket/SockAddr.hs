@@ -6,12 +6,16 @@ module Network.Socket.SockAddr (
     , accept
     , sendBufTo
     , recvBufFrom
+    , sendBufMsg
+    , recvBufMsg
     ) where
 
 import qualified Network.Socket.Buffer as G
 import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
+import Network.Socket.Flag
 import Network.Socket.Imports
+import Network.Socket.Posix.Cmsg
 import Network.Socket.Types
 
 -- | Getting peer's 'SockAddr'.
@@ -64,3 +68,24 @@ sendBufTo = G.sendBufTo
 -- GHC ticket #1129)
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom = G.recvBufFrom
+
+-- | Send data from the socket using sendmsg(2).
+sendBufMsg :: Socket            -- ^ Socket
+           -> SockAddr          -- ^ Destination address
+           -> [(Ptr Word8,Int)] -- ^ Data to be sent
+           -> [Cmsg]            -- ^ Control messages
+           -> MsgFlag           -- ^ Message flags
+           -> IO Int            -- ^ The length actually sent
+sendBufMsg = G.sendBufMsg
+
+-- | Receive data from the socket using recvmsg(2).
+recvBufMsg :: Socket            -- ^ Socket
+        -> [(Ptr Word8,Int)] -- ^ A list of a pair of buffer and its size.
+                             --   If the total length is not large enough,
+                             --   'MSG_TRUNC' is returned
+        -> Int               -- ^ The buffer size for control messages.
+                             --   If the length is not large enough,
+                             --   'MSG_CTRUNC' is returned
+        -> MsgFlag           -- ^ Message flags
+        -> IO (SockAddr,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
+recvBufMsg = G.recvBufMsg

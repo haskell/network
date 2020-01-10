@@ -231,7 +231,7 @@ module Network.Socket
     , maxListenQueue
     ) where
 
-import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
+import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom, sendBufMsg, recvBufMsg)
 import Network.Socket.Cbits
 import Network.Socket.Fcntl
 import Network.Socket.Flag
