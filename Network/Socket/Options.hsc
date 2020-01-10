@@ -1,11 +1,19 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
 
 module Network.Socket.Options (
-    SocketOption(..)
+    SocketOption(Debug,ReuseAddr,Type,SoError,DontRoute,Broadcast
+                ,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
+                ,MaxSegment,NoDelay,Cork,Linger,ReusePort
+                ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
+                ,UseLoopBack,UserTimeout,IPv6Only
+                ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
+                ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo
+                ,CustomSockOpt)
   , isSupportedSocketOption
   , getSocketType
   , getSocketOption
@@ -28,42 +36,11 @@ import Network.Socket.Types
 --
 -- The existence of a constructor does not imply that the relevant option
 -- is supported on your system: see 'isSupportedSocketOption'
-data SocketOption
-    = Debug         -- ^ SO_DEBUG
-    | ReuseAddr     -- ^ SO_REUSEADDR
-    | Type          -- ^ SO_TYPE
-    | SoError       -- ^ SO_ERROR
-    | DontRoute     -- ^ SO_DONTROUTE
-    | Broadcast     -- ^ SO_BROADCAST
-    | SendBuffer    -- ^ SO_SNDBUF
-    | RecvBuffer    -- ^ SO_RCVBUF
-    | KeepAlive     -- ^ SO_KEEPALIVE
-    | OOBInline     -- ^ SO_OOBINLINE
-    | TimeToLive    -- ^ IP_TTL
-    | MaxSegment    -- ^ TCP_MAXSEG
-    | NoDelay       -- ^ TCP_NODELAY
-    | Cork          -- ^ TCP_CORK
-    | Linger        -- ^ SO_LINGER: timeout in seconds, 0 means disabling/disabled.
-    | ReusePort     -- ^ SO_REUSEPORT
-    | RecvLowWater  -- ^ SO_RCVLOWAT
-    | SendLowWater  -- ^ SO_SNDLOWAT
-    | RecvTimeOut   -- ^ SO_RCVTIMEO: this does not work at this moment.
-    | SendTimeOut   -- ^ SO_SNDTIMEO: this does not work at this moment.
-    | UseLoopBack   -- ^ SO_USELOOPBACK
-    | UserTimeout   -- ^ TCP_USER_TIMEOUT
-    | IPv6Only      -- ^ IPV6_V6ONLY: don't use this on OpenBSD.
-    | RecvIPv4TTL      -- ^ Receiving IPv4 TTL.
-    | RecvIPv4TOS      -- ^ Receiving IPv4 TOS.
-    | RecvIPv4PktInfo  -- ^ Receiving IP_PKTINFO (struct in_pktinfo).
-    | RecvIPv6HopLimit -- ^ Receiving IPv6 hop limit.
-    | RecvIPv6TClass   -- ^ Receiving IPv6 traffic class.
-    | RecvIPv6PktInfo  -- ^ Receiving IPV6_PKTINFO (struct in6_pktinfo).
-    | CustomSockOpt (CInt, CInt)
-    deriving (Show, Typeable)
+newtype SocketOption = SockOpt (CInt,CInt) deriving (Eq, Show)
 
 -- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
-isSupportedSocketOption = isJust . packSocketOption
+isSupportedSocketOption opt = opt /= SockOpt (-1,-1)
 
 -- | Get the 'SocketType' of an active socket.
 --
@@ -72,144 +49,228 @@ getSocketType :: Socket -> IO SocketType
 getSocketType s = (fromMaybe NoSocketType . unpackSocketType . fromIntegral)
                     <$> getSocketOption s Type
 
--- | For a socket option, return Just (level, value) where level is the
--- corresponding C option level constant (e.g. SOL_SOCKET) and value is
--- the option constant itself (e.g. SO_DEBUG)
--- If either constant does not exist, return Nothing.
-packSocketOption :: SocketOption -> Maybe (CInt, CInt)
-packSocketOption so =
-  -- The Just here is a hack to disable GHC's overlapping pattern detection:
-  -- the problem is if all constants are present, the fallback pattern is
-  -- redundant, but if they aren't then it isn't. Hence we introduce an
-  -- extra pattern (Nothing) that can't possibly happen, so that the
-  -- fallback is always (in principle) necessary.
-  -- I feel a little bad for including this, but such are the sacrifices we
-  -- make while working with CPP - excluding the fallback pattern correctly
-  -- would be a serious nuisance.
-  -- (NB: comments elsewhere in this file refer to this one)
-  case Just so of
 #ifdef SOL_SOCKET
+-- | SO_DEBUG
+pattern Debug :: SocketOption
 #ifdef SO_DEBUG
-    Just Debug         -> Just ((#const SOL_SOCKET), (#const SO_DEBUG))
+pattern Debug          = SockOpt ((#const SOL_SOCKET), (#const SO_DEBUG))
+#else
+pattern Debug          = SockOpt (-1,-1)
 #endif
+-- | SO_REUSEADDR
+pattern ReuseAddr :: SocketOption
 #ifdef SO_REUSEADDR
-    Just ReuseAddr     -> Just ((#const SOL_SOCKET), (#const SO_REUSEADDR))
+pattern ReuseAddr      = SockOpt ((#const SOL_SOCKET), (#const SO_REUSEADDR))
+#else
+pattern ReuseAddr      = SockOpt (-1,-1)
 #endif
+-- | SO_TYPE
+pattern Type :: SocketOption
 #ifdef SO_TYPE
-    Just Type          -> Just ((#const SOL_SOCKET), (#const SO_TYPE))
+pattern Type           = SockOpt ((#const SOL_SOCKET), (#const SO_TYPE))
+#else
+pattern Type           = SockOpt (-1,-1)
 #endif
+-- | SO_ERROR
+pattern SoError :: SocketOption
 #ifdef SO_ERROR
-    Just SoError       -> Just ((#const SOL_SOCKET), (#const SO_ERROR))
+pattern SoError        = SockOpt ((#const SOL_SOCKET), (#const SO_ERROR))
+#else
+pattern SoError        = SockOpt (-1,-1)
 #endif
+-- | SO_DONTROUTE
+pattern DontRoute :: SocketOption
 #ifdef SO_DONTROUTE
-    Just DontRoute     -> Just ((#const SOL_SOCKET), (#const SO_DONTROUTE))
+pattern DontRoute      = SockOpt ((#const SOL_SOCKET), (#const SO_DONTROUTE))
+#else
+pattern DontRoute      = SockOpt (-1,-1)
 #endif
+-- | SO_BROADCAST
+pattern Broadcast :: SocketOption
 #ifdef SO_BROADCAST
-    Just Broadcast     -> Just ((#const SOL_SOCKET), (#const SO_BROADCAST))
+pattern Broadcast      = SockOpt ((#const SOL_SOCKET), (#const SO_BROADCAST))
+#else
+pattern Broadcast      = SockOpt (-1,-1)
 #endif
+-- | SO_SNDBUF
+pattern SendBuffer :: SocketOption
 #ifdef SO_SNDBUF
-    Just SendBuffer    -> Just ((#const SOL_SOCKET), (#const SO_SNDBUF))
+pattern SendBuffer     = SockOpt ((#const SOL_SOCKET), (#const SO_SNDBUF))
+#else
+pattern SendBuffer     = SockOpt (-1,-1)
 #endif
+-- | SO_RCVBUF
+pattern RecvBuffer :: SocketOption
 #ifdef SO_RCVBUF
-    Just RecvBuffer    -> Just ((#const SOL_SOCKET), (#const SO_RCVBUF))
+pattern RecvBuffer     = SockOpt ((#const SOL_SOCKET), (#const SO_RCVBUF))
+#else
+pattern RecvBuffer     = SockOpt (-1,-1)
 #endif
+-- | SO_KEEPALIVE
+pattern KeepAlive :: SocketOption
 #ifdef SO_KEEPALIVE
-    Just KeepAlive     -> Just ((#const SOL_SOCKET), (#const SO_KEEPALIVE))
+pattern KeepAlive      = SockOpt ((#const SOL_SOCKET), (#const SO_KEEPALIVE))
+#else
+pattern KeepAlive      = SockOpt (-1,-1)
 #endif
+-- | SO_OOBINLINE
+pattern OOBInline :: SocketOption
 #ifdef SO_OOBINLINE
-    Just OOBInline     -> Just ((#const SOL_SOCKET), (#const SO_OOBINLINE))
+pattern OOBInline      = SockOpt ((#const SOL_SOCKET), (#const SO_OOBINLINE))
+#else
+pattern OOBINLINE      = SockOpt (-1,-1)
 #endif
+-- | SO_LINGER: timeout in seconds, 0 means disabling/disabled.
+pattern Linger :: SocketOption
 #ifdef SO_LINGER
-    Just Linger        -> Just ((#const SOL_SOCKET), (#const SO_LINGER))
+pattern Linger         = SockOpt ((#const SOL_SOCKET), (#const SO_LINGER))
+#else
+pattern Linger         = SockOpt (-1,-1)
 #endif
+-- | SO_REUSEPORT
+pattern ReusePort :: SocketOption
 #ifdef SO_REUSEPORT
-    Just ReusePort     -> Just ((#const SOL_SOCKET), (#const SO_REUSEPORT))
+pattern ReusePort      = SockOpt ((#const SOL_SOCKET), (#const SO_REUSEPORT))
+#else
+pattern ReusePort      = SockOpt (-1,-1)
 #endif
+-- | SO_RCVLOWAT
+pattern RecvLowWater :: SocketOption
 #ifdef SO_RCVLOWAT
-    Just RecvLowWater  -> Just ((#const SOL_SOCKET), (#const SO_RCVLOWAT))
+pattern RecvLowWater   = SockOpt ((#const SOL_SOCKET), (#const SO_RCVLOWAT))
+#else
+pattern RecvLowWater   = SockOpt (-1,-1)
 #endif
+-- | SO_SNDLOWAT
+pattern SendLowWater :: SocketOption
 #ifdef SO_SNDLOWAT
-    Just SendLowWater  -> Just ((#const SOL_SOCKET), (#const SO_SNDLOWAT))
+pattern SendLowWater   = SockOpt ((#const SOL_SOCKET), (#const SO_SNDLOWAT))
+#else
+pattern SendLowWater   = SockOpt (-1,-1)
 #endif
+-- | SO_RCVTIMEO: this does not work at this moment.
+pattern RecvTimeOut :: SocketOption
 #ifdef SO_RCVTIMEO
-    Just RecvTimeOut   -> Just ((#const SOL_SOCKET), (#const SO_RCVTIMEO))
+pattern RecvTimeOut    = SockOpt ((#const SOL_SOCKET), (#const SO_RCVTIMEO))
+#else
+pattern RecvTimeOut    = SockOpt (-1,-1)
 #endif
+-- | SO_SNDTIMEO: this does not work at this moment.
+pattern SendTimeOut :: SocketOption
 #ifdef SO_SNDTIMEO
-    Just SendTimeOut   -> Just ((#const SOL_SOCKET), (#const SO_SNDTIMEO))
+pattern SendTimeOut    = SockOpt ((#const SOL_SOCKET), (#const SO_SNDTIMEO))
+#else
+pattern SendTimeOut    = SockOpt (-1,-1)
 #endif
+-- | SO_USELOOPBACK
+pattern UseLoopBack :: SocketOption
 #ifdef SO_USELOOPBACK
-    Just UseLoopBack   -> Just ((#const SOL_SOCKET), (#const SO_USELOOPBACK))
+pattern UseLoopBack    = SockOpt ((#const SOL_SOCKET), (#const SO_USELOOPBACK))
+#else
+pattern UseLoopBack    = SockOpt (-1,-1)
 #endif
 #endif // SOL_SOCKET
-#if HAVE_DECL_IPPROTO_IP
-#ifdef IP_TTL
-    Just TimeToLive    -> Just ((#const IPPROTO_IP), (#const IP_TTL))
-#endif
-#endif // HAVE_DECL_IPPROTO_IP
+
 #if HAVE_DECL_IPPROTO_TCP
+-- | TCP_MAXSEG
+pattern MaxSegment :: SocketOption
 #ifdef TCP_MAXSEG
-    Just MaxSegment    -> Just ((#const IPPROTO_TCP), (#const TCP_MAXSEG))
+pattern MaxSegment     = SockOpt ((#const IPPROTO_TCP), (#const TCP_MAXSEG))
+#else
+pattern MaxSegment     = SockOpt (-1,-1)
 #endif
+-- | TCP_NODELAY
+pattern NoDelay :: SocketOption
 #ifdef TCP_NODELAY
-    Just NoDelay       -> Just ((#const IPPROTO_TCP), (#const TCP_NODELAY))
+pattern NoDelay        = SockOpt ((#const IPPROTO_TCP), (#const TCP_NODELAY))
+#else
+pattern NoDelay        = SockOpt (-1,-1)
 #endif
+-- | TCP_USER_TIMEOUT
+pattern UserTimeout :: SocketOption
 #ifdef TCP_USER_TIMEOUT
-    Just UserTimeout   -> Just ((#const IPPROTO_TCP), (#const TCP_USER_TIMEOUT))
+pattern UserTimeout    = SockOpt ((#const IPPROTO_TCP), (#const TCP_USER_TIMEOUT))
+#else
+pattern UserTimeout    = SockOpt (-1, -1)
 #endif
+-- | TCP_CORK
+pattern Cork :: SocketOption
 #ifdef TCP_CORK
-    Just Cork          -> Just ((#const IPPROTO_TCP), (#const TCP_CORK))
+pattern Cork           = SockOpt ((#const IPPROTO_TCP), (#const TCP_CORK))
+#else
+pattern Cork           = SockOpt (-1,-1)
 #endif
 #endif // HAVE_DECL_IPPROTO_TCP
-#if HAVE_DECL_IPPROTO_IPV6
-#if HAVE_DECL_IPV6_V6ONLY
-    Just IPv6Only      -> Just ((#const IPPROTO_IPV6), (#const IPV6_V6ONLY))
-#endif
-#endif // HAVE_DECL_IPPROTO_IPV6
-#if HAVE_DECL_IPPROTO_IP
-#ifdef IP_RECVTTL
-    Just RecvIPv4TTL -> Just ((#const IPPROTO_IP), (#const IP_RECVTTL))
-#endif
-#endif // HAVE_DECL_IPPROTO_IP
-#if HAVE_DECL_IPPROTO_IP
-#ifdef IP_RECVTOS
-    Just RecvIPv4TOS -> Just ((#const IPPROTO_IP), (#const IP_RECVTOS))
-#endif
-#endif // HAVE_DECL_IPPROTO_IP
-#if HAVE_DECL_IPPROTO_IP
-#if defined(IP_RECVPKTINFO)
-    Just RecvIPv4PktInfo -> Just ((#const IPPROTO_IP), (#const IP_RECVPKTINFO))
-#elif defined(IP_PKTINFO)
-    Just RecvIPv4PktInfo -> Just ((#const IPPROTO_IP), (#const IP_PKTINFO))
-#endif
-#endif // HAVE_DECL_IPPROTO_IP
-#if HAVE_DECL_IPPROTO_IPV6
-#ifdef IPV6_RECVHOPLIMIT
-    Just RecvIPv6HopLimit -> Just ((#const IPPROTO_IPV6), (#const IPV6_RECVHOPLIMIT))
-#endif
-#endif // HAVE_DECL_IPPROTO_IPV6
-#if HAVE_DECL_IPPROTO_IPV6
-#ifdef IPV6_RECVTCLASS
-    Just RecvIPv6TClass -> Just ((#const IPPROTO_IPV6), (#const IPV6_RECVTCLASS))
-#endif
-#endif // HAVE_DECL_IPPROTO_IPV6
-#if HAVE_DECL_IPPROTO_IPV6
-#ifdef IPV6_RECVPKTINFO
-    Just RecvIPv6PktInfo -> Just ((#const IPPROTO_IPV6), (#const IPV6_RECVPKTINFO))
-#elif defined(IPV6_PKTINFO)
-    Just RecvIPv6PktInfo -> Just ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
-#endif
-#endif // HAVE_DECL_IPPROTO_IPV6
-    Just (CustomSockOpt opt) -> Just opt
-    _             -> Nothing
 
--- | Return the option level and option value if they exist,
--- otherwise throw an error that begins "Network.Socket." ++ the String
--- parameter
-packSocketOption' :: String -> SocketOption -> IO (CInt, CInt)
-packSocketOption' caller so = maybe err return (packSocketOption so)
- where
-  err = ioError . userError . concat $ ["Network.Socket.", caller,
-    ": socket option ", show so, " unsupported on this system"]
+#if HAVE_DECL_IPPROTO_IP
+-- | IP_TTL
+pattern TimeToLive :: SocketOption
+#ifdef IP_TTL
+pattern TimeToLive     = SockOpt ((#const IPPROTO_IP), (#const IP_TTL))
+#else
+pattern TimeToLive     = SockOpt (-1,-1)
+#endif
+-- | Receiving IPv4 TTL.
+pattern RecvIPv4TTL :: SocketOption
+#ifdef IP_RECVTTL
+pattern RecvIPv4TTL    = SockOpt ((#const IPPROTO_IP), (#const IP_RECVTTL))
+#else
+pattern RecvIPv4TTL    = SockOpt (-1,-1)
+#endif
+-- | Receiving IPv4 TOS.
+pattern RecvIPv4TOS :: SocketOption
+#ifdef IP_RECVTOS
+pattern RecvIPv4TOS    = SockOpt ((#const IPPROTO_IP), (#const IP_RECVTOS))
+#else
+pattern RecvIPv4TOS    = SockOpt (-1,-1)
+#endif
+-- | Receiving IP_PKTINFO (struct in_pktinfo).
+pattern RecvIPv4PktInfo :: SocketOption
+#ifdef IP_RECVPKTINFO
+pattern RecvIPv4PktInfo  = SockOpt ((#const IPPROTO_IP), (#const IP_RECVPKTINFO))
+#elif defined(IP_PKTINFO)
+pattern RecvIPv4PktInfo  = SockOpt ((#const IPPROTO_IP), (#const IP_PKTINFO))
+#else
+pattern RecvIPv4PktInfo  = SockOpt (-1,-1)
+#endif
+#endif // HAVE_DECL_IPPROTO_IP
+
+#if HAVE_DECL_IPPROTO_IPV6
+-- | IPV6_V6ONLY: don't use this on OpenBSD.
+pattern IPv6Only :: SocketOption
+#if HAVE_DECL_IPV6_V6ONLY
+pattern IPv6Only       = SockOpt ((#const IPPROTO_IPV6), (#const IPV6_V6ONLY))
+#else
+pattern IPv6Only       = SockOpt (-1,-1)
+#endif
+-- | Receiving IPv6 hop limit.
+pattern RecvIPv6HopLimit :: SocketOption
+#ifdef IPV6_RECVHOPLIMIT
+pattern RecvIPv6HopLimit = SockOpt ((#const IPPROTO_IPV6), (#const IPV6_RECVHOPLIMIT))
+#else
+pattern RecvIPv6HopLimit = SockOpt (-1,-1)
+#endif
+-- | Receiving IPv6 traffic class.
+pattern RecvIPv6TClass :: SocketOption
+#ifdef IPV6_RECVTCLASS
+pattern RecvIPv6TClass  = SockOpt ((#const IPPROTO_IPV6), (#const IPV6_RECVTCLASS))
+#else
+pattern RecvIPv6TClass  = SockOpt (-1,-1)
+#endif
+-- | Receiving IPV6_PKTINFO (struct in6_pktinfo).
+pattern RecvIPv6PktInfo :: SocketOption
+#ifdef IPV6_RECVPKTINFO
+pattern RecvIPv6PktInfo = SockOpt ((#const IPPROTO_IPV6), (#const IPV6_RECVPKTINFO))
+#elif defined(IPV6_PKTINFO)
+pattern RecvIPv6PktInfo = SockOpt ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
+#else
+pattern RecvIPv6PktInfo = SockOpt (-1,-1)
+#endif
+#endif // HAVE_DECL_IPPROTO_IPV6
+
+-- | Customizable socket option.
+pattern CustomSockOpt :: (CInt,CInt) -> SocketOption
+pattern CustomSockOpt opt = SockOpt opt
 
 #ifdef SO_LINGER
 data StructLinger = StructLinger CInt CInt
@@ -235,8 +296,8 @@ setSocketOption :: Socket
                 -> Int          -- Option Value
                 -> IO ()
 #ifdef SO_LINGER
-setSocketOption s Linger v = do
-   (level, opt) <- packSocketOption' "setSocketOption" Linger
+setSocketOption s so@Linger v = do
+   let SockOpt (level,opt) = so
    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
    with arg $ \ptr_arg -> void $ do
      let ptr = ptr_arg :: Ptr StructLinger
@@ -245,8 +306,7 @@ setSocketOption s Linger v = do
        throwSocketErrorIfMinus1_ "Network.Socket.setSocketOption" $
          c_setsockopt fd level opt ptr sz
 #endif
-setSocketOption s so v = do
-   (level, opt) <- packSocketOption' "setSocketOption" so
+setSocketOption s (SockOpt (level,opt)) v = do
    with (fromIntegral v) $ \ptr_v -> void $ do
      let ptr = ptr_v :: Ptr CInt
          sz  = fromIntegral $ sizeOf (undefined :: CInt)
@@ -260,8 +320,8 @@ getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
 #ifdef SO_LINGER
-getSocketOption s Linger = do
-   (level, opt) <- packSocketOption' "getSocketOption" Linger
+getSocketOption s so@Linger = do
+   let SockOpt (level,opt) = so
    alloca $ \ptr_v -> do
      let ptr = ptr_v :: Ptr StructLinger
          sz = fromIntegral $ sizeOf (undefined :: StructLinger)
@@ -271,8 +331,7 @@ getSocketOption s Linger = do
        StructLinger onoff linger <- peek ptr
        return $ fromIntegral $ if onoff == 0 then 0 else linger
 #endif
-getSocketOption s so = do
-   (level, opt) <- packSocketOption' "getSocketOption" so
+getSocketOption s (SockOpt (level,opt)) = do
    alloca $ \ptr_v -> do
      let ptr = ptr_v :: Ptr CInt
          sz = fromIntegral $ sizeOf (undefined :: CInt)

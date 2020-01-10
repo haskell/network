@@ -131,7 +131,14 @@ module Network.Socket
     , ShutdownCmd(..)
 
     -- * Socket options
-    , SocketOption(..)
+    , SocketOption(Debug,ReuseAddr,Type,SoError,DontRoute,Broadcast
+                  ,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
+                  ,MaxSegment,NoDelay,Cork,Linger,ReusePort
+                  ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
+                  ,UseLoopBack,UserTimeout,IPv6Only
+                  ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
+                  ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo
+                  ,CustomSockOpt)
     , isSupportedSocketOption
     , getSocketOption
     , setSocketOption
