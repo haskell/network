@@ -37,33 +37,12 @@ module Network.Socket.ByteString
     -- * Advanced send and recv
     , sendMsg
     , recvMsg
-    , MsgFlag(MSG_OOB,MSG_DONTROUTE,MSG_PEEK,MSG_EOR,MSG_TRUNC,MSG_CTRUNC,MSG_WAITALL)
-    , Cmsg(..)
-    -- ** Ancillary data
-    , Ancillary(..)
-    , AncillaryID
-    , ancillaryIPv4TTL
-    , ancillaryIPv6HopLimit
-    , ancillaryIPv4TOS
-    , ancillaryIPv6TClass
-    , ancillaryIPv4PktInfo
-    , ancillaryIPv6PktInfo
-    , lookupAncillary
-    -- ** Types
-    , IPv4TTL(..)
-    , IPv6HopLimit(..)
-    , IPv4TOS(..)
-    , IPv6TClass(..)
-    , IPv4PktInfo(..)
-    , IPv6PktInfo(..)
     ) where
 
 import Data.ByteString (ByteString)
 
 import qualified Network.Socket.ByteString.IO as G
 import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
-import Network.Socket.Flag
-import Network.Socket.Posix.Ancillary
 import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------

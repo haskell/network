@@ -11,12 +11,15 @@ module Network.Socket.Buffer (
   , recvBufFrom
   , recvBuf
   , recvBufNoWait
+  , sendBufMsg
+  , recvBufMsg
   ) where
 
 #if !defined(mingw32_HOST_OS)
 import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
 #endif
-import Foreign.Marshal.Alloc (alloca)
+import Foreign.Marshal.Alloc (alloca, allocaBytes)
+import Foreign.Marshal.Utils (with)
 import GHC.IO.Exception (IOErrorType(InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
 
@@ -28,6 +31,10 @@ import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Types
+import Network.Socket.Posix.Cmsg
+import Network.Socket.Posix.MsgHdr
+import Network.Socket.Posix.IOVec
+import Network.Socket.Flag
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -178,6 +185,72 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
                                     loc Nothing Nothing) "non-positive length"
 
+-- | Send data from the socket using sendmsg(2).
+sendBufMsg :: Socket            -- ^ Socket
+           -> SockAddr          -- ^ Destination address -- fixme
+           -> [(Ptr Word8,Int)] -- ^ Data to be sent
+           -> [Cmsg]            -- ^ Control messages
+           -> MsgFlag           -- ^ Message flags
+           -> IO Int            -- ^ The length actually sent
+sendBufMsg _ _    []  _ _ = return 0
+sendBufMsg s addr bufsizs cmsgs flags = do
+  sz <- withSockAddr addr $ \addrPtr addrSize ->
+    withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
+      withCmsgs cmsgs $ \ctrlPtr ctrlLen -> do
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+              , msgIov     = iovsPtr
+              , msgIovLen  = fromIntegral iovsLen
+              , msgCtrl    = castPtr ctrlPtr
+              , msgCtrlLen = fromIntegral ctrlLen
+              , msgFlags   = 0
+              }
+            cflags = fromMsgFlag flags
+        withFdSocket s $ \fd ->
+          with msgHdr $ \msgHdrPtr ->
+            throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMsg" $
+              c_sendmsg fd msgHdrPtr cflags
+  return $ fromIntegral sz
+
+-- | Receive data from the socket using recvmsg(2).
+--   The receive buffers are created according to the second argument.
+--   If the length of received data is less than the total of
+--   the second argument, the buffers are truncated properly.
+--   So, only the received data can be seen.
+recvBufMsg :: Socket            -- ^ Socket
+        -> [(Ptr Word8,Int)] -- ^ A list of a pair of buffer and its size
+                             --   If the total length is not large enough,
+                             --   'MSG_TRUNC' is returned
+        -> Int       -- ^ The buffer size for control messages.
+                     --   If the length is not large enough,
+                     --   'MSG_CTRUNC' is returned
+        -> MsgFlag   -- ^ Message flags
+        -> IO (SockAddr,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
+recvBufMsg _ [] _ _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
+recvBufMsg s bufsizs clen flags = do
+  withNewSocketAddress $ \addrPtr addrSize ->
+    allocaBytes clen $ \ctrlPtr ->
+      withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+              , msgIov     = iovsPtr
+              , msgIovLen  = fromIntegral iovsLen
+              , msgCtrl    = castPtr ctrlPtr
+              , msgCtrlLen = fromIntegral clen
+              , msgFlags   = 0
+              }
+            cflags = fromMsgFlag flags
+        withFdSocket s $ \fd -> do
+          with msgHdr $ \msgHdrPtr -> do
+            len <- fromIntegral <$> throwSocketErrorWaitRead s "Network.Socket.ByteString.recvmg" (c_recvmsg fd msgHdrPtr cflags)
+            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
+            hdr <- peek msgHdrPtr
+            cmsgs <- parseCmsgs msgHdrPtr
+            let flags' = MsgFlag $ msgFlags hdr
+            return (sockaddr, len, cmsgs, flags')
+
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
@@ -193,3 +266,8 @@ foreign import CALLCONV SAFE_ON_WIN "sendto"
   c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
+
+foreign import ccall unsafe "sendmsg"
+  c_sendmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CInt -- fixme CSsize
+foreign import ccall unsafe "recvmsg"
+  c_recvmsg :: CInt -> Ptr MsgHdr -> CInt -> IO CInt

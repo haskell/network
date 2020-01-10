@@ -205,7 +205,28 @@ module Network.Socket
     , recvBuf
     , sendBufTo
     , recvBufFrom
-
+    -- ** IO with ancillary data
+    , sendBufMsg
+    , recvBufMsg
+    , MsgFlag(MSG_OOB,MSG_DONTROUTE,MSG_PEEK,MSG_EOR,MSG_TRUNC,MSG_CTRUNC,MSG_WAITALL)
+    , Cmsg(..)
+    -- ** Ancillary data
+    , Ancillary(..)
+    , AncillaryID
+    , ancillaryIPv4TTL
+    , ancillaryIPv6HopLimit
+    , ancillaryIPv4TOS
+    , ancillaryIPv6TClass
+    , ancillaryIPv4PktInfo
+    , ancillaryIPv6PktInfo
+    , lookupAncillary
+    -- ** Types
+    , IPv4TTL(..)
+    , IPv6HopLimit(..)
+    , IPv4TOS(..)
+    , IPv6TClass(..)
+    , IPv4PktInfo(..)
+    , IPv6PktInfo(..)
     -- * Special constants
     , maxListenQueue
     ) where
@@ -213,12 +234,15 @@ module Network.Socket
 import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
 import Network.Socket.Cbits
 import Network.Socket.Fcntl
+import Network.Socket.Flag
 import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
+import Network.Socket.Posix.Ancillary
+import Network.Socket.Posix.Cmsg
 import Network.Socket.Shutdown
 import Network.Socket.SockAddr
 import Network.Socket.Syscall hiding (connect, bind, accept)
