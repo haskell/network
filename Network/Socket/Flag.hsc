@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -5,17 +6,22 @@
 
 module Network.Socket.Flag where
 
+import qualified Data.Semigroup as Sem
+
 import Network.Socket.Imports
 
 -- | Message flags. To combine flags, use '(<>)'.
 newtype MsgFlag = MsgFlag { fromMsgFlag :: CInt }
                 deriving (Show, Eq, Ord, Num, Bits)
 
-instance Semigroup MsgFlag where
-  (<>) = (.|.)
+instance Sem.Semigroup MsgFlag where
+    (<>) = (.|.)
 
 instance Monoid MsgFlag where
-  mempty = 0
+    mempty = 0
+#if !(MIN_VERSION_base(4,11,0))
+    mappend = (Sem.<>)
+#endif
 
 -- | Send or receive OOB(out-of-bound) data.
 pattern MSG_OOB :: MsgFlag
