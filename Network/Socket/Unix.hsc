@@ -37,7 +37,7 @@ import Network.Socket.Fcntl
 import Network.Socket.Internal
 #endif
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
-import Network.Socket.Options (c_getsockopt)
+import Network.Socket.Options (getSockOpt)
 #endif
 
 -- | Getting process ID, user ID and group ID for UNIX-domain sockets.
