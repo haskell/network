@@ -212,7 +212,9 @@ module Network.Socket
     , Cmsg(..)
     -- ** Ancillary data
     , Ancillary(..)
-    , AncillaryID
+    , AncillaryId
+    , ancillaryEncode
+    , ancillaryDecode
     , ancillaryIPv4TTL
     , ancillaryIPv6HopLimit
     , ancillaryIPv4TOS

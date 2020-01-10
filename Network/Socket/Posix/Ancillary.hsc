@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.Socket.Posix.Ancillary where
@@ -20,10 +21,10 @@ import Network.Socket.Types
 ----------------------------------------------------------------
 
 -- | Identifier of ancillary data. A pair of level and type.
-type AncillaryID = (CInt, CInt)
+type AncillaryId = (CInt, CInt)
 
 -- | The identifier for 'IPv4TTL'.
-ancillaryIPv4TTL :: AncillaryID
+ancillaryIPv4TTL :: AncillaryId
 #if defined(darwin_HOST_OS)
 ancillaryIPv4TTL = ((#const IPPROTO_IP), (#const IP_RECVTTL))
 #else
@@ -31,11 +32,11 @@ ancillaryIPv4TTL = ((#const IPPROTO_IP), (#const IP_TTL))
 #endif
 
 -- | The identifier for 'IPv6HopLimit'.
-ancillaryIPv6HopLimit :: AncillaryID
+ancillaryIPv6HopLimit :: AncillaryId
 ancillaryIPv6HopLimit = ((#const IPPROTO_IPV6), (#const IPV6_HOPLIMIT))
 
 -- | The identifier for 'IPv4TOS'.
-ancillaryIPv4TOS :: AncillaryID
+ancillaryIPv4TOS :: AncillaryId
 #if defined(darwin_HOST_OS)
 ancillaryIPv4TOS = ((#const IPPROTO_IP), (#const IP_RECVTOS))
 #else
@@ -43,19 +44,19 @@ ancillaryIPv4TOS = ((#const IPPROTO_IP), (#const IP_TOS))
 #endif
 
 -- | The identifier for 'IPv6TClass'.
-ancillaryIPv6TClass :: AncillaryID
+ancillaryIPv6TClass :: AncillaryId
 ancillaryIPv6TClass = ((#const IPPROTO_IPV6), (#const IPV6_TCLASS))
 
 -- | The identifier for 'IPv4PktInfo'.
-ancillaryIPv4PktInfo :: AncillaryID
+ancillaryIPv4PktInfo :: AncillaryId
 ancillaryIPv4PktInfo = ((#const IPPROTO_IP), (#const IP_PKTINFO))
 
 -- | The identifier for 'IPv6PktInfo'.
-ancillaryIPv6PktInfo :: AncillaryID
+ancillaryIPv6PktInfo :: AncillaryId
 ancillaryIPv6PktInfo = ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
 
 -- | The identifier for 'Fd'.
-ancillaryFd :: AncillaryID
+ancillaryFd :: AncillaryId
 ancillaryFd = ((#const SOL_SOCKET), (#const SCM_RIGHTS))
 
 ----------------------------------------------------------------
@@ -63,7 +64,7 @@ ancillaryFd = ((#const SOL_SOCKET), (#const SCM_RIGHTS))
 -- | Looking up ancillary data. The following shows an example usage:
 --
 -- > (lookupAncillary ancillaryIPv4TOS cmsgs >>= ancillaryDecode) :: Maybe IPv4TOS
-lookupAncillary :: AncillaryID -> [Cmsg] -> Maybe Cmsg
+lookupAncillary :: AncillaryId -> [Cmsg] -> Maybe Cmsg
 lookupAncillary _   [] = Nothing
 lookupAncillary aid (cmsg@(Cmsg cid _):cmsgs)
   | aid == cid = Just cmsg
@@ -72,121 +73,81 @@ lookupAncillary aid (cmsg@(Cmsg cid _):cmsgs)
 ----------------------------------------------------------------
 
 -- | A class to encode and decode ancillary data.
-class Ancillary a where
-    ancillaryEncode :: a -> Cmsg
-    ancillaryDecode :: Cmsg -> Maybe a
+class Storable a => Ancillary a where
+    ancillaryId :: a -> AncillaryId
 
-----------------------------------------------------------------
-
-packCInt :: CInt -> ByteString
-packCInt n = unsafeDupablePerformIO $ create siz $ \p0 -> do
-    let p = castPtr p0 :: Ptr CInt
-    poke p n
+ancillaryEncode :: Ancillary a => a -> Cmsg
+ancillaryEncode x = unsafeDupablePerformIO $ do
+    bs <- create siz $ \p0 -> do
+        let p = castPtr p0
+        poke p x
+    return $ Cmsg (ancillaryId x) bs
   where
-    siz = (#size int)
+    siz = sizeOf x
 
-unpackCInt :: ByteString -> Maybe CInt
-unpackCInt (PS fptr off len)
+ancillaryDecode :: forall a . Storable a => Cmsg -> Maybe a
+ancillaryDecode (Cmsg _ (PS fptr off len))
   | len < siz = Nothing
   | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
-        let p = castPtr (p0 `plusPtr` off) :: Ptr CInt
+        let p = castPtr (p0 `plusPtr` off)
         Just <$> peek p
   where
-    siz = (#size int)
-
-packCChar :: CChar -> ByteString
-packCChar n = unsafeDupablePerformIO $ create siz $ \p0 -> do
-    let p = castPtr p0 :: Ptr CChar
-    poke p n
-  where
-    siz = (#size char)
-
-unpackCChar :: ByteString -> Maybe CChar
-unpackCChar (PS fptr off len)
-  | len < siz = Nothing
-  | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
-        let p = castPtr (p0 `plusPtr` off) :: Ptr CChar
-        Just <$> peek p
-  where
-    siz = (#size char)
+    siz = sizeOf (undefined :: a)
 
 ----------------------------------------------------------------
 
 -- | Time to live of IPv4.
-newtype IPv4TTL = IPv4TTL Int deriving (Eq, Show)
+newtype IPv4TTL = IPv4TTL CChar deriving (Eq, Show, Storable)
 
 instance Ancillary IPv4TTL where
-#if defined(darwin_HOST_OS)
-    ancillaryEncode (IPv4TTL ttl) = Cmsg ancillaryIPv4TTL $ packCChar $ fromIntegral ttl
-#else
-    ancillaryEncode (IPv4TTL ttl) = Cmsg ancillaryIPv4TTL $ packCInt $ fromIntegral ttl
-#endif
-#if defined(darwin_HOST_OS)
-    ancillaryDecode (Cmsg _ bs)   = IPv4TTL . fromIntegral <$> unpackCChar bs
-#else
-    ancillaryDecode (Cmsg _ bs)   = IPv4TTL . fromIntegral <$> unpackCInt bs
-#endif
+    ancillaryId _ = ancillaryIPv4TTL
 
 ----------------------------------------------------------------
 
 -- | Hop limit of IPv6.
-newtype IPv6HopLimit = IPv6HopLimit Int deriving (Eq, Show)
+newtype IPv6HopLimit = IPv6HopLimit CInt deriving (Eq, Show, Storable)
 
 instance Ancillary IPv6HopLimit where
-    ancillaryEncode (IPv6HopLimit ttl) = Cmsg ancillaryIPv6HopLimit $ packCInt $ fromIntegral ttl
-    ancillaryDecode (Cmsg _ bs)        = IPv6HopLimit . fromIntegral <$> unpackCInt bs
+    ancillaryId _ = ancillaryIPv6HopLimit
 
 ----------------------------------------------------------------
 
 -- | TOS of IPv4.
-newtype IPv4TOS = IPv4TOS Int deriving (Eq, Show)
+newtype IPv4TOS = IPv4TOS CChar deriving (Eq, Show, Storable)
 
 instance Ancillary IPv4TOS where
-    ancillaryEncode (IPv4TOS ttl) = Cmsg ancillaryIPv4TOS $ packCChar $ fromIntegral ttl
-    ancillaryDecode (Cmsg _ bs)   = IPv4TOS . fromIntegral <$> unpackCChar bs
+    ancillaryId _ = ancillaryIPv4TOS
 
 ----------------------------------------------------------------
 
 -- | Traffic class of IPv6.
-newtype IPv6TClass = IPv6TClass Int deriving (Eq, Show)
+newtype IPv6TClass = IPv6TClass CInt deriving (Eq, Show, Storable)
 
 instance Ancillary IPv6TClass where
-    ancillaryEncode (IPv6TClass ttl) = Cmsg ancillaryIPv6TClass $ packCInt $ fromIntegral ttl
-    ancillaryDecode (Cmsg _ bs)      = IPv6TClass . fromIntegral <$> unpackCInt bs
+    ancillaryId _ = ancillaryIPv6TClass
 
 ----------------------------------------------------------------
 
 -- | Network interface ID and local IPv4 address.
-data IPv4PktInfo = IPv4PktInfo Int HostAddress deriving (Eq)
+data IPv4PktInfo = IPv4PktInfo CInt HostAddress deriving (Eq)
 
 instance Show IPv4PktInfo where
     show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
 
 instance Ancillary IPv4PktInfo where
-    ancillaryEncode pktinfo = Cmsg ancillaryIPv4PktInfo $ packIPv4PktInfo pktinfo
-    ancillaryDecode (Cmsg _ bs) = unpackIPv4PktInfo bs
+    ancillaryId _ = ancillaryIPv4PktInfo
 
-{-# NOINLINE packIPv4PktInfo #-}
-packIPv4PktInfo :: IPv4PktInfo -> ByteString
-packIPv4PktInfo (IPv4PktInfo n ha) = unsafeDupablePerformIO $
-    create siz $ \p -> do
+instance Storable IPv4PktInfo where
+    sizeOf _ = (#size struct in_pktinfo)
+    alignment = undefined
+    poke p (IPv4PktInfo n ha) = do
         (#poke struct in_pktinfo, ipi_ifindex)  p (fromIntegral n :: CInt)
         (#poke struct in_pktinfo, ipi_spec_dst) p (0 :: CInt)
         (#poke struct in_pktinfo, ipi_addr)     p ha
-  where
-    siz = (#size struct in_pktinfo)
-
-{-# NOINLINE unpackIPv4PktInfo #-}
-unpackIPv4PktInfo :: ByteString -> Maybe IPv4PktInfo
-unpackIPv4PktInfo (PS fptr off len)
-  | len < siz = Nothing
-  | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
-        let p = p0 `plusPtr` off
+    peek p = do
         n  <- (#peek struct in_pktinfo, ipi_ifindex) p
         ha <- (#peek struct in_pktinfo, ipi_addr)    p
-        return $ Just $ IPv4PktInfo n ha
-  where
-    siz = (#size struct in_pktinfo)
+        return $ IPv4PktInfo n ha
 
 ----------------------------------------------------------------
 
@@ -197,32 +158,20 @@ instance Show IPv6PktInfo where
     show (IPv6PktInfo n ha6) = "IPv6PktInfo " ++ show n ++ " " ++ show (hostAddress6ToTuple ha6)
 
 instance Ancillary IPv6PktInfo where
-    ancillaryEncode pktinfo = Cmsg ancillaryIPv6PktInfo $ packIPv6PktInfo pktinfo
-    ancillaryDecode (Cmsg _ bs) = unpackIPv6PktInfo bs
+    ancillaryId _ = ancillaryIPv6PktInfo
 
-{-# NOINLINE packIPv6PktInfo #-}
-packIPv6PktInfo :: IPv6PktInfo -> ByteString
-packIPv6PktInfo (IPv6PktInfo n ha6) = unsafeDupablePerformIO $
-    create siz $ \p -> do
+instance Storable IPv6PktInfo where
+    sizeOf _ = (#size struct in6_pktinfo)
+    alignment = undefined
+    poke p (IPv6PktInfo n ha6) = do
         (#poke struct in6_pktinfo, ipi6_ifindex) p (fromIntegral n :: CInt)
         (#poke struct in6_pktinfo, ipi6_addr)    p (In6Addr ha6)
-  where
-    siz = (#size struct in6_pktinfo)
-
-{-# NOINLINE unpackIPv6PktInfo #-}
-unpackIPv6PktInfo :: ByteString -> Maybe IPv6PktInfo
-unpackIPv6PktInfo (PS fptr off len)
-  | len < siz = Nothing
-  | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
-        let p = p0 `plusPtr` off
+    peek p = do
         In6Addr ha6 <- (#peek struct in6_pktinfo, ipi6_addr)    p
         n :: CInt   <- (#peek struct in6_pktinfo, ipi6_ifindex) p
-        return $ Just $ IPv6PktInfo (fromIntegral n) ha6
-  where
-    siz = (#size struct in6_pktinfo)
+        return $ IPv6PktInfo (fromIntegral n) ha6
 
 ----------------------------------------------------------------
 
 instance Ancillary Fd where
-    ancillaryEncode (Fd fd)     = Cmsg ancillaryFd $ packCInt $ fromIntegral fd
-    ancillaryDecode (Cmsg _ bs) = Fd . fromIntegral <$> unpackCInt bs
+    ancillaryId _ = ancillaryFd
