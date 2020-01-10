@@ -131,7 +131,8 @@ module Network.Socket
     , ShutdownCmd(..)
 
     -- * Socket options
-    , SocketOption(Debug,ReuseAddr,Type,SoError,DontRoute,Broadcast
+    , SocketOption(SockOpt
+                  ,Debug,ReuseAddr,Type,SoError,DontRoute,Broadcast
                   ,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
                   ,MaxSegment,NoDelay,Cork,Linger,ReusePort
                   ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
