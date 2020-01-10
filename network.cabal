@@ -43,7 +43,7 @@ extra-source-files:
   configure.ac configure
   include/HsNetworkConfig.h.in include/HsNet.h include/HsNetDef.h
   -- C sources only used on some systems
-  cbits/ancilData.c cbits/asyncAccept.c cbits/initWinSock.c
+  cbits/asyncAccept.c cbits/initWinSock.c
   cbits/winSockErr.c cbits/cmsg.c
 homepage:       https://github.com/haskell/network
 bug-reports:    https://github.com/haskell/network/issues
@@ -102,7 +102,7 @@ library
       Network.Socket.Posix.Cmsg
       Network.Socket.Posix.IOVec
       Network.Socket.Posix.MsgHdr
-    c-sources: cbits/ancilData.c cbits/cmsg.c
+    c-sources: cbits/cmsg.c
 
   if os(solaris)
     extra-libraries: nsl, socket

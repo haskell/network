@@ -193,7 +193,6 @@ sendBufMsg :: SocketAddress sa
            -> [Cmsg]            -- ^ Control messages
            -> MsgFlag           -- ^ Message flags
            -> IO Int            -- ^ The length actually sent
-sendBufMsg _ _    []  _ _ = return 0
 sendBufMsg s sa bufsizs cmsgs flags = do
   sz <- withSocketAddress sa $ \addrPtr addrSize ->
     withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
@@ -210,7 +209,7 @@ sendBufMsg s sa bufsizs cmsgs flags = do
             cflags = fromMsgFlag flags
         withFdSocket s $ \fd ->
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMsg" $
+            throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
               c_sendmsg fd msgHdrPtr cflags
   return $ fromIntegral sz
 
@@ -225,7 +224,6 @@ recvBufMsg :: SocketAddress sa
                                 --   'MSG_CTRUNC' is returned
            -> MsgFlag           -- ^ Message flags
            -> IO (sa,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
-recvBufMsg _ [] _ _ = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recvMsg")
 recvBufMsg s bufsizs clen flags = do
   withNewSocketAddress $ \addrPtr addrSize ->
     allocaBytes clen $ \ctrlPtr ->
@@ -242,7 +240,7 @@ recvBufMsg s bufsizs clen flags = do
             cflags = fromMsgFlag flags
         withFdSocket s $ \fd -> do
           with msgHdr $ \msgHdrPtr -> do
-            len <- fromIntegral <$> throwSocketErrorWaitRead s "Network.Socket.ByteString.recvmg" (c_recvmsg fd msgHdrPtr cflags)
+            len <- fromIntegral <$> throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" (c_recvmsg fd msgHdrPtr cflags)
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
             cmsgs <- parseCmsgs msgHdrPtr

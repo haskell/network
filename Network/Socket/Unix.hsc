@@ -13,7 +13,11 @@ module Network.Socket.Unix (
   , getPeerEid
   ) where
 
+import System.Posix.Types (Fd(..))
+
+import Network.Socket.Buffer
 import Network.Socket.Imports
+import Network.Socket.Posix.Ancillary
 import Network.Socket.Types
 
 #if defined(HAVE_GETPEEREID)
@@ -122,15 +126,23 @@ isUnixDomainSocketAvailable = True
 isUnixDomainSocketAvailable = False
 #endif
 
+data NullSockAddr = NullSockAddr
+
+instance SocketAddress NullSockAddr where
+    sizeOfSocketAddress _ = 0
+    peekSocketAddress _   = return NullSockAddr
+    pokeSocketAddress _ _ = return ()
+
 -- | Send a file descriptor over a UNIX-domain socket.
 --   Use this function in the case where 'isUnixDomainSocketAvailable' is
 --  'True'.
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
-sendFd s outfd = void $ do
-  withFdSocket s $ \fd ->
-    throwSocketErrorWaitWrite s "Network.Socket.sendFd" $ c_sendFd fd outfd
-foreign import ccall SAFE_ON_WIN "sendFd" c_sendFd :: CInt -> CInt -> IO CInt
+sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
+    let cmsg = ancillaryEncode $ Fd outfd
+    sendBufMsg s NullSockAddr [(buf,dummyBufSize)] [cmsg] mempty
+  where
+    dummyBufSize = 1
 #else
 sendFd _ _ = error "Network.Socket.sendFd"
 #endif
@@ -142,10 +154,13 @@ sendFd _ _ = error "Network.Socket.sendFd"
 --  'True'.
 recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
-recvFd s = do
-  withFdSocket s $ \fd ->
-    throwSocketErrorWaitRead s "Network.Socket.recvFd" $ c_recvFd fd
-foreign import ccall SAFE_ON_WIN "recvFd" c_recvFd :: CInt -> IO CInt
+recvFd s = allocaBytes dummyBufSize $ \buf -> do
+    (NullSockAddr, _, cmsgs, _) <- recvBufMsg s [(buf,dummyBufSize)] 32 mempty
+    case (lookupAncillary ancillaryFd cmsgs >>= ancillaryDecode) :: Maybe Fd of
+      Nothing      -> return (-1)
+      Just (Fd fd) -> return fd
+  where
+    dummyBufSize = 16
 #else
 recvFd _ = error "Network.Socket.recvFd"
 #endif

@@ -11,6 +11,7 @@ module Network.Socket.Posix.Ancillary where
 import Data.ByteString.Internal
 import Foreign.ForeignPtr
 import System.IO.Unsafe (unsafeDupablePerformIO)
+import System.Posix.Types (Fd(..))
 
 import Network.Socket.Imports
 import Network.Socket.Posix.Cmsg
@@ -52,6 +53,10 @@ ancillaryIPv4PktInfo = ((#const IPPROTO_IP), (#const IP_PKTINFO))
 -- | The identifier for 'IPv6PktInfo'.
 ancillaryIPv6PktInfo :: AncillaryID
 ancillaryIPv6PktInfo = ((#const IPPROTO_IPV6), (#const IPV6_PKTINFO))
+
+-- | The identifier for 'Fd'.
+ancillaryFd :: AncillaryID
+ancillaryFd = ((#const SOL_SOCKET), (#const SCM_RIGHTS))
 
 ----------------------------------------------------------------
 
@@ -215,3 +220,9 @@ unpackIPv6PktInfo (PS fptr off len)
         return $ Just $ IPv6PktInfo (fromIntegral n) ha6
   where
     siz = (#size struct in6_pktinfo)
+
+----------------------------------------------------------------
+
+instance Ancillary Fd where
+    ancillaryEncode (Fd fd)     = Cmsg ancillaryFd $ packCInt $ fromIntegral fd
+    ancillaryDecode (Cmsg _ bs) = Fd . fromIntegral <$> unpackCInt bs

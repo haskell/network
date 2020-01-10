@@ -36,6 +36,7 @@ instance Storable IOVec where
 -- IOVec made from @cs@ and the number of pointers (@length cs@).
 -- /Unix only/.
 withIOVec :: [(Ptr Word8, Int)] -> ((Ptr IOVec, Int) -> IO a) -> IO a
+withIOVec [] f = f (nullPtr, 0)
 withIOVec cs f =
     allocaArray csLen $ \aPtr -> do
         zipWithM_ pokeIov (ptrs aPtr) cs
