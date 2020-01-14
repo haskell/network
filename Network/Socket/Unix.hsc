@@ -75,7 +75,7 @@ getPeerCredential _ = return (Nothing, Nothing, Nothing)
 getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 getPeerCred s = do
-    let opt = SockOpt ((#const SOL_SOCKET),(#const SO_PEERCRED))
+    let opt = SockOpt (#const SOL_SOCKET) (#const SO_PEERCRED)
     PeerCred cred <- getSockOpt s opt
     return cred
 
