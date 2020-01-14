@@ -17,7 +17,7 @@ import System.Posix.Types (Fd(..))
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
-import Network.Socket.Posix.Ancillary
+import Network.Socket.Posix.Cmsg
 import Network.Socket.Types
 
 #if defined(HAVE_GETPEEREID)
@@ -141,7 +141,7 @@ instance SocketAddress NullSockAddr where
 sendFd :: Socket -> CInt -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
-    let cmsg = ancillaryEncode $ Fd outfd
+    let cmsg = encodeCmsg $ Fd outfd
     sendBufMsg s NullSockAddr [(buf,dummyBufSize)] [cmsg] mempty
   where
     dummyBufSize = 1
@@ -158,7 +158,7 @@ recvFd :: Socket -> IO CInt
 #if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd s = allocaBytes dummyBufSize $ \buf -> do
     (NullSockAddr, _, cmsgs, _) <- recvBufMsg s [(buf,dummyBufSize)] 32 mempty
-    case (lookupAncillary ancillaryFd cmsgs >>= ancillaryDecode) :: Maybe Fd of
+    case (lookupCmsg CmsgIdFd cmsgs >>= decodeCmsg) :: Maybe Fd of
       Nothing      -> return (-1)
       Just (Fd fd) -> return fd
   where

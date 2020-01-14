@@ -214,24 +214,25 @@ module Network.Socket
     , recvBuf
     , sendBufTo
     , recvBufFrom
-    -- ** IO with ancillary data
+    -- ** Advanced IO
     , sendBufMsg
     , recvBufMsg
     , MsgFlag(MSG_OOB,MSG_DONTROUTE,MSG_PEEK,MSG_EOR,MSG_TRUNC,MSG_CTRUNC,MSG_WAITALL)
+    -- ** Control message (ancillary data)
     , Cmsg(..)
-    -- ** Ancillary data
-    , Ancillary(..)
-    , AncillaryId
-    , ancillaryEncode
-    , ancillaryDecode
-    , ancillaryIPv4TTL
-    , ancillaryIPv6HopLimit
-    , ancillaryIPv4TOS
-    , ancillaryIPv6TClass
-    , ancillaryIPv4PktInfo
-    , ancillaryIPv6PktInfo
-    , lookupAncillary
-    -- ** Types
+    , CmsgId(CmsgId
+            ,CmsgIdIPv4TTL
+            ,CmsgIdIPv6HopLimit
+            ,CmsgIdIPv4TOS
+            ,CmsgIdIPv6TClass
+            ,CmsgIdIPv4PktInfo
+            ,CmsgIdIPv6PktInfo)
+    -- ** APIs for control message
+    , lookupCmsg
+    , decodeCmsg
+    , encodeCmsg
+    -- ** Class and yypes for control message
+    , ControlMessage(..)
     , IPv4TTL(..)
     , IPv6HopLimit(..)
     , IPv4TOS(..)
@@ -252,7 +253,6 @@ import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
-import Network.Socket.Posix.Ancillary
 import Network.Socket.Posix.Cmsg
 import Network.Socket.Shutdown
 import Network.Socket.SockAddr

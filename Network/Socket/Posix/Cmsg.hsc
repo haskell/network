@@ -1,107 +1,186 @@
-{-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
+module Network.Socket.Posix.Cmsg where
 
 #include "HsNet.h"
-
-module Network.Socket.Posix.Cmsg (
-    Cmsg(..)
-  , withCmsgs
-  , parseCmsgs
-  ) where
 
 #include <sys/types.h>
 #include <sys/socket.h>
 
-import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.ForeignPtr
-import qualified Data.ByteString as B
 import Data.ByteString.Internal
+import Foreign.ForeignPtr
+import System.IO.Unsafe (unsafeDupablePerformIO)
+import System.Posix.Types (Fd(..))
 
 import Network.Socket.Imports
-import Network.Socket.Posix.MsgHdr
 import Network.Socket.Types
 
--- | Control message including a pair of level and type.
+-- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
-    cmsgLevelType :: (CInt,CInt)
-  , cmsgBody      :: ByteString
+    cmsgId   :: CmsgId
+  , cmsgData :: ByteString
   } deriving (Eq, Show)
 
-data CmsgHdr = CmsgHdr {
-    cmsgHdrLen   :: !CInt
-  , cmsgHdrLevel :: !CInt
-  , cmsgHdrType  :: !CInt
+----------------------------------------------------------------
+
+-- | Identifier of control message (ancillary data).
+data CmsgId = CmsgId {
+    cmsgLevel :: CInt
+  , cmsglType :: CInt
   } deriving (Eq, Show)
 
-instance Storable CmsgHdr where
-  sizeOf _    = (#size struct cmsghdr)
-  alignment _ = alignment (undefined :: CInt)
+-- | The identifier for 'IPv4TTL'.
+pattern CmsgIdIPv4TTL :: CmsgId
+#if defined(darwin_HOST_OS)
+pattern CmsgIdIPv4TTL = CmsgId (#const IPPROTO_IP) (#const IP_RECVTTL)
+#else
+pattern CmsgIdIPv4TTL = CmsgId (#const IPPROTO_IP) (#const IP_TTL)
+#endif
 
-  peek p = do
-    len <- (#peek struct cmsghdr, cmsg_len)   p
-    lvl <- (#peek struct cmsghdr, cmsg_level) p
-    typ <- (#peek struct cmsghdr, cmsg_type)  p
-    return $ CmsgHdr len lvl typ
+-- | The identifier for 'IPv6HopLimit'.
+pattern CmsgIdIPv6HopLimit :: CmsgId
+pattern CmsgIdIPv6HopLimit = CmsgId (#const IPPROTO_IPV6) (#const IPV6_HOPLIMIT)
 
-  poke p (CmsgHdr len lvl typ) = do
-    zeroMemory p (#size struct cmsghdr)
-    (#poke struct cmsghdr, cmsg_len)   p len
-    (#poke struct cmsghdr, cmsg_level) p lvl
-    (#poke struct cmsghdr, cmsg_type)  p typ
+-- | The identifier for 'IPv4TOS'.
+pattern CmsgIdIPv4TOS :: CmsgId
+#if defined(darwin_HOST_OS)
+pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_RECVTOS)
+#else
+pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_TOS)
+#endif
 
-withCmsgs :: [Cmsg] -> (Ptr CmsgHdr -> Int -> IO a) -> IO a
-withCmsgs cmsgs0 action
-  | total == 0 = action nullPtr 0
-  | otherwise  = allocaBytes total $ \ctrlPtr -> do
-        loop ctrlPtr cmsgs0 spaces
-        action ctrlPtr total
+-- | The identifier for 'IPv6TClass'.
+pattern CmsgIdIPv6TClass :: CmsgId
+pattern CmsgIdIPv6TClass = CmsgId (#const IPPROTO_IPV6) (#const IPV6_TCLASS)
+
+-- | The identifier for 'IPv4PktInfo'.
+pattern CmsgIdIPv4PktInfo :: CmsgId
+pattern CmsgIdIPv4PktInfo = CmsgId (#const IPPROTO_IP) (#const IP_PKTINFO)
+
+-- | The identifier for 'IPv6PktInfo'.
+pattern CmsgIdIPv6PktInfo :: CmsgId
+pattern CmsgIdIPv6PktInfo = CmsgId (#const IPPROTO_IPV6) (#const IPV6_PKTINFO)
+
+-- | The identifier for 'Fd'.
+pattern CmsgIdFd :: CmsgId
+pattern CmsgIdFd = CmsgId (#const SOL_SOCKET) (#const SCM_RIGHTS)
+
+----------------------------------------------------------------
+
+-- | Looking up control message. The following shows an example usage:
+--
+-- > (lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS
+lookupCmsg :: CmsgId -> [Cmsg] -> Maybe Cmsg
+lookupCmsg _   [] = Nothing
+lookupCmsg aid (cmsg@(Cmsg cid _):cmsgs)
+  | aid == cid = Just cmsg
+  | otherwise  = lookupCmsg aid cmsgs
+
+----------------------------------------------------------------
+
+-- | A class to encode and decode control message.
+class Storable a => ControlMessage a where
+    controlMessageId :: a -> CmsgId
+
+encodeCmsg :: ControlMessage a => a -> Cmsg
+encodeCmsg x = unsafeDupablePerformIO $ do
+    bs <- create siz $ \p0 -> do
+        let p = castPtr p0
+        poke p x
+    return $ Cmsg (controlMessageId x) bs
   where
-    loop ctrlPtr (cmsg:cmsgs) (s:ss) = do
-        encodeCmsg ctrlPtr cmsg
-        let nextPtr = ctrlPtr `plusPtr` s
-        loop nextPtr cmsgs ss
-    loop _ _ _ = return ()
-    cmsg_space = fromIntegral . c_cmsg_space . fromIntegral
-    spaces = map (cmsg_space . B.length . cmsgBody) cmsgs0
-    total = sum spaces
+    siz = sizeOf x
 
-encodeCmsg :: Ptr CmsgHdr -> Cmsg -> IO ()
-encodeCmsg ctrlPtr (Cmsg (lvl,typ) (PS fptr off len)) = do
-    poke ctrlPtr $ CmsgHdr (c_cmsg_len (fromIntegral len)) lvl typ
-    withForeignPtr fptr $ \src0 -> do
-        let src = src0 `plusPtr` off
-        dst <- c_cmsg_data ctrlPtr
-        memcpy dst src len
-
-parseCmsgs :: SocketAddress sa => Ptr (MsgHdr sa) -> IO [Cmsg]
-parseCmsgs msgptr = do
-    ptr <- c_cmsg_firsthdr msgptr
-    loop ptr id
+decodeCmsg :: forall a . Storable a => Cmsg -> Maybe a
+decodeCmsg (Cmsg _ (PS fptr off len))
+  | len < siz = Nothing
+  | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
+        let p = castPtr (p0 `plusPtr` off)
+        Just <$> peek p
   where
-    loop ptr build
-      | ptr == nullPtr = return $ build []
-      | otherwise = do
-            cmsg <- decodeCmsg ptr
-            nextPtr <- c_cmsg_nxthdr msgptr ptr
-            loop nextPtr (build . (cmsg :))
+    siz = sizeOf (undefined :: a)
 
-decodeCmsg :: Ptr CmsgHdr -> IO Cmsg
-decodeCmsg ptr = do
-    CmsgHdr len lvl typ <- peek ptr
-    src <- c_cmsg_data ptr
-    let siz = fromIntegral len - (src `minusPtr` ptr)
-    Cmsg (lvl,typ) <$> create (fromIntegral siz) (\dst -> memcpy dst src siz)
+----------------------------------------------------------------
 
-foreign import ccall unsafe "cmsg_firsthdr"
-  c_cmsg_firsthdr :: Ptr (MsgHdr sa) -> IO (Ptr CmsgHdr)
+-- | Time to live of IPv4.
+newtype IPv4TTL = IPv4TTL CChar deriving (Eq, Show, Storable)
 
-foreign import ccall unsafe "cmsg_nxthdr"
-  c_cmsg_nxthdr :: Ptr (MsgHdr sa) -> Ptr CmsgHdr -> IO (Ptr CmsgHdr)
+instance ControlMessage IPv4TTL where
+    controlMessageId _ = CmsgIdIPv4TTL
 
-foreign import ccall unsafe "cmsg_data"
-  c_cmsg_data :: Ptr CmsgHdr -> IO (Ptr Word8)
+----------------------------------------------------------------
 
-foreign import ccall unsafe "cmsg_space"
-  c_cmsg_space :: CInt -> CInt
+-- | Hop limit of IPv6.
+newtype IPv6HopLimit = IPv6HopLimit CInt deriving (Eq, Show, Storable)
 
-foreign import ccall unsafe "cmsg_len"
-  c_cmsg_len :: CInt -> CInt
+instance ControlMessage IPv6HopLimit where
+    controlMessageId _ = CmsgIdIPv6HopLimit
+
+----------------------------------------------------------------
+
+-- | TOS of IPv4.
+newtype IPv4TOS = IPv4TOS CChar deriving (Eq, Show, Storable)
+
+instance ControlMessage IPv4TOS where
+    controlMessageId _ = CmsgIdIPv4TOS
+
+----------------------------------------------------------------
+
+-- | Traffic class of IPv6.
+newtype IPv6TClass = IPv6TClass CInt deriving (Eq, Show, Storable)
+
+instance ControlMessage IPv6TClass where
+    controlMessageId _ = CmsgIdIPv6TClass
+
+----------------------------------------------------------------
+
+-- | Network interface ID and local IPv4 address.
+data IPv4PktInfo = IPv4PktInfo CInt HostAddress deriving (Eq)
+
+instance Show IPv4PktInfo where
+    show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
+
+instance ControlMessage IPv4PktInfo where
+    controlMessageId _ = CmsgIdIPv4PktInfo
+
+instance Storable IPv4PktInfo where
+    sizeOf _ = (#size struct in_pktinfo)
+    alignment = undefined
+    poke p (IPv4PktInfo n ha) = do
+        (#poke struct in_pktinfo, ipi_ifindex)  p (fromIntegral n :: CInt)
+        (#poke struct in_pktinfo, ipi_spec_dst) p (0 :: CInt)
+        (#poke struct in_pktinfo, ipi_addr)     p ha
+    peek p = do
+        n  <- (#peek struct in_pktinfo, ipi_ifindex) p
+        ha <- (#peek struct in_pktinfo, ipi_addr)    p
+        return $ IPv4PktInfo n ha
+
+----------------------------------------------------------------
+
+-- | Network interface ID and local IPv4 address.
+data IPv6PktInfo = IPv6PktInfo Int HostAddress6 deriving (Eq)
+
+instance Show IPv6PktInfo where
+    show (IPv6PktInfo n ha6) = "IPv6PktInfo " ++ show n ++ " " ++ show (hostAddress6ToTuple ha6)
+
+instance ControlMessage IPv6PktInfo where
+    controlMessageId _ = CmsgIdIPv6PktInfo
+
+instance Storable IPv6PktInfo where
+    sizeOf _ = (#size struct in6_pktinfo)
+    alignment = undefined
+    poke p (IPv6PktInfo n ha6) = do
+        (#poke struct in6_pktinfo, ipi6_ifindex) p (fromIntegral n :: CInt)
+        (#poke struct in6_pktinfo, ipi6_addr)    p (In6Addr ha6)
+    peek p = do
+        In6Addr ha6 <- (#peek struct in6_pktinfo, ipi6_addr)    p
+        n :: CInt   <- (#peek struct in6_pktinfo, ipi6_ifindex) p
+        return $ IPv6PktInfo (fromIntegral n) ha6
+
+----------------------------------------------------------------
+
+instance ControlMessage Fd where
+    controlMessageId _ = CmsgIdFd

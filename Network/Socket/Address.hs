@@ -16,7 +16,7 @@ module Network.Socket.Address (
     -- * Sending and receiving data from a buffer
     , sendBufTo
     , recvBufFrom
-    -- * IO with ancillary data
+    -- * Advanced IO
     , sendBufMsg
     , recvBufMsg
     ) where

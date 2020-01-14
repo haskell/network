@@ -234,9 +234,9 @@ spec = do
                     setSocketOption sock RecvIPv4PktInfo 1
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
-                    ((lookupAncillary ancillaryIPv4TTL cmsgs >>= ancillaryDecode) :: Maybe IPv4TTL) `shouldNotBe` Nothing
-                    ((lookupAncillary ancillaryIPv4TOS cmsgs >>= ancillaryDecode) :: Maybe IPv4TOS) `shouldNotBe` Nothing
-                    ((lookupAncillary ancillaryIPv4PktInfo cmsgs >>= ancillaryDecode) :: Maybe IPv4PktInfo) `shouldNotBe` Nothing
+                    ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL) `shouldNotBe` Nothing
+                    ((lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS) `shouldNotBe` Nothing
+                    ((lookupCmsg CmsgIdIPv4PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv4PktInfo) `shouldNotBe` Nothing
                 client sock addr = sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -249,9 +249,9 @@ spec = do
                     setSocketOption sock RecvIPv6PktInfo 1
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
-                    ((lookupAncillary ancillaryIPv6HopLimit cmsgs >>= ancillaryDecode) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
-                    ((lookupAncillary ancillaryIPv6TClass cmsgs >>= ancillaryDecode) :: Maybe IPv6TClass) `shouldNotBe` Nothing
-                    ((lookupAncillary ancillaryIPv6PktInfo cmsgs >>= ancillaryDecode) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
+                    ((lookupCmsg CmsgIdIPv6HopLimit cmsgs >>= decodeCmsg) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
+                    ((lookupCmsg CmsgIdIPv6TClass cmsgs >>= decodeCmsg) :: Maybe IPv6TClass) `shouldNotBe` Nothing
+                    ((lookupCmsg CmsgIdIPv6PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
                 client sock addr = sendTo sock seg addr
 
                 seg = C.pack "This is a test message"

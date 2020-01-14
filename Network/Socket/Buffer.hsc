@@ -31,7 +31,7 @@ import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Types
-import Network.Socket.Posix.Cmsg
+import Network.Socket.Posix.CmsgHdr
 import Network.Socket.Posix.MsgHdr
 import Network.Socket.Posix.IOVec
 import Network.Socket.Flag
