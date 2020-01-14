@@ -20,16 +20,16 @@ import Network.Socket.Types
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
-    cmsgId   :: CmsgId
-  , cmsgData :: ByteString
+    cmsgId   :: !CmsgId
+  , cmsgData :: !ByteString
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
 -- | Identifier of control message (ancillary data).
 data CmsgId = CmsgId {
-    cmsgLevel :: CInt
-  , cmsglType :: CInt
+    cmsgLevel :: !CInt
+  , cmsglType :: !CInt
   } deriving (Eq, Show)
 
 -- | The identifier for 'IPv4TTL'.

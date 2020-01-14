@@ -38,8 +38,8 @@ import Network.Socket.Types
 -- The existence of a constructor does not imply that the relevant option
 -- is supported on your system: see 'isSupportedSocketOption'
 data SocketOption = SockOpt {
-    sockOptLevel :: CInt
-  , sockOptName  :: CInt
+    sockOptLevel :: !CInt
+  , sockOptName  :: !CInt
   } deriving (Eq, Show)
 
 -- | Does the 'SocketOption' exist on this system?
