@@ -106,7 +106,11 @@ decodeCmsg (Cmsg _ (PS fptr off len))
 ----------------------------------------------------------------
 
 -- | Time to live of IPv4.
+#if defined(darwin_HOST_OS)
 newtype IPv4TTL = IPv4TTL CChar deriving (Eq, Show, Storable)
+#else
+newtype IPv4TTL = IPv4TTL CInt deriving (Eq, Show, Storable)
+#endif
 
 instance ControlMessage IPv4TTL where
     controlMessageId _ = CmsgIdIPv4TTL
