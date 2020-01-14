@@ -142,7 +142,7 @@ instance ControlMessage IPv6TClass where
 ----------------------------------------------------------------
 
 -- | Network interface ID and local IPv4 address.
-data IPv4PktInfo = IPv4PktInfo CInt HostAddress deriving (Eq)
+data IPv4PktInfo = IPv4PktInfo Int HostAddress deriving (Eq)
 
 instance Show IPv4PktInfo where
     show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
