@@ -138,8 +138,7 @@ module Network.Socket
                   ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
                   ,UseLoopBack,UserTimeout,IPv6Only
                   ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
-                  ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo
-                  ,CustomSockOpt)
+                  ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
     , isSupportedSocketOption
     , getSocketOption
     , setSocketOption
