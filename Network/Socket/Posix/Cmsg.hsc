@@ -152,7 +152,7 @@ instance ControlMessage IPv4PktInfo where
 
 instance Storable IPv4PktInfo where
     sizeOf _ = (#size struct in_pktinfo)
-    alignment = undefined
+    alignment _ = alignment (undefined :: CInt)
     poke p (IPv4PktInfo n ha) = do
         (#poke struct in_pktinfo, ipi_ifindex)  p (fromIntegral n :: CInt)
         (#poke struct in_pktinfo, ipi_spec_dst) p (0 :: CInt)
@@ -175,7 +175,7 @@ instance ControlMessage IPv6PktInfo where
 
 instance Storable IPv6PktInfo where
     sizeOf _ = (#size struct in6_pktinfo)
-    alignment = undefined
+    alignment _ = alignment (undefined :: CInt)
     poke p (IPv6PktInfo n ha6) = do
         (#poke struct in6_pktinfo, ipi6_ifindex) p (fromIntegral n :: CInt)
         (#poke struct in6_pktinfo, ipi6_addr)    p (In6Addr ha6)
