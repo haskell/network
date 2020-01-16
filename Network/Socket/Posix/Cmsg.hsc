@@ -75,9 +75,13 @@ pattern CmsgIdFd = CmsgId (#const SOL_SOCKET) (#const SCM_RIGHTS)
 -- > (lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS
 lookupCmsg :: CmsgId -> [Cmsg] -> Maybe Cmsg
 lookupCmsg _   [] = Nothing
-lookupCmsg aid (cmsg@(Cmsg cid _):cmsgs)
-  | aid == cid = Just cmsg
-  | otherwise  = lookupCmsg aid cmsgs
+lookupCmsg cid (cmsg:cmsgs)
+  | cmsgId cmsg == cid = Just cmsg
+  | otherwise          = lookupCmsg cid cmsgs
+
+-- | Filtering control message.
+filterCmsg :: CmsgId -> [Cmsg] -> [Cmsg]
+filterCmsg cid cmsgs = filter (\cmsg -> cmsgId cmsg == cid) cmsgs
 
 ----------------------------------------------------------------
 

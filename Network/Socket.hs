@@ -229,6 +229,7 @@ module Network.Socket
             ,CmsgIdIPv6PktInfo)
     -- ** APIs for control message
     , lookupCmsg
+    , filterCmsg
     , decodeCmsg
     , encodeCmsg
     -- ** Class and yypes for control message
