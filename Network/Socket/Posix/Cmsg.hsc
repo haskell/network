@@ -142,10 +142,10 @@ instance ControlMessage IPv6TClass where
 ----------------------------------------------------------------
 
 -- | Network interface ID and local IPv4 address.
-data IPv4PktInfo = IPv4PktInfo Int HostAddress deriving (Eq)
+data IPv4PktInfo = IPv4PktInfo Int HostAddress HostAddress deriving (Eq)
 
 instance Show IPv4PktInfo where
-    show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
+    show (IPv4PktInfo n sa ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple sa) ++ " " ++ show (hostAddressToTuple ha)
 
 instance ControlMessage IPv4PktInfo where
     controlMessageId _ = CmsgIdIPv4PktInfo
@@ -153,14 +153,15 @@ instance ControlMessage IPv4PktInfo where
 instance Storable IPv4PktInfo where
     sizeOf _ = (#size struct in_pktinfo)
     alignment _ = alignment (undefined :: CInt)
-    poke p (IPv4PktInfo n ha) = do
+    poke p (IPv4PktInfo n sa ha) = do
         (#poke struct in_pktinfo, ipi_ifindex)  p (fromIntegral n :: CInt)
-        (#poke struct in_pktinfo, ipi_spec_dst) p (0 :: CInt)
+        (#poke struct in_pktinfo, ipi_spec_dst) p sa
         (#poke struct in_pktinfo, ipi_addr)     p ha
     peek p = do
-        n  <- (#peek struct in_pktinfo, ipi_ifindex) p
-        ha <- (#peek struct in_pktinfo, ipi_addr)    p
-        return $ IPv4PktInfo n ha
+        n  <- (#peek struct in_pktinfo, ipi_ifindex)  p
+        sa <- (#peek struct in_pktinfo, ipi_spec_dst) p
+        ha <- (#peek struct in_pktinfo, ipi_addr)     p
+        return $ IPv4PktInfo n sa ha
 
 ----------------------------------------------------------------
 
