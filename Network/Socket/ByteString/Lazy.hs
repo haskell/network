@@ -8,13 +8,12 @@
 -- Stability   : experimental
 -- Portability : POSIX, GHC
 --
--- This module provides access to the BSD /socket/ interface.  This
--- module is generally more efficient than the 'String' based network
--- functions in 'Network.Socket'.  For detailed documentation, consult
--- your favorite POSIX socket reference. All functions communicate
--- failures by converting the error number to 'System.IO.IOError'.
+-- This module provides access to the BSD /socket/ interface.  For detailed
+-- documentation, consult your favorite POSIX socket reference. All functions
+-- communicate failures by converting the error number to an
+-- 'System.IO.Error.IOError'.
 --
--- This module is made to be imported with 'Network.Socket' like so:
+-- This module is made to be imported with "Network.Socket" like so:
 --
 -- > import Network.Socket
 -- > import Network.Socket.ByteString.Lazy
