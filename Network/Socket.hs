@@ -55,7 +55,7 @@
 -- >     open addr = do
 -- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >         setSocketOption sock ReuseAddr 1
--- >         withFdSocket sock $ setCloseOnExecIfNeeded
+-- >         withFdSocket sock setCloseOnExecIfNeeded
 -- >         bind sock $ addrAddress addr
 -- >         listen sock 1024
 -- >         return sock
