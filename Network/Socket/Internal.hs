@@ -13,8 +13,8 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- A module containing semi-public 'Network.Socket' internals.
--- Modules which extend the 'Network.Socket' module will need to use
+-- A module containing semi-public "Network.Socket" internals.
+-- Modules which extend the "Network.Socket" module will need to use
 -- this module while ideally most users will be able to make do with
 -- the public interface.
 --
