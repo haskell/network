@@ -208,6 +208,12 @@ module Network.Socket
 
     -- * Special constants
     , maxListenQueue
+
+    -- * Byte order transformation
+    , ntohl
+    , htonl
+    , ntohs
+    , htons
     ) where
 
 import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)

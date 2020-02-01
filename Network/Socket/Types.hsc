@@ -66,6 +66,8 @@ module Network.Socket.Types (
     , zeroMemory
     , htonl
     , ntohl
+    , htons
+    , ntohs
     ) where
 
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
@@ -899,14 +901,14 @@ instance Show PortNumber where
 instance Read PortNumber where
   readsPrec n = map (\(x,y) -> (fromIntegral (x :: Int), y)) . readsPrec n
 
+-- | Converts from network byte order to host byte order.
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
+-- | Converts from host byte order to network byte order.
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
 -- | Converts the from host byte order to network byte order.
 foreign import CALLCONV unsafe "htonl" htonl :: Word32 -> Word32
 -- | Converts the from network byte order to host byte order.
 foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
-{-# DEPRECATED htonl "Use getAddrInfo instead" #-}
-{-# DEPRECATED ntohl "Use getAddrInfo instead" #-}
 
 instance Storable PortNumber where
    sizeOf    _ = sizeOf    (undefined :: Word16)
