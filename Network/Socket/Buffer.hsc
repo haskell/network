@@ -278,7 +278,7 @@ recvBufMsg s bufsizs clen flags = do
                 alloca $ \len_ptr ->
                     throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
                         c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
-                    peek len_ptr
+                    peek len_ptr :: IO DWORD
 #endif
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
