@@ -87,7 +87,7 @@ library
     deepseq
 
   include-dirs: include
-  includes: HsNet.h HsNetDef.h
+  includes: HsNet.h HsNetDef.h alignment.h
   install-includes: HsNet.h HsNetDef.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
@@ -110,6 +110,10 @@ library
   if os(windows)
     other-modules:
       Network.Socket.ByteString.Lazy.Windows
+      Network.Socket.Win32.Cmsg
+      Network.Socket.Win32.CmsgHdr
+      Network.Socket.Win32.WSABuf
+      Network.Socket.Win32.MsgHdr
     c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
     extra-libraries: ws2_32, iphlpapi
     -- See https://github.com/haskell/network/pull/362

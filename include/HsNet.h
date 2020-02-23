@@ -79,6 +79,21 @@ extern void* newAcceptParams(int sock,
 			     void* sockaddr);
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
+
+extern struct LPCMSGHDR
+cmsg_firsthdr(LPWSAMSG mhdr);
+
+extern LPCMSGHDR
+cmsg_nxthdr(LPWSAMSG mhdr, LPWSACMSGHDR cmsg);
+
+extern unsigned char *
+cmsg_data(LPWSACMSGHDR cmsg);
+
+extern unsigned int
+cmsg_space(unsigned int l);
+
+extern unsigned int
+cmsg_len(unsigned int l);
 #else  /* _WIN32 */
 extern int
 sendFd(int sock, int outfd);
