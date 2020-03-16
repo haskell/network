@@ -87,7 +87,7 @@ library
 
   include-dirs: include
   includes: HsNet.h HsNetDef.h alignment.h win32defs.h
-  install-includes: HsNet.h HsNetDef.h win32defs.h
+  install-includes: HsNet.h HsNetDef.h  alignment.h win32defs.h
   c-sources: cbits/HsNet.c cbits/cmsg.c
   ghc-options: -Wall -fwarn-tabs
   build-tools: hsc2hs
