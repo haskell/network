@@ -79,7 +79,6 @@ library
     Network.Socket.SockAddr
     Network.Socket.Syscall
     Network.Socket.Types
-    Network.Socket.Unix
 
   build-depends:
     base >= 4.7 && < 5,
@@ -87,8 +86,8 @@ library
     deepseq
 
   include-dirs: include
-  includes: HsNet.h HsNetDef.h alignment.h
-  install-includes: HsNet.h HsNetDef.h
+  includes: HsNet.h HsNetDef.h alignment.h win32defs.h
+  install-includes: HsNet.h HsNetDef.h win32defs.h
   c-sources: cbits/HsNet.c
   ghc-options: -Wall -fwarn-tabs
   build-tools: hsc2hs
@@ -102,7 +101,9 @@ library
       Network.Socket.Posix.CmsgHdr
       Network.Socket.Posix.IOVec
       Network.Socket.Posix.MsgHdr
+      Network.Socket.Unix
     c-sources: cbits/cmsg.c
+
 
   if os(solaris)
     extra-libraries: nsl, socket

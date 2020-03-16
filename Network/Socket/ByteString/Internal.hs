@@ -14,10 +14,14 @@ module Network.Socket.ByteString.Internal
       mkInvalidRecvArgError
 #if !defined(mingw32_HOST_OS)
     , c_writev
+#else
+    , c_wsasend
+#endif
     , c_sendmsg
     , c_recvmsg
-#endif
     ) where
+
+#include "HsNetDef.h"
 
 import GHC.IO.Exception (IOErrorType(..))
 import System.IO.Error (ioeSetErrorString, mkIOError)
@@ -29,6 +33,17 @@ import Network.Socket.Imports
 import Network.Socket.Posix.IOVec (IOVec)
 import Network.Socket.Posix.MsgHdr (MsgHdr)
 import Network.Socket.Types
+#else
+import Data.Word
+import Foreign.C.Types
+import Foreign.Ptr
+
+import Network.Socket.Win32.WSABuf (WSABuf)
+import Network.Socket.Win32.MsgHdr (MsgHdr)
+import Network.Socket.Types
+
+type DWORD   = Word32
+type LPDWORD = Ptr DWORD
 #endif
 
 mkInvalidRecvArgError :: String -> IOError
@@ -45,4 +60,12 @@ foreign import ccall unsafe "sendmsg"
 
 foreign import ccall unsafe "recvmsg"
   c_recvmsg :: CInt -> Ptr (MsgHdr SockAddr) -> CInt -> IO CSsize
+#else
+  -- fixme Handle for SOCKET, see #426
+foreign import CALLCONV SAFE_ON_WIN "wsasend"
+  c_wsasend :: CInt -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
+foreign import CALLCONV SAFE_ON_WIN "sendmsg"
+  c_sendmsg :: CInt -> Ptr (MsgHdr SockAddr) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
+foreign import CALLCONV SAFE_ON_WIN "recvmsg"
+  c_recvmsg :: CInt -> Ptr (MsgHdr SockAddr) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 #endif

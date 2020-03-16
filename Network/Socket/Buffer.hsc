@@ -18,7 +18,6 @@ module Network.Socket.Buffer (
 #if !defined(mingw32_HOST_OS)
 import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
 #else
-import System.Win32.Types
 import Foreign.Ptr (nullPtr)
 #endif
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
@@ -42,6 +41,11 @@ import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Types
 import Network.Socket.Flag
+
+#if defined(mingw32_HOST_OS)
+type DWORD   = Word32
+type LPDWORD = Ptr DWORD
+#endif
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -230,7 +234,7 @@ sendBufMsg s sa bufsizs cmsgs flags = do
               c_sendmsg fd msgHdrPtr cflags
 #else
               alloca $ \send_ptr ->
-                c_sendmsg fd msgHdrPtr cflags send_ptr nullPtr nullPtr
+                c_sendmsg fd msgHdrPtr (fromIntegral cflags) send_ptr nullPtr nullPtr
 #endif
   return $ fromIntegral sz
 
@@ -270,20 +274,20 @@ recvBufMsg s bufsizs clen flags = do
             _cflags = fromMsgFlag flags
         withFdSocket s $ \fd -> do
           with msgHdr $ \msgHdrPtr -> do
-            len <- fromIntegral <$>
+            len <- (fmap fromIntegral) <$>
 #if !defined(mingw32_HOST_OS)
                 throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
                       c_recvmsg fd msgHdrPtr _cflags
 #else
-                alloca $ \len_ptr ->
-                    throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
-                        c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
-                    peek len_ptr :: IO DWORD
+                alloca $ \len_ptr -> do
+                    _ <- throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
+                            c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
+                    peek len_ptr
 #endif
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
             cmsgs <- parseCmsgs msgHdrPtr
-            let flags' = MsgFlag $ msgFlags hdr
+            let flags' = MsgFlag $ fromIntegral $ msgFlags hdr
             return (sockaddr, len, cmsgs, flags')
 
 #if !defined(mingw32_HOST_OS)
@@ -303,8 +307,6 @@ foreign import CALLCONV SAFE_ON_WIN "sendmsg"
   c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvmsg"
   c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
-
-failIfSockError = failIf_ (==#{const SOCKET_ERROR})
 #endif
 
 foreign import ccall unsafe "recv"

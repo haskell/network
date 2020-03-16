@@ -10,10 +10,12 @@ module Network.Socket.Win32.Cmsg where
 import Data.ByteString.Internal
 import Foreign.ForeignPtr
 import System.IO.Unsafe (unsafeDupablePerformIO)
-import System.Win32.Types (HANDLE)
 
 import Network.Socket.Imports
 import Network.Socket.Types
+
+type DWORD = Word32
+type ULONG = Word32
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
@@ -133,15 +135,15 @@ instance ControlMessage IPv6TClass where
 data IPv4PktInfo = IPv4PktInfo ULONG HostAddress deriving (Eq)
 
 instance Show IPv4PktInfo where
-    show (IPv4PktInfo n sa ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
+    show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
 
 instance ControlMessage IPv4PktInfo where
     controlMessageId _ = CmsgIdIPv4PktInfo
 
 instance Storable IPv4PktInfo where
-    sizeOf _ = const #{size IN_PKTINFO}
+    sizeOf      = const #{size IN_PKTINFO}
     alignment _ = #alignment IN_PKTINFO
-    poke p (IPv4PktInfo n sa ha) = do
+    poke p (IPv4PktInfo n ha) = do
         (#poke IN_PKTINFO, ipi_ifindex)  p (fromIntegral n :: CInt)
         (#poke IN_PKTINFO, ipi_addr)     p ha
     peek p = do
@@ -161,7 +163,7 @@ instance ControlMessage IPv6PktInfo where
     controlMessageId _ = CmsgIdIPv6PktInfo
 
 instance Storable IPv6PktInfo where
-    sizeOf _ = const #{size IN6_PKTINFO}
+    sizeOf      = const #{size IN6_PKTINFO}
     alignment _ = #alignment IN6_PKTINFO
     poke p (IPv6PktInfo n ha6) = do
         (#poke IN6_PKTINFO, ipi6_ifindex) p (fromIntegral n :: CInt)

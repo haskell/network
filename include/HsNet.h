@@ -25,6 +25,8 @@
 #ifdef _WIN32
 # include <winsock2.h>
 # include <ws2tcpip.h>
+# include <mswsock.h>
+# include "win32defs.h"
 # define IPV6_V6ONLY 27
 #endif
 
@@ -80,10 +82,10 @@ extern void* newAcceptParams(int sock,
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
 
-extern struct LPCMSGHDR
+extern struct LPWSACMSGHDR
 cmsg_firsthdr(LPWSAMSG mhdr);
 
-extern LPCMSGHDR
+extern LPWSACMSGHDR
 cmsg_nxthdr(LPWSAMSG mhdr, LPWSACMSGHDR cmsg);
 
 extern unsigned char *

@@ -18,8 +18,6 @@ import Network.Socket.Win32.Cmsg
 import Network.Socket.Win32.MsgHdr
 import Network.Socket.Types
 
-import System.Win32.Types
-
 data CmsgHdr = CmsgHdr {
     cmsgHdrLen   :: !CUInt
   , cmsgHdrLevel :: !CInt
@@ -27,7 +25,7 @@ data CmsgHdr = CmsgHdr {
   } deriving (Eq, Show)
 
 instance Storable CmsgHdr where
-  sizeOf _    = const #{size WSACMSGHDR}
+  sizeOf      = const #{size WSACMSGHDR}
   alignment _ = #alignment WSACMSGHDR
 
   peek p = do

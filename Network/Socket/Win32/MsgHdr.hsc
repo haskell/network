@@ -1,15 +1,19 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# LANGUAGE CPP #-}
 
 -- | Support module for the Windows 'WSASendMsg' system call.
 module Network.Socket.Win32.MsgHdr
     ( MsgHdr(..)
     ) where
 
+#include "HsNet.h"
+
 import Network.Socket.Imports
 import Network.Socket.Internal (zeroMemory)
 import Network.Socket.Win32.WSABuf
 
-import System.Win32.Types
+type DWORD = Word32
+type ULONG = Word32
 
 -- The size of BufferLen is different on pre-vista compilers.
 -- But since those platforms are out of support anyway we ignore that.
@@ -18,13 +22,13 @@ data MsgHdr sa = MsgHdr
     , msgNameLen   :: !CInt
     , msgBuffer    :: !(Ptr WSABuf)
     , msgBufferLen :: !DWORD
-    , msgCtr       :: !(Ptr Word8)
-    , msgCtrLen    :: !ULONG
+    , msgCtrl      :: !(Ptr Word8)
+    , msgCtrlLen   :: !ULONG
     , msgFlags     :: !DWORD
     }
 
 instance Storable (MsgHdr sa) where
-  sizeOf _    = const #{size WSAMSG}
+  sizeOf      = const #{size WSAMSG}
   alignment _ = #alignment WSAMSG
 
   peek p = do

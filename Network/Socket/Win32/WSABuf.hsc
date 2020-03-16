@@ -12,7 +12,7 @@ import Foreign.Marshal.Array (allocaArray)
 
 import Network.Socket.Imports
 
-import System.Win32.Types
+type ULONG = Word32
 
 data WSABuf = WSABuf
     { wsaBufPtr :: !(Ptr Word8)
@@ -20,13 +20,13 @@ data WSABuf = WSABuf
     }
 
 instance Storable WSABuf where
-  sizeOf _    = const #{size WSABUF}
+  sizeOf      = const #{size WSABUF}
   alignment _ = #alignment WSABUF
 
   peek p = do
     base <- (#peek WSABUF, buf) p
     len  <- (#peek WSABUF, len)  p
-    return $ IOVec base len
+    return $ WSABuf base len
 
   poke p iov = do
     (#poke WSABUF, buf) p (wsaBufPtr iov)

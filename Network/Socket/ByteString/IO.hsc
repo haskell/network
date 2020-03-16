@@ -49,16 +49,22 @@ import Network.Socket.ByteString.Internal
 import Network.Socket.Imports
 import Network.Socket.Types
 
-#if !defined(mingw32_HOST_OS)
 import Data.ByteString.Internal (create, ByteString(..))
 import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Marshal.Utils (with)
 import Network.Socket.Internal
 
 import Network.Socket.Flag
+
+#if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 import Network.Socket.Posix.IOVec
 import Network.Socket.Posix.MsgHdr (MsgHdr(..))
+#else
+import Foreign.Marshal.Alloc (alloca)
+import Network.Socket.Win32.Cmsg
+import Network.Socket.Win32.WSABuf
+import Network.Socket.Win32.MsgHdr (MsgHdr(..))
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -130,7 +136,6 @@ sendAllTo s xs sa = do
 sendMany :: Socket       -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
-#if !defined(mingw32_HOST_OS)
 sendMany _ [] = return ()
 sendMany s cs = do
     sent <- sendManyInner
@@ -138,13 +143,20 @@ sendMany s cs = do
     when (sent >= 0) $ sendMany s $ remainingChunks sent cs
   where
     sendManyInner =
+#if !defined(mingw32_HOST_OS)
       fmap fromIntegral . withIOVecfromBS cs $ \(iovsPtr, iovsLen) ->
           withFdSocket s $ \fd -> do
               let len =  fromIntegral $ min iovsLen (#const IOV_MAX)
               throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
                   c_writev fd iovsPtr len
 #else
-sendMany s = sendAll s . B.concat
+      fmap fromIntegral . withWSABuffromBS cs $ \(wsabsPtr, wsabsLen) ->
+          withFdSocket s $ \fd -> do
+              let len =  fromIntegral wsabsLen
+              alloca $ \send_ptr -> do
+                _ <- throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
+                       c_wsasend fd wsabsPtr len send_ptr  0 nullPtr nullPtr
+                peek send_ptr
 #endif
 
 -- | Send data to the socket.  The recipient can be specified
@@ -157,7 +169,6 @@ sendManyTo :: Socket       -- ^ Socket
            -> [ByteString]  -- ^ Data to send
            -> SockAddr      -- ^ Recipient address
            -> IO ()
-#if !defined(mingw32_HOST_OS)
 sendManyTo _ [] _    = return ()
 sendManyTo s cs addr = do
     sent <- fromIntegral <$> sendManyToInner
@@ -166,6 +177,7 @@ sendManyTo s cs addr = do
   where
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
+#if !defined(mingw32_HOST_OS)
         withIOVecfromBS cs $ \(iovsPtr, iovsLen) -> do
           let msgHdr = MsgHdr {
                   msgName    = addrPtr
@@ -181,7 +193,22 @@ sendManyTo s cs addr = do
                 throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
                   c_sendmsg fd msgHdrPtr 0
 #else
-sendManyTo s cs = sendAllTo s (B.concat cs)
+        withWSABuffromBS cs $ \(wsabsPtr, wsabsLen) -> do
+          let msgHdr = MsgHdr {
+                  msgName      = addrPtr
+                , msgNameLen   = fromIntegral addrSize
+                , msgBuffer    = wsabsPtr
+                , msgBufferLen = fromIntegral wsabsLen
+                , msgCtrl      = nullPtr
+                , msgCtrlLen   = 0
+                , msgFlags     = 0
+                }
+          withFdSocket s $ \fd ->
+              with msgHdr $ \msgHdrPtr ->
+                alloca $ \send_ptr -> do
+                  _ <- throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
+                          c_sendmsg fd msgHdrPtr 0 send_ptr nullPtr nullPtr
+                  peek send_ptr
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -224,7 +251,7 @@ recvFrom sock nbytes =
 -- ----------------------------------------------------------------------------
 -- Not exported
 
-#if !defined(mingw32_HOST_OS)
+
 -- | Suppose we try to transmit a list of chunks @cs@ via a gathering write
 -- operation and find that @n@ bytes were sent. Then @remainingChunks n cs@ is
 -- list of chunks remaining to be sent.
@@ -236,6 +263,7 @@ remainingChunks i (x:xs)
   where
     len = B.length x
 
+#if !defined(mingw32_HOST_OS)
 -- | @withIOVecfromBS cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
 -- IOVec made from @cs@ and the number of pointers (@length cs@).
@@ -244,6 +272,15 @@ withIOVecfromBS :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
 withIOVecfromBS cs f = do
     bufsizs <- mapM getBufsiz cs
     withIOVec bufsizs f
+#else
+-- | @withWSABuffromBS cs f@ executes the computation @f@, passing as argument a pair
+-- consisting of a pointer to a temporarily allocated array of pointers to
+-- WSABuf made from @cs@ and the number of pointers (@length cs@).
+-- /Windows only/.
+withWSABuffromBS :: [ByteString] -> ((Ptr WSABuf, Int) -> IO a) -> IO a
+withWSABuffromBS cs f = do
+    bufsizs <- mapM getBufsiz cs
+    withWSABuf bufsizs f
 #endif
 
 getBufsiz :: ByteString -> IO (Ptr Word8, Int)

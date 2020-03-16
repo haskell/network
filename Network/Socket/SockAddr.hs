@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Network.Socket.SockAddr (
       getPeerName
     , getSocketName
@@ -15,7 +16,11 @@ import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
 import Network.Socket.Flag
 import Network.Socket.Imports
+#if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
+#else
+import Network.Socket.Win32.Cmsg
+#endif
 import Network.Socket.Types
 
 -- | Getting peer's 'SockAddr'.
