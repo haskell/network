@@ -219,3 +219,53 @@ spec = do
                     s <- mkSocket fd
                     sendAll s "HELLO WORLD"
             tcpTest client server
+
+    describe "getNameInfo" $ do
+        it "works for IPv4 address" $ do
+            let addr = SockAddrInet 80 (tupleToHostAddress (127, 0, 0, 1))
+            (hn_m, sn_m) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
+
+            hn_m `shouldBe` (Just "127.0.0.1")
+            sn_m `shouldBe` (Just "80")
+
+        it "works for IPv6 address" $ do
+            let addr = SockAddrInet6 80 0
+                           (tupleToHostAddress6 (0x2001, 0x0db8, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7)) 0
+            (hn_m, sn_m) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
+            hn_m `shouldBe`(Just "2001:db8:2:3:4:5:6:7")
+            sn_m `shouldBe` (Just "80")
+
+        it "works for IPv6 address" $ do
+            let addr = SockAddrInet6 80 0
+                           (tupleToHostAddress6 (0x2001, 0x0db8, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7)) 0
+            (hn_m, sn_m) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
+            hn_m `shouldBe`(Just "2001:db8:2:3:4:5:6:7")
+            sn_m `shouldBe` (Just "80")
+
+        it "works for global multicast IPv6 address" $ do
+            let addr = SockAddrInet6 80 0
+                           (tupleToHostAddress6 (0xfe01, 0x0db8, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7)) 0
+            (hn_m, sn_m) <- getNameInfo [NI_NUMERICHOST, NI_NUMERICSERV] True True addr
+            hn_m `shouldBe`(Just "fe01:db8:2:3:4:5:6:7")
+            sn_m `shouldBe` (Just "80")
+
+    describe "show SocketAddr" $ do
+        it "works for IPv4 address" $
+            let addr = SockAddrInet 80 (tupleToHostAddress (127, 0, 0, 1)) in
+            show addr `shouldBe` "127.0.0.1:80"
+
+        it "works for IPv6 address" $
+            let addr = SockAddrInet6 80 0
+                           (tupleToHostAddress6 (0x2001, 0x0db8, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7)) 0 in
+            show addr `shouldBe` "[2001:db8:2:3:4:5:6:7]:80"
+
+        it "works for IPv6 address with zeros" $
+            let addr = SockAddrInet6 80 0
+                           (tupleToHostAddress6 (0x2001, 0x0db8, 0x2, 0x3, 0x0, 0x0, 0x0, 0x7)) 0 in
+            show addr `shouldBe` "[2001:db8:2:3::7]:80"
+
+        it "works for multicast IPv6 address with reserved scope" $ do
+            let addr = SockAddrInet6 80 0
+                           (tupleToHostAddress6 (0xff01, 0x1234, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7)) 0
+            show addr `shouldBe` "[ff01:1234:2:3:4:5:6:7]:80"
+
