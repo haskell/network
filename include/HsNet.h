@@ -93,7 +93,7 @@ hsnet_inet_ntoa(
 #elif defined(HAVE_IN_ADDR_T)
              in_addr_t addr
 #elif defined(HAVE_INTTYPES_H)
-             u_int32_t addr
+             uint32_t addr
 #else
              unsigned long addr
 #endif
