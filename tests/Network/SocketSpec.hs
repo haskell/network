@@ -126,6 +126,7 @@ spec = do
             -- check if an exception is not thrown.
             isSupportedSockAddr addr `shouldBe` True
 
+#if !defined(mingw32_HOST_OS)
     when isUnixDomainSocketAvailable $ do
         context "unix sockets" $ do
             it "basic unix sockets end-to-end" $ do
@@ -134,6 +135,7 @@ spec = do
                         recv sock 1024 `shouldReturn` testMsg
                         addr `shouldBe` (SockAddrUnix "")
                 test . setClientAction client $ unixWithUnlink unixAddr server
+#endif
 
 #ifdef linux_HOST_OS
             it "can end-to-end with an abstract socket" $ do
@@ -152,6 +154,7 @@ spec = do
                     bind sock (SockAddrUnix abstractAddress) `shouldThrow` anyErrorCall
 #endif
 
+#if !defined(mingw32_HOST_OS)
             describe "socketPair" $ do
                 it "can send and recieve bi-directionally" $ do
                     (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
@@ -206,6 +209,7 @@ spec = do
                     cred1 <- getPeerCredential s
                     cred1 `shouldBe` (Nothing,Nothing,Nothing)
             -}
+#endif
 
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do

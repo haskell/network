@@ -62,10 +62,10 @@ foreign import ccall unsafe "recvmsg"
   c_recvmsg :: CInt -> Ptr (MsgHdr SockAddr) -> CInt -> IO CSsize
 #else
   -- fixme Handle for SOCKET, see #426
-foreign import CALLCONV SAFE_ON_WIN "wsasend"
+foreign import CALLCONV SAFE_ON_WIN "WSASend"
   c_wsasend :: CInt -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "sendmsg"
+foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
   c_sendmsg :: CInt -> Ptr (MsgHdr SockAddr) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "recvmsg"
+foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
   c_recvmsg :: CInt -> Ptr (MsgHdr SockAddr) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 #endif

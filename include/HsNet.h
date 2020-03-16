@@ -82,7 +82,7 @@ extern void* newAcceptParams(int sock,
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
 
-extern struct LPWSACMSGHDR
+extern LPWSACMSGHDR
 cmsg_firsthdr(LPWSAMSG mhdr);
 
 extern LPWSACMSGHDR
@@ -96,6 +96,20 @@ cmsg_space(unsigned int l);
 
 extern unsigned int
 cmsg_len(unsigned int l);
+
+/**
+ * WSASendMsg function
+ */
+extern WINAPI int
+WSASendMsg (SOCKET, LPWSAMSG, DWORD, LPDWORD,
+            LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE);
+
+/**
+ * WSARecvMsg function
+ */
+extern WINAPI int
+WSARecvMsg (SOCKET, LPWSAMSG, LPDWORD,
+            LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE);
 #else  /* _WIN32 */
 extern int
 sendFd(int sock, int outfd);

@@ -302,10 +302,10 @@ foreign import CALLCONV SAFE_ON_WIN "ioctlsocket"
   c_ioctlsocket :: CInt -> CLong -> Ptr CULong -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSAGetLastError"
   c_WSAGetLastError :: IO CInt
-foreign import CALLCONV SAFE_ON_WIN "sendmsg"
+foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
   -- fixme Handle for SOCKET, see #426
   c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "recvmsg"
+foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
   c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 #endif
 

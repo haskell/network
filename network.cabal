@@ -88,7 +88,7 @@ library
   include-dirs: include
   includes: HsNet.h HsNetDef.h alignment.h win32defs.h
   install-includes: HsNet.h HsNetDef.h win32defs.h
-  c-sources: cbits/HsNet.c
+  c-sources: cbits/HsNet.c cbits/cmsg.c
   ghc-options: -Wall -fwarn-tabs
   build-tools: hsc2hs
 
@@ -102,8 +102,6 @@ library
       Network.Socket.Posix.IOVec
       Network.Socket.Posix.MsgHdr
       Network.Socket.Unix
-    c-sources: cbits/cmsg.c
-
 
   if os(solaris)
     extra-libraries: nsl, socket
@@ -116,10 +114,11 @@ library
       Network.Socket.Win32.WSABuf
       Network.Socket.Win32.MsgHdr
     c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
-    extra-libraries: ws2_32, iphlpapi
+    extra-libraries: ws2_32, iphlpapi, mswsock
     -- See https://github.com/haskell/network/pull/362
     if impl(ghc >= 7.10)
       cpp-options: -D_WIN32_WINNT=0x0600
+      cc-options: -D_WIN32_WINNT=0x0600
 
 test-suite spec
   default-language: Haskell2010
