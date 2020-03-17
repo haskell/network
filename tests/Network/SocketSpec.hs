@@ -67,7 +67,6 @@ spec = do
                 getAddrInfo (Just hints) (Just "127.128.129.130") Nothing
             hostAddressToTuple hostAddr `shouldBe` (0x7f, 0x80, 0x81, 0x82)
 
-#if defined(IPV6_SOCKET_SUPPORT)
         it "works for IPv6 address" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
                 host = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
@@ -75,7 +74,6 @@ spec = do
                 getAddrInfo (Just hints) (Just host) Nothing
             hostAddress6ToTuple hostAddr
                 `shouldBe` (0x2001, 0x0db8, 0x85a3, 0x0000, 0x0000, 0x8a2e, 0x0370, 0x7334)
-#endif
 
         it "does not cause segfault on macOS 10.8.2 due to AI_NUMERICSERV" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
