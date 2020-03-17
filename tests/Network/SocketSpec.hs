@@ -40,6 +40,16 @@ spec = do
                 { addrFlags = [AI_PASSIVE]
                 , addrSocketType = Stream
                 }
+        it "successfully binds to an ipv4 socket" $ do
+            addr:_ <- getAddrInfo (Just hints) (Just serverAddr) Nothing
+            sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+            bind sock $ addrAddress addr
+
+        it "fails to bind to unknown ipv4 socket" $ do
+            addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.3") Nothing
+            sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+            bind sock (addrAddress addr) `shouldThrow` anyIOException
+
         it "successfully binds to an ipv6 socket" $ do
             addr:_ <- getAddrInfo (Just hints) (Just serverAddr6) Nothing
             sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
