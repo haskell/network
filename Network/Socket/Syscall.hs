@@ -225,23 +225,23 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CInt
 foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+  c_bind :: CInt -> Ptr sa -> CInt{-CSockLen? ? ?-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+  c_connect :: CInt -> Ptr sa -> CInt{-CSockLen? ? ?-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
   c_listen :: CInt -> CInt -> IO CInt
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+  c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen? ? ?-} -> CInt -> IO CInt
 #else
 foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen? ? ?-} -> IO CInt
 #endif
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen? ? ?-} -> IO CInt
 foreign import ccall unsafe "rtsSupportsBoundThreads"
   threaded :: Bool
 foreign import ccall unsafe "HsNet.h acceptNewSock"
