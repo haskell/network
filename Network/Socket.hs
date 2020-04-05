@@ -140,6 +140,7 @@ module Network.Socket
                   ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
                   ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
     , isSupportedSocketOption
+    , whenSupported
     , getSocketOption
     , setSocketOption
     , getSockOpt

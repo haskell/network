@@ -25,7 +25,7 @@ data MsgHdr sa = MsgHdr
     , msgCtrl      :: !(Ptr Word8)
     , msgCtrlLen   :: !ULONG
     , msgFlags     :: !DWORD
-    }
+    } deriving Show
 
 instance Storable (MsgHdr sa) where
   sizeOf      = const #{size WSAMSG}

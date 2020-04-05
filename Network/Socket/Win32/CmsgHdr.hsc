@@ -72,16 +72,21 @@ parseCmsgs msgptr = do
     loop ptr build
       | ptr == nullPtr = return $ build []
       | otherwise = do
-            cmsg <- fromCmsgHdr ptr
-            nextPtr <- c_cmsg_nxthdr msgptr ptr
-            loop nextPtr (build . (cmsg :))
+            val <- fromCmsgHdr ptr
+            case val of
+              Nothing -> return $ build []
+              Just cmsg -> do
+                nextPtr <- c_cmsg_nxthdr msgptr ptr
+                loop nextPtr (build . (cmsg :))
 
-fromCmsgHdr :: Ptr CmsgHdr -> IO Cmsg
+fromCmsgHdr :: Ptr CmsgHdr -> IO (Maybe Cmsg)
 fromCmsgHdr ptr = do
     CmsgHdr len lvl typ <- peek ptr
     src <- c_cmsg_data ptr
     let siz = fromIntegral len - (src `minusPtr` ptr)
-    Cmsg (CmsgId lvl typ) <$> create (fromIntegral siz) (\dst -> memcpy dst src siz)
+    if siz < 0
+      then return Nothing
+      else Just . Cmsg (CmsgId lvl typ) <$> create (fromIntegral siz) (\dst -> memcpy dst src siz)
 
 foreign import ccall unsafe "cmsg_firsthdr"
   c_cmsg_firsthdr :: Ptr (MsgHdr sa) -> IO (Ptr CmsgHdr)

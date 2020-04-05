@@ -41,11 +41,11 @@ pattern CmsgIdIPv6HopLimit = CmsgId (#const IPPROTO_IPV6) (#const IPV6_HOPLIMIT)
 
 -- | The identifier for 'IPv4TOS'.
 pattern CmsgIdIPv4TOS :: CmsgId
-pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_RECVTOS)
+pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_TOS)
 
 -- | The identifier for 'IPv6TClass'.
 pattern CmsgIdIPv6TClass :: CmsgId
-pattern CmsgIdIPv6TClass = CmsgId (#const IPPROTO_IPV6) (#const IPV6_RECVTCLASS)
+pattern CmsgIdIPv6TClass = CmsgId (#const IPPROTO_IPV6) (#const IPV6_TCLASS)
 
 -- | The identifier for 'IPv4PktInfo'.
 pattern CmsgIdIPv4PktInfo :: CmsgId

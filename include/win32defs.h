@@ -115,3 +115,6 @@
 #ifndef IP_RECVERR
 #define IP_RECVERR                75 // Receive ICMP errors.
 #endif
+#ifndef IPV6_TCLASS
+#define IPV6_TCLASS 39
+#endif

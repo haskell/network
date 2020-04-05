@@ -34,12 +34,14 @@ module Network.Socket.Internal
     , throwSocketErrorIfMinus1Retry
     , throwSocketErrorIfMinus1Retry_
     , throwSocketErrorIfMinus1RetryMayBlock
+    , throwSocketErrorIfMinus1ButRetry
 
     -- ** Guards that wait and retry if the operation would block
     -- | These guards are based on 'throwSocketErrorIfMinus1RetryMayBlock'.
     -- They wait for socket readiness if the action fails with @EWOULDBLOCK@
     -- or similar.
     , throwSocketErrorWaitRead
+    , throwSocketErrorWaitReadBut
     , throwSocketErrorWaitWrite
 
     -- * Initialization
@@ -134,16 +136,37 @@ throwSocketErrorIfMinus1RetryMayBlock
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
+
+-- | Throw an 'IOError' corresponding to the current socket error if
+-- the IO action returns a result of @-1@, but retries in case of an
+-- interrupted operation.  Checks for operations that would block and
+-- executes an alternative action before retrying in that case.  If the error
+-- is one handled by the exempt filter then ignore it and return the errorcode.
+throwSocketErrorIfMinus1RetryMayBlockBut
+    :: (Eq a, Num a)
+    => (CInt -> Bool) -- ^ exception exempt filter
+    -> String         -- ^ textual description of the location
+    -> IO b           -- ^ action to execute before retrying if an
+                      --   immediate retry would block
+    -> IO a           -- ^ the 'IO' operation to be executed
+    -> IO a
+
+{-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
+        :: String -> IO b -> IO CInt -> IO CInt #-}
+
 #if defined(mingw32_HOST_OS)
 
 throwSocketErrorIfMinus1RetryMayBlock name _ act
   = throwSocketErrorIfMinus1Retry name act
 
+throwSocketErrorIfMinus1RetryMayBlockBut exempt name _ act
+  = throwSocketErrorIfMinus1ButRetry exempt name act
+
 throwSocketErrorIfMinus1_ name act = do
   _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
-throwSocketErrorIfMinus1Retry name act = do
+throwSocketErrorIfMinus1ButRetry exempt name act = do
   r <- act
   if (r == -1)
    then do
@@ -155,7 +178,9 @@ throwSocketErrorIfMinus1Retry name act = do
            then throwSocketError name
            else return r'
       else
-        throwSocketError name
+        if (exempt rc)
+          then return r
+          else throwSocketError name
    else return r
 
 throwSocketErrorCode name rc = do
@@ -177,6 +202,9 @@ foreign import ccall unsafe "getWSErrorDescr"
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
 
+throwSocketErrorIfMinus1RetryMayBlockBut _exempt name on_block act =
+    throwErrnoIfMinus1RetryMayBlock name act on_block
+
 throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
 
 throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
@@ -188,12 +216,24 @@ throwSocketErrorCode loc errno =
 
 #endif
 
+throwSocketErrorIfMinus1Retry
+  = throwSocketErrorIfMinus1ButRetry (const False)
+
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
 -- and try again.
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitRead s name io = withFdSocket s $ \fd ->
     throwSocketErrorIfMinus1RetryMayBlock name
+      (threadWaitRead $ fromIntegral fd) io
+
+-- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
+-- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
+-- and try again.  If it fails with the error the user was expecting then
+-- ignore the error
+throwSocketErrorWaitReadBut :: (Eq a, Num a) => (CInt -> Bool) -> Socket -> String -> IO a -> IO a
+throwSocketErrorWaitReadBut exempt s name io = withFdSocket s $ \fd ->
+    throwSocketErrorIfMinus1RetryMayBlockBut exempt name
       (threadWaitRead $ fromIntegral fd) io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with

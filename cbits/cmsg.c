@@ -62,8 +62,17 @@ WSARecvMsg (SOCKET s, LPWSAMSG lpMsg, LPDWORD lpdwNumberOfBytesRecvd,
       return -1;
   }
 
-  return ptr_RecvMsg (s, lpMsg, lpdwNumberOfBytesRecvd, lpOverlapped,
-                      lpCompletionRoutine);
+  int res = ptr_RecvMsg (s, lpMsg, lpdwNumberOfBytesRecvd, lpOverlapped,
+                         lpCompletionRoutine);
+
+  /*  If the msg was truncated then this pointer can be garbage.  */
+  if (res == SOCKET_ERROR && GetLastError () == WSAEMSGSIZE)
+     {
+        lpMsg->Control.len = 0;
+        lpMsg->Control.buf = NULL;
+     }
+
+  return res;
 }
 #else
 struct cmsghdr *cmsg_firsthdr(struct msghdr *mhdr) {

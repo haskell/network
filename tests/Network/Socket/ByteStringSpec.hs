@@ -229,14 +229,17 @@ spec = do
 
         it "receives control messages for IPv4" $ do
             let server sock = do
-                    setSocketOption sock RecvIPv4TTL 1
-                    setSocketOption sock RecvIPv4TOS 1
-                    setSocketOption sock RecvIPv4PktInfo 1
+                    whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
+                    whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
+                    whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
-                    ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL) `shouldNotBe` Nothing
-                    ((lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS) `shouldNotBe` Nothing
-                    ((lookupCmsg CmsgIdIPv4PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv4PktInfo) `shouldNotBe` Nothing
+                    whenSupported RecvIPv4TTL $
+                      ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL) `shouldNotBe` Nothing
+                    whenSupported RecvIPv4TOS $
+                      ((lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS) `shouldNotBe` Nothing
+                    whenSupported RecvIPv4PktInfo $
+                      ((lookupCmsg CmsgIdIPv4PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv4PktInfo) `shouldNotBe` Nothing
                 client sock addr = sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -244,14 +247,18 @@ spec = do
 
         it "receives control messages for IPv6" $ do
             let server sock = do
-                    setSocketOption sock RecvIPv6HopLimit 1
-                    setSocketOption sock RecvIPv6TClass 1
-                    setSocketOption sock RecvIPv6PktInfo 1
+                    whenSupported RecvIPv6HopLimit $ setSocketOption sock RecvIPv6HopLimit 1
+                    whenSupported RecvIPv6TClass   $ setSocketOption sock RecvIPv6TClass 1
+                    whenSupported RecvIPv6PktInfo  $ setSocketOption sock RecvIPv6PktInfo 1
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
-                    ((lookupCmsg CmsgIdIPv6HopLimit cmsgs >>= decodeCmsg) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
-                    ((lookupCmsg CmsgIdIPv6TClass cmsgs >>= decodeCmsg) :: Maybe IPv6TClass) `shouldNotBe` Nothing
-                    ((lookupCmsg CmsgIdIPv6PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
+
+                    whenSupported RecvIPv6HopLimit $
+                      ((lookupCmsg CmsgIdIPv6HopLimit cmsgs >>= decodeCmsg) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
+                    whenSupported RecvIPv6TClass $
+                      ((lookupCmsg CmsgIdIPv6TClass cmsgs >>= decodeCmsg) :: Maybe IPv6TClass) `shouldNotBe` Nothing
+                    whenSupported RecvIPv6PktInfo $
+                      ((lookupCmsg CmsgIdIPv6PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
                 client sock addr = sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -259,9 +266,9 @@ spec = do
 
         it "receives truncated control messages" $ do
             let server sock = do
-                    setSocketOption sock RecvIPv4TTL 1
-                    setSocketOption sock RecvIPv4TOS 1
-                    setSocketOption sock RecvIPv4PktInfo 1
+                    whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
+                    whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
+                    whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
                     (_, _, _, flags) <- recvMsg sock 1024 10 mempty
                     flags .&. MSG_CTRUNC `shouldBe` MSG_CTRUNC
 

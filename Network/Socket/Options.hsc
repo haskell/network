@@ -16,6 +16,7 @@ module Network.Socket.Options (
                 ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
                 ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
   , isSupportedSocketOption
+  , whenSupported
   , getSocketType
   , getSocketOption
   , setSocketOption
@@ -288,6 +289,13 @@ instance Storable StructLinger where
         (#poke struct linger, l_onoff)  p onoff
         (#poke struct linger, l_linger) p linger
 #endif
+
+-- | Executes the given action and ignoring the result only when the specified
+-- socket option is valid.
+whenSupported :: SocketOption -> IO a -> IO ()
+whenSupported s action
+  | isSupportedSocketOption s = action >> return ()
+  | otherwise                 = return ()
 
 -- | Set a socket option that expects an Int value.
 -- There is currently no API to set e.g. the timeval socket options

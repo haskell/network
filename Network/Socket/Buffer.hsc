@@ -267,9 +267,17 @@ recvBufMsg s bufsizs clen flags = do
               , msgBuffer    = wsaBPtr
               , msgBufferLen = fromIntegral wsaBLen
 #endif
+#if !defined(mingw32_HOST_OS)
               , msgCtrl    = castPtr ctrlPtr
+#else
+              , msgCtrl    = if clen == 0 then nullPtr else castPtr ctrlPtr
+#endif
               , msgCtrlLen = fromIntegral clen
+#if !defined(mingw32_HOST_OS)
               , msgFlags   = 0
+#else
+              , msgFlags   = fromIntegral $ fromMsgFlag flags
+#endif
               }
             _cflags = fromMsgFlag flags
         withFdSocket s $ \fd -> do
@@ -280,7 +288,7 @@ recvBufMsg s bufsizs clen flags = do
                       c_recvmsg fd msgHdrPtr _cflags
 #else
                 alloca $ \len_ptr -> do
-                    _ <- throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
+                    _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmg" $
                             c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
                     peek len_ptr
 #endif
