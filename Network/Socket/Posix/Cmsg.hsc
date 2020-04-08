@@ -11,6 +11,7 @@ module Network.Socket.Posix.Cmsg where
 #include <sys/socket.h>
 
 import Data.ByteString.Internal
+import Data.Proxy
 import Foreign.ForeignPtr
 import System.IO.Unsafe (unsafeDupablePerformIO)
 import System.Posix.Types (Fd(..))
@@ -87,24 +88,27 @@ filterCmsg cid cmsgs = filter (\cmsg -> cmsgId cmsg == cid) cmsgs
 --   Each control message type has a numeric 'CmsgId' and a 'Storable'
 --   data representation.
 class Storable a => ControlMessage a where
-    controlMessageId :: a -> CmsgId
+    controlMessageId :: Proxy a -> CmsgId
 
-encodeCmsg :: ControlMessage a => a -> Cmsg
+encodeCmsg :: forall a . ControlMessage a => a -> Cmsg
 encodeCmsg x = unsafeDupablePerformIO $ do
     bs <- create siz $ \p0 -> do
         let p = castPtr p0
         poke p x
-    return $ Cmsg (controlMessageId x) bs
+    let cmsid = controlMessageId (Proxy :: Proxy a)
+    return $ Cmsg cmsid bs
   where
     siz = sizeOf x
 
-decodeCmsg :: forall a . Storable a => Cmsg -> Maybe a
-decodeCmsg (Cmsg _ (PS fptr off len))
-  | len < siz = Nothing
-  | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
+decodeCmsg :: forall a . (ControlMessage a, Storable a) => Cmsg -> Maybe a
+decodeCmsg (Cmsg cmsid (PS fptr off len))
+  | cid /= cmsid = Nothing
+  | len < siz    = Nothing
+  | otherwise    = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
         let p = castPtr (p0 `plusPtr` off)
         Just <$> peek p
   where
+    cid = controlMessageId (Proxy :: Proxy a)
     siz = sizeOf (undefined :: a)
 
 ----------------------------------------------------------------
