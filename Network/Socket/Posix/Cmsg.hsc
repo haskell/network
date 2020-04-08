@@ -70,14 +70,12 @@ pattern CmsgIdFd = CmsgId (#const SOL_SOCKET) (#const SCM_RIGHTS)
 
 ----------------------------------------------------------------
 
--- | Looking up control message. The following shows an example usage:
+-- | Locate a control message of the given type in a list of control
+--   messages. The following shows an example usage:
 --
 -- > (lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS
 lookupCmsg :: CmsgId -> [Cmsg] -> Maybe Cmsg
-lookupCmsg _   [] = Nothing
-lookupCmsg cid (cmsg:cmsgs)
-  | cmsgId cmsg == cid = Just cmsg
-  | otherwise          = lookupCmsg cid cmsgs
+lookupCmsg cid cmsgs = find (\cmsg -> cmsgId cmsg == cid) cmsgs
 
 -- | Filtering control message.
 filterCmsg :: CmsgId -> [Cmsg] -> [Cmsg]

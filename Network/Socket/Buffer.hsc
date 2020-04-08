@@ -238,17 +238,20 @@ sendBufMsg s sa bufsizs cmsgs flags = do
 #endif
   return $ fromIntegral sz
 
--- | Receive data from the socket using recvmsg(2).
+-- | Receive data from the socket using recvmsg(2). The supplied
+--   buffers are filled in order, with subsequent buffers used only
+--   after all the preceding buffers are full. If the message is short
+--   enough some of the supplied buffers may remain unused.
 recvBufMsg :: SocketAddress sa
            => Socket            -- ^ Socket
-           -> [(Ptr Word8,Int)] -- ^ A list of a pair of buffer and its size.
+           -> [(Ptr Word8,Int)] -- ^ A list of (buffer, buffer-length) pairs.
                                 --   If the total length is not large enough,
                                 --   'MSG_TRUNC' is returned
            -> Int               -- ^ The buffer size for control messages.
                                 --   If the length is not large enough,
                                 --   'MSG_CTRUNC' is returned
            -> MsgFlag           -- ^ Message flags
-           -> IO (sa,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
+           -> IO (sa,Int,[Cmsg],MsgFlag) -- ^ Source address, total bytes received, control messages and message flags
 recvBufMsg s bufsizs clen flags = do
   withNewSocketAddress $ \addrPtr addrSize ->
     allocaBytes clen $ \ctrlPtr ->
