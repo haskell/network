@@ -33,12 +33,16 @@ module Network.Socket.ByteString
     -- * Receive data from a socket
     , recv
     , recvFrom
+
+    -- * Advanced send and recv
+    , sendMsg
+    , recvMsg
     ) where
 
 import Data.ByteString (ByteString)
 
-import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
 import qualified Network.Socket.ByteString.IO as G
+import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
 import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------

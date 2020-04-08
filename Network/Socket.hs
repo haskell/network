@@ -131,10 +131,20 @@ module Network.Socket
     , ShutdownCmd(..)
 
     -- * Socket options
-    , SocketOption(..)
+    , SocketOption(SockOpt
+                  ,Debug,ReuseAddr,Type,SoError,DontRoute,Broadcast
+                  ,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
+                  ,MaxSegment,NoDelay,Cork,Linger,ReusePort
+                  ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
+                  ,UseLoopBack,UserTimeout,IPv6Only
+                  ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
+                  ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
     , isSupportedSocketOption
+    , whenSupported
     , getSocketOption
     , setSocketOption
+    , getSockOpt
+    , setSockOpt
 
     -- * Socket
     , Socket
@@ -183,12 +193,14 @@ module Network.Socket
     , socketPortSafe
     , socketPort
 
+#if !defined(mingw32_HOST_OS)
     -- * UNIX-domain socket
     , isUnixDomainSocketAvailable
     , socketPair
     , sendFd
     , recvFd
     , getPeerCredential
+#endif
 
     -- * Name information
     , getNameInfo
@@ -205,14 +217,40 @@ module Network.Socket
     , recvBuf
     , sendBufTo
     , recvBufFrom
-
+    -- ** Advanced IO
+    , sendBufMsg
+    , recvBufMsg
+    , MsgFlag(MSG_OOB,MSG_DONTROUTE,MSG_PEEK,MSG_EOR,MSG_TRUNC,MSG_CTRUNC,MSG_WAITALL)
+    -- ** Control message (ancillary data)
+    , Cmsg(..)
+    , CmsgId(CmsgId
+            ,CmsgIdIPv4TTL
+            ,CmsgIdIPv6HopLimit
+            ,CmsgIdIPv4TOS
+            ,CmsgIdIPv6TClass
+            ,CmsgIdIPv4PktInfo
+            ,CmsgIdIPv6PktInfo)
+    -- ** APIs for control message
+    , lookupCmsg
+    , filterCmsg
+    , decodeCmsg
+    , encodeCmsg
+    -- ** Class and yypes for control message
+    , ControlMessage(..)
+    , IPv4TTL(..)
+    , IPv6HopLimit(..)
+    , IPv4TOS(..)
+    , IPv6TClass(..)
+    , IPv4PktInfo(..)
+    , IPv6PktInfo(..)
     -- * Special constants
     , maxListenQueue
     ) where
 
-import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom)
+import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom, sendBufMsg, recvBufMsg)
 import Network.Socket.Cbits
 import Network.Socket.Fcntl
+import Network.Socket.Flag
 import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
@@ -223,4 +261,9 @@ import Network.Socket.Shutdown
 import Network.Socket.SockAddr
 import Network.Socket.Syscall hiding (connect, bind, accept)
 import Network.Socket.Types
+#if !defined(mingw32_HOST_OS)
+import Network.Socket.Posix.Cmsg
 import Network.Socket.Unix
+#else
+import Network.Socket.Win32.Cmsg
+#endif

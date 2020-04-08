@@ -66,6 +66,7 @@ module Network.Socket.Types (
     , zeroMemory
     , htonl
     , ntohl
+    , In6Addr(..)
     ) where
 
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
@@ -937,7 +938,10 @@ sockaddrStorageLen = 128
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
 withSocketAddress addr f = do
     let sz = sizeOfSocketAddress addr
-    allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
+    if sz == 0 then
+        f nullPtr 0
+      else
+        allocaBytes sz $ \p -> pokeSocketAddress p addr >> f (castPtr p) sz
 
 withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
 withNewSocketAddress f = allocaBytes sockaddrStorageLen $ \ptr -> do

@@ -11,23 +11,41 @@ module Network.Socket.Buffer (
   , recvBufFrom
   , recvBuf
   , recvBufNoWait
+  , sendBufMsg
+  , recvBufMsg
   ) where
 
 #if !defined(mingw32_HOST_OS)
 import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
+#else
+import Foreign.Ptr (nullPtr)
 #endif
-import Foreign.Marshal.Alloc (alloca)
+import Foreign.Marshal.Alloc (alloca, allocaBytes)
+import Foreign.Marshal.Utils (with)
 import GHC.IO.Exception (IOErrorType(InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
+import Network.Socket.Win32.CmsgHdr
+import Network.Socket.Win32.MsgHdr
+import Network.Socket.Win32.WSABuf
+#else
+import Network.Socket.Posix.CmsgHdr
+import Network.Socket.Posix.MsgHdr
+import Network.Socket.Posix.IOVec
 #endif
 
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Name
 import Network.Socket.Types
+import Network.Socket.Flag
+
+#if defined(mingw32_HOST_OS)
+type DWORD   = Word32
+type LPDWORD = Ptr DWORD
+#endif
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -178,18 +196,134 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
                                     loc Nothing Nothing) "non-positive length"
 
+-- | Send data to the socket using sendmsg(2).
+sendBufMsg :: SocketAddress sa
+           => Socket            -- ^ Socket
+           -> sa                -- ^ Destination address
+           -> [(Ptr Word8,Int)] -- ^ Data to be sent
+           -> [Cmsg]            -- ^ Control messages
+           -> MsgFlag           -- ^ Message flags
+           -> IO Int            -- ^ The length actually sent
+sendBufMsg s sa bufsizs cmsgs flags = do
+  sz <- withSocketAddress sa $ \addrPtr addrSize ->
+#if !defined(mingw32_HOST_OS)
+    withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
+#else
+    withWSABuf bufsizs $ \(wsaBPtr, wsaBLen) -> do
+#endif
+      withCmsgs cmsgs $ \ctrlPtr ctrlLen -> do
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+#if !defined(mingw32_HOST_OS)
+              , msgIov     = iovsPtr
+              , msgIovLen  = fromIntegral iovsLen
+#else
+              , msgBuffer    = wsaBPtr
+              , msgBufferLen = fromIntegral wsaBLen
+#endif
+              , msgCtrl    = castPtr ctrlPtr
+              , msgCtrlLen = fromIntegral ctrlLen
+              , msgFlags   = 0
+              }
+            cflags = fromMsgFlag flags
+        withFdSocket s $ \fd ->
+          with msgHdr $ \msgHdrPtr ->
+            throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
+#if !defined(mingw32_HOST_OS)
+              c_sendmsg fd msgHdrPtr cflags
+#else
+              alloca $ \send_ptr ->
+                c_sendmsg fd msgHdrPtr (fromIntegral cflags) send_ptr nullPtr nullPtr
+#endif
+  return $ fromIntegral sz
+
+-- | Receive data from the socket using recvmsg(2). The supplied
+--   buffers are filled in order, with subsequent buffers used only
+--   after all the preceding buffers are full. If the message is short
+--   enough some of the supplied buffers may remain unused.
+recvBufMsg :: SocketAddress sa
+           => Socket            -- ^ Socket
+           -> [(Ptr Word8,Int)] -- ^ A list of (buffer, buffer-length) pairs.
+                                --   If the total length is not large enough,
+                                --   'MSG_TRUNC' is returned
+           -> Int               -- ^ The buffer size for control messages.
+                                --   If the length is not large enough,
+                                --   'MSG_CTRUNC' is returned
+           -> MsgFlag           -- ^ Message flags
+           -> IO (sa,Int,[Cmsg],MsgFlag) -- ^ Source address, total bytes received, control messages and message flags
+recvBufMsg s bufsizs clen flags = do
+  withNewSocketAddress $ \addrPtr addrSize ->
+    allocaBytes clen $ \ctrlPtr ->
+#if !defined(mingw32_HOST_OS)
+      withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
+#else
+      withWSABuf bufsizs $ \(wsaBPtr, wsaBLen) -> do
+#endif
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+#if !defined(mingw32_HOST_OS)
+              , msgIov     = iovsPtr
+              , msgIovLen  = fromIntegral iovsLen
+#else
+              , msgBuffer    = wsaBPtr
+              , msgBufferLen = fromIntegral wsaBLen
+#endif
+#if !defined(mingw32_HOST_OS)
+              , msgCtrl    = castPtr ctrlPtr
+#else
+              , msgCtrl    = if clen == 0 then nullPtr else castPtr ctrlPtr
+#endif
+              , msgCtrlLen = fromIntegral clen
+#if !defined(mingw32_HOST_OS)
+              , msgFlags   = 0
+#else
+              , msgFlags   = fromIntegral $ fromMsgFlag flags
+#endif
+              }
+            _cflags = fromMsgFlag flags
+        withFdSocket s $ \fd -> do
+          with msgHdr $ \msgHdrPtr -> do
+            len <- (fmap fromIntegral) <$>
+#if !defined(mingw32_HOST_OS)
+                throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
+                      c_recvmsg fd msgHdrPtr _cflags
+#else
+                alloca $ \len_ptr -> do
+                    _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmg" $
+                            c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
+                    peek len_ptr
+#endif
+            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
+            hdr <- peek msgHdrPtr
+            cmsgs <- parseCmsgs msgHdrPtr
+            let flags' = MsgFlag $ fromIntegral $ msgFlags hdr
+            return (sockaddr, len, cmsgs, flags')
+
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "send"
   c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
+foreign import ccall unsafe "sendmsg"
+  c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> CInt -> IO CInt -- fixme CSsize
+foreign import ccall unsafe "recvmsg"
+  c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> CInt -> IO CInt
 #else
 foreign import CALLCONV SAFE_ON_WIN "ioctlsocket"
   c_ioctlsocket :: CInt -> CLong -> Ptr CULong -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSAGetLastError"
   c_WSAGetLastError :: IO CInt
+foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
+  -- fixme Handle for SOCKET, see #426
+  c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
+foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
+  c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 #endif
+
 foreign import ccall unsafe "recv"
   c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "sendto"
   c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
+

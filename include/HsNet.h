@@ -20,10 +20,13 @@
 #endif
 
 #define _GNU_SOURCE 1 /* for struct ucred on Linux */
+#define __APPLE_USE_RFC_3542 1 /* for IPV6_RECVPKTINFO */
 
 #ifdef _WIN32
 # include <winsock2.h>
 # include <ws2tcpip.h>
+# include <mswsock.h>
+# include "win32defs.h"
 # define IPV6_V6ONLY 27
 #endif
 
@@ -78,12 +81,56 @@ extern void* newAcceptParams(int sock,
 			     void* sockaddr);
 extern int   acceptNewSock(void* d);
 extern int   acceptDoProc(void* param);
+
+extern LPWSACMSGHDR
+cmsg_firsthdr(LPWSAMSG mhdr);
+
+extern LPWSACMSGHDR
+cmsg_nxthdr(LPWSAMSG mhdr, LPWSACMSGHDR cmsg);
+
+extern unsigned char *
+cmsg_data(LPWSACMSGHDR cmsg);
+
+extern unsigned int
+cmsg_space(unsigned int l);
+
+extern unsigned int
+cmsg_len(unsigned int l);
+
+/**
+ * WSASendMsg function
+ */
+extern WINAPI int
+WSASendMsg (SOCKET, LPWSAMSG, DWORD, LPDWORD,
+            LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE);
+
+/**
+ * WSARecvMsg function
+ */
+extern WINAPI int
+WSARecvMsg (SOCKET, LPWSAMSG, LPDWORD,
+            LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE);
 #else  /* _WIN32 */
 extern int
 sendFd(int sock, int outfd);
 
 extern int
 recvFd(int sock);
+
+extern struct cmsghdr *
+cmsg_firsthdr(struct msghdr *mhdr);
+
+extern struct cmsghdr *
+cmsg_nxthdr(struct msghdr *mhdr, struct cmsghdr *cmsg);
+
+extern unsigned char *
+cmsg_data(struct cmsghdr *cmsg);
+
+extern int
+cmsg_space(int l);
+
+extern int
+cmsg_len(int l);
 #endif /* _WIN32 */
 
 INLINE char *
