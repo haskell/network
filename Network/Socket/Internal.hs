@@ -34,8 +34,9 @@ module Network.Socket.Internal
     , throwSocketErrorIfMinus1Retry
     , throwSocketErrorIfMinus1Retry_
     , throwSocketErrorIfMinus1RetryMayBlock
+#if defined(mingw32_HOST_OS)
     , throwSocketErrorIfMinus1ButRetry
-
+#endif
     -- ** Guards that wait and retry if the operation would block
     -- | These guards are based on 'throwSocketErrorIfMinus1RetryMayBlock'.
     -- They wait for socket readiness if the action fails with @EWOULDBLOCK@
@@ -183,6 +184,9 @@ throwSocketErrorIfMinus1ButRetry exempt name act = do
           else throwSocketError name
    else return r
 
+throwSocketErrorIfMinus1Retry
+  = throwSocketErrorIfMinus1ButRetry (const False)
+
 throwSocketErrorCode name rc = do
     pstr <- c_getWSError rc
     str  <- peekCString pstr
@@ -215,9 +219,6 @@ throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
 
 #endif
-
-throwSocketErrorIfMinus1Retry
-  = throwSocketErrorIfMinus1ButRetry (const False)
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
