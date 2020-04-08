@@ -290,8 +290,8 @@ instance Storable StructLinger where
         (#poke struct linger, l_linger) p linger
 #endif
 
--- | Executes the given action and ignoring the result only when the specified
--- socket option is valid.
+-- | Execute the given action only when the specified socket option is
+--  supported. Any return value is ignored.
 whenSupported :: SocketOption -> IO a -> IO ()
 whenSupported s action
   | isSupportedSocketOption s = action >> return ()

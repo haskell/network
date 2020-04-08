@@ -83,7 +83,9 @@ filterCmsg cid cmsgs = filter (\cmsg -> cmsgId cmsg == cid) cmsgs
 
 ----------------------------------------------------------------
 
--- | A class to encode and decode control message.
+-- | Control message type class.
+--   Each control message type has a numeric 'CmsgId' and a 'Storable'
+--   data representation.
 class Storable a => ControlMessage a where
     controlMessageId :: a -> CmsgId
 

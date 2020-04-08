@@ -74,7 +74,7 @@ sendBufTo = G.sendBufTo
 recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom = G.recvBufFrom
 
--- | Send data from the socket using sendmsg(2).
+-- | Send data to the socket using sendmsg(2).
 sendBufMsg :: Socket            -- ^ Socket
            -> SockAddr          -- ^ Destination address
            -> [(Ptr Word8,Int)] -- ^ Data to be sent

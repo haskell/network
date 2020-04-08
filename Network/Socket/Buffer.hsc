@@ -196,7 +196,7 @@ mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
                                     loc Nothing Nothing) "non-positive length"
 
--- | Send data from the socket using sendmsg(2).
+-- | Send data to the socket using sendmsg(2).
 sendBufMsg :: SocketAddress sa
            => Socket            -- ^ Socket
            -> sa                -- ^ Destination address

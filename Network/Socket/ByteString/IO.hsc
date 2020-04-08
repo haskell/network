@@ -286,7 +286,7 @@ withWSABuffromBS cs f = do
 getBufsiz :: ByteString -> IO (Ptr Word8, Int)
 getBufsiz (PS fptr off len) = withForeignPtr fptr $ \ptr -> return (ptr `plusPtr` off, len)
 
--- | Send data from the socket using sendmsg(2).
+-- | Send data to the socket using sendmsg(2).
 sendMsg :: Socket       -- ^ Socket
         -> SockAddr     -- ^ Destination address
         -> [ByteString] -- ^ Data to be sent
