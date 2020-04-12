@@ -167,6 +167,8 @@ throwSocketErrorIfMinus1_ name act = do
   _ <- throwSocketErrorIfMinus1Retry name act
   return ()
 
+throwSocketErrorIfMinus1ButRetry :: (Eq a, Num a) =>
+                                    (CInt -> Bool) -> String -> IO a -> IO a
 throwSocketErrorIfMinus1ButRetry exempt name act = do
   r <- act
   if (r == -1)

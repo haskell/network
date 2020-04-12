@@ -229,11 +229,18 @@ spec = do
 
         it "receives control messages for IPv4" $ do
             let server sock = do
-                    whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
-                    whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
-                    whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
+                    --whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
+                    --whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
+                    --whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
-
+                    print RecvIPv4TTL
+                    print RecvIPv4TOS
+                    print RecvIPv4PktInfo
+                    print cmsgs
+                    print =<< getSocketOption sock RecvIPv4TOS
+                    print CmsgIdIPv4TTL
+                    print CmsgIdIPv4TOS
+                    print CmsgIdIPv4PktInfo
                     whenSupported RecvIPv4TTL $
                       ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL) `shouldNotBe` Nothing
                     whenSupported RecvIPv4TOS $
