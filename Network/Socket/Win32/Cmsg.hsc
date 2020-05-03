@@ -1,7 +1,10 @@
+
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Network.Socket.Win32.Cmsg where
 
@@ -77,24 +80,27 @@ filterCmsg cid cmsgs = filter (\cmsg -> cmsgId cmsg == cid) cmsgs
 
 -- | A class to encode and decode control message.
 class Storable a => ControlMessage a where
-    controlMessageId :: a -> CmsgId
+    controlMessageId :: CmsgId
 
-encodeCmsg :: ControlMessage a => a -> Cmsg
+encodeCmsg :: forall a. ControlMessage a => a -> Cmsg
 encodeCmsg x = unsafeDupablePerformIO $ do
     bs <- create siz $ \p0 -> do
         let p = castPtr p0
         poke p x
-    return $ Cmsg (controlMessageId x) bs
+    let cmsid = controlMessageId @a
+    return $ Cmsg cmsid bs
   where
     siz = sizeOf x
 
-decodeCmsg :: forall a . Storable a => Cmsg -> Maybe a
-decodeCmsg (Cmsg _ (PS fptr off len))
-  | len < siz = Nothing
+decodeCmsg :: forall a . (ControlMessage a, Storable a) => Cmsg -> Maybe a
+decodeCmsg (Cmsg cmsid (PS fptr off len))
+  | cid /= cmsid = Nothing
+  | len < siz    = Nothing
   | otherwise = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
         let p = castPtr (p0 `plusPtr` off)
         Just <$> peek p
   where
+    cid = controlMessageId @a
     siz = sizeOf (undefined :: a)
 
 ----------------------------------------------------------------
@@ -103,7 +109,7 @@ decodeCmsg (Cmsg _ (PS fptr off len))
 newtype IPv4TTL = IPv4TTL DWORD deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv4TTL where
-    controlMessageId _ = CmsgIdIPv4TTL
+    controlMessageId = CmsgIdIPv4TTL
 
 ----------------------------------------------------------------
 
@@ -111,7 +117,7 @@ instance ControlMessage IPv4TTL where
 newtype IPv6HopLimit = IPv6HopLimit DWORD deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv6HopLimit where
-    controlMessageId _ = CmsgIdIPv6HopLimit
+    controlMessageId = CmsgIdIPv6HopLimit
 
 ----------------------------------------------------------------
 
@@ -119,7 +125,7 @@ instance ControlMessage IPv6HopLimit where
 newtype IPv4TOS = IPv4TOS DWORD deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv4TOS where
-    controlMessageId _ = CmsgIdIPv4TOS
+    controlMessageId = CmsgIdIPv4TOS
 
 ----------------------------------------------------------------
 
@@ -127,7 +133,7 @@ instance ControlMessage IPv4TOS where
 newtype IPv6TClass = IPv6TClass DWORD deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv6TClass where
-    controlMessageId _ = CmsgIdIPv6TClass
+    controlMessageId = CmsgIdIPv6TClass
 
 ----------------------------------------------------------------
 
@@ -138,7 +144,7 @@ instance Show IPv4PktInfo where
     show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
 
 instance ControlMessage IPv4PktInfo where
-    controlMessageId _ = CmsgIdIPv4PktInfo
+    controlMessageId = CmsgIdIPv4PktInfo
 
 instance Storable IPv4PktInfo where
     sizeOf      = const #{size IN_PKTINFO}
@@ -160,7 +166,7 @@ instance Show IPv6PktInfo where
     show (IPv6PktInfo n ha6) = "IPv6PktInfo " ++ show n ++ " " ++ show (hostAddress6ToTuple ha6)
 
 instance ControlMessage IPv6PktInfo where
-    controlMessageId _ = CmsgIdIPv6PktInfo
+    controlMessageId = CmsgIdIPv6PktInfo
 
 instance Storable IPv6PktInfo where
     sizeOf      = const #{size IN6_PKTINFO}
