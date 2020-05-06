@@ -257,28 +257,23 @@ recvBufMsg s bufsizs clen flags = do
     allocaBytes clen $ \ctrlPtr ->
 #if !defined(mingw32_HOST_OS)
       withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
-#else
-      withWSABuf bufsizs $ \(wsaBPtr, wsaBLen) -> do
-#endif
         let msgHdr = MsgHdr {
                 msgName    = addrPtr
               , msgNameLen = fromIntegral addrSize
-#if !defined(mingw32_HOST_OS)
               , msgIov     = iovsPtr
               , msgIovLen  = fromIntegral iovsLen
-#else
-              , msgBuffer    = wsaBPtr
-              , msgBufferLen = fromIntegral wsaBLen
-#endif
-#if !defined(mingw32_HOST_OS)
               , msgCtrl    = castPtr ctrlPtr
-#else
-              , msgCtrl    = if clen == 0 then nullPtr else castPtr ctrlPtr
-#endif
               , msgCtrlLen = fromIntegral clen
-#if !defined(mingw32_HOST_OS)
               , msgFlags   = 0
 #else
+      withWSABuf bufsizs $ \(wsaBPtr, wsaBLen) -> do
+        let msgHdr = MsgHdr {
+                msgName    = addrPtr
+              , msgNameLen = fromIntegral addrSize
+              , msgBuffer    = wsaBPtr
+              , msgBufferLen = fromIntegral wsaBLen
+              , msgCtrl    = if clen == 0 then nullPtr else castPtr ctrlPtr
+              , msgCtrlLen = fromIntegral clen
               , msgFlags   = fromIntegral $ fromMsgFlag flags
 #endif
               }

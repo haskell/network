@@ -15,7 +15,8 @@ environment:
     - GHCVER: 8.2.2
     - GHCVER: 8.4.4
     - GHCVER: 8.6.5
-    - GHCVER: 8.8.3
+    # GHC 8.8.3 is broken due to a bug in process
+    # - GHCVER: 8.8.3
 
 platform:
 #  - x86 # We may want to test x86 as well, but it would double the 23min build time.
@@ -53,6 +54,10 @@ before_build:
  - ghc --version
  - cabal %CABOPTS% new-update -vverbose+nowrap
  - IF EXIST configure.ac bash -c "autoreconf -i"
+
+# Uncomment these lines to turn on remote desktop for AppVeyor
+# on_finish:
+#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 deploy: off
 
