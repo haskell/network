@@ -52,16 +52,17 @@
 -- >               , addrSocketType = Stream
 -- >               }
 -- >         head <$> getAddrInfo (Just hints) mhost (Just port)
--- >     open addr = do
--- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >         setSocketOption sock ReuseAddr 1
--- >         withFdSocket sock setCloseOnExecIfNeeded
--- >         bind sock $ addrAddress addr
--- >         listen sock 1024
--- >         return sock
--- >     loop sock = forever $ do
--- >         (conn, _peer) <- accept sock
--- >         void $ forkFinally (server conn) (const $ gracefulClose conn 5000)
+-- >     open addr = E.bracketOnError
+-- >         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+-- >         close $ \sock -> do
+-- >             setSocketOption sock ReuseAddr 1
+-- >             withFdSocket sock setCloseOnExecIfNeeded
+-- >             bind sock $ addrAddress addr
+-- >             listen sock 1024
+-- >             return sock
+-- >     loop sock = forever $ E.bracketOnError (accept sock) (close . fst)
+-- >         $ \(conn, _peer) -> void $
+-- >             forkFinally (server conn) (const $ gracefulClose conn 5000)
 --
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- > -- Echo client program
@@ -88,10 +89,11 @@
 -- >     resolve = do
 -- >         let hints = defaultHints { addrSocketType = Stream }
 -- >         head <$> getAddrInfo (Just hints) (Just host) (Just port)
--- >     open addr = do
--- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
--- >         connect sock $ addrAddress addr
--- >         return sock
+-- >     open addr = E.bracketOnError
+-- >         (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+-- >         close $ \sock -> do
+-- >             connect sock $ addrAddress addr
+-- >             return sock
 --
 -- The proper programming model is that one 'Socket' is handled by
 -- a single thread. If multiple threads use one 'Socket' concurrently,
