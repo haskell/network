@@ -29,13 +29,14 @@ runTCPServer mhost port server = withSocketsDo $ do
               , addrSocketType = Stream
               }
         head <$> getAddrInfo (Just hints) mhost (Just port)
-    open addr = do
-        sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-        setSocketOption sock ReuseAddr 1
-        withFdSocket sock setCloseOnExecIfNeeded
-        bind sock $ addrAddress addr
-        listen sock 1024
-        return sock
-    loop sock = forever $ do
-        (conn, _peer) <- accept sock
-        void $ forkFinally (server conn) (const $ gracefulClose conn 5000)
+    open addr = E.bracketOnError
+        (socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr))
+        close $ \sock -> do
+            setSocketOption sock ReuseAddr 1
+            withFdSocket sock setCloseOnExecIfNeeded
+            bind sock $ addrAddress addr
+            listen sock 1024
+            return sock
+    loop sock = forever $ E.bracketOnError (accept sock) (close . fst)
+        $ \(conn, _peer) -> void $
+            forkFinally (server conn) (const $ gracefulClose conn 5000)
