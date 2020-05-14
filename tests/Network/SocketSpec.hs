@@ -6,6 +6,7 @@ module Network.SocketSpec (main, spec) where
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (readMVar)
 import Control.Monad
+import Data.Maybe (fromJust)
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
@@ -93,19 +94,18 @@ spec = do
 
 #if defined(mingw32_HOST_OS)
     let lpdevname = "loopback_0"
-#elif defined(darwin_HOST_OS)
+#elif defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
     let lpdevname = "lo0"
 #else
     let lpdevname = "lo"
 #endif
 
-    describe "ifNameToIndex" $ do
-        it "converts a name to an index" $
-            ifNameToIndex lpdevname `shouldReturn` Just 1
-
-    describe "ifIndexToName" $ do
-        it "converts an index to a name" $
-            ifIndexToName 1 `shouldReturn` Just lpdevname
+    describe "ifNameToIndex and ifIndexToName" $ do
+        it "convert a name to an index and back" $
+            do
+            n <- ifNameToIndex lpdevname
+            n `shouldNotBe` Nothing
+            ifIndexToName (fromJust n) `shouldReturn` Just lpdevname
 
     describe "socket" $ do
         let gc = do
