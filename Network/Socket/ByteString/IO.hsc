@@ -310,9 +310,9 @@ recvMsg :: Socket  -- ^ Socket
         -> MsgFlag -- ^ Message flags
         -> IO (SockAddr, ByteString, [Cmsg], MsgFlag) -- ^ Source address, received data, control messages and message flags
 recvMsg s siz clen flags = do
-    bs <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
-    withBufSizs [bs] $ \bufsizs -> do
-        (addr,len,cmsgs,flags') <- recvBufMsg s bufsizs clen flags
-        let bs' | len < siz = let PS buf 0 _ = bs in PS buf 0 len
+    bs@(PS fptr _ _) <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
+    withForeignPtr fptr $ \ptr -> do
+        (addr,len,cmsgs,flags') <- recvBufMsg s [(ptr,siz)] clen flags
+        let bs' | len < siz = PS fptr 0 len
                 | otherwise = bs
         return (addr, bs', cmsgs, flags')
