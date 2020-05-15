@@ -15,6 +15,7 @@ import System.IO.Error (ioeSetErrorString, mkIOError)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
+import Network.Socket.Syscall
 import Network.Socket.Types
 
 -----------------------------------------------------------------------------
@@ -487,3 +488,12 @@ showHostAddress6 ha6@(a1, a2, a3, a4)
     begin = end + diff          -- the longest run of zeros
     (diff, end) = minimum $
         scanl (\c i -> if i == 0 then c - 1 else 0) 0 fields `zip` [0..]
+
+-----------------------------------------------------------------------------
+
+-- | A utility function to open a socket with `AddrInfo`.
+-- This is a just wrapper for the following code:
+--
+-- > \addr -> socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+openSocket :: AddrInfo -> IO Socket
+openSocket addr = socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)

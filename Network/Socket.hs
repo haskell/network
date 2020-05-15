@@ -149,6 +149,7 @@ module Network.Socket
     -- * Socket
     , Socket
     , socket
+    , openSocket
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
