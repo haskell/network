@@ -28,8 +28,8 @@ data CmsgHdr = CmsgHdr {
   } deriving (Eq, Show)
 
 instance Storable CmsgHdr where
-  sizeOf _    = (#size struct cmsghdr)
-  alignment _ = alignment (undefined :: CInt)
+  sizeOf    ~_ = (#size struct cmsghdr)
+  alignment ~_ = alignment (0 :: CInt)
 
   peek p = do
     len <- (#peek struct cmsghdr, cmsg_len)   p

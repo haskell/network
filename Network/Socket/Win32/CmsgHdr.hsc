@@ -25,8 +25,8 @@ data CmsgHdr = CmsgHdr {
   } deriving (Eq, Show)
 
 instance Storable CmsgHdr where
-  sizeOf      = const #{size WSACMSGHDR}
-  alignment _ = #alignment WSACMSGHDR
+  sizeOf    ~_ = #{size WSACMSGHDR}
+  alignment ~_ = #alignment WSACMSGHDR
 
   peek p = do
     len <- (#peek WSACMSGHDR, cmsg_len)   p

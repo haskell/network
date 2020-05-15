@@ -109,8 +109,8 @@ data AddrInfo = AddrInfo {
   } deriving (Eq, Show, Typeable)
 
 instance Storable AddrInfo where
-    sizeOf    _ = #const sizeof(struct addrinfo)
-    alignment _ = alignment (undefined :: CInt)
+    sizeOf    ~_ = #const sizeof(struct addrinfo)
+    alignment ~_ = alignment (0 :: CInt)
 
     peek p = do
         ai_flags <- (#peek struct addrinfo, ai_flags) p
@@ -200,8 +200,8 @@ defaultHints = AddrInfo {
   , addrFamily     = AF_UNSPEC
   , addrSocketType = NoSocketType
   , addrProtocol   = defaultProtocol
-  , addrAddress    = undefined
-  , addrCanonName  = undefined
+  , addrAddress    = SockAddrInet 0 0
+  , addrCanonName  = Nothing
   }
 
 -- | Shows the fields of 'defaultHints', without inspecting the by-default undefined fields 'addrAddress' and 'addrCanonName'.

@@ -19,8 +19,8 @@ data IOVec = IOVec
     }
 
 instance Storable IOVec where
-  sizeOf _    = (#const sizeof(struct iovec))
-  alignment _ = alignment (undefined :: CInt)
+  sizeOf    ~_ = (#const sizeof(struct iovec))
+  alignment ~_ = alignment (0 :: CInt)
 
   peek p = do
     base <- (#peek struct iovec, iov_base) p

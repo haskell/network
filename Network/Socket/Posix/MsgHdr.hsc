@@ -24,8 +24,8 @@ data MsgHdr sa = MsgHdr
     }
 
 instance Storable (MsgHdr sa) where
-  sizeOf _    = (#const sizeof(struct msghdr))
-  alignment _ = alignment (undefined :: CInt)
+  sizeOf    ~_ = (#const sizeof(struct msghdr))
+  alignment ~_ = alignment (0 :: CInt)
 
   peek p = do
     name       <- (#peek struct msghdr, msg_name)       p

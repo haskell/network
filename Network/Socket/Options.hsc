@@ -277,8 +277,8 @@ pattern RecvIPv6PktInfo = SockOpt (-1) (-1)
 data StructLinger = StructLinger CInt CInt
 
 instance Storable StructLinger where
-    sizeOf _ = (#const sizeof(struct linger))
-    alignment _ = alignment (undefined :: CInt)
+    sizeOf ~_    = (#const sizeof(struct linger))
+    alignment ~_ = alignment (0 :: CInt)
 
     peek p = do
         onoff  <- (#peek struct linger, l_onoff) p
