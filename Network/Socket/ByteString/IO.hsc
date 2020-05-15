@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -269,22 +270,23 @@ remainingChunks i (x:xs)
 -- IOVec made from @cs@ and the number of pointers (@length cs@).
 -- /Unix only/.
 withIOVecfromBS :: [ByteString] -> ((Ptr IOVec, Int) -> IO a) -> IO a
-withIOVecfromBS cs f = do
-    bufsizs <- mapM getBufsiz cs
-    withIOVec bufsizs f
+withIOVecfromBS cs f = withBufSizs cs $ \bufsizs -> withIOVec bufsizs f
 #else
 -- | @withWSABuffromBS cs f@ executes the computation @f@, passing as argument a pair
 -- consisting of a pointer to a temporarily allocated array of pointers to
 -- WSABuf made from @cs@ and the number of pointers (@length cs@).
 -- /Windows only/.
 withWSABuffromBS :: [ByteString] -> ((Ptr WSABuf, Int) -> IO a) -> IO a
-withWSABuffromBS cs f = do
-    bufsizs <- mapM getBufsiz cs
-    withWSABuf bufsizs f
+withWSABuffromBS cs f = withBufSizs cs $ \bufsizs -> withWSABuf bufsizs f
 #endif
 
-getBufsiz :: ByteString -> IO (Ptr Word8, Int)
-getBufsiz (PS fptr off len) = withForeignPtr fptr $ \ptr -> return (ptr `plusPtr` off, len)
+withBufSizs :: [ByteString] -> ([(Ptr Word8, Int)] -> IO a) -> IO a
+withBufSizs bss0 f = loop bss0 id
+  where
+    loop []                    !build = f $ build []
+    loop (PS fptr off len:bss) !build = withForeignPtr fptr $ \ptr -> do
+        let !ptr' = ptr `plusPtr` off
+        loop bss (build . ((ptr',len) :))
 
 -- | Send data to the socket using sendmsg(2).
 sendMsg :: Socket       -- ^ Socket
@@ -294,8 +296,7 @@ sendMsg :: Socket       -- ^ Socket
         -> MsgFlag      -- ^ Message flags
         -> IO Int       -- ^ The length actually sent
 sendMsg _ _    []  _ _ = return 0
-sendMsg s addr bss cmsgs flags = do
-    bufsizs <- mapM getBufsiz bss
+sendMsg s addr bss cmsgs flags = withBufSizs bss $ \bufsizs ->
     sendBufMsg s addr bufsizs cmsgs flags
 
 -- | Receive data from the socket using recvmsg(2).
@@ -309,9 +310,9 @@ recvMsg :: Socket  -- ^ Socket
         -> MsgFlag -- ^ Message flags
         -> IO (SockAddr, ByteString, [Cmsg], MsgFlag) -- ^ Source address, received data, control messages and message flags
 recvMsg s siz clen flags = do
-    bs <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
-    bufsiz <- getBufsiz bs
-    (addr,len,cmsgs,flags') <- recvBufMsg s [bufsiz] clen flags
-    let bs' | len < siz = let PS buf 0 _ = bs in PS buf 0 len
-            | otherwise = bs
-    return (addr, bs', cmsgs, flags')
+    bs@(PS fptr _ _) <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
+    withForeignPtr fptr $ \ptr -> do
+        (addr,len,cmsgs,flags') <- recvBufMsg s [(ptr,siz)] clen flags
+        let bs' | len < siz = PS fptr 0 len
+                | otherwise = bs
+        return (addr, bs', cmsgs, flags')
