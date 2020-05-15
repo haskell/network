@@ -935,6 +935,7 @@ class SocketAddress sa where
 sockaddrStorageLen :: Int
 sockaddrStorageLen = 128
 
+{-# NOINLINE withSocketAddress #-}
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
 withSocketAddress addr f = do
     let sz = sizeOfSocketAddress addr
@@ -1050,6 +1051,9 @@ sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
 sizeOfSockAddr SockAddrInet{}  = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
+-- The combination of "-XString" and inlining results in a bug where
+-- "sz" is always 0.
+{-# NOINLINE withSockAddr #-}
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
