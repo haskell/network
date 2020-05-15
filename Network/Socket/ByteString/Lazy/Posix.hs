@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.Socket.ByteString.Lazy.Posix (
@@ -34,7 +33,7 @@ send s lbs = do
   where
     withPokes ss p f = loop ss p 0 0
       where
-        loop (c:cs) q k !niovs
+        loop (c:cs) q k niovs
             | k < maxNumBytes = unsafeUseAsCStringLen c $ \(ptr, len) -> do
                 poke q $ IOVec (castPtr ptr) (fromIntegral len)
                 loop cs
