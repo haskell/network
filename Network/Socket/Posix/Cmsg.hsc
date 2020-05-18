@@ -36,7 +36,7 @@ data CmsgId = CmsgId {
 
 -- | The identifier for 'IPv4TTL'.
 pattern CmsgIdIPv4TTL :: CmsgId
-#if defined(darwin_HOST_OS)
+#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
 pattern CmsgIdIPv4TTL = CmsgId (#const IPPROTO_IP) (#const IP_RECVTTL)
 #else
 pattern CmsgIdIPv4TTL = CmsgId (#const IPPROTO_IP) (#const IP_TTL)
@@ -48,7 +48,7 @@ pattern CmsgIdIPv6HopLimit = CmsgId (#const IPPROTO_IPV6) (#const IPV6_HOPLIMIT)
 
 -- | The identifier for 'IPv4TOS'.
 pattern CmsgIdIPv4TOS :: CmsgId
-#if defined(darwin_HOST_OS)
+#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
 pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_RECVTOS)
 #else
 pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_TOS)
@@ -60,11 +60,19 @@ pattern CmsgIdIPv6TClass = CmsgId (#const IPPROTO_IPV6) (#const IPV6_TCLASS)
 
 -- | The identifier for 'IPv4PktInfo'.
 pattern CmsgIdIPv4PktInfo :: CmsgId
+#if defined(IP_PKTINFO)
 pattern CmsgIdIPv4PktInfo = CmsgId (#const IPPROTO_IP) (#const IP_PKTINFO)
+#else
+pattern CmsgIdIPv4PktInfo = CmsgId (-1) (-1)
+#endif
 
 -- | The identifier for 'IPv6PktInfo'.
 pattern CmsgIdIPv6PktInfo :: CmsgId
+#if defined(IPV6_PKTINFO)
 pattern CmsgIdIPv6PktInfo = CmsgId (#const IPPROTO_IPV6) (#const IPV6_PKTINFO)
+#else
+pattern CmsgIdIPv6PktInfo = CmsgId (-1) (-1)
+#endif
 
 -- | The identifier for 'Fd'.
 pattern CmsgIdFd :: CmsgId
@@ -115,7 +123,7 @@ decodeCmsg (Cmsg cmsid (PS fptr off len))
 ----------------------------------------------------------------
 
 -- | Time to live of IPv4.
-#if defined(darwin_HOST_OS)
+#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
 newtype IPv4TTL = IPv4TTL CChar deriving (Eq, Show, Storable)
 #else
 newtype IPv4TTL = IPv4TTL CInt deriving (Eq, Show, Storable)
@@ -160,6 +168,7 @@ instance ControlMessage IPv4PktInfo where
     controlMessageId = CmsgIdIPv4PktInfo
 
 instance Storable IPv4PktInfo where
+#if defined (IP_PKTINFO)
     sizeOf _ = (#size struct in_pktinfo)
     alignment _ = alignment (undefined :: CInt)
     poke p (IPv4PktInfo n sa ha) = do
@@ -171,6 +180,12 @@ instance Storable IPv4PktInfo where
         sa <- (#peek struct in_pktinfo, ipi_spec_dst) p
         ha <- (#peek struct in_pktinfo, ipi_addr)     p
         return $ IPv4PktInfo n sa ha
+#else
+    sizeOf _ = 0
+    alignment _ = 1
+    poke _ _ = error "Unsupported control message type"
+    peek _   = error "Unsupported control message type"
+#endif
 
 ----------------------------------------------------------------
 
@@ -184,6 +199,7 @@ instance ControlMessage IPv6PktInfo where
     controlMessageId = CmsgIdIPv6PktInfo
 
 instance Storable IPv6PktInfo where
+#if defined (IPV6_PKTINFO)
     sizeOf _ = (#size struct in6_pktinfo)
     alignment _ = alignment (undefined :: CInt)
     poke p (IPv6PktInfo n ha6) = do
@@ -193,6 +209,12 @@ instance Storable IPv6PktInfo where
         In6Addr ha6 <- (#peek struct in6_pktinfo, ipi6_addr)    p
         n :: CInt   <- (#peek struct in6_pktinfo, ipi6_ifindex) p
         return $ IPv6PktInfo (fromIntegral n) ha6
+#else
+    sizeOf _ = 0
+    alignment _ = 1
+    poke _ _ = error "Unsupported control message type"
+    peek _   = error "Unsupported control message type"
+#endif
 
 ----------------------------------------------------------------
 

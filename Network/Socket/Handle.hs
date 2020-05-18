@@ -14,6 +14,11 @@ import Network.Socket.Types
 -- operations on the 'Socket' after calling 'socketToHandle'.  To
 -- close the 'Socket' after 'socketToHandle', call 'System.IO.hClose'
 -- on the 'Handle'.
+--
+-- Caveat 'Handle' is not recommended for network programming in 
+-- Haskell, e.g. merely performing 'hClose' on a TCP socket won't
+-- cooperate with peer's 'gracefulClose', i.e. proper shutdown
+-- sequence with appropriate handshakes specified by the protocol.
 
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = invalidateSocket s err $ \oldfd -> do

@@ -1,3 +1,26 @@
+## Unreleased
+
+* Defined `openSocket` in terms of `AddrInfo`
+  [5b0987197fe2ed7beddd7b2096522d624e71151e](https://github.com/haskell/network/commit/5b0987197fe2ed7beddd7b2096522d624e71151e)
+* Improved FreeBSD portability for Control Messages and tests
+  [#452](https://github.com/haskell/network/pull/452)
+* Support `sendMsg` and `recvMsg`
+  [#433](https://github.com/haskell/network/pull/433)
+  [#445](https://github.com/haskell/network/pull/445)
+  [#451](https://github.com/haskell/network/pull/451)
+    * Added `sendMsg` and `recvMsg` APIs
+    * Redefined `SocketOption` as pattern synonym
+* Implement total Show functions for SockAddr
+  [#441](https://github.com/haskell/network/pull/441)
+* Improve portability changing `u_int32_t` to `uint32_t`.
+  [#442](https://github.com/haskell/network/pull/442)
+* Removed obsolete CPP statements.
+  [d1f4ee60ce6a4a85abb79532f64d4a4e71e2b1ce](https://github.com/haskell/network/commit/d1f4ee60ce6a4a85abb79532f64d4a4e71e2b1ce)
+* Loads of improved test coverage.
+  [cbd67cc50a37770432eb978ac8b8eb6da3664817](https://github.com/haskell/network/commit/cbd67cc50a37770432eb978ac8b8eb6da3664817)
+  [fcc2d86d53a6bec793f6a979a9e8fdf7fe3f4c22](https://github.com/haskell/network/commit/fcc2d86d53a6bec793f6a979a9e8fdf7fe3f4c22)
+  [6db96969b3e8974abbfd50a7f073baa57376fd5e](https://github.com/haskell/network/commit/6db96969b3e8974abbfd50a7f073baa57376fd5e)
+
 ## Version 3.1.1.1
 
 * Fix for GHCJS.
