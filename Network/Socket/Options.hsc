@@ -280,6 +280,7 @@ pattern CustomSockOpt xy <- ((\(SockOpt x y) -> (x, y)) -> xy)
   where
     CustomSockOpt (x, y) = SockOpt x y
 
+{-# COMPLETE CustomSockOpt #-}
 #ifdef SO_LINGER
 data StructLinger = StructLinger CInt CInt
 
