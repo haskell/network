@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -14,7 +15,8 @@ module Network.Socket.Options (
                 ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
                 ,UseLoopBack,UserTimeout,IPv6Only
                 ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
-                ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
+                ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo
+                ,CustomSockOpt)
   , isSupportedSocketOption
   , whenSupported
   , getSocketType
@@ -272,6 +274,11 @@ pattern RecvIPv6PktInfo = SockOpt (#const IPPROTO_IPV6) (#const IPV6_PKTINFO)
 pattern RecvIPv6PktInfo = SockOpt (-1) (-1)
 #endif
 #endif // HAVE_DECL_IPPROTO_IPV6
+
+pattern CustomSockOpt :: (CInt, CInt) -> SocketOption
+pattern CustomSockOpt xy <- ((\(SockOpt x y) -> (x, y)) -> xy)
+  where
+    CustomSockOpt (x, y) = SockOpt x y
 
 #ifdef SO_LINGER
 data StructLinger = StructLinger CInt CInt
