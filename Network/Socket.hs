@@ -52,16 +52,19 @@
 -- >               , addrSocketType = Stream
 -- >               }
 -- >         head <$> getAddrInfo (Just hints) mhost (Just port)
--- >     open addr = do
--- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+-- >     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
 -- >         setSocketOption sock ReuseAddr 1
 -- >         withFdSocket sock setCloseOnExecIfNeeded
 -- >         bind sock $ addrAddress addr
 -- >         listen sock 1024
 -- >         return sock
--- >     loop sock = forever $ do
--- >         (conn, _peer) <- accept sock
--- >         void $ forkFinally (server conn) (const $ gracefulClose conn 5000)
+-- >     loop sock = forever $ E.bracketOnError (accept sock) (close . fst)
+-- >         $ \(conn, _peer) -> void $
+-- >             -- 'forkFinally' alone is unlikely to fail thus leaking @conn@,
+-- >             -- but 'E.bracketOnError' above will be necessary if some
+-- >             -- non-atomic setups (e.g. spawning a subprocess to handle
+-- >             -- @conn@) before proper cleanup of @conn@ is your case
+-- >             forkFinally (server conn) (const $ gracefulClose conn 5000)
 --
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- > -- Echo client program
@@ -88,8 +91,7 @@
 -- >     resolve = do
 -- >         let hints = defaultHints { addrSocketType = Stream }
 -- >         head <$> getAddrInfo (Just hints) (Just host) (Just port)
--- >     open addr = do
--- >         sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+-- >     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
 -- >         connect sock $ addrAddress addr
 -- >         return sock
 --
