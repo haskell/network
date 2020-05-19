@@ -110,7 +110,7 @@ data AddrInfo = AddrInfo {
 
 instance Storable AddrInfo where
     sizeOf    _ = #const sizeof(struct addrinfo)
-    alignment _ = alignment (undefined :: CInt)
+    alignment _ = alignment (0 :: CInt)
 
     peek p = do
         ai_flags <- (#peek struct addrinfo, ai_flags) p
@@ -181,9 +181,7 @@ niFlagMapping = [(NI_DGRAM, #const NI_DGRAM),
                  (NI_NUMERICHOST, #const NI_NUMERICHOST),
                  (NI_NUMERICSERV, #const NI_NUMERICSERV)]
 
--- | Default hints for address lookup with 'getAddrInfo'.  The values
--- of the 'addrAddress' and 'addrCanonName' fields are 'undefined',
--- and are never inspected by 'getAddrInfo'.
+-- | Default hints for address lookup with 'getAddrInfo'.
 --
 -- >>> addrFlags defaultHints
 -- []
@@ -200,28 +198,9 @@ defaultHints = AddrInfo {
   , addrFamily     = AF_UNSPEC
   , addrSocketType = NoSocketType
   , addrProtocol   = defaultProtocol
-  , addrAddress    = undefined
-  , addrCanonName  = undefined
+  , addrAddress    = SockAddrInet 0 0
+  , addrCanonName  = Nothing
   }
-
--- | Shows the fields of 'defaultHints', without inspecting the by-default undefined fields 'addrAddress' and 'addrCanonName'.
-showDefaultHints :: AddrInfo -> String
-showDefaultHints AddrInfo{..} = concat [
-    "AddrInfo {"
-  , "addrFlags = "
-  , show addrFlags
-  , ", addrFamily = "
-  , show addrFamily
-  , ", addrSocketType = "
-  , show addrSocketType
-  , ", addrProtocol = "
-  , show addrProtocol
-  , ", addrAddress = "
-  , "<assumed to be undefined>"
-  , ", addrCanonName = "
-  , "<assumed to be undefined>"
-  , "}"
-  ]
 
 -----------------------------------------------------------------------------
 -- | Resolve a host or service name to one or more addresses.
@@ -294,7 +273,7 @@ getAddrInfo hints node service = alloc getaddrinfo
                         err
     message = concat [
         "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
-      , maybe (show hints) showDefaultHints hints
+      , maybe "Nothing" show hints
       , ", host name: "
       , show node
       , ", service name: "

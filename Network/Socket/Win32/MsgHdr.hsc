@@ -28,7 +28,7 @@ data MsgHdr sa = MsgHdr
     } deriving Show
 
 instance Storable (MsgHdr sa) where
-  sizeOf      = const #{size WSAMSG}
+  sizeOf    _ = #{size WSAMSG}
   alignment _ = #alignment WSAMSG
 
   peek p = do

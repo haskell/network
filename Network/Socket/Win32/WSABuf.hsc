@@ -20,7 +20,7 @@ data WSABuf = WSABuf
     }
 
 instance Storable WSABuf where
-  sizeOf      = const #{size WSABUF}
+  sizeOf    _ = #{size WSABUF}
   alignment _ = #alignment WSABUF
 
   peek p = do

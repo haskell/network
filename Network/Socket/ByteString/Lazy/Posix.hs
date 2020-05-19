@@ -38,7 +38,7 @@ send s lbs = do
             | k < maxNumBytes = unsafeUseAsCStringLen c $ \(ptr, len) -> do
                 poke q $ IOVec (castPtr ptr) (fromIntegral len)
                 loop cs
-                     (q `plusPtr` sizeOf (undefined :: IOVec))
+                     (q `plusPtr` sizeOf (IOVec nullPtr 0))
                      (k + fromIntegral len)
                      (niovs + 1)
             | otherwise = f niovs
