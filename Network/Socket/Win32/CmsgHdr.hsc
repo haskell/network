@@ -25,7 +25,7 @@ data CmsgHdr = CmsgHdr {
   } deriving (Eq, Show)
 
 instance Storable CmsgHdr where
-  sizeOf      = const #{size WSACMSGHDR}
+  sizeOf    _ = #{size WSACMSGHDR}
   alignment _ = #alignment WSACMSGHDR
 
   peek p = do

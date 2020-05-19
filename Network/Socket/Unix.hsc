@@ -81,8 +81,8 @@ getPeerCred s = do
 
 newtype PeerCred = PeerCred (CUInt, CUInt, CUInt)
 instance Storable PeerCred where
-    sizeOf _ = (#const sizeof(struct ucred))
-    alignment _ = alignment (undefined :: CInt)
+    sizeOf    _ = (#const sizeof(struct ucred))
+    alignment _ = alignment (0 :: CInt)
     poke _ _ = return ()
     peek p = do
         pid <- (#peek struct ucred, pid) p
