@@ -124,18 +124,17 @@ instance Storable AddrInfo where
                         then return Nothing
                         else Just <$> peekCString ai_canonname_ptr
 
-        socktype <- unpackSocketType' "AddrInfo.peek" ai_socktype
         return $ AddrInfo {
             addrFlags = unpackBits aiFlagMapping ai_flags
           , addrFamily = unpackFamily ai_family
-          , addrSocketType = socktype
+          , addrSocketType = unpackSocketType ai_socktype
           , addrProtocol = ai_protocol
           , addrAddress = ai_addr
           , addrCanonName = ai_canonname
           }
 
     poke p (AddrInfo flags family sockType protocol _ _) = do
-        c_stype <- packSocketTypeOrThrow "AddrInfo.poke" sockType
+        let c_stype = packSocketType sockType
 
         (#poke struct addrinfo, ai_flags) p (packBits aiFlagMapping flags)
         (#poke struct addrinfo, ai_family) p (packFamily family)

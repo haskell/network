@@ -178,7 +178,7 @@ socketPair :: Family              -- Family Name (usually AF_UNIX)
 #if defined(DOMAIN_SOCKET_SUPPORT)
 socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-      c_stype <- packSocketTypeOrThrow "socketPair" stype
+      let c_stype = packSocketType stype
       _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
                   c_socketpair (packFamily family) c_stype protocol fdArr
       [fd1,fd2] <- peekArray 2 fdArr

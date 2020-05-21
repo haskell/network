@@ -84,7 +84,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     return s
   where
     create = do
-        c_stype <- modifyFlag <$> packSocketTypeOrThrow "socket" stype
+        let c_stype = modifyFlag $ packSocketType stype
         throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
             c_socket (packFamily family) c_stype protocol
 

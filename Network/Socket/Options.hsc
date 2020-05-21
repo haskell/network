@@ -9,8 +9,8 @@
 
 module Network.Socket.Options (
     SocketOption(SockOpt
-                ,Debug,ReuseAddr,Type,SoError,DontRoute,Broadcast
-                ,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
+                ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
+                ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
                 ,MaxSegment,NoDelay,Cork,Linger,ReusePort
                 ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
                 ,UseLoopBack,UserTimeout,IPv6Only
@@ -53,8 +53,7 @@ isSupportedSocketOption opt = opt /= SockOpt (-1) (-1)
 --
 --   Since: 3.0.1.0
 getSocketType :: Socket -> IO SocketType
-getSocketType s = (fromMaybe NoSocketType . unpackSocketType . fromIntegral)
-                    <$> getSocketOption s Type
+getSocketType s = unpackSocketType <$> getSockOpt s Type
 
 #ifdef SOL_SOCKET
 -- | SO_DEBUG
@@ -71,13 +70,31 @@ pattern ReuseAddr      = SockOpt (#const SOL_SOCKET) (#const SO_REUSEADDR)
 #else
 pattern ReuseAddr      = SockOpt (-1) (-1)
 #endif
--- | SO_TYPE
+
+-- | SO_DOMAIN, read-only
+pattern SoDomain :: SocketOption
+#ifdef SO_DOMAIN
+pattern SoDomain       = SockOpt (#const SOL_SOCKET) (#const SO_DOMAIN)
+#else
+pattern SoDomain       = SockOpt (-1) (-1)
+#endif
+
+-- | SO_TYPE, read-only
 pattern Type :: SocketOption
 #ifdef SO_TYPE
 pattern Type           = SockOpt (#const SOL_SOCKET) (#const SO_TYPE)
 #else
 pattern Type           = SockOpt (-1) (-1)
 #endif
+
+-- | SO_PROTOCOL, read-only
+pattern SoProtocol :: SocketOption
+#ifdef SO_PROTOCOL
+pattern SoProtocol     = SockOpt (#const SOL_SOCKET) (#const SO_PROTOCOL)
+#else
+pattern SoProtocol     = SockOpt (-1) (-1)
+#endif
+
 -- | SO_ERROR
 pattern SoError :: SocketOption
 #ifdef SO_ERROR
