@@ -11,6 +11,8 @@ import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
 import System.Mem (performGC)
+import System.IO.Error (tryIOError, isAlreadyInUseError)
+import System.IO.Temp (withSystemTempDirectory)
 
 import Test.Hspec
 
@@ -62,6 +64,35 @@ spec = do
             addr:_ <- getAddrInfo (Just hints) (Just "::6") Nothing
             sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
             bind sock (addrAddress addr) `shouldThrow` anyIOException
+
+        it "successfully binds to a unix socket, twice" $ do
+            withSystemTempDirectory "haskell-network" $ \path -> do
+                let sfile = path ++ "/socket-file"
+                let addr = SockAddrUnix sfile
+                when (isSupportedSockAddr addr) $ do
+                    sock0 <- socket AF_UNIX Stream defaultProtocol
+                    bind sock0 addr
+                    listen sock0 1
+
+                    sock1 <- socket AF_UNIX Stream defaultProtocol
+                    tryIOError (bind sock1 addr) >>= \o -> case o of
+                        Right () -> error "bind should have failed but succeeded"
+                        Left e -> if isAlreadyInUseError e then pure () else ioError e
+
+                    close sock0
+
+                    -- Unix systems tend to leave the file existing, which is
+                    -- why our `bind` does its workaround. however if any
+                    -- system in the future does fix this issue, we don't want
+                    -- this test to fail, since that would defeat the purpose
+                    -- of our workaround. but you can uncomment the below lines
+                    -- if you want to play with this on your own system.
+                    --import System.Directory (doesPathExist)
+                    --ex <- doesPathExist sfile
+                    --unless ex $ error "socket file was deleted unexpectedly"
+
+                    sock2 <- socket AF_UNIX Stream defaultProtocol
+                    bind sock2 addr
 
     describe "UserTimeout" $ do
         it "can be set" $ do
