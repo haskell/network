@@ -2,6 +2,7 @@
 
 module Network.Socket.ByteStringSpec (main, spec) where
 
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Data.Bits
 import Data.Maybe
 import Control.Monad
@@ -235,10 +236,17 @@ spec = do
             -- This test behaves strange on AppVeyor and I don't know why so skip
             -- TOS for now.
             isAppVeyor <- isJust <$> lookupEnv "APPVEYOR"
+
+            -- Avoid race condition between the client sending the message and
+            -- the server finishing its socket configuration.  Otherwise the
+            -- message may be received with default socket options!
+            serverReady <- newEmptyMVar
+
             let server sock = do
                     whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
                     whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
                     whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
+                    putMVar serverReady ()
 
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
@@ -249,18 +257,24 @@ spec = do
                         ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL) `shouldNotBe` Nothing
                       whenSupported RecvIPv4TOS $
                         ((lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS) `shouldNotBe` Nothing
-                client sock addr = sendTo sock seg addr
+                client sock addr = takeMVar serverReady >> sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
             udpTest client server
 
         it "receives control messages for IPv6" $ do
+            -- Avoid race condition between the client sending the message and
+            -- the server finishing its socket configuration.  Otherwise the
+            -- message may be received with default socket options!
+            serverReady <- newEmptyMVar
+
             let server sock = do
                     whenSupported RecvIPv6HopLimit $ setSocketOption sock RecvIPv6HopLimit 1
                     whenSupported RecvIPv6TClass   $ setSocketOption sock RecvIPv6TClass 1
                     whenSupported RecvIPv6PktInfo  $ setSocketOption sock RecvIPv6PktInfo 1
-                    (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
+                    putMVar serverReady ()
 
+                    (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
                     whenSupported RecvIPv6HopLimit $
                       ((lookupCmsg CmsgIdIPv6HopLimit cmsgs >>= decodeCmsg) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
@@ -268,20 +282,27 @@ spec = do
                       ((lookupCmsg CmsgIdIPv6TClass cmsgs >>= decodeCmsg) :: Maybe IPv6TClass) `shouldNotBe` Nothing
                     whenSupported RecvIPv6PktInfo $
                       ((lookupCmsg CmsgIdIPv6PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
-                client sock addr = sendTo sock seg addr
+                client sock addr = takeMVar serverReady >> sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
             udpTest6 client server
 
         it "receives truncated control messages" $ do
+            -- Avoid race condition between the client sending the message and
+            -- the server finishing its socket configuration.  Otherwise the
+            -- message may be received with default socket options!
+            serverReady <- newEmptyMVar
+
             let server sock = do
                     whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
                     whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
                     whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
+                    putMVar serverReady ()
+
                     (_, _, _, flags) <- recvMsg sock 1024 10 mempty
                     flags .&. MSG_CTRUNC `shouldBe` MSG_CTRUNC
 
-                client sock addr = sendTo sock seg addr
+                client sock addr = takeMVar serverReady >> sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
             udpTest client server
