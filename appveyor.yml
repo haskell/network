@@ -11,12 +11,8 @@ environment:
     CABOPTS:  "--store-dir=C:\\SR --http-transport=plain-http"
     DOCTEST: YES
   matrix:
-    - GHCVER: 8.0.2
-    - GHCVER: 8.2.2
-    - GHCVER: 8.4.4
-    - GHCVER: 8.6.5
-    # GHC 8.8.3 is broken due to a bug in process
-    # - GHCVER: 8.8.3
+    - GHCVER: 8.10.1
+    - GHCVER: 8.8.3
 
 platform:
 #  - x86 # We may want to test x86 as well, but it would double the 23min build time.
