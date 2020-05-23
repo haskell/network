@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -63,7 +62,7 @@ data AddrInfoFlag =
     --   addresses are found, IPv6-mapped IPv4 addresses will be
     --   returned. (Only some platforms support this.)
     | AI_V4MAPPED
-    deriving (Eq, Read, Show, Typeable)
+    deriving (Eq, Read, Show)
 
 aiFlagMapping :: [(AddrInfoFlag, CInt)]
 
@@ -106,7 +105,7 @@ data AddrInfo = AddrInfo {
   , addrProtocol :: ProtocolNumber
   , addrAddress :: SockAddr
   , addrCanonName :: Maybe String
-  } deriving (Eq, Show, Typeable)
+  } deriving (Eq, Show)
 
 instance Storable AddrInfo where
     sizeOf    _ = #const sizeof(struct addrinfo)
@@ -170,7 +169,7 @@ data NameInfoFlag =
     --   looked up.  Instead, a numeric representation of the
     --   service is returned.
     | NI_NUMERICSERV
-    deriving (Eq, Read, Show, Typeable)
+    deriving (Eq, Read, Show)
 
 niFlagMapping :: [(NameInfoFlag, CInt)]
 
