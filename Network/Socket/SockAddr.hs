@@ -51,20 +51,18 @@ bind s a = case a of
     -- domain sockets, inspired by https://stackoverflow.com/a/13719866
     res <- try (G.bind s a)
     case res of
-      Right () -> pure ()
-      Left e -> if not (isAlreadyInUseError (e :: IOException))
-        then throwIO e
-        else do
-          -- socket might be in use, try to connect
-          res2 <- try (G.connect s a)
-          case res2 of
-            Right () -> close s >> throwIO e
-            Left e2 -> if not (isDoesNotExistError (e2 :: IOException))
-              then throwIO e
-              else do
-                -- socket not actually in use, remove it and retry bind
-                removeFile p
-                G.bind s a
+      Right () -> return ()
+      Left e | not (isAlreadyInUseError e) -> throwIO (e :: IOException)
+      Left e | otherwise -> do
+        -- socket might be in use, try to connect
+        res2 <- try (G.connect s a)
+        case res2 of
+          Right () -> close s >> throwIO e
+          Left e2 | not (isDoesNotExistError e2) -> throwIO (e2 :: IOException)
+          _ -> do
+            -- socket not actually in use, remove it and retry bind
+            removeFile p
+            G.bind s a
   _ -> G.bind s a
 
 -- | Accept a connection.  The socket must be bound to an address and

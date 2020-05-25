@@ -77,7 +77,8 @@ spec = do
                     sock1 <- socket AF_UNIX Stream defaultProtocol
                     tryIOError (bind sock1 addr) >>= \o -> case o of
                         Right () -> error "bind should have failed but succeeded"
-                        Left e -> if isAlreadyInUseError e then pure () else ioError e
+                        Left e | not (isAlreadyInUseError e) -> ioError e
+                        _ -> return ()
 
                     close sock0
 
