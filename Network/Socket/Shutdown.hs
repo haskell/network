@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
 #include "HsNetDef.h"
 
@@ -27,7 +26,6 @@ import Network.Socket.Types
 data ShutdownCmd = ShutdownReceive
                  | ShutdownSend
                  | ShutdownBoth
-                 deriving Typeable
 
 sdownCmdToInt :: ShutdownCmd -> CInt
 sdownCmdToInt ShutdownReceive = 0

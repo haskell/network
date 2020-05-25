@@ -1,8 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 #include "HsNet.h"
@@ -22,16 +25,24 @@ module Network.Socket.Types (
     , close'
     , c_close
     -- * Types of socket
-    , SocketType(..)
+    , SocketType(GeneralSocketType, UnsupportedSocketType, NoSocketType
+                , Stream, Datagram, Raw, RDM, SeqPacket)
     , isSupportedSocketType
     , packSocketType
-    , packSocketType'
-    , packSocketTypeOrThrow
     , unpackSocketType
-    , unpackSocketType'
 
     -- * Family
-    , Family(..)
+    , Family(GeneralFamily, UnsupportedFamily
+            ,AF_UNSPEC,AF_UNIX,AF_INET,AF_INET6,AF_IMPLINK,AF_PUP,AF_CHAOS
+            ,AF_NS,AF_NBS,AF_ECMA,AF_DATAKIT,AF_CCITT,AF_SNA,AF_DECnet
+            ,AF_DLI,AF_LAT,AF_HYLINK,AF_APPLETALK,AF_ROUTE,AF_NETBIOS
+            ,AF_NIT,AF_802,AF_ISO,AF_OSI,AF_NETMAN,AF_X25,AF_AX25,AF_OSINET
+            ,AF_GOSSIP,AF_IPX,Pseudo_AF_XTP,AF_CTF,AF_WAN,AF_SDL,AF_NETWARE
+            ,AF_NDD,AF_INTF,AF_COIP,AF_CNT,Pseudo_AF_RTIP,Pseudo_AF_PIP
+            ,AF_SIP,AF_ISDN,Pseudo_AF_KEY,AF_NATM,AF_ARP,Pseudo_AF_HDRCMPLT
+            ,AF_ENCAP,AF_LINK,AF_RAW,AF_RIF,AF_NETROM,AF_BRIDGE,AF_ATMPVC
+            ,AF_ROSE,AF_NETBEUI,AF_SECURITY,AF_PACKET,AF_ASH,AF_ECONET
+            ,AF_ATMSVC,AF_IRDA,AF_PPPOX,AF_WANPIPE,AF_BLUETOOTH,AF_CAN)
     , isSupportedFamily
     , packFamily
     , unpackFamily
@@ -79,6 +90,10 @@ import GHC.Exts (touch##)
 import GHC.IORef (IORef (..))
 import GHC.STRef (STRef (..))
 import GHC.IO (IO (..))
+
+import Text.Read ((<++))
+import qualified Text.Read as P
+import qualified Text.Read.Lex as P
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -291,585 +306,646 @@ defaultProtocol = 0
 
 -- | Socket Types.
 --
--- The existence of a constructor does not necessarily imply that that
--- socket type is supported on your system: see 'isSupportedSocketType'.
-data SocketType
-        = NoSocketType -- ^ 0, used in getAddrInfo hints, for example
-        | Stream -- ^ SOCK_STREAM
-        | Datagram -- ^ SOCK_DGRAM
-        | Raw -- ^ SOCK_RAW
-        | RDM -- ^ SOCK_RDM
-        | SeqPacket -- ^ SOCK_SEQPACKET
-        deriving (Eq, Ord, Read, Show, Typeable)
+-- Some of the defined patterns may be unsupported on some systems:
+-- see 'isSupportedSocketType'.
+newtype SocketType = SocketType { packSocketType :: CInt }
+        deriving (Eq, Ord)
 
--- | Does the SOCK_ constant corresponding to the given SocketType exist on
--- this system?
+unpackSocketType :: CInt -> SocketType
+unpackSocketType = SocketType
+{-# INLINE unpackSocketType #-}
+
+-- | Is the @SOCK_xxxxx@ constant corresponding to the given SocketType known
+-- on this system?  'GeneralSocketType' values, not equal to any of the named
+-- patterns or 'UnsupportedSocketType', will return 'True' even when not
+-- known on this system.
 isSupportedSocketType :: SocketType -> Bool
-isSupportedSocketType = isJust . packSocketType'
+isSupportedSocketType = (/= UnsupportedSocketType)
 
--- | Find the SOCK_ constant corresponding to the SocketType value.
-packSocketType' :: SocketType -> Maybe CInt
-packSocketType' stype = case Just stype of
-    -- the Just above is to disable GHC's overlapping pattern
-    -- detection: see comments for packSocketOption
-    Just NoSocketType -> Just 0
+-- | Pattern for a general socket type.
+pattern GeneralSocketType    :: CInt -> SocketType
+pattern GeneralSocketType n  =  SocketType n
+{-# COMPLETE GeneralSocketType #-}
+-- The actual constructor is not exported, which keeps the internal
+-- representation private, but for all purposes other than 'coerce' the
+-- above pattern is just as good.
+
+-- | Unsupported socket type, equal to any other types not supported on this
+-- system.
+pattern UnsupportedSocketType :: SocketType
+pattern UnsupportedSocketType  = SocketType (-1)
+
+-- | Used in getAddrInfo hints, for example.
+pattern NoSocketType        :: SocketType
+pattern NoSocketType         = SocketType 0
+
+pattern Stream              :: SocketType
 #ifdef SOCK_STREAM
-    Just Stream -> Just #const SOCK_STREAM
+pattern Stream               = SocketType (#const SOCK_STREAM)
+#else
+pattern Stream               = (-1)
 #endif
+
+pattern Datagram            :: SocketType
 #ifdef SOCK_DGRAM
-    Just Datagram -> Just #const SOCK_DGRAM
+pattern Datagram             = SocketType (#const SOCK_DGRAM)
+#else
+pattern Datagram             = (-1)
 #endif
+
+pattern Raw                 :: SocketType
 #ifdef SOCK_RAW
-    Just Raw -> Just #const SOCK_RAW
+pattern Raw                  = SocketType (#const SOCK_RAW)
+#else
+pattern Raw                  = (-1)
 #endif
+
+pattern RDM                 :: SocketType
 #ifdef SOCK_RDM
-    Just RDM -> Just #const SOCK_RDM
+pattern RDM                  = SocketType (#const SOCK_RDM)
+#else
+pattern RDM                  = (-1)
 #endif
+
+pattern SeqPacket           :: SocketType
 #ifdef SOCK_SEQPACKET
-    Just SeqPacket -> Just #const SOCK_SEQPACKET
+pattern SeqPacket            = SocketType (#const SOCK_SEQPACKET)
+#else
+pattern SeqPacket            = (-1)
 #endif
-    _ -> Nothing
-
-packSocketType :: SocketType -> CInt
-packSocketType stype = fromMaybe (error errMsg) (packSocketType' stype)
-  where
-    errMsg = concat ["Network.Socket.packSocketType: ",
-                     "socket type ", show stype, " unsupported on this system"]
-
--- | Try packSocketType' on the SocketType, if it fails throw an error with
--- message starting "Network.Socket." ++ the String parameter
-packSocketTypeOrThrow :: String -> SocketType -> IO CInt
-packSocketTypeOrThrow caller stype = maybe err return (packSocketType' stype)
- where
-  err = ioError . userError . concat $ ["Network.Socket.", caller, ": ",
-    "socket type ", show stype, " unsupported on this system"]
-
-
-unpackSocketType:: CInt -> Maybe SocketType
-unpackSocketType t = case t of
-        0 -> Just NoSocketType
-#ifdef SOCK_STREAM
-        (#const SOCK_STREAM) -> Just Stream
-#endif
-#ifdef SOCK_DGRAM
-        (#const SOCK_DGRAM) -> Just Datagram
-#endif
-#ifdef SOCK_RAW
-        (#const SOCK_RAW) -> Just Raw
-#endif
-#ifdef SOCK_RDM
-        (#const SOCK_RDM) -> Just RDM
-#endif
-#ifdef SOCK_SEQPACKET
-        (#const SOCK_SEQPACKET) -> Just SeqPacket
-#endif
-        _ -> Nothing
-
--- | Try unpackSocketType on the CInt, if it fails throw an error with
--- message starting "Network.Socket." ++ the String parameter
-unpackSocketType' :: String -> CInt -> IO SocketType
-unpackSocketType' caller ty = maybe err return (unpackSocketType ty)
- where
-  err = ioError . userError . concat $ ["Network.Socket.", caller, ": ",
-    "socket type ", show ty, " unsupported on this system"]
 
 ------------------------------------------------------------------------
 -- Protocol Families.
 
--- | Address families.
+
+-- | Address families.  The @AF_xxxxx@ constants are widely used as synonyms
+-- for the corresponding @PF_xxxxx@ protocol family values, to which they are
+-- numerically equal in mainstream socket API implementations.
 --
--- A constructor being present here does not mean it is supported by the
--- operating system: see 'isSupportedFamily'.
-data Family
-    = AF_UNSPEC           -- ^ unspecified
-    | AF_UNIX             -- ^ UNIX-domain
-    | AF_INET             -- ^ Internet Protocol version 4
-    | AF_INET6            -- ^ Internet Protocol version 6
-    | AF_IMPLINK          -- ^ Arpanet imp addresses
-    | AF_PUP              -- ^ pup protocols: e.g. BSP
-    | AF_CHAOS            -- ^ mit CHAOS protocols
-    | AF_NS               -- ^ XEROX NS protocols
-    | AF_NBS              -- ^ nbs protocols
-    | AF_ECMA             -- ^ european computer manufacturers
-    | AF_DATAKIT          -- ^ datakit protocols
-    | AF_CCITT            -- ^ CCITT protocols, X.25 etc
-    | AF_SNA              -- ^ IBM SNA
-    | AF_DECnet           -- ^ DECnet
-    | AF_DLI              -- ^ Direct data link interface
-    | AF_LAT              -- ^ LAT
-    | AF_HYLINK           -- ^ NSC Hyperchannel
-    | AF_APPLETALK        -- ^ Apple Talk
-    | AF_ROUTE            -- ^ Internal Routing Protocol (aka AF_NETLINK)
-    | AF_NETBIOS          -- ^ NetBios-style addresses
-    | AF_NIT              -- ^ Network Interface Tap
-    | AF_802              -- ^ IEEE 802.2, also ISO 8802
-    | AF_ISO              -- ^ ISO protocols
-    | AF_OSI              -- ^ umbrella of all families used by OSI
-    | AF_NETMAN           -- ^ DNA Network Management
-    | AF_X25              -- ^ CCITT X.25
-    | AF_AX25             -- ^ AX25
-    | AF_OSINET           -- ^ AFI
-    | AF_GOSSIP           -- ^ US Government OSI
-    | AF_IPX              -- ^ Novell Internet Protocol
-    | Pseudo_AF_XTP       -- ^ eXpress Transfer Protocol (no AF)
-    | AF_CTF              -- ^ Common Trace Facility
-    | AF_WAN              -- ^ Wide Area Network protocols
-    | AF_SDL              -- ^ SGI Data Link for DLPI
-    | AF_NETWARE          -- ^ Netware
-    | AF_NDD              -- ^ NDD
-    | AF_INTF             -- ^ Debugging use only
-    | AF_COIP             -- ^ connection-oriented IP, aka ST II
-    | AF_CNT              -- ^ Computer Network Technology
-    | Pseudo_AF_RTIP      -- ^ Help Identify RTIP packets
-    | Pseudo_AF_PIP       -- ^ Help Identify PIP packets
-    | AF_SIP              -- ^ Simple Internet Protocol
-    | AF_ISDN             -- ^ Integrated Services Digital Network
-    | Pseudo_AF_KEY       -- ^ Internal key-management function
-    | AF_NATM             -- ^ native ATM access
-    | AF_ARP              -- ^ ARP (RFC 826)
-    | Pseudo_AF_HDRCMPLT  -- ^ Used by BPF to not rewrite hdrs in iface output
-    | AF_ENCAP            -- ^ ENCAP
-    | AF_LINK             -- ^ Link layer interface
-    | AF_RAW              -- ^ Link layer interface
-    | AF_RIF              -- ^ raw interface
-    | AF_NETROM           -- ^ Amateur radio NetROM
-    | AF_BRIDGE           -- ^ multiprotocol bridge
-    | AF_ATMPVC           -- ^ ATM PVCs
-    | AF_ROSE             -- ^ Amateur Radio X.25 PLP
-    | AF_NETBEUI          -- ^ Netbeui 802.2LLC
-    | AF_SECURITY         -- ^ Security callback pseudo AF
-    | AF_PACKET           -- ^ Packet family
-    | AF_ASH              -- ^ Ash
-    | AF_ECONET           -- ^ Acorn Econet
-    | AF_ATMSVC           -- ^ ATM SVCs
-    | AF_IRDA             -- ^ IRDA sockets
-    | AF_PPPOX            -- ^ PPPoX sockets
-    | AF_WANPIPE          -- ^ Wanpipe API sockets
-    | AF_BLUETOOTH        -- ^ bluetooth sockets
-    | AF_CAN              -- ^ Controller Area Network
-      deriving (Eq, Ord, Read, Show)
+-- Stictly correct usage would be to pass the @PF_xxxxx@ constants as the first
+-- argument when creating a 'Socket', while the @AF_xxxxx@ constants should be
+-- used as @addrFamily@ values with 'getAddrInfo'.  For now only the @AF_xxxxx@
+-- constants are provided.
+--
+-- Some of the defined patterns may be unsupported on some systems:
+-- see 'isSupportedFamily'.
+newtype Family = Family { packFamily :: CInt } deriving (Eq, Ord)
 
--- | Converting 'Family' to 'CInt'.
-packFamily :: Family -> CInt
-packFamily f = case packFamily' f of
-    Just fam -> fam
-    Nothing -> error $
-               "Network.Socket.packFamily: unsupported address family: " ++
-               show f
 
--- | Does the AF_ constant corresponding to the given family exist on this
--- system?
+-- | Does one of the AF_ constants correspond to a known address family on this
+-- system.  'GeneralFamily' values, not equal to any of the named @AF_xxxxx@
+-- patterns or 'UnsupportedFamily', will return 'True' even when not known on
+-- this system.
 isSupportedFamily :: Family -> Bool
-isSupportedFamily = isJust . packFamily'
+isSupportedFamily f = case f of
+    UnsupportedFamily -> False
+    GeneralFamily _   -> True
 
-packFamily' :: Family -> Maybe CInt
-packFamily' f = case Just f of
-    -- the Just above is to disable GHC's overlapping pattern
-    -- detection: see comments for packSocketOption
-    Just AF_UNSPEC -> Just #const AF_UNSPEC
-#ifdef AF_UNIX
-    Just AF_UNIX -> Just #const AF_UNIX
-#endif
-#ifdef AF_INET
-    Just AF_INET -> Just #const AF_INET
-#endif
-#ifdef AF_INET6
-    Just AF_INET6 -> Just #const AF_INET6
-#endif
-#ifdef AF_IMPLINK
-    Just AF_IMPLINK -> Just #const AF_IMPLINK
-#endif
-#ifdef AF_PUP
-    Just AF_PUP -> Just #const AF_PUP
-#endif
-#ifdef AF_CHAOS
-    Just AF_CHAOS -> Just #const AF_CHAOS
-#endif
-#ifdef AF_NS
-    Just AF_NS -> Just #const AF_NS
-#endif
-#ifdef AF_NBS
-    Just AF_NBS -> Just #const AF_NBS
-#endif
-#ifdef AF_ECMA
-    Just AF_ECMA -> Just #const AF_ECMA
-#endif
-#ifdef AF_DATAKIT
-    Just AF_DATAKIT -> Just #const AF_DATAKIT
-#endif
-#ifdef AF_CCITT
-    Just AF_CCITT -> Just #const AF_CCITT
-#endif
-#ifdef AF_SNA
-    Just AF_SNA -> Just #const AF_SNA
-#endif
-#ifdef AF_DECnet
-    Just AF_DECnet -> Just #const AF_DECnet
-#endif
-#ifdef AF_DLI
-    Just AF_DLI -> Just #const AF_DLI
-#endif
-#ifdef AF_LAT
-    Just AF_LAT -> Just #const AF_LAT
-#endif
-#ifdef AF_HYLINK
-    Just AF_HYLINK -> Just #const AF_HYLINK
-#endif
-#ifdef AF_APPLETALK
-    Just AF_APPLETALK -> Just #const AF_APPLETALK
-#endif
-#ifdef AF_ROUTE
-    Just AF_ROUTE -> Just #const AF_ROUTE
-#endif
-#ifdef AF_NETBIOS
-    Just AF_NETBIOS -> Just #const AF_NETBIOS
-#endif
-#ifdef AF_NIT
-    Just AF_NIT -> Just #const AF_NIT
-#endif
-#ifdef AF_802
-    Just AF_802 -> Just #const AF_802
-#endif
-#ifdef AF_ISO
-    Just AF_ISO -> Just #const AF_ISO
-#endif
-#ifdef AF_OSI
-    Just AF_OSI -> Just #const AF_OSI
-#endif
-#ifdef AF_NETMAN
-    Just AF_NETMAN -> Just #const AF_NETMAN
-#endif
-#ifdef AF_X25
-    Just AF_X25 -> Just #const AF_X25
-#endif
-#ifdef AF_AX25
-    Just AF_AX25 -> Just #const AF_AX25
-#endif
-#ifdef AF_OSINET
-    Just AF_OSINET -> Just #const AF_OSINET
-#endif
-#ifdef AF_GOSSIP
-    Just AF_GOSSIP -> Just #const AF_GOSSIP
-#endif
-#ifdef AF_IPX
-    Just AF_IPX -> Just #const AF_IPX
-#endif
-#ifdef Pseudo_AF_XTP
-    Just Pseudo_AF_XTP -> Just #const Pseudo_AF_XTP
-#endif
-#ifdef AF_CTF
-    Just AF_CTF -> Just #const AF_CTF
-#endif
-#ifdef AF_WAN
-    Just AF_WAN -> Just #const AF_WAN
-#endif
-#ifdef AF_SDL
-    Just AF_SDL -> Just #const AF_SDL
-#endif
-#ifdef AF_NETWARE
-    Just AF_NETWARE -> Just #const AF_NETWARE
-#endif
-#ifdef AF_NDD
-    Just AF_NDD -> Just #const AF_NDD
-#endif
-#ifdef AF_INTF
-    Just AF_INTF -> Just #const AF_INTF
-#endif
-#ifdef AF_COIP
-    Just AF_COIP -> Just #const AF_COIP
-#endif
-#ifdef AF_CNT
-    Just AF_CNT -> Just #const AF_CNT
-#endif
-#ifdef Pseudo_AF_RTIP
-    Just Pseudo_AF_RTIP -> Just #const Pseudo_AF_RTIP
-#endif
-#ifdef Pseudo_AF_PIP
-    Just Pseudo_AF_PIP -> Just #const Pseudo_AF_PIP
-#endif
-#ifdef AF_SIP
-    Just AF_SIP -> Just #const AF_SIP
-#endif
-#ifdef AF_ISDN
-    Just AF_ISDN -> Just #const AF_ISDN
-#endif
-#ifdef Pseudo_AF_KEY
-    Just Pseudo_AF_KEY -> Just #const Pseudo_AF_KEY
-#endif
-#ifdef AF_NATM
-    Just AF_NATM -> Just #const AF_NATM
-#endif
-#ifdef AF_ARP
-    Just AF_ARP -> Just #const AF_ARP
-#endif
-#ifdef Pseudo_AF_HDRCMPLT
-    Just Pseudo_AF_HDRCMPLT -> Just #const Pseudo_AF_HDRCMPLT
-#endif
-#ifdef AF_ENCAP
-    Just AF_ENCAP -> Just #const AF_ENCAP
-#endif
-#ifdef AF_LINK
-    Just AF_LINK -> Just #const AF_LINK
-#endif
-#ifdef AF_RAW
-    Just AF_RAW -> Just #const AF_RAW
-#endif
-#ifdef AF_RIF
-    Just AF_RIF -> Just #const AF_RIF
-#endif
-#ifdef AF_NETROM
-    Just AF_NETROM -> Just #const AF_NETROM
-#endif
-#ifdef AF_BRIDGE
-    Just AF_BRIDGE -> Just #const AF_BRIDGE
-#endif
-#ifdef AF_ATMPVC
-    Just AF_ATMPVC -> Just #const AF_ATMPVC
-#endif
-#ifdef AF_ROSE
-    Just AF_ROSE -> Just #const AF_ROSE
-#endif
-#ifdef AF_NETBEUI
-    Just AF_NETBEUI -> Just #const AF_NETBEUI
-#endif
-#ifdef AF_SECURITY
-    Just AF_SECURITY -> Just #const AF_SECURITY
-#endif
-#ifdef AF_PACKET
-    Just AF_PACKET -> Just #const AF_PACKET
-#endif
-#ifdef AF_ASH
-    Just AF_ASH -> Just #const AF_ASH
-#endif
-#ifdef AF_ECONET
-    Just AF_ECONET -> Just #const AF_ECONET
-#endif
-#ifdef AF_ATMSVC
-    Just AF_ATMSVC -> Just #const AF_ATMSVC
-#endif
-#ifdef AF_IRDA
-    Just AF_IRDA -> Just #const AF_IRDA
-#endif
-#ifdef AF_PPPOX
-    Just AF_PPPOX -> Just #const AF_PPPOX
-#endif
-#ifdef AF_WANPIPE
-    Just AF_WANPIPE -> Just #const AF_WANPIPE
-#endif
-#ifdef AF_BLUETOOTH
-    Just AF_BLUETOOTH -> Just #const AF_BLUETOOTH
-#endif
-#ifdef AF_CAN
-    Just AF_CAN -> Just #const AF_CAN
-#endif
-    _ -> Nothing
-
---------- ----------
-
--- | Converting 'CInt' to 'Family'.
+-- | Convert 'CInt' to 'Family'.
 unpackFamily :: CInt -> Family
-unpackFamily f = case f of
-        (#const AF_UNSPEC) -> AF_UNSPEC
+unpackFamily = Family
+{-# INLINE unpackFamily #-}
+
+-- | Pattern for a general protocol family (a.k.a. address family).
+--
+-- @since 3.2.0.0
+pattern GeneralFamily      :: CInt -> Family
+pattern GeneralFamily n     = Family n
+{-# COMPLETE GeneralFamily #-}
+-- The actual constructor is not exported, which keeps the internal
+-- representation private, but for all purposes other than 'coerce' the
+-- above pattern is just as good.
+
+-- | Unsupported address family, equal to any other families that are not
+-- supported on the system.
+--
+-- @since 3.2.0.0
+pattern UnsupportedFamily  :: Family
+pattern UnsupportedFamily   = Family (-1)
+
+-- | unspecified
+pattern AF_UNSPEC          :: Family
+pattern AF_UNSPEC           = Family (#const AF_UNSPEC)
+
+-- | UNIX-domain
+pattern AF_UNIX            :: Family
 #ifdef AF_UNIX
-        (#const AF_UNIX) -> AF_UNIX
+pattern AF_UNIX             = Family (#const AF_UNIX)
+#else
+pattern AF_UNIX             = Family (-1)
 #endif
+
+-- | Internet Protocol version 4
+pattern AF_INET            :: Family
 #ifdef AF_INET
-        (#const AF_INET) -> AF_INET
+pattern AF_INET             = Family (#const AF_INET)
+#else
+pattern AF_INET             = Family (-1)
 #endif
+
+-- | Internet Protocol version 6
+pattern AF_INET6           :: Family
 #ifdef AF_INET6
-        (#const AF_INET6) -> AF_INET6
+pattern AF_INET6            = Family (#const AF_INET6)
+#else
+pattern AF_INET6            = Family (-1)
 #endif
+
+-- | Arpanet imp addresses
+pattern AF_IMPLINK         :: Family
 #ifdef AF_IMPLINK
-        (#const AF_IMPLINK) -> AF_IMPLINK
+pattern AF_IMPLINK          = Family (#const AF_IMPLINK)
+#else
+pattern AF_IMPLINK          = Family (-1)
 #endif
+
+-- | pup protocols: e.g. BSP
+pattern AF_PUP             :: Family
 #ifdef AF_PUP
-        (#const AF_PUP) -> AF_PUP
+pattern AF_PUP              = Family (#const AF_PUP)
+#else
+pattern AF_PUP              = Family (-1)
 #endif
+
+-- | mit CHAOS protocols
+pattern AF_CHAOS           :: Family
 #ifdef AF_CHAOS
-        (#const AF_CHAOS) -> AF_CHAOS
+pattern AF_CHAOS            = Family (#const AF_CHAOS)
+#else
+pattern AF_CHAOS            = Family (-1)
 #endif
+
+-- | XEROX NS protocols
+pattern AF_NS              :: Family
 #ifdef AF_NS
-        (#const AF_NS) -> AF_NS
+pattern AF_NS               = Family (#const AF_NS)
+#else
+pattern AF_NS               = Family (-1)
 #endif
+
+-- | nbs protocols
+pattern AF_NBS             :: Family
 #ifdef AF_NBS
-        (#const AF_NBS) -> AF_NBS
+pattern AF_NBS              = Family (#const AF_NBS)
+#else
+pattern AF_NBS              = Family (-1)
 #endif
+
+-- | european computer manufacturers
+pattern AF_ECMA            :: Family
 #ifdef AF_ECMA
-        (#const AF_ECMA) -> AF_ECMA
+pattern AF_ECMA             = Family (#const AF_ECMA)
+#else
+pattern AF_ECMA             = Family (-1)
 #endif
+
+-- | datakit protocols
+pattern AF_DATAKIT         :: Family
 #ifdef AF_DATAKIT
-        (#const AF_DATAKIT) -> AF_DATAKIT
+pattern AF_DATAKIT          = Family (#const AF_DATAKIT)
+#else
+pattern AF_DATAKIT          = Family (-1)
 #endif
+
+-- | CCITT protocols, X.25 etc
+pattern AF_CCITT           :: Family
 #ifdef AF_CCITT
-        (#const AF_CCITT) -> AF_CCITT
+pattern AF_CCITT            = Family (#const AF_CCITT)
+#else
+pattern AF_CCITT            = Family (-1)
 #endif
+
+-- | IBM SNA
+pattern AF_SNA             :: Family
 #ifdef AF_SNA
-        (#const AF_SNA) -> AF_SNA
+pattern AF_SNA              = Family (#const AF_SNA)
+#else
+pattern AF_SNA              = Family (-1)
 #endif
+
+-- | DECnet
+pattern AF_DECnet          :: Family
 #ifdef AF_DECnet
-        (#const AF_DECnet) -> AF_DECnet
+pattern AF_DECnet           = Family (#const AF_DECnet)
+#else
+pattern AF_DECnet           = Family (-1)
 #endif
+
+-- | Direct data link interface
+pattern AF_DLI             :: Family
 #ifdef AF_DLI
-        (#const AF_DLI) -> AF_DLI
+pattern AF_DLI              = Family (#const AF_DLI)
+#else
+pattern AF_DLI              = Family (-1)
 #endif
+
+-- | LAT
+pattern AF_LAT             :: Family
 #ifdef AF_LAT
-        (#const AF_LAT) -> AF_LAT
+pattern AF_LAT              = Family (#const AF_LAT)
+#else
+pattern AF_LAT              = Family (-1)
 #endif
+
+-- | NSC Hyperchannel
+pattern AF_HYLINK          :: Family
 #ifdef AF_HYLINK
-        (#const AF_HYLINK) -> AF_HYLINK
+pattern AF_HYLINK           = Family (#const AF_HYLINK)
+#else
+pattern AF_HYLINK           = Family (-1)
 #endif
+
+-- | Apple Talk
+pattern AF_APPLETALK       :: Family
 #ifdef AF_APPLETALK
-        (#const AF_APPLETALK) -> AF_APPLETALK
+pattern AF_APPLETALK        = Family (#const AF_APPLETALK)
+#else
+pattern AF_APPLETALK        = Family (-1)
 #endif
+
+-- | Internal Routing Protocol (aka AF_NETLINK)
+pattern AF_ROUTE           :: Family
 #ifdef AF_ROUTE
-        (#const AF_ROUTE) -> AF_ROUTE
+pattern AF_ROUTE            = Family (#const AF_ROUTE)
+#else
+pattern AF_ROUTE            = Family (-1)
 #endif
+
+-- | NetBios-style addresses
+pattern AF_NETBIOS         :: Family
 #ifdef AF_NETBIOS
-        (#const AF_NETBIOS) -> AF_NETBIOS
+pattern AF_NETBIOS          = Family (#const AF_NETBIOS)
+#else
+pattern AF_NETBIOS          = Family (-1)
 #endif
+
+-- | Network Interface Tap
+pattern AF_NIT             :: Family
 #ifdef AF_NIT
-        (#const AF_NIT) -> AF_NIT
+pattern AF_NIT              = Family (#const AF_NIT)
+#else
+pattern AF_NIT              = Family (-1)
 #endif
+
+-- | IEEE 802.2, also ISO 8802
+pattern AF_802             :: Family
 #ifdef AF_802
-        (#const AF_802) -> AF_802
+pattern AF_802              = Family (#const AF_802)
+#else
+pattern AF_802              = Family (-1)
 #endif
+
+-- | ISO protocols
+pattern AF_ISO             :: Family
 #ifdef AF_ISO
-        (#const AF_ISO) -> AF_ISO
+pattern AF_ISO              = Family (#const AF_ISO)
+#else
+pattern AF_ISO              = Family (-1)
 #endif
+
+-- | umbrella of all families used by OSI
+pattern AF_OSI             :: Family
 #ifdef AF_OSI
-# if (!defined(AF_ISO)) || (defined(AF_ISO) && (AF_ISO != AF_OSI))
-        (#const AF_OSI) -> AF_OSI
-# endif
+pattern AF_OSI              = Family (#const AF_OSI)
+#else
+pattern AF_OSI              = Family (-1)
 #endif
+
+-- | DNA Network Management
+pattern AF_NETMAN          :: Family
 #ifdef AF_NETMAN
-        (#const AF_NETMAN) -> AF_NETMAN
+pattern AF_NETMAN           = Family (#const AF_NETMAN)
+#else
+pattern AF_NETMAN           = Family (-1)
 #endif
+
+-- | CCITT X.25
+pattern AF_X25             :: Family
 #ifdef AF_X25
-        (#const AF_X25) -> AF_X25
+pattern AF_X25              = Family (#const AF_X25)
+#else
+pattern AF_X25              = Family (-1)
 #endif
+
+-- | AX25
+pattern AF_AX25            :: Family
 #ifdef AF_AX25
-        (#const AF_AX25) -> AF_AX25
+pattern AF_AX25             = Family (#const AF_AX25)
+#else
+pattern AF_AX25             = Family (-1)
 #endif
+
+-- | AFI
+pattern AF_OSINET          :: Family
 #ifdef AF_OSINET
-        (#const AF_OSINET) -> AF_OSINET
+pattern AF_OSINET           = Family (#const AF_OSINET)
+#else
+pattern AF_OSINET           = Family (-1)
 #endif
+
+-- | US Government OSI
+pattern AF_GOSSIP          :: Family
 #ifdef AF_GOSSIP
-        (#const AF_GOSSIP) -> AF_GOSSIP
+pattern AF_GOSSIP           = Family (#const AF_GOSSIP)
+#else
+pattern AF_GOSSIP           = Family (-1)
 #endif
-#if defined(AF_IPX) && (!defined(AF_NS) || AF_NS != AF_IPX)
-        (#const AF_IPX) -> AF_IPX
+
+-- | Novell Internet Protocol
+pattern AF_IPX             :: Family
+#ifdef AF_IPX
+pattern AF_IPX              = Family (#const AF_IPX)
+#else
+pattern AF_IPX              = Family (-1)
 #endif
+
+-- | eXpress Transfer Protocol (no AF)
+pattern Pseudo_AF_XTP      :: Family
 #ifdef Pseudo_AF_XTP
-        (#const Pseudo_AF_XTP) -> Pseudo_AF_XTP
+pattern Pseudo_AF_XTP       = Family (#const Pseudo_AF_XTP)
+#else
+pattern Pseudo_AF_XTP       = Family (-1)
 #endif
+
+-- | Common Trace Facility
+pattern AF_CTF             :: Family
 #ifdef AF_CTF
-        (#const AF_CTF) -> AF_CTF
+pattern AF_CTF              = Family (#const AF_CTF)
+#else
+pattern AF_CTF              = Family (-1)
 #endif
+
+-- | Wide Area Network protocols
+pattern AF_WAN             :: Family
 #ifdef AF_WAN
-        (#const AF_WAN) -> AF_WAN
+pattern AF_WAN              = Family (#const AF_WAN)
+#else
+pattern AF_WAN              = Family (-1)
 #endif
+
+-- | SGI Data Link for DLPI
+pattern AF_SDL             :: Family
 #ifdef AF_SDL
-        (#const AF_SDL) -> AF_SDL
+pattern AF_SDL              = Family (#const AF_SDL)
+#else
+pattern AF_SDL              = Family (-1)
 #endif
+
+-- | Netware
+pattern AF_NETWARE         :: Family
 #ifdef AF_NETWARE
-        (#const AF_NETWARE) -> AF_NETWARE
+pattern AF_NETWARE          = Family (#const AF_NETWARE)
+#else
+pattern AF_NETWARE          = Family (-1)
 #endif
+
+-- | NDD
+pattern AF_NDD             :: Family
 #ifdef AF_NDD
-        (#const AF_NDD) -> AF_NDD
+pattern AF_NDD              = Family (#const AF_NDD)
+#else
+pattern AF_NDD              = Family (-1)
 #endif
+
+-- | Debugging use only
+pattern AF_INTF            :: Family
 #ifdef AF_INTF
-        (#const AF_INTF) -> AF_INTF
+pattern AF_INTF             = Family (#const AF_INTF)
+#else
+pattern AF_INTF             = Family (-1)
 #endif
+
+-- | connection-oriented IP, aka ST II
+pattern AF_COIP            :: Family
 #ifdef AF_COIP
-        (#const AF_COIP) -> AF_COIP
+pattern AF_COIP             = Family (#const AF_COIP)
+#else
+pattern AF_COIP             = Family (-1)
 #endif
+
+-- | Computer Network Technology
+pattern AF_CNT             :: Family
 #ifdef AF_CNT
-        (#const AF_CNT) -> AF_CNT
+pattern AF_CNT              = Family (#const AF_CNT)
+#else
+pattern AF_CNT              = Family (-1)
 #endif
+
+-- | Help Identify RTIP packets
+pattern Pseudo_AF_RTIP     :: Family
 #ifdef Pseudo_AF_RTIP
-        (#const Pseudo_AF_RTIP) -> Pseudo_AF_RTIP
+pattern Pseudo_AF_RTIP      = Family (#const Pseudo_AF_RTIP)
+#else
+pattern Pseudo_AF_RTIP      = Family (-1)
 #endif
+
+-- | Help Identify PIP packets
+pattern Pseudo_AF_PIP      :: Family
 #ifdef Pseudo_AF_PIP
-        (#const Pseudo_AF_PIP) -> Pseudo_AF_PIP
+pattern Pseudo_AF_PIP       = Family (#const Pseudo_AF_PIP)
+#else
+pattern Pseudo_AF_PIP       = Family (-1)
 #endif
+
+-- | Simple Internet Protocol
+pattern AF_SIP             :: Family
 #ifdef AF_SIP
-        (#const AF_SIP) -> AF_SIP
+pattern AF_SIP              = Family (#const AF_SIP)
+#else
+pattern AF_SIP              = Family (-1)
 #endif
+
+-- | Integrated Services Digital Network
+pattern AF_ISDN            :: Family
 #ifdef AF_ISDN
-        (#const AF_ISDN) -> AF_ISDN
+pattern AF_ISDN             = Family (#const AF_ISDN)
+#else
+pattern AF_ISDN             = Family (-1)
 #endif
+
+-- | Internal key-management function
+pattern Pseudo_AF_KEY      :: Family
 #ifdef Pseudo_AF_KEY
-        (#const Pseudo_AF_KEY) -> Pseudo_AF_KEY
+pattern Pseudo_AF_KEY       = Family (#const Pseudo_AF_KEY)
+#else
+pattern Pseudo_AF_KEY       = Family (-1)
 #endif
+
+-- | native ATM access
+pattern AF_NATM            :: Family
 #ifdef AF_NATM
-        (#const AF_NATM) -> AF_NATM
+pattern AF_NATM             = Family (#const AF_NATM)
+#else
+pattern AF_NATM             = Family (-1)
 #endif
+
+-- | ARP (RFC 826)
+pattern AF_ARP             :: Family
 #ifdef AF_ARP
-        (#const AF_ARP) -> AF_ARP
+pattern AF_ARP              = Family (#const AF_ARP)
+#else
+pattern AF_ARP              = Family (-1)
 #endif
+
+-- | Used by BPF to not rewrite hdrs in iface output
+pattern Pseudo_AF_HDRCMPLT :: Family
 #ifdef Pseudo_AF_HDRCMPLT
-        (#const Pseudo_AF_HDRCMPLT) -> Pseudo_AF_HDRCMPLT
+pattern Pseudo_AF_HDRCMPLT  = Family (#const Pseudo_AF_HDRCMPLT)
+#else
+pattern Pseudo_AF_HDRCMPLT  = Family (-1)
 #endif
+
+-- | ENCAP
+pattern AF_ENCAP           :: Family
 #ifdef AF_ENCAP
-        (#const AF_ENCAP) -> AF_ENCAP
+pattern AF_ENCAP            = Family (#const AF_ENCAP)
+#else
+pattern AF_ENCAP            = Family (-1)
 #endif
+
+-- | Link layer interface
+pattern AF_LINK            :: Family
 #ifdef AF_LINK
-        (#const AF_LINK) -> AF_LINK
+pattern AF_LINK             = Family (#const AF_LINK)
+#else
+pattern AF_LINK             = Family (-1)
 #endif
+
+-- | Link layer interface
+pattern AF_RAW             :: Family
 #ifdef AF_RAW
-        (#const AF_RAW) -> AF_RAW
+pattern AF_RAW              = Family (#const AF_RAW)
+#else
+pattern AF_RAW              = Family (-1)
 #endif
+
+-- | raw interface
+pattern AF_RIF             :: Family
 #ifdef AF_RIF
-        (#const AF_RIF) -> AF_RIF
+pattern AF_RIF              = Family (#const AF_RIF)
+#else
+pattern AF_RIF              = Family (-1)
 #endif
+
+-- | Amateur radio NetROM
+pattern AF_NETROM          :: Family
 #ifdef AF_NETROM
-        (#const AF_NETROM) -> AF_NETROM
+pattern AF_NETROM           = Family (#const AF_NETROM)
+#else
+pattern AF_NETROM           = Family (-1)
 #endif
+
+-- | multiprotocol bridge
+pattern AF_BRIDGE          :: Family
 #ifdef AF_BRIDGE
-        (#const AF_BRIDGE) -> AF_BRIDGE
+pattern AF_BRIDGE           = Family (#const AF_BRIDGE)
+#else
+pattern AF_BRIDGE           = Family (-1)
 #endif
+
+-- | ATM PVCs
+pattern AF_ATMPVC          :: Family
 #ifdef AF_ATMPVC
-        (#const AF_ATMPVC) -> AF_ATMPVC
+pattern AF_ATMPVC           = Family (#const AF_ATMPVC)
+#else
+pattern AF_ATMPVC           = Family (-1)
 #endif
+
+-- | Amateur Radio X.25 PLP
+pattern AF_ROSE            :: Family
 #ifdef AF_ROSE
-        (#const AF_ROSE) -> AF_ROSE
+pattern AF_ROSE             = Family (#const AF_ROSE)
+#else
+pattern AF_ROSE             = Family (-1)
 #endif
+
+-- | Netbeui 802.2LLC
+pattern AF_NETBEUI         :: Family
 #ifdef AF_NETBEUI
-        (#const AF_NETBEUI) -> AF_NETBEUI
+pattern AF_NETBEUI          = Family (#const AF_NETBEUI)
+#else
+pattern AF_NETBEUI          = Family (-1)
 #endif
+
+-- | Security callback pseudo AF
+pattern AF_SECURITY        :: Family
 #ifdef AF_SECURITY
-        (#const AF_SECURITY) -> AF_SECURITY
+pattern AF_SECURITY         = Family (#const AF_SECURITY)
+#else
+pattern AF_SECURITY         = Family (-1)
 #endif
+
+-- | Packet family
+pattern AF_PACKET          :: Family
 #ifdef AF_PACKET
-        (#const AF_PACKET) -> AF_PACKET
+pattern AF_PACKET           = Family (#const AF_PACKET)
+#else
+pattern AF_PACKET           = Family (-1)
 #endif
+
+-- | Ash
+pattern AF_ASH             :: Family
 #ifdef AF_ASH
-        (#const AF_ASH) -> AF_ASH
+pattern AF_ASH              = Family (#const AF_ASH)
+#else
+pattern AF_ASH              = Family (-1)
 #endif
+
+-- | Acorn Econet
+pattern AF_ECONET          :: Family
 #ifdef AF_ECONET
-        (#const AF_ECONET) -> AF_ECONET
+pattern AF_ECONET           = Family (#const AF_ECONET)
+#else
+pattern AF_ECONET           = Family (-1)
 #endif
+
+-- | ATM SVCs
+pattern AF_ATMSVC          :: Family
 #ifdef AF_ATMSVC
-        (#const AF_ATMSVC) -> AF_ATMSVC
+pattern AF_ATMSVC           = Family (#const AF_ATMSVC)
+#else
+pattern AF_ATMSVC           = Family (-1)
 #endif
+
+-- | IRDA sockets
+pattern AF_IRDA            :: Family
 #ifdef AF_IRDA
-        (#const AF_IRDA) -> AF_IRDA
+pattern AF_IRDA             = Family (#const AF_IRDA)
+#else
+pattern AF_IRDA             = Family (-1)
 #endif
+
+-- | PPPoX sockets
+pattern AF_PPPOX           :: Family
 #ifdef AF_PPPOX
-        (#const AF_PPPOX) -> AF_PPPOX
+pattern AF_PPPOX            = Family (#const AF_PPPOX)
+#else
+pattern AF_PPPOX            = Family (-1)
 #endif
+
+-- | Wanpipe API sockets
+pattern AF_WANPIPE         :: Family
 #ifdef AF_WANPIPE
-        (#const AF_WANPIPE) -> AF_WANPIPE
+pattern AF_WANPIPE          = Family (#const AF_WANPIPE)
+#else
+pattern AF_WANPIPE          = Family (-1)
 #endif
+
+-- | bluetooth sockets
+pattern AF_BLUETOOTH       :: Family
 #ifdef AF_BLUETOOTH
-        (#const AF_BLUETOOTH) -> AF_BLUETOOTH
+pattern AF_BLUETOOTH        = Family (#const AF_BLUETOOTH)
+#else
+pattern AF_BLUETOOTH        = Family (-1)
 #endif
+
+-- | Controller Area Network
+pattern AF_CAN             :: Family
 #ifdef AF_CAN
-        (#const AF_CAN) -> AF_CAN
+pattern AF_CAN              = Family (#const AF_CAN)
+#else
+pattern AF_CAN              = Family (-1)
 #endif
-        unknown -> error $
-          "Network.Socket.Types.unpackFamily: unknown address family: " ++
-          show unknown
 
 ------------------------------------------------------------------------
 -- Port Numbers
@@ -890,15 +966,7 @@ unpackFamily f = case f of
 -- True
 -- >>> 50000 + (10000 :: PortNumber)
 -- 60000
-newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Typeable, Num, Enum, Real, Integral)
-
--- Print "n" instead of "PortNum n".
-instance Show PortNumber where
-  showsPrec p (PortNum pn) = showsPrec p (fromIntegral pn :: Int)
-
--- Read "n" instead of "PortNum n".
-instance Read PortNumber where
-  readsPrec n = map (\(x,y) -> (fromIntegral (x :: Int), y)) . readsPrec n
+newtype PortNumber = PortNum Word16 deriving (Eq, Ord, Num, Enum, Bounded, Real, Integral)
 
 foreign import CALLCONV unsafe "ntohs" ntohs :: Word16 -> Word16
 foreign import CALLCONV unsafe "htons" htons :: Word16 -> Word16
@@ -989,7 +1057,7 @@ data SockAddr
   -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
   | SockAddrUnix
         String           -- sun_path
-  deriving (Eq, Ord, Typeable)
+  deriving (Eq, Ord)
 
 instance NFData SockAddr where
   rnf (SockAddrInet _ _) = ()
@@ -1236,6 +1304,150 @@ instance Storable In6Addr where
         poke32 p 1 b
         poke32 p 2 c
         poke32 p 3 d
+
+------------------------------------------------------------------------
+-- Read and Show instance for pattern-based integral newtypes
+
+instance Show SocketType where
+    showsPrec _ Stream                = (++) "Stream"
+    showsPrec _ Datagram              = (++) "Datagram"
+    showsPrec _ Raw                   = (++) "Raw"
+    showsPrec _ RDM                   = (++) "RDM"
+    showsPrec _ SeqPacket             = (++) "SeqPacket"
+    showsPrec _ NoSocketType          = (++) "NoSocketType"
+    showsPrec _ UnsupportedSocketType = (++) "Unsupported"
+    showsPrec d (GeneralSocketType n) =
+        showParen (d > app_prec) $
+            ("GeneralSocketType " ++) . showsPrec (app_prec+1) n
+
+instance Read SocketType where
+    readPrec = P.parens $ specific <++ general
+      where
+        specific = P.lexP >>= \case
+            P.Ident "Stream"       -> pure Stream
+            P.Ident "Datagram"     -> pure Datagram
+            P.Ident "Raw"          -> pure Raw
+            P.Ident "RDM"          -> pure RDM
+            P.Ident "SeqPacket"    -> pure SeqPacket
+            P.Ident "NoSocketType" -> pure NoSocketType
+            P.Ident "Unsupported"  -> pure UnsupportedSocketType
+            _                      -> mzero
+
+        general = P.prec app_prec $ do
+            P.lift $ P.expect $ P.Ident "GeneralSocketType"
+            GeneralSocketType <$> P.step safeInt
+
+instance Show Family where
+    showsPrec _ UnsupportedFamily   = (++) "UnsupportedFamily"
+    showsPrec _ AF_UNSPEC           = (++) "AF_UNSPEC"
+    showsPrec _ AF_UNIX             = (++) "AF_UNIX"
+    showsPrec _ AF_INET             = (++) "AF_INET"
+    showsPrec _ AF_INET6            = (++) "AF_INET6"
+    showsPrec _ AF_IMPLINK          = (++) "AF_IMPLINK"
+    showsPrec _ AF_PUP              = (++) "AF_PUP"
+    showsPrec _ AF_CHAOS            = (++) "AF_CHAOS"
+    showsPrec _ AF_NS               = (++) "AF_NS"
+    showsPrec _ AF_NBS              = (++) "AF_NBS"
+    showsPrec _ AF_ECMA             = (++) "AF_ECMA"
+    showsPrec _ AF_DATAKIT          = (++) "AF_DATAKIT"
+    showsPrec _ AF_CCITT            = (++) "AF_CCITT"
+    showsPrec _ AF_SNA              = (++) "AF_SNA"
+    showsPrec _ AF_DECnet           = (++) "AF_DECnet"
+    showsPrec _ AF_DLI              = (++) "AF_DLI"
+    showsPrec _ AF_LAT              = (++) "AF_LAT"
+    showsPrec _ AF_HYLINK           = (++) "AF_HYLINK"
+    showsPrec _ AF_APPLETALK        = (++) "AF_APPLETALK"
+    showsPrec _ AF_ROUTE            = (++) "AF_ROUTE"
+    showsPrec _ AF_NETBIOS          = (++) "AF_NETBIOS"
+    showsPrec _ AF_NIT              = (++) "AF_NIT"
+    showsPrec _ AF_802              = (++) "AF_802"
+    showsPrec _ AF_ISO              = (++) "AF_ISO"
+    showsPrec _ AF_OSI              = (++) "AF_OSI"
+    showsPrec _ AF_NETMAN           = (++) "AF_NETMAN"
+    showsPrec _ AF_X25              = (++) "AF_X25"
+    showsPrec _ AF_AX25             = (++) "AF_AX25"
+    showsPrec _ AF_OSINET           = (++) "AF_OSINET"
+    showsPrec _ AF_GOSSIP           = (++) "AF_GOSSIP"
+    showsPrec _ AF_IPX              = (++) "AF_IPX"
+    showsPrec _ Pseudo_AF_XTP       = (++) "Pseudo_AF_XTP"
+    showsPrec _ AF_CTF              = (++) "AF_CTF"
+    showsPrec _ AF_WAN              = (++) "AF_WAN"
+    showsPrec _ AF_SDL              = (++) "AF_SDL"
+    showsPrec _ AF_NETWARE          = (++) "AF_NETWARE"
+    showsPrec _ AF_NDD              = (++) "AF_NDD"
+    showsPrec _ AF_INTF             = (++) "AF_INTF"
+    showsPrec _ AF_COIP             = (++) "AF_COIP"
+    showsPrec _ AF_CNT              = (++) "AF_CNT"
+    showsPrec _ Pseudo_AF_RTIP      = (++) "Pseudo_AF_RTIP"
+    showsPrec _ Pseudo_AF_PIP       = (++) "Pseudo_AF_PIP"
+    showsPrec _ AF_SIP              = (++) "AF_SIP"
+    showsPrec _ AF_ISDN             = (++) "AF_ISDN"
+    showsPrec _ Pseudo_AF_KEY       = (++) "Pseudo_AF_KEY"
+    showsPrec _ AF_NATM             = (++) "AF_NATM"
+    showsPrec _ AF_ARP              = (++) "AF_ARP"
+    showsPrec _ Pseudo_AF_HDRCMPLT  = (++) "Pseudo_AF_HDRCMPLT"
+    showsPrec _ AF_ENCAP            = (++) "AF_ENCAP"
+    showsPrec _ AF_LINK             = (++) "AF_LINK"
+    showsPrec _ AF_RAW              = (++) "AF_RAW"
+    showsPrec _ AF_RIF              = (++) "AF_RIF"
+    showsPrec _ AF_NETROM           = (++) "AF_NETROM"
+    showsPrec _ AF_BRIDGE           = (++) "AF_BRIDGE"
+    showsPrec _ AF_ATMPVC           = (++) "AF_ATMPVC"
+    showsPrec _ AF_ROSE             = (++) "AF_ROSE"
+    showsPrec _ AF_NETBEUI          = (++) "AF_NETBEUI"
+    showsPrec _ AF_SECURITY         = (++) "AF_SECURITY"
+    showsPrec _ AF_PACKET           = (++) "AF_PACKET"
+    showsPrec _ AF_ASH              = (++) "AF_ASH"
+    showsPrec _ AF_ECONET           = (++) "AF_ECONET"
+    showsPrec _ AF_ATMSVC           = (++) "AF_ATMSVC"
+    showsPrec _ AF_IRDA             = (++) "AF_IRDA"
+    showsPrec _ AF_PPPOX            = (++) "AF_PPPOX"
+    showsPrec _ AF_WANPIPE          = (++) "AF_WANPIPE"
+    showsPrec _ AF_BLUETOOTH        = (++) "AF_BLUETOOTH"
+    showsPrec _ AF_CAN              = (++) "AF_CAN"
+    showsPrec d (GeneralFamily n)   =
+        showParen (d > app_prec) $
+            ("GeneralFamily " ++) . showsPrec (app_prec+1) n
+
+-- | The 'Read' instance presently supports only 'AF_INET', 'AF_INET6',
+-- 'AF_UNIX', 'AF_UNSPEC' and 'GeneralFamily'.
+instance Read Family where
+    readPrec = P.parens $ specific <++ general
+      where
+        specific = P.lexP >>= \case
+            P.Ident "AF_INET"   -> pure AF_INET
+            P.Ident "AF_INET6"  -> pure AF_INET6
+            P.Ident "AF_UNIX"   -> pure AF_UNIX
+            P.Ident "AF_UNSPEC" -> pure AF_UNSPEC
+            _                   -> mzero
+
+        general = P.prec app_prec $ do
+            P.lift $ P.expect $ P.Ident "GeneralFamily"
+            GeneralFamily <$> P.step safeInt
+
+-- Print "n" instead of "PortNum n".
+instance Show PortNumber where
+  showsPrec p (PortNum pn) = showsPrec p pn
+
+-- Read "n" instead of "PortNum n".
+instance Read PortNumber where
+  readPrec = safeInt
+
+app_prec :: Int
+app_prec = 10
+
+-- Accept negative values only in parens and check for overflow.
+safeInt :: forall a. (Bounded a, Integral a) => P.ReadPrec a
+safeInt = do
+    i <- P.parens unsigned <++ P.parens (P.prec app_prec negative)
+    if (i >= fromIntegral (minBound :: a) && i <= fromIntegral (maxBound :: a))
+    then pure $ fromIntegral i
+    else mzero
+  where
+    unsigned :: P.ReadPrec Integer
+    unsigned = P.lift P.readDecP
+    negative :: P.ReadPrec Integer
+    negative = P.readPrec
 
 ------------------------------------------------------------------------
 -- Helper functions
