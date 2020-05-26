@@ -13,7 +13,7 @@ import Foreign.Marshal.Alloc (mallocBytes, free)
 
 import Control.Concurrent (threadDelay)
 #if !defined(mingw32_HOST_OS)
-import Control.Concurrent (putMVar, takeMVar, newEmptyMVar)
+import Control.Concurrent (tryPutMVar, takeMVar, newEmptyMVar)
 import qualified GHC.Event as Ev
 import System.Posix.Types (Fd(..))
 #endif
@@ -62,19 +62,20 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
         -- Sending TCP FIN.
         shutdown s ShutdownSend
         -- Waiting TCP FIN.
+        E.bracket (mallocBytes bufSize) free $ \buf -> do
 #if defined(mingw32_HOST_OS)
-        recvEOFloop
+            {-# SCC "" #-} recvEOFloop buf
 #else
-        mevmgr <- Ev.getSystemEventManager
-        case mevmgr of
-          Nothing    -> recvEOFloop     -- non-threaded RTS
-          Just evmgr -> recvEOFev evmgr
+            mevmgr <- Ev.getSystemEventManager
+            case mevmgr of
+              Nothing    -> recvEOFloop buf    -- non-threaded RTS
+              Just evmgr -> recvEOFev evmgr buf
 #endif
     -- milliseconds. Taken from BSD fast clock value.
     clock = 200
-    recvEOFloop = E.bracket (mallocBytes bufSize) free $ loop 0
+    recvEOFloop buf = loop 0
       where
-        loop delay buf = do
+        loop delay = do
             -- We don't check the (positive) length.
             -- In normal case, it's 0. That is, only FIN is received.
             -- In error cases, data is available. But there is no
@@ -84,29 +85,25 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
             let delay' = delay + clock
             when (r == -1 && delay' < tmout) $ do
                 threadDelay (clock * 1000)
-                loop delay' buf
+                loop delay'
 #if !defined(mingw32_HOST_OS)
-    recvEOFev evmgr = do
-        tmmgr <- Ev.getSystemTimerManager
-        mvar <- newEmptyMVar
-        E.bracket (register evmgr tmmgr mvar) (unregister evmgr tmmgr) $ \_ -> do
-            wait <- takeMVar mvar
-            case wait of
-              TimeoutTripped -> return ()
-              -- We don't check the (positive) length.
-              -- In normal case, it's 0. That is, only FIN is received.
-              -- In error cases, data is available. But there is no
-              -- application which can read it. So, let's stop receiving
-              -- to prevent attacks.
-              MoreData       -> E.bracket (mallocBytes bufSize)
-                                          free
-                                          (\buf -> void $ recvBufNoWait s buf bufSize)
+    recvEOFev evmgr buf = do
+        -- Checking if FIN is already received.
+        r <- recvBufNoWait s buf bufSize
+        when (r == -1) $ do
+            tmmgr <- Ev.getSystemTimerManager
+            mvar <- newEmptyMVar
+            E.bracket (register evmgr tmmgr mvar) (unregister evmgr tmmgr) $ \_ -> do
+                wait <- takeMVar mvar
+                case wait of
+                  TimeoutTripped -> return ()
+                  MoreData       -> void $ recvBufNoWait s buf bufSize
     register evmgr tmmgr mvar = do
         -- millisecond to microsecond
         key1 <- Ev.registerTimeout tmmgr (tmout * 1000) $
-            putMVar mvar TimeoutTripped
+            void $ tryPutMVar mvar TimeoutTripped
         key2 <- withFdSocket s $ \fd' -> do
-            let callback _ _ = putMVar mvar MoreData
+            let callback _ _ = void $ tryPutMVar mvar MoreData
                 fd = Fd fd'
 #if __GLASGOW_HASKELL__ < 709
             Ev.registerFd evmgr callback fd Ev.evtRead
