@@ -74,6 +74,8 @@ module Network.Socket.Types (
     , defaultProtocol
     , PortNumber
     , defaultPort
+    , HostName
+    , ServiceName
 
     -- * Low-level helpers
     , zeroMemory
@@ -290,6 +292,13 @@ type ProtocolNumber = CInt
 -- 0
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
+
+-- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
+-- address string consisting of a dotted decimal IPv4 address or an
+-- IPv6 address e.g., @\"192.168.0.1\"@.
+type HostName       = String
+-- | Either a service name e.g., @\"http\"@ or a numeric port number.
+type ServiceName    = String
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -1062,7 +1071,7 @@ type ScopeID = Word32
 --
 -- See also 'Network.Socket.socketFromEndpoint'.
 data SockEndpoint
-  = EndpointByName !String !PortNumber
+  = EndpointByName !HostName !PortNumber
   | EndpointByAddr !SockAddr
   deriving (Eq, Ord)
 

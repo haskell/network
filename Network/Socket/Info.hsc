@@ -21,15 +21,6 @@ import Network.Socket.Syscall (socket)
 import Network.Socket.Types
 
 -----------------------------------------------------------------------------
-
--- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
--- address string consisting of a dotted decimal IPv4 address or an
--- IPv6 address e.g., @\"192.168.0.1\"@.
-type HostName       = String
--- | Either a service name e.g., @\"http\"@ or a numeric port number.
-type ServiceName    = String
-
------------------------------------------------------------------------------
 -- Address and service lookups
 
 -- | Flags that control the querying behaviour of 'getAddrInfo'.
