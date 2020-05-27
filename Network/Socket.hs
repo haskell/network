@@ -153,6 +153,7 @@ module Network.Socket
     , Socket
     , socket
     , openSocket
+    , socketFromEndpoint
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
@@ -183,8 +184,14 @@ module Network.Socket
     -- ** Protocol number
     , ProtocolNumber
     , defaultProtocol
+    -- * Basic socket endpoint type
+    , SockEndpoint(..)
+    , readSockEndpoint
+    , showSockEndpoint
+    , resolveEndpoint
     -- * Basic socket address type
     , SockAddr(..)
+    , sockAddrFamily
     , isSupportedSockAddr
     , getPeerName
     , getSocketName
