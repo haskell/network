@@ -519,7 +519,7 @@ showSockEndpoint n = case n of
 -- resolution fails.
 resolveEndpoint :: SockEndpoint -> IO [SockAddr]
 resolveEndpoint name = case name of
-  EndpointByAddr a -> pure [a]
+  EndpointByAddr a -> return [a]
   EndpointByName host port -> fmap addrAddress <$> getAddrInfo hints (Just host) (Just (show port))
  where
   hints = Just $ defaultHints { addrSocketType = Stream }
@@ -540,4 +540,4 @@ socketFromEndpoint
 socketFromEndpoint end select stype protocol = do
   a <- select <$> resolveEndpoint end
   s <- socket (sockAddrFamily a) stype protocol
-  pure (s, a)
+  return (s, a)
