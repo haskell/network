@@ -263,7 +263,7 @@ getAddrInfo hints node service = alloc getaddrinfo
             -- See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html
             case ais of
               [] -> ioError $ mkIOError NoSuchThing message Nothing Nothing
-              _ -> pure ais
+              _ -> return ais
           else do
             err <- gai_strerror ret
             ioError $ ioeSetErrorString

@@ -1324,13 +1324,13 @@ instance Read SocketType where
     readPrec = P.parens $ specific <++ general
       where
         specific = P.lexP >>= \case
-            P.Ident "Stream"       -> pure Stream
-            P.Ident "Datagram"     -> pure Datagram
-            P.Ident "Raw"          -> pure Raw
-            P.Ident "RDM"          -> pure RDM
-            P.Ident "SeqPacket"    -> pure SeqPacket
-            P.Ident "NoSocketType" -> pure NoSocketType
-            P.Ident "Unsupported"  -> pure UnsupportedSocketType
+            P.Ident "Stream"       -> return Stream
+            P.Ident "Datagram"     -> return Datagram
+            P.Ident "Raw"          -> return Raw
+            P.Ident "RDM"          -> return RDM
+            P.Ident "SeqPacket"    -> return SeqPacket
+            P.Ident "NoSocketType" -> return NoSocketType
+            P.Ident "Unsupported"  -> return UnsupportedSocketType
             _                      -> mzero
 
         general = P.prec app_prec $ do
@@ -1415,10 +1415,10 @@ instance Read Family where
     readPrec = P.parens $ specific <++ general
       where
         specific = P.lexP >>= \case
-            P.Ident "AF_INET"   -> pure AF_INET
-            P.Ident "AF_INET6"  -> pure AF_INET6
-            P.Ident "AF_UNIX"   -> pure AF_UNIX
-            P.Ident "AF_UNSPEC" -> pure AF_UNSPEC
+            P.Ident "AF_INET"   -> return AF_INET
+            P.Ident "AF_INET6"  -> return AF_INET6
+            P.Ident "AF_UNIX"   -> return AF_UNIX
+            P.Ident "AF_UNSPEC" -> return AF_UNSPEC
             _                   -> mzero
 
         general = P.prec app_prec $ do
@@ -1441,7 +1441,7 @@ safeInt :: forall a. (Bounded a, Integral a) => P.ReadPrec a
 safeInt = do
     i <- P.parens unsigned <++ P.parens (P.prec app_prec negative)
     if (i >= fromIntegral (minBound :: a) && i <= fromIntegral (maxBound :: a))
-    then pure $ fromIntegral i
+    then return $ fromIntegral i
     else mzero
   where
     unsigned :: P.ReadPrec Integer
