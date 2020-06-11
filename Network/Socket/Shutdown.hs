@@ -63,14 +63,7 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
         shutdown s ShutdownSend
         -- Waiting TCP FIN.
         E.bracket (mallocBytes bufSize) free $ \buf -> do
-#if defined(mingw32_HOST_OS)
             {-# SCC "" #-} recvEOFloop buf
-#else
-            mevmgr <- Ev.getSystemEventManager
-            case mevmgr of
-              Nothing    -> recvEOFloop buf    -- non-threaded RTS
-              Just evmgr -> recvEOFev evmgr buf
-#endif
     -- milliseconds. Taken from BSD fast clock value.
     clock = 200
     recvEOFloop buf = loop 0
@@ -86,35 +79,6 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
             when (r == -1 && delay' < tmout) $ do
                 threadDelay (clock * 1000)
                 loop delay'
-#if !defined(mingw32_HOST_OS)
-    recvEOFev evmgr buf = do
-        -- Checking if FIN is already received.
-        r <- recvBufNoWait s buf bufSize
-        when (r == -1) $ do
-            tmmgr <- Ev.getSystemTimerManager
-            mvar <- newEmptyMVar
-            E.bracket (register evmgr tmmgr mvar) (unregister evmgr tmmgr) $ \_ -> do
-                wait <- takeMVar mvar
-                case wait of
-                  TimeoutTripped -> return ()
-                  MoreData       -> void $ recvBufNoWait s buf bufSize
-    register evmgr tmmgr mvar = do
-        -- millisecond to microsecond
-        key1 <- Ev.registerTimeout tmmgr (tmout * 1000) $
-            void $ tryPutMVar mvar TimeoutTripped
-        key2 <- withFdSocket s $ \fd' -> do
-            let callback _ _ = void $ tryPutMVar mvar MoreData
-                fd = Fd fd'
-#if __GLASGOW_HASKELL__ < 709
-            Ev.registerFd evmgr callback fd Ev.evtRead
-#else
-            Ev.registerFd evmgr callback fd Ev.evtRead Ev.OneShot
-#endif
-        return (key1, key2)
-    unregister evmgr tmmgr (key1,key2) = do
-        Ev.unregisterTimeout tmmgr key1
-        Ev.unregisterFd evmgr key2
-#endif
     -- Don't use 4092 here. The GHC runtime takes the global lock
     -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
     bufSize = 1024
