@@ -12,11 +12,6 @@ import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
 
 import Control.Concurrent (threadDelay)
-#if !defined(mingw32_HOST_OS)
-import Control.Concurrent (tryPutMVar, takeMVar, newEmptyMVar)
-import qualified GHC.Event as Ev
-import System.Posix.Types (Fd(..))
-#endif
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
@@ -44,10 +39,6 @@ shutdown s stype = void $ withFdSocket s $ \fd ->
 
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CInt -> CInt -> IO CInt
-
-#if !defined(mingw32_HOST_OS)
-data Wait = MoreData | TimeoutTripped
-#endif
 
 -- | Closing a socket gracefully.
 --   This sends TCP FIN and check if TCP FIN is received from the peer.
