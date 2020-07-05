@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 
 #include "HsNet.h"
@@ -25,12 +26,15 @@ module Network.Socket.Options (
   , setSockOpt
   ) where
 
+import qualified Text.Read as P
+
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
+import Network.Socket.ReadShow
 
 -----------------------------------------------------------------------------
 -- Socket Properties
@@ -39,10 +43,10 @@ import Network.Socket.Types
 --
 -- The existence of a constructor does not imply that the relevant option
 -- is supported on your system: see 'isSupportedSocketOption'
-data SocketOption = SockOpt {
-    sockOptLevel :: !CInt
-  , sockOptName  :: !CInt
-  } deriving (Eq, Show)
+data SocketOption = SockOpt
+    !CInt -- ^ Option Level
+    !CInt -- ^ Option Name
+  deriving (Eq)
 
 -- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
@@ -141,7 +145,7 @@ pattern OOBInline :: SocketOption
 #ifdef SO_OOBINLINE
 pattern OOBInline      = SockOpt (#const SOL_SOCKET) (#const SO_OOBINLINE)
 #else
-pattern OOBINLINE      = SockOpt (-1) (-1)
+pattern OOBInline      = SockOpt (-1) (-1)
 #endif
 -- | SO_LINGER: timeout in seconds, 0 means disabling/disabled.
 pattern Linger :: SocketOption
@@ -375,6 +379,63 @@ getSockOpt s (SockOpt level opt) = do
             throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
                 c_getsockopt fd level opt ptr ptr_sz
         peek ptr
+
+
+socketOptionPairs :: [Pair SocketOption String]
+socketOptionPairs =
+    [ (Debug, "Debug")
+    , (ReuseAddr, "ReuseAddr")
+    , (SoDomain, "SoDomain")
+    , (Type, "Type")
+    , (SoProtocol, "SoProtocol")
+    , (SoError, "SoError")
+    , (DontRoute, "DontRoute")
+    , (Broadcast, "Broadcast")
+    , (SendBuffer, "SendBuffer")
+    , (RecvBuffer, "RecvBuffer")
+    , (KeepAlive, "KeepAlive")
+    , (OOBInline, "OOBInline")
+    , (Linger, "Linger")
+    , (ReusePort, "ReusePort")
+    , (RecvLowWater, "RecvLowWater")
+    , (SendLowWater, "SendLowWater")
+    , (RecvTimeOut, "RecvTimeOut")
+    , (SendTimeOut, "SendTimeOut")
+    , (UseLoopBack, "UseLoopBack")
+    , (MaxSegment, "MaxSegment")
+    , (NoDelay, "NoDelay")
+    , (UserTimeout, "UserTimeout")
+    , (Cork, "Cork")
+    , (TimeToLive, "TimeToLive")
+    , (RecvIPv4TTL, "RecvIPv4TTL")
+    , (RecvIPv4TOS, "RecvIPv4TOS")
+    , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
+    , (IPv6Only, "IPv6Only")
+    , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
+    , (RecvIPv6TClass, "RecvIPv6TClass")
+    , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
+    ]
+
+socketOptionBijection :: Bijection SocketOption String
+socketOptionBijection = Bijection{..}
+    where
+        cso = "CustomSockOpt"
+        _parse :: String -> (CInt, CInt)
+        _parse xy =
+            let (xs, ('_':ys)) = break (=='_') xy
+             in (read xs, read ys)
+        defFwd = \(CustomSockOpt (n,m)) -> cso++show n++"_"++show m
+        defBwd s = case splitAt (length cso) s of
+          ("CustomSockOpt", nm) -> CustomSockOpt $ _parse nm
+          _ -> error "socketOptionBijection: exception in WIP ReadShow code"
+        pairs = socketOptionPairs
+
+instance Show SocketOption where
+    show = forward socketOptionBijection
+
+instance Read SocketOption where
+    readPrec = P.lexP >>= \(P.Ident x) -> return $ backward socketOptionBijection x
+
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
