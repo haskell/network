@@ -325,7 +325,9 @@ isSupportedSocketType = (/= UnsupportedSocketType)
 -- | Pattern for a general socket type.
 pattern GeneralSocketType    :: CInt -> SocketType
 pattern GeneralSocketType n  =  SocketType n
+#if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE GeneralSocketType #-}
+#endif
 -- The actual constructor is not exported, which keeps the internal
 -- representation private, but for all purposes other than 'coerce' the
 -- above pattern is just as good.
@@ -411,7 +413,9 @@ unpackFamily = Family
 -- @since 3.2.0.0
 pattern GeneralFamily      :: CInt -> Family
 pattern GeneralFamily n     = Family n
+#if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE GeneralFamily #-}
+#endif
 -- The actual constructor is not exported, which keeps the internal
 -- representation private, but for all purposes other than 'coerce' the
 -- above pattern is just as good.

@@ -296,7 +296,9 @@ pattern CustomSockOpt xy <- ((\(SockOpt x y) -> (x, y)) -> xy)
   where
     CustomSockOpt (x, y) = SockOpt x y
 
+#if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE CustomSockOpt #-}
+#endif
 #ifdef SO_LINGER
 data StructLinger = StructLinger CInt CInt
 
