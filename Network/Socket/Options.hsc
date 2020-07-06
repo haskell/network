@@ -44,8 +44,13 @@ import Network.Socket.ReadShow
 -- The existence of a constructor does not imply that the relevant option
 -- is supported on your system: see 'isSupportedSocketOption'
 data SocketOption = SockOpt
+#if __GLASGOW_HASKELL__ >= 806
     !CInt -- ^ Option Level
     !CInt -- ^ Option Name
+#else
+    !CInt -- Option Level
+    !CInt -- Option Name
+#endif
   deriving (Eq)
 
 -- | Does the 'SocketOption' exist on this system?
@@ -420,10 +425,6 @@ socketOptionBijection :: Bijection SocketOption String
 socketOptionBijection = Bijection{..}
     where
         cso = "CustomSockOpt"
-        _parse :: String -> (CInt, CInt)
-        _parse xy =
-            let (xs, ('_':ys)) = break (=='_') xy
-             in (read xs, read ys)
         defFwd = \(CustomSockOpt (n,m)) -> cso++show n++"_"++show m
         defBwd s = case splitAt (length cso) s of
           ("CustomSockOpt", nm) -> CustomSockOpt $ _parse nm

@@ -38,8 +38,19 @@ data Bijection a b
      , pairs  :: [Pair a b]
      }
 
+-- | apply a bijection over an LHS-value
 forward :: (Eq a) => Bijection a b -> a -> b
 forward Bijection{..} = lookForward defFwd pairs
 
+-- | apply a bijection over an RHS-value
 backward :: (Eq b) => Bijection a b -> b -> a
 backward Bijection{..} = lookBackward defBwd pairs
+
+-- | parse an underscore-separated pair into a tuple
+--   should not be used if either type might have
+--   literal underscores in the Read pre-image
+_parse :: (Read a, Read b) => String -> (a, b)
+_parse xy =
+  let (xs, '_':ys) = break (=='_') xy
+   in (read xs, read ys)
+
