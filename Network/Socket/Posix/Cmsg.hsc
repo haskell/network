@@ -31,7 +31,7 @@ data Cmsg = Cmsg {
 -- | Identifier of control message (ancillary data).
 data CmsgId = CmsgId {
     cmsgLevel :: !CInt
-  , cmsglType :: !CInt
+  , cmsgType  :: !CInt
   } deriving (Eq, Show)
 
 -- | The identifier for 'IPv4TTL'.
