@@ -243,7 +243,8 @@ module Network.Socket
             ,CmsgIdIPv4TOS
             ,CmsgIdIPv6TClass
             ,CmsgIdIPv4PktInfo
-            ,CmsgIdIPv6PktInfo)
+            ,CmsgIdIPv6PktInfo
+            ,CmsgIdFd)
     -- ** APIs for control message
     , lookupCmsg
     , filterCmsg
