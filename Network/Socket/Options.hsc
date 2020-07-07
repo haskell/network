@@ -63,6 +63,9 @@ isSupportedSocketOption opt = opt /= SockOpt (-1) (-1)
 getSocketType :: Socket -> IO SocketType
 getSocketType s = unpackSocketType <$> getSockOpt s Type
 
+pattern UnsupportedSocketOption :: SocketOption
+pattern UnsupportedSocketOption = SockOpt (-1) (-1)
+
 #ifdef SOL_SOCKET
 -- | SO_DEBUG
 pattern Debug :: SocketOption
@@ -388,7 +391,7 @@ getSockOpt s (SockOpt level opt) = do
 
 socketOptionPairs :: [Pair SocketOption String]
 socketOptionPairs =
-    [ (SockOpt -1 -1, "Unsupported")
+    [ (UnsupportedSocketOption, "Unsupported")
     , (Debug, "Debug")
     , (ReuseAddr, "ReuseAddr")
     , (SoDomain, "SoDomain")

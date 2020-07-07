@@ -134,6 +134,7 @@ module Network.Socket
 
     -- * Socket options
     , SocketOption(SockOpt
+                  ,UnsupportedSocketOption
                   ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
                   ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline
                   ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
