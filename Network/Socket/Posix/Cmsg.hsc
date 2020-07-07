@@ -38,6 +38,10 @@ data CmsgId = CmsgId {
   , cmsgType  :: !CInt
   } deriving (Eq)
 
+-- | Unsupported identifier
+pattern UnsupportedCmsgId :: CmsgId
+pattern UnsupportedCmsgId = CmsgId (-1) (-1)
+
 -- | The identifier for 'IPv4TTL'.
 pattern CmsgIdIPv4TTL :: CmsgId
 #if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
@@ -227,7 +231,8 @@ instance ControlMessage Fd where
 
 cmsgIdPairs :: [Pair CmsgId String]
 cmsgIdPairs =
-    [ (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
+    [ (UnsupportedCmsgId, "Unsupported")
+    , (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
     , (CmsgIdIPv6HopLimit, "CmsgIdIPv6HopLimit")
     , (CmsgIdIPv4TOS, "CmsgIdIPv4TOS")
     , (CmsgIdIPv6TClass, "CmsgIdIPv6TClass")
@@ -240,7 +245,7 @@ cmsgIdBijection :: Bijection CmsgId String
 cmsgIdBijection = Bijection{..}
     where
         defname = "CmsgId"
-        defFwd = \(CmsgId l t) -> defname++show l++"_" ++show t
+        defFwd = \(CmsgId l t) -> defname++show l++"_"++show t
         defBwd s =
             case splitAt (length defname) s of
                 ("CmsgId", nm) -> uncurry CmsgId $ _parse nm

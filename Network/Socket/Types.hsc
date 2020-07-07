@@ -1318,13 +1318,13 @@ instance Storable In6Addr where
 
 socktypePairs :: [Pair SocketType String]
 socktypePairs =
-    [ (Stream, "Stream")
+    [ (UnsupportedSocketType, "Unsupported")
+    , (Stream, "Stream")
     , (Datagram, "Datagram") 
     , (Raw, "Raw")
     , (RDM, "RDM")
     , (SeqPacket, "SeqPacket")
     , (NoSocketType, "NoSocketType")
-    , (UnsupportedSocketType, "Unsupported")
     ]
 
 socktypeBijection :: Bijection SocketType String

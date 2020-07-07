@@ -16,6 +16,9 @@ import System.IO.Unsafe (unsafeDupablePerformIO)
 
 import Network.Socket.Imports
 import Network.Socket.Types
+import Network.Socket.ReadShow
+
+import qualified Text.Read as P
 
 type DWORD = Word32
 type ULONG = Word32
@@ -32,7 +35,11 @@ data Cmsg = Cmsg {
 data CmsgId = CmsgId {
     cmsgLevel :: !CInt
   , cmsgType  :: !CInt
-  } deriving (Eq, Show)
+  } deriving (Eq)
+
+-- | Unsupported identifier
+pattern UnsupportedCmsgId :: CmsgId
+pattern UnsupportedCmsgId = CmsgId (-1) (-1)
 
 -- | The identifier for 'IPv4TTL'.
 pattern CmsgIdIPv4TTL :: CmsgId
@@ -178,3 +185,31 @@ instance Storable IPv6PktInfo where
         In6Addr ha6 <- (#peek IN6_PKTINFO, ipi6_addr)    p
         n :: ULONG  <- (#peek IN6_PKTINFO, ipi6_ifindex) p
         return $ IPv6PktInfo (fromIntegral n) ha6
+
+cmsgIdPairs :: [Pair CmsgId String]
+cmsgIdPairs =
+    [ (UnsupportedCmsgId, "Unsupported")
+    , (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
+    , (CmsgIdIPv6HopLimit, "CmsgIdIPv6HopLimit")
+    , (CmsgIdIPv4TOS, "CmsgIdIPv4TOS")
+    , (CmsgIdIPv6TClass, "CmsgIdIPv6TClass")
+    , (CmsgIdIPv4PktInfo, "CmsgIdIPv4PktInfo")
+    , (CmsgIdIPv6PktInfo, "CmsgIdIPv6PktInfo")
+    ]
+
+cmsgIdBijection :: Bijection CmsgId String
+cmsgIdBijection = Bijection{..}
+    where
+        defname = "CmsgId"
+        defFwd = \(CmsgId l t) -> defname++show l++"_"++show t
+        defBwd s =
+            case splitAt (length defname) s of
+                ("CmsgId", nm) -> uncurry CmsgId $ _parse nm
+                _ -> error "cmsgIdBijection: exception in WIP ReadShow code"
+        pairs = cmsgIdPairs
+
+instance Show CmsgId where
+    show = forward cmsgIdBijection
+
+instance Read CmsgId where
+    readPrec = P.lexP >>= \(P.Ident x) -> return $ backward cmsgIdBijection x
