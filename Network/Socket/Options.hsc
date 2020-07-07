@@ -9,6 +9,7 @@
 
 module Network.Socket.Options (
     SocketOption(SockOpt
+                ,UnsupportedSocketOption
                 ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
                 ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
                 ,MaxSegment,NoDelay,Cork,Linger,ReusePort
