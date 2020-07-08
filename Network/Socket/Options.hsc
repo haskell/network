@@ -430,17 +430,16 @@ socketOptionBijection :: Bijection SocketOption String
 socketOptionBijection = Bijection{..}
     where
         cso = "CustomSockOpt"
-        defFwd = \(CustomSockOpt (n,m)) -> cso++show n++"_"++show m
-        defBwd s = case splitAt (length cso) s of
-          ("CustomSockOpt", nm) -> CustomSockOpt $ _parse nm
-          _ -> error "socketOptionBijection: exception in WIP ReadShow code"
+        unCSO = \(CustomSockOpt nm) -> nm
+        defFwd = defShow cso unCSO _show
+        defBwd = defRead cso CustomSockOpt _parse
         pairs = socketOptionPairs
 
 instance Show SocketOption where
     show = forward socketOptionBijection
 
 instance Read SocketOption where
-    readPrec = P.lexP >>= \(P.Ident x) -> return $ backward socketOptionBijection x
+    readPrec = tokenize $ backward socketOptionBijection
 
 
 foreign import CALLCONV unsafe "getsockopt"

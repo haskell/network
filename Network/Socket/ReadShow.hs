@@ -1,6 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PatternGuards #-}
+
 
 module Network.Socket.ReadShow where
+
+import qualified Text.Read as P
 
 -- type alias for individual correspondences of a (possibly partial) bijection
 type Pair a b = (a, b)
@@ -53,4 +57,24 @@ _parse :: (Read a, Read b) => String -> (a, b)
 _parse xy =
   let (xs, '_':ys) = break (=='_') xy
    in (read xs, read ys)
+{-# INLINE _parse #-}
 
+-- | inverse function to _parse
+--   show a tuple as underscore-separated strings
+_show :: (Show a, Show b) => (a, b) -> String
+_show (x, y) = show x ++ "_" ++ show y
+
+{-# INLINE defShow #-}
+defShow :: Eq a => String -> (a -> b) -> (b -> String) -> (a -> String)
+defShow name get sho = \x -> name ++ (sho . get $ x)
+
+{-# INLINE defRead #-}
+defRead :: Read a => String -> (b -> a) -> (String -> b) -> (String -> a)
+defRead name set red = \s ->
+  case splitAt (length name) s of
+    (x, sn) | x == name -> set $ red sn
+    _ -> error $ "defRead: unable to parse " ++ show s
+
+{-# INLINE tokenize #-}
+tokenize :: (String -> a) -> P.ReadPrec a
+tokenize f = P.lexP >>= \(P.Ident x) -> return $ f x

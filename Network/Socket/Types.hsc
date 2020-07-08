@@ -1331,18 +1331,15 @@ socktypeBijection :: Bijection SocketType String
 socktypeBijection = Bijection{..}
     where
       gst = "GeneralSocketType"
-      defFwd = \(GeneralSocketType n) -> gst++show n
-      defBwd = \s ->
-          case splitAt (length gst) s of
-            ("GeneralSocketType", sn) -> GeneralSocketType $ (read sn :: CInt)
-            _ -> error "socktypeBijection: exception in WIP ReadShow code"
+      defFwd = defShow gst packSocketType show
+      defBwd = defRead gst unpackSocketType read
       pairs = socktypePairs
 
 instance Show SocketType where
     show = forward socktypeBijection
 
 instance Read SocketType where
-    readPrec = P.lexP >>= \(P.Ident x) -> return $ backward socktypeBijection x
+    readPrec = tokenize $ backward socktypeBijection
 
 familyPairs :: [Pair Family String]
 familyPairs =
@@ -1419,18 +1416,15 @@ familyBijection :: Bijection Family String
 familyBijection = Bijection{..}
     where
       gf = "GeneralFamily"
-      defFwd = \(GeneralFamily n) -> gf++show n
-      defBwd = \s ->
-          case splitAt (length gf) s of
-            ("GeneralFamily", sn) -> GeneralFamily $ (read sn :: CInt)
-            _ -> error "familyBijection: exception in WIP ReadShow code"
+      defFwd = defShow gf packFamily show
+      defBwd = defRead gf unpackFamily read
       pairs = familyPairs
 
 instance Show Family where
     show = forward familyBijection
 
 instance Read Family where
-    readPrec = P.lexP >>= \(P.Ident x) -> return $ backward familyBijection x
+    readPrec = tokenize $ backward familyBijection
 
 -- Print "n" instead of "PortNum n".
 instance Show PortNumber where

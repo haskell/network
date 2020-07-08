@@ -202,15 +202,13 @@ cmsgIdBijection :: Bijection CmsgId String
 cmsgIdBijection = Bijection{..}
     where
         defname = "CmsgId"
-        defFwd = \(CmsgId l t) -> defname++show l++"_"++show t
-        defBwd s =
-            case splitAt (length defname) s of
-                ("CmsgId", nm) -> uncurry CmsgId $ _parse nm
-                _ -> error "cmsgIdBijection: exception in WIP ReadShow code"
+        unId = \(CmsgId l t) -> (l,t)
+        defFwd = defShow defname unId _show
+        defBwd = defRead defname (uncurry CmsgId) _parse
         pairs = cmsgIdPairs
 
 instance Show CmsgId where
     show = forward cmsgIdBijection
 
 instance Read CmsgId where
-    readPrec = P.lexP >>= \(P.Ident x) -> return $ backward cmsgIdBijection x
+    readPrec = tokenize $ backward cmsgIdBijection
