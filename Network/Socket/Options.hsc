@@ -392,7 +392,7 @@ getSockOpt s (SockOpt level opt) = do
 
 socketOptionPairs :: [Pair SocketOption String]
 socketOptionPairs =
-    [ (UnsupportedSocketOption, "Unsupported")
+    [ (UnsupportedSocketOption, "UnsupportedSocketOption")
     , (Debug, "Debug")
     , (ReuseAddr, "ReuseAddr")
     , (SoDomain, "SoDomain")

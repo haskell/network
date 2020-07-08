@@ -189,7 +189,7 @@ instance Storable IPv6PktInfo where
 
 cmsgIdPairs :: [Pair CmsgId String]
 cmsgIdPairs =
-    [ (UnsupportedCmsgId, "Unsupported")
+    [ (UnsupportedCmsgId, "UnsupportedCmsgId")
     , (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
     , (CmsgIdIPv6HopLimit, "CmsgIdIPv6HopLimit")
     , (CmsgIdIPv4TOS, "CmsgIdIPv4TOS")

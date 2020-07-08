@@ -1318,7 +1318,7 @@ instance Storable In6Addr where
 
 socktypePairs :: [Pair SocketType String]
 socktypePairs =
-    [ (UnsupportedSocketType, "Unsupported")
+    [ (UnsupportedSocketType, "UnsupportedSocketType")
     , (Stream, "Stream")
     , (Datagram, "Datagram") 
     , (Raw, "Raw")
