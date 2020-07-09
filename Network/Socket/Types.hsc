@@ -1331,8 +1331,8 @@ socktypeBijection :: Bijection SocketType String
 socktypeBijection = Bijection{..}
     where
       gst = "GeneralSocketType"
-      defFwd = defShow gst packSocketType show
-      defBwd = defRead gst unpackSocketType read
+      defFwd = defShow gst packSocketType _showInt
+      defBwd = defRead gst unpackSocketType _readInt
       pairs = socktypePairs
 
 instance Show SocketType where
@@ -1416,8 +1416,8 @@ familyBijection :: Bijection Family String
 familyBijection = Bijection{..}
     where
       gf = "GeneralFamily"
-      defFwd = defShow gf packFamily show
-      defBwd = defRead gf unpackFamily read
+      defFwd = defShow gf packFamily _showInt
+      defBwd = defRead gf unpackFamily _readInt
       pairs = familyPairs
 
 instance Show Family where

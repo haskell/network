@@ -50,31 +50,46 @@ forward Bijection{..} = lookForward defFwd pairs
 backward :: (Eq b) => Bijection a b -> b -> a
 backward Bijection{..} = lookBackward defBwd pairs
 
--- | parse an underscore-separated pair into a tuple
+-- | show function for Int-like types that encodes negative numbers
+-- with leading '_' instead of '-'
+_showInt :: (Show a, Num a, Ord a) => a -> String
+_showInt n | n < 0 = let ('-':s) = show n in '_':s
+           | otherwise = show n
+
+-- | parse function for Int-like types that interprets leading '_'
+--   as if it were '-' instead
+_readInt :: (Read a) => String -> a
+_readInt ('_':s) = read $ '-':s
+_readInt s = read s
+
+
+-- | parse a quote-separated pair into a tuple of Int-like values
 --   should not be used if either type might have
---   literal underscores in the Read pre-image
+--   literal quote-characters in the Read pre-image
 _parse :: (Read a, Read b) => String -> (a, b)
 _parse xy =
-  let (xs, '_':ys) = break (=='_') xy
-   in (read xs, read ys)
+  let (xs, '\'':ys) = break (=='\'') xy
+   in (_readInt xs, _readInt ys)
 {-# INLINE _parse #-}
 
 -- | inverse function to _parse
---   show a tuple as underscore-separated strings
-_show :: (Show a, Show b) => (a, b) -> String
-_show (x, y) = show x ++ "_" ++ show y
+--   show a tuple of Int-like values as quote-separated strings
+_show :: (Show a, Num a, Ord a,  Show b, Num b, Ord b) => (a, b) -> String
+_show (x, y) = _showInt x ++ "'" ++ _showInt y
+{-# INLINE _show #-}
 
-{-# INLINE defShow #-}
 defShow :: Eq a => String -> (a -> b) -> (b -> String) -> (a -> String)
-defShow name get sho = \x -> name ++ (sho . get $ x)
+defShow name unwrap sho = \x -> name ++ (sho . unwrap $ x)
+{-# INLINE defShow #-}
 
-{-# INLINE defRead #-}
 defRead :: Read a => String -> (b -> a) -> (String -> b) -> (String -> a)
-defRead name set red = \s ->
+defRead name wrap red = \s ->
   case splitAt (length name) s of
-    (x, sn) | x == name -> set $ red sn
+    (x, sn) | x == name -> wrap $ red sn
     _ -> error $ "defRead: unable to parse " ++ show s
+{-# INLINE defRead #-}
 
-{-# INLINE tokenize #-}
+-- | Apply a precedence-invariant one-token parse function within ReadPrec monad
 tokenize :: (String -> a) -> P.ReadPrec a
 tokenize f = P.lexP >>= \(P.Ident x) -> return $ f x
+{-# INLINE tokenize #-}
