@@ -101,6 +101,10 @@ import Foreign.Marshal.Array
 
 import Network.Socket.Imports
 
+----- readshow module import
+import Network.Socket.ReadShow
+
+
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
@@ -1312,122 +1316,115 @@ instance Storable In6Addr where
 ------------------------------------------------------------------------
 -- Read and Show instance for pattern-based integral newtypes
 
+socktypePairs :: [Pair SocketType String]
+socktypePairs =
+    [ (UnsupportedSocketType, "UnsupportedSocketType")
+    , (Stream, "Stream")
+    , (Datagram, "Datagram") 
+    , (Raw, "Raw")
+    , (RDM, "RDM")
+    , (SeqPacket, "SeqPacket")
+    , (NoSocketType, "NoSocketType")
+    ]
+
+socktypeBijection :: Bijection SocketType String
+socktypeBijection = Bijection{..}
+    where
+      gst = "GeneralSocketType"
+      defFwd = defShow gst packSocketType _showInt
+      defBwd = defRead gst unpackSocketType _readInt
+      pairs = socktypePairs
+
 instance Show SocketType where
-    showsPrec _ Stream                = (++) "Stream"
-    showsPrec _ Datagram              = (++) "Datagram"
-    showsPrec _ Raw                   = (++) "Raw"
-    showsPrec _ RDM                   = (++) "RDM"
-    showsPrec _ SeqPacket             = (++) "SeqPacket"
-    showsPrec _ NoSocketType          = (++) "NoSocketType"
-    showsPrec _ UnsupportedSocketType = (++) "Unsupported"
-    showsPrec d (GeneralSocketType n) =
-        showParen (d > app_prec) $
-            ("GeneralSocketType " ++) . showsPrec (app_prec+1) n
+    show = forward socktypeBijection
 
 instance Read SocketType where
-    readPrec = P.parens $ specific <++ general
-      where
-        specific = P.lexP >>= \case
-            P.Ident "Stream"       -> return Stream
-            P.Ident "Datagram"     -> return Datagram
-            P.Ident "Raw"          -> return Raw
-            P.Ident "RDM"          -> return RDM
-            P.Ident "SeqPacket"    -> return SeqPacket
-            P.Ident "NoSocketType" -> return NoSocketType
-            P.Ident "Unsupported"  -> return UnsupportedSocketType
-            _                      -> mzero
+    readPrec = tokenize $ backward socktypeBijection
 
-        general = P.prec app_prec $ do
-            P.lift $ P.expect $ P.Ident "GeneralSocketType"
-            GeneralSocketType <$> P.step safeInt
+familyPairs :: [Pair Family String]
+familyPairs =
+    [ (UnsupportedFamily, "UnsupportedFamily")
+    , (AF_UNSPEC, "AF_UNSPEC")
+    , (AF_UNIX, "AF_UNIX")
+    , (AF_INET, "AF_INET")
+    , (AF_INET6, "AF_INET6")
+    , (AF_IMPLINK, "AF_IMPLINK")
+    , (AF_PUP, "AF_PUP")
+    , (AF_CHAOS, "AF_CHAOS")
+    , (AF_NS, "AF_NS")
+    , (AF_NBS, "AF_NBS")
+    , (AF_ECMA, "AF_ECMA")
+    , (AF_DATAKIT, "AF_DATAKIT")
+    , (AF_CCITT, "AF_CCITT")
+    , (AF_SNA, "AF_SNA")
+    , (AF_DECnet, "AF_DECnet")
+    , (AF_DLI, "AF_DLI")
+    , (AF_LAT, "AF_LAT")
+    , (AF_HYLINK, "AF_HYLINK")
+    , (AF_APPLETALK, "AF_APPLETALK")
+    , (AF_ROUTE, "AF_ROUTE")
+    , (AF_NETBIOS, "AF_NETBIOS")
+    , (AF_NIT, "AF_NIT")
+    , (AF_802, "AF_802")
+    , (AF_ISO, "AF_ISO")
+    , (AF_OSI, "AF_OSI")
+    , (AF_NETMAN, "AF_NETMAN")
+    , (AF_X25, "AF_X25")
+    , (AF_AX25, "AF_AX25")
+    , (AF_OSINET, "AF_OSINET")
+    , (AF_GOSSIP, "AF_GOSSIP")
+    , (AF_IPX, "AF_IPX")
+    , (Pseudo_AF_XTP, "Pseudo_AF_XTP")
+    , (AF_CTF, "AF_CTF")
+    , (AF_WAN, "AF_WAN")
+    , (AF_SDL, "AF_SDL")
+    , (AF_NETWARE, "AF_NETWARE")
+    , (AF_NDD, "AF_NDD")
+    , (AF_INTF, "AF_INTF")
+    , (AF_COIP, "AF_COIP")
+    , (AF_CNT, "AF_CNT")
+    , (Pseudo_AF_RTIP, "Pseudo_AF_RTIP")
+    , (Pseudo_AF_PIP, "Pseudo_AF_PIP")
+    , (AF_SIP, "AF_SIP")
+    , (AF_ISDN, "AF_ISDN")
+    , (Pseudo_AF_KEY, "Pseudo_AF_KEY")
+    , (AF_NATM, "AF_NATM")
+    , (AF_ARP, "AF_ARP")
+    , (Pseudo_AF_HDRCMPLT, "Pseudo_AF_HDRCMPLT")
+    , (AF_ENCAP, "AF_ENCAP")
+    , (AF_LINK, "AF_LINK")
+    , (AF_RAW, "AF_RAW")
+    , (AF_RIF, "AF_RIF")
+    , (AF_NETROM, "AF_NETROM")
+    , (AF_BRIDGE, "AF_BRIDGE")
+    , (AF_ATMPVC, "AF_ATMPVC")
+    , (AF_ROSE, "AF_ROSE")
+    , (AF_NETBEUI, "AF_NETBEUI")
+    , (AF_SECURITY, "AF_SECURITY")
+    , (AF_PACKET, "AF_PACKET")
+    , (AF_ASH, "AF_ASH")
+    , (AF_ECONET, "AF_ECONET")
+    , (AF_ATMSVC, "AF_ATMSVC")
+    , (AF_IRDA, "AF_IRDA")
+    , (AF_PPPOX, "AF_PPPOX")
+    , (AF_WANPIPE, "AF_WANPIPE")
+    , (AF_BLUETOOTH, "AF_BLUETOOTH")
+    , (AF_CAN, "AF_CAN")
+    ]
+
+familyBijection :: Bijection Family String
+familyBijection = Bijection{..}
+    where
+      gf = "GeneralFamily"
+      defFwd = defShow gf packFamily _showInt
+      defBwd = defRead gf unpackFamily _readInt
+      pairs = familyPairs
 
 instance Show Family where
-    showsPrec _ UnsupportedFamily   = (++) "UnsupportedFamily"
-    showsPrec _ AF_UNSPEC           = (++) "AF_UNSPEC"
-    showsPrec _ AF_UNIX             = (++) "AF_UNIX"
-    showsPrec _ AF_INET             = (++) "AF_INET"
-    showsPrec _ AF_INET6            = (++) "AF_INET6"
-    showsPrec _ AF_IMPLINK          = (++) "AF_IMPLINK"
-    showsPrec _ AF_PUP              = (++) "AF_PUP"
-    showsPrec _ AF_CHAOS            = (++) "AF_CHAOS"
-    showsPrec _ AF_NS               = (++) "AF_NS"
-    showsPrec _ AF_NBS              = (++) "AF_NBS"
-    showsPrec _ AF_ECMA             = (++) "AF_ECMA"
-    showsPrec _ AF_DATAKIT          = (++) "AF_DATAKIT"
-    showsPrec _ AF_CCITT            = (++) "AF_CCITT"
-    showsPrec _ AF_SNA              = (++) "AF_SNA"
-    showsPrec _ AF_DECnet           = (++) "AF_DECnet"
-    showsPrec _ AF_DLI              = (++) "AF_DLI"
-    showsPrec _ AF_LAT              = (++) "AF_LAT"
-    showsPrec _ AF_HYLINK           = (++) "AF_HYLINK"
-    showsPrec _ AF_APPLETALK        = (++) "AF_APPLETALK"
-    showsPrec _ AF_ROUTE            = (++) "AF_ROUTE"
-    showsPrec _ AF_NETBIOS          = (++) "AF_NETBIOS"
-    showsPrec _ AF_NIT              = (++) "AF_NIT"
-    showsPrec _ AF_802              = (++) "AF_802"
-    showsPrec _ AF_ISO              = (++) "AF_ISO"
-    showsPrec _ AF_OSI              = (++) "AF_OSI"
-    showsPrec _ AF_NETMAN           = (++) "AF_NETMAN"
-    showsPrec _ AF_X25              = (++) "AF_X25"
-    showsPrec _ AF_AX25             = (++) "AF_AX25"
-    showsPrec _ AF_OSINET           = (++) "AF_OSINET"
-    showsPrec _ AF_GOSSIP           = (++) "AF_GOSSIP"
-    showsPrec _ AF_IPX              = (++) "AF_IPX"
-    showsPrec _ Pseudo_AF_XTP       = (++) "Pseudo_AF_XTP"
-    showsPrec _ AF_CTF              = (++) "AF_CTF"
-    showsPrec _ AF_WAN              = (++) "AF_WAN"
-    showsPrec _ AF_SDL              = (++) "AF_SDL"
-    showsPrec _ AF_NETWARE          = (++) "AF_NETWARE"
-    showsPrec _ AF_NDD              = (++) "AF_NDD"
-    showsPrec _ AF_INTF             = (++) "AF_INTF"
-    showsPrec _ AF_COIP             = (++) "AF_COIP"
-    showsPrec _ AF_CNT              = (++) "AF_CNT"
-    showsPrec _ Pseudo_AF_RTIP      = (++) "Pseudo_AF_RTIP"
-    showsPrec _ Pseudo_AF_PIP       = (++) "Pseudo_AF_PIP"
-    showsPrec _ AF_SIP              = (++) "AF_SIP"
-    showsPrec _ AF_ISDN             = (++) "AF_ISDN"
-    showsPrec _ Pseudo_AF_KEY       = (++) "Pseudo_AF_KEY"
-    showsPrec _ AF_NATM             = (++) "AF_NATM"
-    showsPrec _ AF_ARP              = (++) "AF_ARP"
-    showsPrec _ Pseudo_AF_HDRCMPLT  = (++) "Pseudo_AF_HDRCMPLT"
-    showsPrec _ AF_ENCAP            = (++) "AF_ENCAP"
-    showsPrec _ AF_LINK             = (++) "AF_LINK"
-    showsPrec _ AF_RAW              = (++) "AF_RAW"
-    showsPrec _ AF_RIF              = (++) "AF_RIF"
-    showsPrec _ AF_NETROM           = (++) "AF_NETROM"
-    showsPrec _ AF_BRIDGE           = (++) "AF_BRIDGE"
-    showsPrec _ AF_ATMPVC           = (++) "AF_ATMPVC"
-    showsPrec _ AF_ROSE             = (++) "AF_ROSE"
-    showsPrec _ AF_NETBEUI          = (++) "AF_NETBEUI"
-    showsPrec _ AF_SECURITY         = (++) "AF_SECURITY"
-    showsPrec _ AF_PACKET           = (++) "AF_PACKET"
-    showsPrec _ AF_ASH              = (++) "AF_ASH"
-    showsPrec _ AF_ECONET           = (++) "AF_ECONET"
-    showsPrec _ AF_ATMSVC           = (++) "AF_ATMSVC"
-    showsPrec _ AF_IRDA             = (++) "AF_IRDA"
-    showsPrec _ AF_PPPOX            = (++) "AF_PPPOX"
-    showsPrec _ AF_WANPIPE          = (++) "AF_WANPIPE"
-    showsPrec _ AF_BLUETOOTH        = (++) "AF_BLUETOOTH"
-    showsPrec _ AF_CAN              = (++) "AF_CAN"
-    showsPrec d (GeneralFamily n)   =
-        showParen (d > app_prec) $
-            ("GeneralFamily " ++) . showsPrec (app_prec+1) n
+    show = forward familyBijection
 
--- | The 'Read' instance presently supports only 'AF_INET', 'AF_INET6',
--- 'AF_UNIX', 'AF_UNSPEC' and 'GeneralFamily'.
 instance Read Family where
-    readPrec = P.parens $ specific <++ general
-      where
-        specific = P.lexP >>= \case
-            P.Ident "AF_INET"   -> return AF_INET
-            P.Ident "AF_INET6"  -> return AF_INET6
-            P.Ident "AF_UNIX"   -> return AF_UNIX
-            P.Ident "AF_UNSPEC" -> return AF_UNSPEC
-            _                   -> mzero
-
-        general = P.prec app_prec $ do
-            P.lift $ P.expect $ P.Ident "GeneralFamily"
-            GeneralFamily <$> P.step safeInt
+    readPrec = tokenize $ backward familyBijection
 
 -- Print "n" instead of "PortNum n".
 instance Show PortNumber where

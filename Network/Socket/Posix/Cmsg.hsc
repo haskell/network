@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -19,6 +20,9 @@ import System.Posix.Types (Fd(..))
 
 import Network.Socket.Imports
 import Network.Socket.Types
+import Network.Socket.ReadShow
+
+import qualified Text.Read as P
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
@@ -32,7 +36,11 @@ data Cmsg = Cmsg {
 data CmsgId = CmsgId {
     cmsgLevel :: !CInt
   , cmsgType  :: !CInt
-  } deriving (Eq, Show)
+  } deriving (Eq)
+
+-- | Unsupported identifier
+pattern UnsupportedCmsgId :: CmsgId
+pattern UnsupportedCmsgId = CmsgId (-1) (-1)
 
 -- | The identifier for 'IPv4TTL'.
 pattern CmsgIdIPv4TTL :: CmsgId
@@ -220,3 +228,30 @@ instance Storable IPv6PktInfo where
 
 instance ControlMessage Fd where
     controlMessageId = CmsgIdFd
+
+cmsgIdPairs :: [Pair CmsgId String]
+cmsgIdPairs =
+    [ (UnsupportedCmsgId, "UnsupportedCmsgId")
+    , (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
+    , (CmsgIdIPv6HopLimit, "CmsgIdIPv6HopLimit")
+    , (CmsgIdIPv4TOS, "CmsgIdIPv4TOS")
+    , (CmsgIdIPv6TClass, "CmsgIdIPv6TClass")
+    , (CmsgIdIPv4PktInfo, "CmsgIdIPv4PktInfo")
+    , (CmsgIdIPv6PktInfo, "CmsgIdIPv6PktInfo")
+    , (CmsgIdFd, "CmsgIdFd")
+    ]
+
+cmsgIdBijection :: Bijection CmsgId String
+cmsgIdBijection = Bijection{..}
+    where
+        defname = "CmsgId"
+        unId = \(CmsgId l t) -> (l,t)
+        defFwd = defShow defname unId _show
+        defBwd = defRead defname (uncurry CmsgId) _parse
+        pairs = cmsgIdPairs
+
+instance Show CmsgId where
+    show = forward cmsgIdBijection
+
+instance Read CmsgId where
+    readPrec = tokenize $ backward cmsgIdBijection

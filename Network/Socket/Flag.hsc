@@ -10,6 +10,12 @@ import qualified Data.Semigroup as Sem
 
 import Network.Socket.Imports
 
+{-
+import Network.Socket.ReadShow
+
+import qualified Text.Read as P
+-}
+
 -- | Message flags. To combine flags, use '(<>)'.
 newtype MsgFlag = MsgFlag { fromMsgFlag :: CInt }
                 deriving (Show, Eq, Ord, Num, Bits)
@@ -78,3 +84,16 @@ pattern MSG_WAITALL = MsgFlag (#const MSG_WAITALL)
 #else
 pattern MSG_WAITALL = MsgFlag 0
 #endif
+
+{-
+msgFlagPairs :: [Pair MsgFlag String]
+msgFlagPairs =
+    [ (MSG_OOB, "MSG_OOB")
+    , (MSG_DONTROUTE, "MSG_DONTROUTE")
+    , (MSG_PEEK, "MSG_PEEK")
+    , (MSG_EOR, "MSG_EOR")
+    , (MSG_TRUNC, "MSG_TRUNC")
+    , (MSG_CTRUNC, "MSG_CTRUNC")
+    , (MSG_WAITALL, "MSG_WAITALL")
+    ]
+-}

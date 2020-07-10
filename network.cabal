@@ -75,6 +75,7 @@ library
     Network.Socket.Info
     Network.Socket.Name
     Network.Socket.Options
+    Network.Socket.ReadShow
     Network.Socket.Shutdown
     Network.Socket.SockAddr
     Network.Socket.Syscall

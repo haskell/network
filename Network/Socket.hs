@@ -134,6 +134,7 @@ module Network.Socket
 
     -- * Socket options
     , SocketOption(SockOpt
+                  ,UnsupportedSocketOption
                   ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
                   ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline
                   ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
@@ -244,7 +245,7 @@ module Network.Socket
             ,CmsgIdIPv6TClass
             ,CmsgIdIPv4PktInfo
             ,CmsgIdIPv6PktInfo
-            ,CmsgIdFd)
+            ,UnsupportedCmsgId)
     -- ** APIs for control message
     , lookupCmsg
     , filterCmsg

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 
 #include "HsNet.h"
@@ -8,6 +9,7 @@
 
 module Network.Socket.Options (
     SocketOption(SockOpt
+                ,UnsupportedSocketOption
                 ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
                 ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
                 ,MaxSegment,NoDelay,Cork,Linger,ReusePort
@@ -25,12 +27,15 @@ module Network.Socket.Options (
   , setSockOpt
   ) where
 
+import qualified Text.Read as P
+
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Types
+import Network.Socket.ReadShow
 
 -----------------------------------------------------------------------------
 -- Socket Properties
@@ -39,10 +44,15 @@ import Network.Socket.Types
 --
 -- The existence of a constructor does not imply that the relevant option
 -- is supported on your system: see 'isSupportedSocketOption'
-data SocketOption = SockOpt {
-    sockOptLevel :: !CInt
-  , sockOptName  :: !CInt
-  } deriving (Eq, Show)
+data SocketOption = SockOpt
+#if __GLASGOW_HASKELL__ >= 806
+    !CInt -- ^ Option Level
+    !CInt -- ^ Option Name
+#else
+    !CInt -- Option Level
+    !CInt -- Option Name
+#endif
+  deriving (Eq)
 
 -- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
@@ -53,6 +63,9 @@ isSupportedSocketOption opt = opt /= SockOpt (-1) (-1)
 --   Since: 3.0.1.0
 getSocketType :: Socket -> IO SocketType
 getSocketType s = unpackSocketType <$> getSockOpt s Type
+
+pattern UnsupportedSocketOption :: SocketOption
+pattern UnsupportedSocketOption = SockOpt (-1) (-1)
 
 #ifdef SOL_SOCKET
 -- | SO_DEBUG
@@ -141,7 +154,7 @@ pattern OOBInline :: SocketOption
 #ifdef SO_OOBINLINE
 pattern OOBInline      = SockOpt (#const SOL_SOCKET) (#const SO_OOBINLINE)
 #else
-pattern OOBINLINE      = SockOpt (-1) (-1)
+pattern OOBInline      = SockOpt (-1) (-1)
 #endif
 -- | SO_LINGER: timeout in seconds, 0 means disabling/disabled.
 pattern Linger :: SocketOption
@@ -375,6 +388,59 @@ getSockOpt s (SockOpt level opt) = do
             throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
                 c_getsockopt fd level opt ptr ptr_sz
         peek ptr
+
+
+socketOptionPairs :: [Pair SocketOption String]
+socketOptionPairs =
+    [ (UnsupportedSocketOption, "UnsupportedSocketOption")
+    , (Debug, "Debug")
+    , (ReuseAddr, "ReuseAddr")
+    , (SoDomain, "SoDomain")
+    , (Type, "Type")
+    , (SoProtocol, "SoProtocol")
+    , (SoError, "SoError")
+    , (DontRoute, "DontRoute")
+    , (Broadcast, "Broadcast")
+    , (SendBuffer, "SendBuffer")
+    , (RecvBuffer, "RecvBuffer")
+    , (KeepAlive, "KeepAlive")
+    , (OOBInline, "OOBInline")
+    , (Linger, "Linger")
+    , (ReusePort, "ReusePort")
+    , (RecvLowWater, "RecvLowWater")
+    , (SendLowWater, "SendLowWater")
+    , (RecvTimeOut, "RecvTimeOut")
+    , (SendTimeOut, "SendTimeOut")
+    , (UseLoopBack, "UseLoopBack")
+    , (MaxSegment, "MaxSegment")
+    , (NoDelay, "NoDelay")
+    , (UserTimeout, "UserTimeout")
+    , (Cork, "Cork")
+    , (TimeToLive, "TimeToLive")
+    , (RecvIPv4TTL, "RecvIPv4TTL")
+    , (RecvIPv4TOS, "RecvIPv4TOS")
+    , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
+    , (IPv6Only, "IPv6Only")
+    , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
+    , (RecvIPv6TClass, "RecvIPv6TClass")
+    , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
+    ]
+
+socketOptionBijection :: Bijection SocketOption String
+socketOptionBijection = Bijection{..}
+    where
+        cso = "CustomSockOpt"
+        unCSO = \(CustomSockOpt nm) -> nm
+        defFwd = defShow cso unCSO _show
+        defBwd = defRead cso CustomSockOpt _parse
+        pairs = socketOptionPairs
+
+instance Show SocketOption where
+    show = forward socketOptionBijection
+
+instance Read SocketOption where
+    readPrec = tokenize $ backward socketOptionBijection
+
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
