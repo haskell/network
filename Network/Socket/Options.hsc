@@ -390,8 +390,8 @@ getSockOpt s (SockOpt level opt) = do
         peek ptr
 
 
-socketOptionPairs :: [Pair SocketOption String]
-socketOptionPairs =
+socketOptionBijection :: Bijection SocketOption String
+socketOptionBijection =
     [ (UnsupportedSocketOption, "UnsupportedSocketOption")
     , (Debug, "Debug")
     , (ReuseAddr, "ReuseAddr")
@@ -426,21 +426,19 @@ socketOptionPairs =
     , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
     ]
 
-socketOptionBijection :: Bijection SocketOption String
-socketOptionBijection = Bijection{..}
-    where
-        cso = "CustomSockOpt"
-        unCSO = \(CustomSockOpt nm) -> nm
-        defFwd = defShow cso unCSO _show
-        defBwd = defRead cso CustomSockOpt _parse
-        pairs = socketOptionPairs
-
 instance Show SocketOption where
-    show = forward socketOptionBijection
+    showsPrec = bijectiveShow socketOptionBijection def
+      where
+        defname = "SockOpt"
+        unwrap = \(CustomSockOpt nm) -> nm
+        def = defShow defname unwrap showIntInt
+
 
 instance Read SocketOption where
-    readPrec = tokenize $ backward socketOptionBijection
-
+    readPrec = bijectiveRead socketOptionBijection def
+      where
+        defname = "SockOpt"
+        def = defRead defname CustomSockOpt readIntInt
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt

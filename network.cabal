@@ -144,7 +144,8 @@ test-suite spec
     HUnit,
     network,
     temporary,
-    hspec >= 2.6
+    hspec >= 2.6,
+    QuickCheck
 
 test-suite doctests
   buildable: False

@@ -190,8 +190,8 @@ instance Storable IPv6PktInfo where
         n :: ULONG  <- (#peek IN6_PKTINFO, ipi6_ifindex) p
         return $ IPv6PktInfo (fromIntegral n) ha6
 
-cmsgIdPairs :: [Pair CmsgId String]
-cmsgIdPairs =
+cmsgIdBijection :: Bijection CmsgId String
+cmsgIdBijection =
     [ (UnsupportedCmsgId, "UnsupportedCmsgId")
     , (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
     , (CmsgIdIPv6HopLimit, "CmsgIdIPv6HopLimit")
@@ -202,17 +202,15 @@ cmsgIdPairs =
     , (CmsgIdFd, "CmsgIdFd")
     ]
 
-cmsgIdBijection :: Bijection CmsgId String
-cmsgIdBijection = Bijection{..}
-    where
+instance Show CmsgId where
+    showsPrec = bijectiveShow cmsgIdBijection def
+      where
         defname = "CmsgId"
         unId = \(CmsgId l t) -> (l,t)
-        defFwd = defShow defname unId _show
-        defBwd = defRead defname (uncurry CmsgId) _parse
-        pairs = cmsgIdPairs
-
-instance Show CmsgId where
-    show = forward cmsgIdBijection
+        def = defShow defname unId showIntInt
 
 instance Read CmsgId where
-    readPrec = tokenize $ backward cmsgIdBijection
+    readPrec = bijectiveRead cmsgIdBijection def
+      where
+        defname = "CmsgId"
+        def = defRead defname (uncurry CmsgId) readIntInt

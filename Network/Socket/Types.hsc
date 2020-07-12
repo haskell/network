@@ -91,9 +91,7 @@ import GHC.IORef (IORef (..))
 import GHC.STRef (STRef (..))
 import GHC.IO (IO (..))
 
-import Text.Read ((<++))
 import qualified Text.Read as P
-import qualified Text.Read.Lex as P
 
 #if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
@@ -1316,8 +1314,8 @@ instance Storable In6Addr where
 ------------------------------------------------------------------------
 -- Read and Show instance for pattern-based integral newtypes
 
-socktypePairs :: [Pair SocketType String]
-socktypePairs =
+socktypeBijection :: Bijection SocketType String
+socktypeBijection =
     [ (UnsupportedSocketType, "UnsupportedSocketType")
     , (Stream, "Stream")
     , (Datagram, "Datagram") 
@@ -1327,22 +1325,20 @@ socktypePairs =
     , (NoSocketType, "NoSocketType")
     ]
 
-socktypeBijection :: Bijection SocketType String
-socktypeBijection = Bijection{..}
-    where
-      gst = "GeneralSocketType"
-      defFwd = defShow gst packSocketType _showInt
-      defBwd = defRead gst unpackSocketType _readInt
-      pairs = socktypePairs
-
 instance Show SocketType where
-    show = forward socktypeBijection
+    showsPrec = bijectiveShow socktypeBijection def
+      where
+        gst = "GeneralSocketType"
+        def = defShow gst packSocketType _showInt
 
 instance Read SocketType where
-    readPrec = tokenize $ backward socktypeBijection
+    readPrec = bijectiveRead socktypeBijection def
+      where
+        gst = "GeneralSocketType"
+        def = defRead gst unpackSocketType _readInt
 
-familyPairs :: [Pair Family String]
-familyPairs =
+familyBijection :: Bijection Family String
+familyBijection =
     [ (UnsupportedFamily, "UnsupportedFamily")
     , (AF_UNSPEC, "AF_UNSPEC")
     , (AF_UNIX, "AF_UNIX")
@@ -1412,19 +1408,17 @@ familyPairs =
     , (AF_CAN, "AF_CAN")
     ]
 
-familyBijection :: Bijection Family String
-familyBijection = Bijection{..}
-    where
-      gf = "GeneralFamily"
-      defFwd = defShow gf packFamily _showInt
-      defBwd = defRead gf unpackFamily _readInt
-      pairs = familyPairs
-
 instance Show Family where
-    show = forward familyBijection
+    showsPrec = bijectiveShow familyBijection def
+      where
+        gf = "GeneralFamily"
+        def = defShow gf packFamily _showInt
 
 instance Read Family where
-    readPrec = tokenize $ backward familyBijection
+    readPrec = bijectiveRead familyBijection def
+      where
+        gf = "GeneralFamily"
+        def = defRead gf unpackFamily _readInt
 
 -- Print "n" instead of "PortNum n".
 instance Show PortNumber where
@@ -1433,22 +1427,6 @@ instance Show PortNumber where
 -- Read "n" instead of "PortNum n".
 instance Read PortNumber where
   readPrec = safeInt
-
-app_prec :: Int
-app_prec = 10
-
--- Accept negative values only in parens and check for overflow.
-safeInt :: forall a. (Bounded a, Integral a) => P.ReadPrec a
-safeInt = do
-    i <- P.parens unsigned <++ P.parens (P.prec app_prec negative)
-    if (i >= fromIntegral (minBound :: a) && i <= fromIntegral (maxBound :: a))
-    then return $ fromIntegral i
-    else mzero
-  where
-    unsigned :: P.ReadPrec Integer
-    unsigned = P.lift P.readDecP
-    negative :: P.ReadPrec Integer
-    negative = P.readPrec
 
 ------------------------------------------------------------------------
 -- Helper functions
