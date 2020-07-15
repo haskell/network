@@ -245,6 +245,7 @@ module Network.Socket
             ,CmsgIdIPv6TClass
             ,CmsgIdIPv4PktInfo
             ,CmsgIdIPv6PktInfo
+            ,CmsgIdFd
             ,UnsupportedCmsgId)
     -- ** APIs for control message
     , lookupCmsg

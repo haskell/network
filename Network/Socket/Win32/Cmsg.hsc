@@ -66,8 +66,11 @@ pattern CmsgIdIPv4PktInfo = CmsgId (#const IPPROTO_IP) (#const IP_PKTINFO)
 pattern CmsgIdIPv6PktInfo :: CmsgId
 pattern CmsgIdIPv6PktInfo = CmsgId (#const IPPROTO_IPV6) (#const IPV6_PKTINFO)
 
--- Use WSADuplicateSocket for CmsgIdFd
--- pattern CmsgIdFd :: CmsgId
+-- | Control message ID for POSIX file-descriptor passing.
+--
+--  Not supported on Windows; use WSADuplicateSocket instead
+pattern CmsgIdFd :: CmsgId
+pattern CmsgIdFd = CmsgId (-1) (-1)
 
 ----------------------------------------------------------------
 
@@ -196,6 +199,7 @@ cmsgIdPairs =
     , (CmsgIdIPv6TClass, "CmsgIdIPv6TClass")
     , (CmsgIdIPv4PktInfo, "CmsgIdIPv4PktInfo")
     , (CmsgIdIPv6PktInfo, "CmsgIdIPv6PktInfo")
+    , (CmsgIdFd, "CmsgIdFd")
     ]
 
 cmsgIdBijection :: Bijection CmsgId String
