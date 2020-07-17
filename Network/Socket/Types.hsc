@@ -68,8 +68,14 @@ module Network.Socket.Types (
     , withSockAddr
 
     -- * Unsorted
-    , ProtocolNumber
+    , ProtocolNumber(UnsupportedProtocol,GeneralProtocol
+                    ,IPPROTO_IP,IPPROTO_IPV4,IPPROTO_IPV6
+                    ,IPPROTO_UDP,IPPROTO_TCP
+                    ,IPPROTO_ICMP,IPPROTO_ICMPV6,IPPROTO_RAW
+                    )
     , defaultProtocol
+    , packProtocol
+    , unpackProtocol
     , PortNumber
     , defaultPort
 
@@ -280,7 +286,15 @@ foreign import ccall unsafe "close"
 -----------------------------------------------------------------------------
 
 -- | Protocol number.
-type ProtocolNumber = CInt
+--
+-- Derives all defined instances for Foreign.C.Types.CInt
+-- to preserve API integrity as much as possible
+newtype ProtocolNumber = ProtocolNumber { packProtocol :: CInt }
+        deriving (Bounded, Enum, Eq, Integral, Num, Ord, Real, FiniteBits, Bits, Storable)
+
+unpackProtocol :: CInt -> ProtocolNumber
+unpackProtocol = ProtocolNumber
+{-# INLINE unpackProtocol #-}
 
 -- | This is the default protocol for a given service.
 --
@@ -288,6 +302,107 @@ type ProtocolNumber = CInt
 -- 0
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
+
+-- | Unsupported protocol, equal to any other protocol not supported on this system
+pattern UnsupportedProtocol :: ProtocolNumber
+pattern UnsupportedProtocol = ProtocolNumber (-1)
+
+-- | IP
+pattern IPPROTO_IP :: ProtocolNumber
+#ifdef IPPROTO_IP
+pattern IPPROTO_IP = ProtocolNumber (#const IPPROTO_IP)
+#else
+pattern IPPROTO_IP = ProtocolNumber (-1)
+#endif
+
+-- | IPv4
+pattern IPPROTO_IPV4 :: ProtocolNumber
+#ifdef IPPROTO_IPV4
+pattern IPPROTO_IPV4 = ProtocolNumber (#const IPPROTO_IPV4)
+#else
+pattern IPPROTO_IPV4 = ProtocolNumber (-1)
+#endif
+
+-- | IPv6
+pattern IPPROTO_IPV6 :: ProtocolNumber
+#ifdef IPPROTO_IPV6
+pattern IPPROTO_IPV6 = ProtocolNumber (#const IPPROTO_IPV6)
+#else
+pattern IPPROTO_IPV6 = ProtocolNumber (-1)
+#endif
+
+-- | UDP
+pattern IPPROTO_UDP :: ProtocolNumber
+#ifdef IPPROTO_UDP
+pattern IPPROTO_UDP = ProtocolNumber (#const IPPROTO_UDP)
+#else
+pattern IPPROTO_UDP = ProtocolNumber (-1)
+#endif
+
+-- | TCP
+pattern IPPROTO_TCP :: ProtocolNumber
+#ifdef IPPROTO_TCP
+pattern IPPROTO_TCP = ProtocolNumber (#const IPPROTO_TCP)
+#else
+pattern IPPROTO_TCP = ProtocolNumber (-1)
+#endif
+
+-- | ICMP
+pattern IPPROTO_ICMP :: ProtocolNumber
+#ifdef IPPROTO_ICMP
+pattern IPPROTO_ICMP = ProtocolNumber (#const IPPROTO_ICMP)
+#else
+pattern IPPROTO_ICMP = ProtocolNumber (-1)
+#endif
+
+-- | ICMPv6
+pattern IPPROTO_ICMPV6 :: ProtocolNumber
+#ifdef IPPROTO_ICMPV6
+pattern IPPROTO_ICMPV6 = ProtocolNumber (#const IPPROTO_ICMPV6)
+#else
+pattern IPPROTO_ICMPV6 = ProtocolNumber (-1)
+#endif
+
+-- | Raw
+pattern IPPROTO_RAW :: ProtocolNumber
+#ifdef IPPROTO_RAW
+pattern IPPROTO_RAW = ProtocolNumber (#const IPPROTO_RAW)
+#else
+pattern IPPROTO_RAW = ProtocolNumber (-1)
+#endif
+
+
+pattern GeneralProtocol :: CInt -> ProtocolNumber
+pattern GeneralProtocol n  = ProtocolNumber n
+#if __GLASGOW_HASKELL__ >= 806
+{-# COMPLETE GeneralProtocol #-}
+#endif
+
+
+protoNumBijection :: Bijection ProtocolNumber String
+protoNumBijection =
+    [ (UnsupportedProtocol, "UnsupportedProtocol")
+    , (IPPROTO_IP,     "IPPROTO_IP")
+    , (IPPROTO_IPV4,   "IPPROTO_IPV4")
+    , (IPPROTO_IPV6,   "IPPROTO_IPV6")
+    , (IPPROTO_UDP,    "IPPROTO_UDP")
+    , (IPPROTO_TCP,    "IPPROTO_TCP")
+    , (IPPROTO_ICMP,   "IPPROTO_ICMP")
+    , (IPPROTO_ICMPV6, "IPPROTO_ICMPV6")
+    , (IPPROTO_RAW,    "IPPROTO_RAW")
+    ]
+
+instance Show ProtocolNumber where
+    showsPrec = bijectiveShow protoNumBijection def
+      where
+        def = defShow "" packProtocol _showInt
+
+instance Read ProtocolNumber where
+    readPrec = bijectiveRead protoNumBijection def
+      where
+        def = defRead "" unpackProtocol _readInt
+
+
 
 -----------------------------------------------------------------------------
 -- Socket types

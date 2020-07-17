@@ -180,7 +180,7 @@ socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
       let c_stype = packSocketType stype
       _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
-                  c_socketpair (packFamily family) c_stype protocol fdArr
+                  c_socketpair (packFamily family) c_stype (packProtocol protocol) fdArr
       [fd1,fd2] <- peekArray 2 fdArr
       setNonBlockIfNeeded fd1
       setNonBlockIfNeeded fd2
