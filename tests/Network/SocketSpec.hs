@@ -7,14 +7,17 @@ import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (readMVar)
 import Control.Monad
 import Data.Maybe (fromJust)
+import Data.List (nub)
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
 import System.Mem (performGC)
 import System.IO.Error (tryIOError, isAlreadyInUseError)
 import System.IO.Temp (withSystemTempDirectory)
+import Foreign.C.Types ()
 
 import Test.Hspec
+import Test.QuickCheck
 
 main :: IO ()
 main = hspec spec
@@ -315,3 +318,157 @@ spec = do
                            (tupleToHostAddress6 (0xff01, 0x1234, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7)) 0
             show addr `shouldBe` "[ff01:1234:2:3:4:5:6:7]:80"
 
+    describe "show Family" $ do
+        it "works for pattern synonyms" $
+            let fam = AF_UNSPEC in
+            show fam `shouldBe` "AF_UNSPEC"
+
+        it "works for unsupported" $
+            let fam = GeneralFamily (-1) in
+            show fam `shouldBe` "UnsupportedFamily"
+
+        it "works for positive values" $
+            let fam = GeneralFamily 300 in
+            show fam `shouldBe` "GeneralFamily 300"
+
+        it "works for negative values" $
+            let fam = GeneralFamily (-300) in
+            show fam `shouldBe` "GeneralFamily (-300)"
+
+    describe "show SocketType" $ do
+        it "works for pattern synonyms" $
+            let socktype = NoSocketType in
+            show socktype `shouldBe` "NoSocketType"
+
+        it "works for unsupported" $
+            let socktype = GeneralSocketType (-1) in
+            show socktype `shouldBe` "UnsupportedSocketType"
+
+        it "works for positive values" $
+            let socktype = GeneralSocketType 300 in
+            show socktype `shouldBe` "GeneralSocketType 300"
+
+        it "works for negative values" $
+            let socktype = GeneralSocketType (-300) in
+            show socktype `shouldBe` "GeneralSocketType (-300)"
+
+    describe "show SocketOptions" $ do
+        it "works for pattern synonyms" $
+            let opt = ReuseAddr in
+            show opt `shouldBe` "ReuseAddr"
+
+        it "works for unsupported" $
+            let opt = SockOpt (-1) (-1) in
+            show opt `shouldBe` "UnsupportedSocketOption"
+
+        it "works for positive values" $
+            let opt = SockOpt 300 300 in
+            show opt `shouldBe` "SockOpt 300 300"
+
+        it "works for negative values" $
+            let opt = SockOpt (-300) (-300) in
+            show opt `shouldBe` "SockOpt (-300) (-300)"
+
+    describe "show CmsgId" $ do
+        it "works for pattern synonyms" $
+            let msgid = CmsgIdIPv6HopLimit in
+            show msgid `shouldBe` "CmsgIdIPv6HopLimit"
+
+        it "works for unsupported" $
+            let msgid = CmsgId (-1) (-1) in
+            show msgid `shouldBe` "UnsupportedCmsgId"
+
+        it "works for positive values" $
+            let msgid = CmsgId 300 300 in
+            show msgid `shouldBe` "CmsgId 300 300"
+
+        it "works for negative values" $
+            let msgid = CmsgId (-300) (-300) in
+            show msgid `shouldBe` "CmsgId (-300) (-300)"
+
+    describe "bijective read-show roundtrip equality" $ do
+        it "holds for Family" $ forAll familyGen $
+            \x -> (read . show $ x) == (x :: Family)
+
+        it "holds for SocketType" $ forAll socktypeGen $
+            \x -> (read . show $ x) == (x :: SocketType)
+
+        it "holds for SocketOption" $ forAll sockoptGen $
+            \x -> (read . show $ x) == (x :: SocketOption)
+
+        it "holds for CmsgId" $ forAll cmsgidGen $
+            \x -> (read . show $ x) == (x :: CmsgId)
+
+
+-- Type-specific generators with strong bias towards pattern synonyms
+
+-- Generator combinator that biases elements of a given list and otherwise
+-- applies a function to a given generator
+biasedGen :: (Gen a -> Gen b) -> [b] -> Gen a -> Gen b
+biasedGen f xs g = do
+    useBias <- (arbitrary :: Gen Bool)
+    if useBias
+       then elements xs
+       else f g
+
+familyGen :: Gen Family
+familyGen = biasedGen (fmap GeneralFamily) familyPatterns arbitrary
+
+socktypeGen :: Gen SocketType
+socktypeGen = biasedGen (fmap GeneralSocketType) socktypePatterns arbitrary
+
+sockoptGen :: Gen SocketOption
+sockoptGen = biasedGen (\g -> SockOpt <$> g <*> g) sockoptPatterns arbitrary
+
+cmsgidGen :: Gen CmsgId
+cmsgidGen = biasedGen (\g -> CmsgId <$> g <*> g) cmsgidPatterns arbitrary
+
+-- pruned lists of pattern synonym values for each type to generate values from
+
+familyPatterns :: [Family]
+familyPatterns = nub
+    [UnsupportedFamily
+    ,AF_UNSPEC,AF_UNIX,AF_INET,AF_INET6,AF_IMPLINK,AF_PUP,AF_CHAOS
+    ,AF_NS,AF_NBS,AF_ECMA,AF_DATAKIT,AF_CCITT,AF_SNA,AF_DECnet
+    ,AF_DLI,AF_LAT,AF_HYLINK,AF_APPLETALK,AF_ROUTE,AF_NETBIOS
+    ,AF_NIT,AF_802,AF_ISO,AF_OSI,AF_NETMAN,AF_X25,AF_AX25,AF_OSINET
+    ,AF_GOSSIP,AF_IPX,Pseudo_AF_XTP,AF_CTF,AF_WAN,AF_SDL,AF_NETWARE
+    ,AF_NDD,AF_INTF,AF_COIP,AF_CNT,Pseudo_AF_RTIP,Pseudo_AF_PIP
+    ,AF_SIP,AF_ISDN,Pseudo_AF_KEY,AF_NATM,AF_ARP,Pseudo_AF_HDRCMPLT
+    ,AF_ENCAP,AF_LINK,AF_RAW,AF_RIF,AF_NETROM,AF_BRIDGE,AF_ATMPVC
+    ,AF_ROSE,AF_NETBEUI,AF_SECURITY,AF_PACKET,AF_ASH,AF_ECONET
+    ,AF_ATMSVC,AF_IRDA,AF_PPPOX,AF_WANPIPE,AF_BLUETOOTH,AF_CAN]
+
+socktypePatterns :: [SocketType]
+socktypePatterns = nub
+    [ UnsupportedSocketType
+    , NoSocketType
+    , Stream
+    , Datagram
+    , Raw
+    , RDM
+    , SeqPacket
+    ]
+
+sockoptPatterns :: [SocketOption]
+sockoptPatterns = nub
+    [UnsupportedSocketOption
+    ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
+    ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
+    ,MaxSegment,NoDelay,Cork,Linger,ReusePort
+    ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
+    ,UseLoopBack,UserTimeout,IPv6Only
+    ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
+    ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo]
+
+cmsgidPatterns :: [CmsgId]
+cmsgidPatterns = nub
+    [ UnsupportedCmsgId
+    , CmsgIdIPv4TTL
+    , CmsgIdIPv6HopLimit
+    , CmsgIdIPv4TOS
+    , CmsgIdIPv6TClass
+    , CmsgIdIPv4PktInfo
+    , CmsgIdIPv6PktInfo
+    , CmsgIdFd
+    ]

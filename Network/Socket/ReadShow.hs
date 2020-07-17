@@ -1,10 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 
 
 module Network.Socket.ReadShow where
 
+import Text.Read ((<++))
 import qualified Text.Read as P
+import qualified Text.Read.Lex as P
+import Control.Monad (mzero)
 
 -- type alias for individual correspondences of a (possibly partial) bijection
 type Pair a b = (a, b)
@@ -19,77 +25,112 @@ eqFst x = \(x',_) -> x' == x
 eqSnd :: Eq b => b -> (a, b) -> Bool
 eqSnd y = \(_,y') -> y' == y
 
--- | Return RHS element that is paired with provided LHS,
---   or apply a default fallback function if the list is partial
-lookForward :: Eq a => (a -> b) -> [Pair a b] -> a -> b
-lookForward defFwd ps x
-  = case filter (eqFst x) ps of
-      (_,y):_ -> y
-      [] -> defFwd x
 
--- | Return LHS element that is paired with provided RHS,
---   or apply a default fallback function if the list is partial
-lookBackward :: Eq b => (b -> a) -> [Pair a b] -> b -> a
-lookBackward defBwd ps y
-  = case filter (eqSnd y) ps of
-      (x,_):_ -> x
-      [] -> defBwd y
+-- | Unified automorphic involution over @Either a b@ that converts between
+--   LHS and RHS elements of a list of @Pair a b@ mappings and is the identity
+--   function if no matching pair is found
+--
+--   If list contains duplicate matches, short-circuits to the first matching @Pair@
+lookBetween :: (Eq a, Eq b) => [Pair a b] -> Either a b -> Either a b
+lookBetween ps = \case
+  Left  x | (_,y):_ <- filter (eqFst x) ps -> Right y
+  Right y | (x,_):_ <- filter (eqSnd y) ps -> Left  x
+  z -> z
 
-data Bijection a b
-   = Bijection
-     { defFwd :: a -> b
-     , defBwd :: b -> a
-     , pairs  :: [Pair a b]
-     }
+-- Type alias for partial bijections between two types, consisting of a list
+-- of individual correspondences that are checked in order and short-circuit
+-- on first match
+--
+-- Depending on how this is used, may not actually be a true bijection over
+-- the partial types, as no overlap-checking is currently implemented. If
+-- overlaps are unavoidable, the canonical short-circuit pair should appear
+-- first to avoid round-trip inconsistencies.
+type Bijection a b = [Pair a b]
 
--- | apply a bijection over an LHS-value
-forward :: (Eq a) => Bijection a b -> a -> b
-forward Bijection{..} = lookForward defFwd pairs
+-- | Helper function for prefixing an optional constructor name before arbitrary values,
+-- which only enforces high precedence on subsequent output if the constructor name is not
+-- blank and space-separates for non-blank constructor names
+namePrefix :: Int -> String -> (Int -> b -> ShowS) -> b -> ShowS
+namePrefix i name f x
+    | null name = f i x
+    | otherwise = showParen (i > app_prec) $ showString name . showChar ' ' . f (app_prec+1) x
+{-# INLINE namePrefix #-}
 
--- | apply a bijection over an RHS-value
-backward :: (Eq b) => Bijection a b -> b -> a
-backward Bijection{..} = lookBackward defBwd pairs
-
--- | show function for Int-like types that encodes negative numbers
--- with leading '_' instead of '-'
-_showInt :: (Show a, Num a, Ord a) => a -> String
-_showInt n | n < 0 = let ('-':s) = show n in '_':s
-           | otherwise = show n
-
--- | parse function for Int-like types that interprets leading '_'
---   as if it were '-' instead
-_readInt :: (Read a) => String -> a
-_readInt ('_':s) = read $ '-':s
-_readInt s = read s
-
-
--- | parse a quote-separated pair into a tuple of Int-like values
---   should not be used if either type might have
---   literal quote-characters in the Read pre-image
-_parse :: (Read a, Read b) => String -> (a, b)
-_parse xy =
-  let (xs, '\'':ys) = break (=='\'') xy
-   in (_readInt xs, _readInt ys)
-{-# INLINE _parse #-}
-
--- | inverse function to _parse
---   show a tuple of Int-like values as quote-separated strings
-_show :: (Show a, Num a, Ord a,  Show b, Num b, Ord b) => (a, b) -> String
-_show (x, y) = _showInt x ++ "'" ++ _showInt y
-{-# INLINE _show #-}
-
-defShow :: Eq a => String -> (a -> b) -> (b -> String) -> (a -> String)
-defShow name unwrap sho = \x -> name ++ (sho . unwrap $ x)
+-- | Helper function for defining bijective Show instances that represents
+-- a common use-case where a constructor (or constructor-like pattern) name
+-- (optionally) precedes an internal value with a separate show function
+defShow :: Eq a => String -> (a -> b) -> (Int -> b -> ShowS) -> (Int -> a -> ShowS)
+defShow name unwrap shoPrec = \i x -> namePrefix i name shoPrec (unwrap x)
 {-# INLINE defShow #-}
 
-defRead :: Read a => String -> (b -> a) -> (String -> b) -> (String -> a)
-defRead name wrap red = \s ->
-  case splitAt (length name) s of
-    (x, sn) | x == name -> wrap $ red sn
-    _ -> error $ "defRead: unable to parse " ++ show s
+-- Helper function for stripping an optional constructor-name prefix before parsing
+-- an arbitrary value, which only consumes an extra token and increases precedence
+-- if the provided name prefix is non-blank
+expectPrefix :: String -> P.ReadPrec a -> P.ReadPrec a
+expectPrefix name pars
+    | null name = pars
+    | otherwise = do
+        P.lift $ P.expect $ P.Ident name
+        P.step pars
+{-# INLINE expectPrefix #-}
+
+-- | Helper function for defining bijective Read instances that represent a
+-- common use case where a constructor (or constructor-like pattern) name
+-- (optionally) precedes an internal value with a separate parse function
+defRead :: Eq a => String -> (b -> a) -> P.ReadPrec b -> P.ReadPrec a
+defRead name wrap redPrec = expectPrefix name $ wrap <$> redPrec
 {-# INLINE defRead #-}
 
--- | Apply a precedence-invariant one-token parse function within ReadPrec monad
-tokenize :: (String -> a) -> P.ReadPrec a
-tokenize f = P.lexP >>= \(P.Ident x) -> return $ f x
-{-# INLINE tokenize #-}
+-- | Alias for showsPrec that pairs well with `_readInt`
+_showInt :: (Show a) => Int -> a -> ShowS
+_showInt = showsPrec
+{-# INLINE _showInt #-}
+
+-- | More descriptive alias for `safeInt`
+_readInt :: (Bounded a, Integral a) => P.ReadPrec a
+_readInt = safeInt
+{-# INLINE _readInt #-}
+
+-- | show two elements of a tuple separated by a space character
+-- inverse function to readIntInt when used on integer-like values
+showIntInt :: (Show a, Show b) => Int -> (a, b) -> ShowS
+showIntInt i (x, y) = _showInt i x . showChar ' ' . _showInt i y
+{-# INLINE showIntInt #-}
+
+-- | consume and return two integer-like values from two consecutive lexical tokens
+readIntInt :: (Bounded a, Integral a, Bounded b, Integral b) => P.ReadPrec (a, b)
+readIntInt = do
+  x <- _readInt
+  y <- _readInt
+  return (x, y)
+{-# INLINE readIntInt #-}
+
+bijectiveShow :: (Eq a) => Bijection a String -> (Int -> a -> ShowS) -> (Int -> a -> ShowS)
+bijectiveShow bi def = \i x ->
+    case lookBetween bi (Left x) of
+        Right y -> showString y
+        _ -> def i x
+
+bijectiveRead :: (Eq a) => Bijection a String -> P.ReadPrec a -> P.ReadPrec a
+bijectiveRead bi def = P.parens $ bijective <++ def
+  where
+    bijective = do
+      (P.Ident y) <- P.lexP
+      case lookBetween bi (Right y) of
+          Left x -> return x
+          _ -> mzero
+
+app_prec :: Int
+app_prec = 10
+{-# INLINE app_prec #-}
+
+-- Parse integral values with type-specific overflow and underflow bounds-checks
+safeInt :: forall a. (Bounded a, Integral a) => P.ReadPrec a
+safeInt = do
+    i <- signed
+    if (i >= fromIntegral (minBound :: a) && i <= fromIntegral (maxBound :: a))
+    then return $ fromIntegral i
+    else mzero
+  where
+    signed :: P.ReadPrec Integer
+    signed = P.readPrec

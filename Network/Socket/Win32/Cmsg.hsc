@@ -66,8 +66,11 @@ pattern CmsgIdIPv4PktInfo = CmsgId (#const IPPROTO_IP) (#const IP_PKTINFO)
 pattern CmsgIdIPv6PktInfo :: CmsgId
 pattern CmsgIdIPv6PktInfo = CmsgId (#const IPPROTO_IPV6) (#const IPV6_PKTINFO)
 
--- Use WSADuplicateSocket for CmsgIdFd
--- pattern CmsgIdFd :: CmsgId
+-- | Control message ID for POSIX file-descriptor passing.
+--
+--  Not supported on Windows; use WSADuplicateSocket instead
+pattern CmsgIdFd :: CmsgId
+pattern CmsgIdFd = CmsgId (-1) (-1)
 
 ----------------------------------------------------------------
 
@@ -187,8 +190,8 @@ instance Storable IPv6PktInfo where
         n :: ULONG  <- (#peek IN6_PKTINFO, ipi6_ifindex) p
         return $ IPv6PktInfo (fromIntegral n) ha6
 
-cmsgIdPairs :: [Pair CmsgId String]
-cmsgIdPairs =
+cmsgIdBijection :: Bijection CmsgId String
+cmsgIdBijection =
     [ (UnsupportedCmsgId, "UnsupportedCmsgId")
     , (CmsgIdIPv4TTL, "CmsgIdIPv4TTL")
     , (CmsgIdIPv6HopLimit, "CmsgIdIPv6HopLimit")
@@ -196,19 +199,18 @@ cmsgIdPairs =
     , (CmsgIdIPv6TClass, "CmsgIdIPv6TClass")
     , (CmsgIdIPv4PktInfo, "CmsgIdIPv4PktInfo")
     , (CmsgIdIPv6PktInfo, "CmsgIdIPv6PktInfo")
+    , (CmsgIdFd, "CmsgIdFd")
     ]
 
-cmsgIdBijection :: Bijection CmsgId String
-cmsgIdBijection = Bijection{..}
-    where
+instance Show CmsgId where
+    showsPrec = bijectiveShow cmsgIdBijection def
+      where
         defname = "CmsgId"
         unId = \(CmsgId l t) -> (l,t)
-        defFwd = defShow defname unId _show
-        defBwd = defRead defname (uncurry CmsgId) _parse
-        pairs = cmsgIdPairs
-
-instance Show CmsgId where
-    show = forward cmsgIdBijection
+        def = defShow defname unId showIntInt
 
 instance Read CmsgId where
-    readPrec = tokenize $ backward cmsgIdBijection
+    readPrec = bijectiveRead cmsgIdBijection def
+      where
+        defname = "CmsgId"
+        def = defRead defname (uncurry CmsgId) readIntInt
