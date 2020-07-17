@@ -188,7 +188,7 @@ niFlagMapping = [(NI_DGRAM, #const NI_DGRAM),
 -- >>> addrSocketType defaultHints
 -- NoSocketType
 -- >>> addrProtocol defaultHints
--- 0
+-- IPPROTO_IP
 
 defaultHints :: AddrInfo
 defaultHints = AddrInfo {

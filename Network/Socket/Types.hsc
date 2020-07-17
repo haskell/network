@@ -289,6 +289,12 @@ foreign import ccall unsafe "close"
 --
 -- Derives all defined instances for Foreign.C.Types.CInt
 -- to preserve API integrity as much as possible
+--
+-- Show and Read instances are defined explicitly to match
+-- pattern synonym names, and are specialized for IP protocol
+-- numbers. The @ProtocolNumber@ type can be used with non-IP protocol
+-- families as well, but will be displayed and parsed as if they were
+-- IP protocol numbers
 newtype ProtocolNumber = ProtocolNumber { packProtocol :: CInt }
         deriving (Bounded, Enum, Eq, Integral, Num, Ord, Real, FiniteBits, Bits, Storable)
 
@@ -299,7 +305,7 @@ unpackProtocol = ProtocolNumber
 -- | This is the default protocol for a given service.
 --
 -- >>> defaultProtocol
--- 0
+-- IPPROTO_IP
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
 
