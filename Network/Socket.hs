@@ -181,8 +181,8 @@ module Network.Socket
     , packFamily
     , unpackFamily
     -- ** Protocol number
-    , ProtocolNumber(UnsupportedProtocol,GeneralProtocol
-                    ,IPPROTO_IP,IPPROTO_IPV4,IPPROTO_IPV6
+    , ProtocolNumber(DefaultProtocol,GeneralProtocol
+                    ,IPPROTO_IPV4,IPPROTO_IPV6
                     ,IPPROTO_UDP,IPPROTO_TCP
                     ,IPPROTO_ICMP,IPPROTO_ICMPV6,IPPROTO_RAW
                     )

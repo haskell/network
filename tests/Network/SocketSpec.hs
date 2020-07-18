@@ -354,12 +354,12 @@ spec = do
 
     describe "show ProtocolNumber" $ do
         it "works for pattern synonyms" $
-            let proto = IPPROTO_IP in
-            show proto `shouldBe` "IPPROTO_IP"
+            let proto = DefaultProtocol in
+            show proto `shouldBe` "DefaultProtocol"
 
         it "works for unsupported" $
             let proto = GeneralProtocol (-1) in
-            show proto `shouldBe` "UnsupportedProtocol"
+            show proto `shouldBe` "-1"
 
         it "works for positive values" $
             let proto = GeneralProtocol 300 in
@@ -498,8 +498,7 @@ cmsgidPatterns = nub
 
 protoPatterns :: [ProtocolNumber]
 protoPatterns = nub
-    [ UnsupportedProtocol
-    , IPPROTO_IP
+    [ DefaultProtocol
     , IPPROTO_IPV4
     , IPPROTO_IPV6
     , IPPROTO_UDP

@@ -68,8 +68,8 @@ module Network.Socket.Types (
     , withSockAddr
 
     -- * Unsorted
-    , ProtocolNumber(UnsupportedProtocol,GeneralProtocol
-                    ,IPPROTO_IP,IPPROTO_IPV4,IPPROTO_IPV6
+    , ProtocolNumber(DefaultProtocol,GeneralProtocol
+                    ,IPPROTO_IPV4,IPPROTO_IPV6
                     ,IPPROTO_UDP,IPPROTO_TCP
                     ,IPPROTO_ICMP,IPPROTO_ICMPV6,IPPROTO_RAW
                     )
@@ -305,77 +305,45 @@ unpackProtocol = ProtocolNumber
 -- | This is the default protocol for a given service.
 --
 -- >>> defaultProtocol
--- IPPROTO_IP
+-- DefaultProtocol
 defaultProtocol :: ProtocolNumber
-defaultProtocol = 0
+defaultProtocol = DefaultProtocol
 
--- | Unsupported protocol, equal to any other protocol not supported on this system
-pattern UnsupportedProtocol :: ProtocolNumber
-pattern UnsupportedProtocol = ProtocolNumber (-1)
+-- * Unlike other types, pattern synonym values for ProtocolNumbers are defined according to
+--   canonical IANA protocol number assignment table.
+--   names correspond to constant definitions from header file "netinet/in.h"
 
--- | IP
-pattern IPPROTO_IP :: ProtocolNumber
-#ifdef IPPROTO_IP
-pattern IPPROTO_IP = ProtocolNumber (#const IPPROTO_IP)
-#else
-pattern IPPROTO_IP = ProtocolNumber (-1)
-#endif
+-- | Universal default for any protocol family = 0
+pattern DefaultProtocol :: ProtocolNumber
+pattern DefaultProtocol = ProtocolNumber 0
 
--- | IPv4
-pattern IPPROTO_IPV4 :: ProtocolNumber
-#ifdef IPPROTO_IPV4
-pattern IPPROTO_IPV4 = ProtocolNumber (#const IPPROTO_IPV4)
-#else
-pattern IPPROTO_IPV4 = ProtocolNumber (-1)
-#endif
-
--- | IPv6
-pattern IPPROTO_IPV6 :: ProtocolNumber
-#ifdef IPPROTO_IPV6
-pattern IPPROTO_IPV6 = ProtocolNumber (#const IPPROTO_IPV6)
-#else
-pattern IPPROTO_IPV6 = ProtocolNumber (-1)
-#endif
-
--- | UDP
-pattern IPPROTO_UDP :: ProtocolNumber
-#ifdef IPPROTO_UDP
-pattern IPPROTO_UDP = ProtocolNumber (#const IPPROTO_UDP)
-#else
-pattern IPPROTO_UDP = ProtocolNumber (-1)
-#endif
-
--- | TCP
-pattern IPPROTO_TCP :: ProtocolNumber
-#ifdef IPPROTO_TCP
-pattern IPPROTO_TCP = ProtocolNumber (#const IPPROTO_TCP)
-#else
-pattern IPPROTO_TCP = ProtocolNumber (-1)
-#endif
-
--- | ICMP
+-- | ICMP = 1
 pattern IPPROTO_ICMP :: ProtocolNumber
-#ifdef IPPROTO_ICMP
-pattern IPPROTO_ICMP = ProtocolNumber (#const IPPROTO_ICMP)
-#else
-pattern IPPROTO_ICMP = ProtocolNumber (-1)
-#endif
+pattern IPPROTO_ICMP = ProtocolNumber 1
 
--- | ICMPv6
+-- | IPv4 = 4
+pattern IPPROTO_IPV4 :: ProtocolNumber
+pattern IPPROTO_IPV4 = ProtocolNumber 4
+
+-- | TCP = 6
+pattern IPPROTO_TCP :: ProtocolNumber
+pattern IPPROTO_TCP = ProtocolNumber 6
+
+-- | UDP = 17
+pattern IPPROTO_UDP :: ProtocolNumber
+pattern IPPROTO_UDP = ProtocolNumber 17
+
+-- | IPv6 = 41
+pattern IPPROTO_IPV6 :: ProtocolNumber
+pattern IPPROTO_IPV6 = ProtocolNumber 41
+
+-- | ICMP IPv6 = 58
 pattern IPPROTO_ICMPV6 :: ProtocolNumber
-#ifdef IPPROTO_ICMPV6
-pattern IPPROTO_ICMPV6 = ProtocolNumber (#const IPPROTO_ICMPV6)
-#else
-pattern IPPROTO_ICMPV6 = ProtocolNumber (-1)
-#endif
+pattern IPPROTO_ICMPV6 = ProtocolNumber 58
 
--- | Raw
+-- | Raw = 255
 pattern IPPROTO_RAW :: ProtocolNumber
-#ifdef IPPROTO_RAW
-pattern IPPROTO_RAW = ProtocolNumber (#const IPPROTO_RAW)
-#else
-pattern IPPROTO_RAW = ProtocolNumber (-1)
-#endif
+pattern IPPROTO_RAW = ProtocolNumber 255
 
 
 pattern GeneralProtocol :: CInt -> ProtocolNumber
@@ -387,8 +355,7 @@ pattern GeneralProtocol n  = ProtocolNumber n
 
 protoNumBijection :: Bijection ProtocolNumber String
 protoNumBijection =
-    [ (UnsupportedProtocol, "UnsupportedProtocol")
-    , (IPPROTO_IP,     "IPPROTO_IP")
+    [ (DefaultProtocol,"DefaultProtocol")
     , (IPPROTO_IPV4,   "IPPROTO_IPV4")
     , (IPPROTO_IPV6,   "IPPROTO_IPV6")
     , (IPPROTO_UDP,    "IPPROTO_UDP")
@@ -524,7 +491,7 @@ newtype Family = Family { packFamily :: CInt } deriving (Eq, Ord)
 isSupportedFamily :: Family -> Bool
 isSupportedFamily f = case f of
     UnsupportedFamily -> False
-    GeneralFamily _   -> True
+    _                 -> True
 
 -- | Convert 'CInt' to 'Family'.
 unpackFamily :: CInt -> Family
