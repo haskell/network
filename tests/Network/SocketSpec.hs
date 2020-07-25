@@ -58,6 +58,7 @@ spec = do
             bind sock (addrAddress addr) `shouldThrow` anyIOException
 -}
 
+#ifdef DEVELOPMENT
         it "successfully binds to an ipv6 socket" $ do
             addr:_ <- getAddrInfo (Just hints) (Just serverAddr6) Nothing
             sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
@@ -67,6 +68,7 @@ spec = do
             addr:_ <- getAddrInfo (Just hints) (Just "::6") Nothing
             sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
             bind sock (addrAddress addr) `shouldThrow` anyIOException
+#endif
 
         it "successfully binds to a unix socket, twice" $ do
             withSystemTempDirectory "haskell-network" $ \path -> do
