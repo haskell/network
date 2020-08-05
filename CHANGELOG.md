@@ -1,6 +1,25 @@
 ## Unreleased
 
-* Defined `openSocket` in terms of `AddrInfo`
+## 3.1.2.0
+
+* Added `-f devel` for test cases that are known to fail.
+  [#471](https://github.com/haskell/network/pull/471)
+* Improved precedence-compliant Read/Show instances. Verified via QuickCheck.
+  [#465](https://github.com/haskell/network/pull/465)
+  [#466](https://github.com/haskell/network/pull/466)
+* Removed the racing graceful close implementation to avoid issues with `CLOSE_WAIT`.
+  [#460](https://github.com/haskell/network/pull/438)
+* Gracefully handle binding of UNIX domain sockets.
+  [#460](https://github.com/haskell/network/pull/460)
+* Replace Socket type and family with extensible `CInt` pattern and synonyms.
+  [#459](https://github.com/haskell/network/pull/459)
+* Fixed race conditions in tests.
+  [#458](https://github.com/haskell/network/pull/458)
+* Removed many legacy uses of `undefined`.
+  [#456](https://github.com/haskell/network/pull/456)
+* Defined extensible `CustomSockOpt` via `ViewPatterns`.
+  [#455](https://github.com/haskell/network/pull/455)
+* Defined `openSocket` in terms of `AddrInfo`.
   [5b0987197fe2ed7beddd7b2096522d624e71151e](https://github.com/haskell/network/commit/5b0987197fe2ed7beddd7b2096522d624e71151e)
 * Improved FreeBSD portability for Control Messages and tests
   [#452](https://github.com/haskell/network/pull/452)
