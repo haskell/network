@@ -1,6 +1,6 @@
 ## Unreleased
 
-## 3.1.2.0
+## Version 3.1.2.0
 
 * Added `-f devel` for test cases that are known to fail.
   [#471](https://github.com/haskell/network/pull/471)
