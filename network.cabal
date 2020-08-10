@@ -51,8 +51,8 @@ tested-with:   GHC == 8.0.2
              , GHC == 8.2.2
              , GHC == 8.4.4
              , GHC == 8.6.5
-             , GHC == 8.8.3
-             , GHC == 8.10.1
+             , GHC == 8.8.4
+             , GHC == 8.10.2
 
 flag devel
   description:          using tests for developers
@@ -86,10 +86,21 @@ library
     Network.Socket.Types
 
   build-depends:
-    base >= 4.7 && < 5,
+    base >= 4.9 && < 5,
     bytestring == 0.10.*,
     deepseq,
     directory
+
+  -- network-3.2 uses heavily PatternSynonyms,
+  -- and specifically improvements available in GHC-8.0
+  --
+  -- TypeApplications are strictly necessary,
+  -- but it is an extension available only since GHC-8.0.
+  -- So acts as good proxy for needed feature set in the compiler.
+  --
+  other-extensions:
+    PatternSynonyms
+    TypeApplications
 
   include-dirs: include
   includes: HsNet.h HsNetDef.h alignment.h win32defs.h
