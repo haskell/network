@@ -61,7 +61,7 @@ bind s a = case a of
           Left e2 | not (isDoesNotExistError e2) -> throwIO (e2 :: IOException)
           _ -> do
             -- socket not actually in use, remove it and retry bind
-            removeFile p
+            void (try $ removeFile p :: IO (Either IOError ()))
             G.bind s a
   _ -> G.bind s a
 
