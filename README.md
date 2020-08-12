@@ -9,6 +9,7 @@ And then use `cabal configure; cabal build` or `stack build`.
 
 The `network` package support [3 major versions of GHC](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/intro.html#ghc-version-numbering-policy) only.
 This means that the current stable version and two previous stable versions are supported.
+However, all GHC 8.x are supported currently.
 
 ### Windows
 
