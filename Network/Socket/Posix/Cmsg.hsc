@@ -253,5 +253,3 @@ instance Read CmsgId where
       where
         defname = "CmsgId"
         def = defRead defname (uncurry CmsgId) readIntInt
-
-    
