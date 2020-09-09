@@ -252,7 +252,7 @@ module Network.Socket
     , filterCmsg
     , decodeCmsg
     , encodeCmsg
-    -- ** Class and yypes for control message
+    -- ** Class and types for control message
     , ControlMessage(..)
     , IPv4TTL(..)
     , IPv6HopLimit(..)
