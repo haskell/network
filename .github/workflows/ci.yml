@@ -1,0 +1,90 @@
+name: Binaries
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  pull_request:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ["8.6.5"]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions/setup-haskell@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+
+      - uses: actions/cache@v2
+        name: Cache cabal store
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: cache-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal-cache.cabal') }}-${{ github.sha }}
+          restore-keys: |
+            cache-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal-cache.cabal') }}-
+
+      - name: Set some window specific things
+        if: matrix.os == 'windows-latest'
+        run: echo '::set-env name=EXE_EXT::.exe'
+
+      - name: Configure project
+        run: cabal configure --enable-tests --enable-benchmarks
+
+      - name: Variables
+        run: env
+
+      - name: Temp directory
+        env:
+          CLI_TEMP: ${{runner.temp}}
+        run: echo "$CLI_TEMP"
+
+      - name: Restore cabal cache
+        uses: haskell-works/cabal-cache-action@v1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          BINARY_CACHE_REGION: ${{ secrets.BINARY_CACHE_REGION }}
+          BINARY_CACHE_THREADS: ${{ secrets.BINARY_CACHE_THREADS }}
+          BINARY_CACHE_URI: ${{ secrets.BINARY_CACHE_URI }}
+        with:
+          args: |
+            sync-from-archive \
+              --threads       "$BINARY_CACHE_THREADS" \
+              --archive-uri   "$BINARY_CACHE_URI" \
+              --region        "$BINARY_CACHE_REGION"
+
+      - name: Build
+        # Try building it twice in case of flakey builds on Windows
+        run: |
+          cabal build --enable-tests --enable-benchmarks --write-ghc-environment-files=ghc8.4.4+ || \
+          cabal build --enable-tests --enable-benchmarks --write-ghc-environment-files=ghc8.4.4+ -j1
+
+      - name: Save cabal cache
+        uses: haskell-works/cabal-cache-action@v1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          BINARY_CACHE_REGION: ${{ secrets.BINARY_CACHE_REGION }}
+          BINARY_CACHE_THREADS: ${{ secrets.BINARY_CACHE_THREADS }}
+          BINARY_CACHE_URI: ${{ secrets.BINARY_CACHE_URI }}
+        with:
+          args: |
+            sync-to-archive \
+              --threads       "$BINARY_CACHE_THREADS" \
+              --archive-uri   "$BINARY_CACHE_URI" \
+              --region        "$BINARY_CACHE_REGION"
