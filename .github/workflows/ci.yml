@@ -1,0 +1,77 @@
+name: Binaries
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  pull_request:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ["8.6.5", "8.8.3", "8.10.2"]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        exclude:
+          - os: windows-latest
+            ghc: 8.8.3
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions/setup-haskell@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+
+      - uses: actions/cache@v2
+        name: Cache cabal store
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: cache-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('network.cabal') }}-${{ github.sha }}
+          restore-keys: |
+            cache-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('network.cabal') }}-
+
+      - name: Set some window specific things
+        if: matrix.os == 'windows-latest'
+        run: echo '::set-env name=EXE_EXT::.exe'
+
+      - uses: msys2/setup-msys2@v2
+        if: matrix.os == 'windows-latest'
+        with:
+          update: true
+          install: autoconf
+
+      - if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: autoreconf -i
+
+      - if: matrix.os != 'windows-latest'
+        run: autoreconf -i
+
+      - name: Configure project
+        run: cabal configure --enable-tests --enable-benchmarks
+
+      - name: Temp directory
+        env:
+          CLI_TEMP: ${{runner.temp}}
+        run: echo "$CLI_TEMP"
+
+      - name: Build
+        run: |
+          cabal build all --enable-tests --enable-benchmarks --write-ghc-environment-files=ghc8.4.4+      && \
+          cabal build all --enable-tests --enable-benchmarks --write-ghc-environment-files=ghc8.4.4+ -j2  && \
+          cabal build all --enable-tests --enable-benchmarks --write-ghc-environment-files=ghc8.4.4+ -j1
+
+      - name: Test
+        run: |
+          cabal test all --enable-tests --enable-benchmarks --write-ghc-environment-files=ghc8.4.4+
