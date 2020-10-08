@@ -17,7 +17,9 @@ import System.Posix.Types (Fd(..))
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
+#if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
+#endif
 import Network.Socket.Types
 
 #if defined(HAVE_GETPEEREID)
