@@ -84,6 +84,7 @@ library
     Network.Socket.SockAddr
     Network.Socket.Syscall
     Network.Socket.Types
+    Network.Socket.Unix
 
   build-depends:
     base >= 4.9 && < 5,
@@ -107,7 +108,6 @@ library
       Network.Socket.Posix.CmsgHdr
       Network.Socket.Posix.IOVec
       Network.Socket.Posix.MsgHdr
-      Network.Socket.Unix
 
   if os(solaris)
     extra-libraries: nsl, socket

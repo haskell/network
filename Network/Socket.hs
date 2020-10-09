@@ -208,14 +208,12 @@ module Network.Socket
     , socketPortSafe
     , socketPort
 
-#if !defined(mingw32_HOST_OS)
     -- * UNIX-domain socket
     , isUnixDomainSocketAvailable
     , socketPair
     , sendFd
     , recvFd
     , getPeerCredential
-#endif
 
     -- * Name information
     , getNameInfo
@@ -278,9 +276,9 @@ import Network.Socket.Shutdown
 import Network.Socket.SockAddr
 import Network.Socket.Syscall hiding (connect, bind, accept)
 import Network.Socket.Types
+import Network.Socket.Unix
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
-import Network.Socket.Unix
 #else
 import Network.Socket.Win32.Cmsg
 #endif
