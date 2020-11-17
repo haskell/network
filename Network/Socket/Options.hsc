@@ -323,6 +323,7 @@ data StructLinger = StructLinger {
     -- | Linger timeout.
     sl_linger :: CInt
   }
+  deriving (Eq, Ord, Show)
 
 instance Storable StructLinger where
     sizeOf    _ = (#const sizeof(struct linger))
