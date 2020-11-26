@@ -1,4 +1,11 @@
-## Unreleased
+## Version 3.1.2.1
+
+* Increasing base lower bound to 4.9.
+  [#473](https://github.com/haskell/network/pull/473)
+* Suppressing errors from removeFile in UNIX bind.
+  [#478](https://github.com/haskell/network/pull/478)
+* Restoring UNIX stub functions on Windows.
+  [#489](https://github.com/haskell/network/pull/489)
 
 ## Version 3.1.2.0
 
