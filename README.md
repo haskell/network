@@ -1,4 +1,5 @@
-# [`network`](http://hackage.haskell.org/package/network) [![Build Status](https://travis-ci.org/haskell/network.svg?branch=master)](https://travis-ci.org/haskell/network) [![Build status](https://ci.appveyor.com/api/projects/status/5erq63o4m29bhl57/branch/master?svg=true)](https://ci.appveyor.com/project/eborden/network/branch/master)
+![GitHub Actions status](https://github.com/haskell/network/workflows/Haskell%20CI/badge.svg)
+# [`network`](http://hackage.haskell.org/package/network)
 
 To build this package directly from git, you must run `autoreconf -i`.
 And then use `cabal configure; cabal build` or `stack build`.
