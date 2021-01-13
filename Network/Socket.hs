@@ -142,6 +142,7 @@ module Network.Socket
                   ,UseLoopBack,UserTimeout,IPv6Only
                   ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
                   ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
+    , StructLinger (..)
     , isSupportedSocketOption
     , whenSupported
     , getSocketOption

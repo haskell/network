@@ -25,6 +25,7 @@ module Network.Socket.Options (
   , setSocketOption
   , getSockOpt
   , setSockOpt
+  , StructLinger (..)
   ) where
 
 import qualified Text.Read as P
@@ -313,7 +314,16 @@ pattern CustomSockOpt xy <- ((\(SockOpt x y) -> (x, y)) -> xy)
 {-# COMPLETE CustomSockOpt #-}
 #endif
 #ifdef SO_LINGER
-data StructLinger = StructLinger CInt CInt
+-- | Low level 'SO_LINBER' option value, which can be used with 'setSockOpt'.
+--
+data StructLinger = StructLinger {
+    -- | Set the linger option on.
+    sl_onoff  :: CInt,
+
+    -- | Linger timeout.
+    sl_linger :: CInt
+  }
+  deriving (Eq, Ord, Show)
 
 instance Storable StructLinger where
     sizeOf    _ = (#const sizeof(struct linger))
