@@ -44,7 +44,7 @@ pattern UnsupportedCmsgId = CmsgId (-1) (-1)
 
 -- | The identifier for 'IPv4TTL'.
 pattern CmsgIdIPv4TTL :: CmsgId
-#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
+#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS) || defined(openbsd_HOST_OS)
 pattern CmsgIdIPv4TTL = CmsgId (#const IPPROTO_IP) (#const IP_RECVTTL)
 #else
 pattern CmsgIdIPv4TTL = CmsgId (#const IPPROTO_IP) (#const IP_TTL)
@@ -131,7 +131,7 @@ decodeCmsg (Cmsg cmsid (PS fptr off len))
 ----------------------------------------------------------------
 
 -- | Time to live of IPv4.
-#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS)
+#if defined(darwin_HOST_OS) || defined(freebsd_HOST_OS) || defined(openbsd_HOST_OS)
 newtype IPv4TTL = IPv4TTL CChar deriving (Eq, Show, Storable)
 #else
 newtype IPv4TTL = IPv4TTL CInt deriving (Eq, Show, Storable)
