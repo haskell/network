@@ -1,3 +1,12 @@
+## Version 3.1.2.2
+
+* Allow bytestring 0.11
+  [#490](https://github.com/haskell/network/pull/490)
+* Export StructLinger
+  [#491](https://github.com/haskell/network/pull/491)
+* Fix a couple of broken tests on OpenBSD
+  [#498](https://github.com/haskell/network/pull/498)
+
 ## Version 3.1.2.1
 
 * Increasing base lower bound to 4.9.
