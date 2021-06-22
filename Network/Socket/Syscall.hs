@@ -106,7 +106,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
       -- The IPv6Only option is only supported on Windows Vista and later,
       -- so trying to change it might throw an error.
       setSocketOption s IPv6Only 0 `catchIOError` \_ -> return ()
-# elif defined(__OpenBSD__)
+# elif defined(openbsd_HOST_OS)
       -- don't change IPv6Only
       return ()
 # else
