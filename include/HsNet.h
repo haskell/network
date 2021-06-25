@@ -133,24 +133,6 @@ extern int
 cmsg_len(int l);
 #endif /* _WIN32 */
 
-INLINE char *
-hsnet_inet_ntoa(
-#if defined(_WIN32)
-             u_long addr
-#elif defined(HAVE_IN_ADDR_T)
-             in_addr_t addr
-#elif defined(HAVE_INTTYPES_H)
-             uint32_t addr
-#else
-             unsigned long addr
-#endif
-	    )
-{
-    struct in_addr a;
-    a.s_addr = addr;
-    return inet_ntoa(a);
-}
-
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
 # if defined(_WIN32)
