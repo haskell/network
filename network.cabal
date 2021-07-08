@@ -111,6 +111,8 @@ library
 
   if os(solaris)
     extra-libraries: nsl, socket
+    cpp-options: -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
+    cc-options: -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 
   if os(windows)
     other-modules:
