@@ -66,6 +66,14 @@ jobs:
     - if: matrix.os == 'windows-latest'
       shell: msys2 {0}
       run: autoreconf -i
+    # Temporary hack to get around #502 while cabal is fixed.
+    # Force autoconf to 2.69, remove when cabal fixed.
+    - if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
+      run: |
+        pacman -R autoconf
+        wget http://repo.msys2.org/msys/x86_64/autoconf-2.69-5-any.pkg.tar.xz
+        pacman -U autoconf-2.69-5-any.pkg.tar.xz
     - if: matrix.os != 'windows-latest'
       run: |
         autoreconf -i
