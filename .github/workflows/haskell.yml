@@ -63,6 +63,11 @@ jobs:
       with:
         update: true
         install: autoconf
+    # Temporary hack to get around #502 while cabal is fixed.
+    # remove when cabal fixed.
+    - if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
+      run: echo 'PATH_SEPARATOR=";"' >> $GITHUB_ENV
     - if: matrix.os == 'windows-latest'
       shell: msys2 {0}
       run: autoreconf -i
