@@ -1,3 +1,8 @@
+## Version 3.2.0.0
+
+* Basic support for WINIO
+  [#509](https://github.com/haskell/network/pull/509)
+
 ## Version 3.1.4.0
 
 * Install and use afunix_compat.h header.

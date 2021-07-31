@@ -1,22 +1,10 @@
 cabal-version:      1.18
 name:               network
-version:            3.1.4.0
+version:            3.2.0
 license:            BSD3
 license-file:       LICENSE
-maintainer:         Kazu Yamamoto, Evan Borden
-
-tested-with:
-    GHC == 9.6.1
-    GHC == 9.4.4
-    GHC == 9.2.7
-    GHC == 9.0.2
-    GHC == 8.10.7
-    GHC == 8.8.4
-    GHC == 8.6.5
-    GHC == 8.4.4
-    GHC == 8.2.2
-    GHC == 8.0.2
-
+maintainer:         Kazu Yamamoto, Tamar Christina
+tested-with:        ghc ==9.6.2 ghc ==9.4.5 ghc ==9.2.7 ghc ==9.0.2
 homepage:           https://github.com/haskell/network
 bug-reports:        https://github.com/haskell/network/issues
 synopsis:           Low-level networking interface
@@ -50,11 +38,6 @@ description:
 
 category:           Network
 build-type:         Configure
-
-extra-doc-files:
-    README.md
-    CHANGELOG.md
-
 extra-source-files:
     examples/*.hs
     tests/*.hs
@@ -78,6 +61,10 @@ extra-tmp-files:
     autom4te.cache
     network.buildinfo
     include/HsNetworkConfig.h
+
+extra-doc-files:
+    README.md
+    CHANGELOG.md
 
 source-repository head
     type:     git
@@ -124,16 +111,16 @@ library
     include-dirs:     include
     includes:         HsNet.h HsNetDef.h alignment.h win32defs.h
     install-includes: HsNet.h HsNetDef.h alignment.h win32defs.h
-    if os(windows)
-        includes:         afunix_compat.h
-        install-includes: afunix_compat.h
-
     ghc-options:      -Wall -fwarn-tabs
     build-depends:
         base >=4.9 && <5,
         bytestring >=0.10 && <0.12,
         deepseq,
         directory
+
+    if os(windows)
+        includes:         afunix_compat.h
+        install-includes: afunix_compat.h
 
     if !os(windows)
         other-modules:
@@ -168,12 +155,16 @@ library
             iphlpapi
             mswsock
 
-        if impl(ghc >=7.10)
+        build-depends:   temporary
+
+        if impl(ghc >=7.10 && <9.0)
             cpp-options: -D_WIN32_WINNT=0x0600
             cc-options:  -D_WIN32_WINNT=0x0600
 
-        build-depends:
-            temporary
+        if impl(ghc >=9.0)
+            cpp-options:   -D_WIN32_WINNT=0x0601
+            cc-options:    -D_WIN32_WINNT=0x0601
+            build-depends: Win32 >=2.12.0.1
 
     if impl(ghc >=8)
         default-extensions: Strict StrictData
@@ -200,6 +191,9 @@ test-suite spec
         temporary,
         hspec >=2.6,
         QuickCheck
+
+    if os(windows) && impl(ghc >=9.0)
+        ghc-options: -with-rtsopts=--io-manager=native
 
     if flag(devel)
         cpp-options: -DDEVELOPMENT
