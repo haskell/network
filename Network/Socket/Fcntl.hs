@@ -51,6 +51,7 @@ getCloseOnExec fd = do
 --   Since 2.7.0.0.
 getNonBlock :: CInt -> IO Bool
 #if defined(mingw32_HOST_OS)
+-- | TODO: Query socket for async flag
 getNonBlock _ = return False
 #else
 getNonBlock fd = do
