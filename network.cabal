@@ -1,6 +1,6 @@
 cabal-version:  1.18
 name:           network
-version:        3.1.2.2
+version:        3.2.0.0
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Kazu Yamamoto, Evan Borden
@@ -124,9 +124,14 @@ library
     c-sources: cbits/initWinSock.c, cbits/winSockErr.c, cbits/asyncAccept.c
     extra-libraries: ws2_32, iphlpapi, mswsock
     -- See https://github.com/haskell/network/pull/362
-    if impl(ghc >= 7.10)
+    if impl(ghc >= 7.10 && < 9.0)
       cpp-options: -D_WIN32_WINNT=0x0600
       cc-options: -D_WIN32_WINNT=0x0600
+    if impl(ghc >= 9.0)
+      cpp-options: -D_WIN32_WINNT=0x0601
+      cc-options: -D_WIN32_WINNT=0x0601
+      build-depends:
+        Win32 >= 2.12.0.1
 
 test-suite spec
   default-language: Haskell2010
@@ -141,6 +146,11 @@ test-suite spec
     Network.Socket.ByteString.LazySpec
   type: exitcode-stdio-1.0
   ghc-options: -Wall -threaded
+
+  -- On GHC's newer than 9 enable native IO managers
+  if impl(ghc >= 9.0)
+    ghc-options: -with-rtsopts="--io-manager=native"
+
   -- NB: make sure to versions of hspec and hspec-discover
   --     that work together; easiest way is to constraint
   --     both packages to a small enough version range.
