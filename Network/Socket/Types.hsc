@@ -386,7 +386,7 @@ pattern SeqPacket            = (-1)
 -- for the corresponding @PF_xxxxx@ protocol family values, to which they are
 -- numerically equal in mainstream socket API implementations.
 --
--- Stictly correct usage would be to pass the @PF_xxxxx@ constants as the first
+-- Strictly correct usage would be to pass the @PF_xxxxx@ constants as the first
 -- argument when creating a 'Socket', while the @AF_xxxxx@ constants should be
 -- used as @addrFamily@ values with 'getAddrInfo'.  For now only the @AF_xxxxx@
 -- constants are provided.
