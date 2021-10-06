@@ -1,3 +1,8 @@
+## Version 3.2.0.0
+
+* Basic support for WINIO
+  [#509](https://github.com/haskell/network/pull/509)
+
 ## Version 3.1.2.2
 
 * Allow bytestring 0.11
