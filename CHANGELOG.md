@@ -1,6 +1,6 @@
 ## Version 3.1.2.4
 
-* Regenerate `configure` script with autoconf-2.69 to temporarily fix broken cabal-3.4.0.0
+* Regenerate `configure` script with autoconf-2.69 to temporarily fix broken cabal-3.4.0.0 on Windows. Note that the old one was generated with autoconf-2.71.
   [#513](https://github.com/haskell/network/issues/513)
 
 ## Version 3.1.2.3
