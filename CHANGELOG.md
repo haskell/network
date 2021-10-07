@@ -1,3 +1,16 @@
+## Version 3.1.2.3
+
+* Supporting M1 Mac
+  [#510](https://github.com/haskell/network/pull/510)
+* Workaround for autoconf on Windows
+  [#508](https://github.com/haskell/network/pull/508)
+* Fixing building failure on SmartOS
+  [#507](https://github.com/haskell/network/pull/507)
+* HsNet.h: remove unused fn hsnet_inet_ntoa definition
+  [#504](https://github.com/haskell/network/pull/504)
+* Use a working define for OpenBSD detection
+  [#503](https://github.com/haskell/network/pull/503)
+
 ## Version 3.1.2.2
 
 * Allow bytestring 0.11
