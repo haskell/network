@@ -1,3 +1,8 @@
+## Version 3.1.2.4
+
+* Regenerate `configure` script with autoconf-2.69 to temporarily fix broken cabal-3.4.0.0
+  [#513](https://github.com/haskell/network/issues/513)
+
 ## Version 3.1.2.3
 
 * Supporting M1 Mac
