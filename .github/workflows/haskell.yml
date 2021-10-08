@@ -6,11 +6,36 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  autoconf_ver: 2.69
+
 jobs:
+  autoconf:
+    runs-on: ubuntu-latest
+    container: ubuntu:21.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: install autoconf
+      run: |
+        apt-get update -y -qq
+        apt-get install -y -qq build-essential autoconf${{ env.autoconf_ver }}
+    - name: run autoreconf
+      run: |
+        autoreconf${{ env.autoconf_ver }} -fi
+    - uses: actions/upload-artifact@v2
+      with:
+        name: configure
+        path: |
+          configure
+          include/HsNetworkConfig.h.in
+
   build:
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+
+    needs: autoconf
 
     strategy:
       fail-fast: false
@@ -46,6 +71,10 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.4'
 
+    - uses: actions/download-artifact@v2
+      with:
+        name: configure
+
     - name: Cache
       uses: actions/cache@v1
       env:
@@ -58,17 +87,8 @@ jobs:
           ${{ runner.os }}-build-
           ${{ runner.os }}-
 
-    - uses: msys2/setup-msys2@v2
-      if: matrix.os == 'windows-latest'
-      with:
-        update: true
-        install: autoconf
-    - if: matrix.os == 'windows-latest'
-      shell: msys2 {0}
-      run: autoreconf -i
     - if: matrix.os != 'windows-latest'
       run: |
-        autoreconf -i
         sh ./enable_doctest.sh
 
     - name: Install dependencies
