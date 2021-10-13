@@ -69,7 +69,7 @@ jobs:
     - uses: haskell/actions/setup@v1
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: '3.4'
+        cabal-version: '3.4.1.0'
 
     - uses: actions/download-artifact@v2
       with:
@@ -100,6 +100,24 @@ jobs:
         cabal build --enable-tests --disable-benchmarks all
     - name: Run tests
       run: cabal test all
+
+    # check windows can generate autoconf too
+    - uses: msys2/setup-msys2@v2
+      if: matrix.os == 'windows-latest'
+      with:
+        update: true
+        install: autoconf
+    - if: matrix.os == 'windows-latest'
+      name: autoreconf
+      shell: msys2 {0}
+      run: |
+        rm configure include/HsNetworkConfig.h.in
+        autoreconf -i
+    - if: matrix.os == 'windows-latest'
+      name: Build
+      run: |
+        cabal clean
+        cabal build --enable-tests --disable-benchmarks all
 
   sdist:
     runs-on: ubuntu-latest
