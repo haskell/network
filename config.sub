@@ -1199,6 +1199,7 @@ case $cpu-$vendor in
 			| hexagon \
 			| i370 | i*86 | i860 | i960 | ia16 | ia64 \
 			| ip2k | iq2000 \
+            | js \
 			| k1om \
 			| le32 | le64 \
 			| lm32 \
@@ -1748,7 +1749,8 @@ case $os in
 	     | skyos* | haiku* | rdos* | toppers* | drops* | es* \
 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
-	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr*)
+	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+         | ghcjs)
 		;;
 	# This one is extra strict with allowed versions
 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
