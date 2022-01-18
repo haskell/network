@@ -94,11 +94,13 @@ sendAll :: Socket     -- ^ Connected socket
         -> ByteString  -- ^ Data to send
         -> IO ()
 sendAll _ "" = return ()
-sendAll s bs = do
-    -- "send" throws an exception.
-    sent <- send s bs
-    waitWhen0 sent s
-    when (sent /= B.length bs) $ sendAll s $ B.drop sent bs
+sendAll s bs0 = loop bs0
+  where
+    loop bs = do
+        -- "send" throws an exception.
+        sent <- send s bs
+        waitWhen0 sent s
+        when (sent /= B.length bs) $ loop $ B.drop sent bs
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
