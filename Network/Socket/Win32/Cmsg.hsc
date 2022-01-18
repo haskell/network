@@ -148,7 +148,8 @@ instance ControlMessage IPv6TClass where
 
 ----------------------------------------------------------------
 
--- | Network interface ID and local IPv4 address.
+-- | Network interface ID and local IPv4 address. The second member is
+--   redundant to be the same as Unix's one and is always 0.0.0.0.
 data IPv4PktInfo = IPv4PktInfo Int HostAddress HostAddress deriving (Eq)
 
 instance Show IPv4PktInfo where
