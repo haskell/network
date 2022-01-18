@@ -30,6 +30,7 @@ sendAll
     -> IO ()
 sendAll _ "" = return ()
 sendAll s bs = do
+    -- "send" throws an exception.
     sent <- send s bs
     waitWhen0 (fromIntegral sent) s
-    when (sent >= 0) $ sendAll s $ L.drop sent bs
+    when (sent /= L.length bs) $ sendAll s $ L.drop sent bs

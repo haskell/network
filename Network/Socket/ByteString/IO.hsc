@@ -95,9 +95,10 @@ sendAll :: Socket     -- ^ Connected socket
         -> IO ()
 sendAll _ "" = return ()
 sendAll s bs = do
+    -- "send" throws an exception.
     sent <- send s bs
     waitWhen0 sent s
-    when (sent >= 0) $ sendAll s $ B.drop sent bs
+    when (sent /= B.length bs) $ sendAll s $ B.drop sent bs
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
