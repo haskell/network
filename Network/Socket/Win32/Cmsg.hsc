@@ -149,10 +149,10 @@ instance ControlMessage IPv6TClass where
 ----------------------------------------------------------------
 
 -- | Network interface ID and local IPv4 address.
-data IPv4PktInfo = IPv4PktInfo ULONG HostAddress deriving (Eq)
+data IPv4PktInfo = IPv4PktInfo Int HostAddress HostAddress deriving (Eq)
 
 instance Show IPv4PktInfo where
-    show (IPv4PktInfo n ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple ha)
+    show (IPv4PktInfo n sa ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple sa) ++ " " ++ show (hostAddressToTuple ha)
 
 instance ControlMessage IPv4PktInfo where
     controlMessageId = CmsgIdIPv4PktInfo
@@ -160,13 +160,13 @@ instance ControlMessage IPv4PktInfo where
 instance Storable IPv4PktInfo where
     sizeOf    _ = #{size IN_PKTINFO}
     alignment _ = #alignment IN_PKTINFO
-    poke p (IPv4PktInfo n ha) = do
+    poke p (IPv4PktInfo n _ ha) = do
         (#poke IN_PKTINFO, ipi_ifindex)  p (fromIntegral n :: CInt)
         (#poke IN_PKTINFO, ipi_addr)     p ha
     peek p = do
         n  <- (#peek IN_PKTINFO, ipi_ifindex)  p
         ha <- (#peek IN_PKTINFO, ipi_addr)     p
-        return $ IPv4PktInfo n ha
+        return $ IPv4PktInfo n 0 ha
 
 ----------------------------------------------------------------
 
