@@ -126,10 +126,13 @@ sendAllTo :: SocketAddress sa =>
           -> sa    -- ^ Recipient address
           -> IO ()
 sendAllTo _ "" _  = return ()
-sendAllTo s xs sa = do
-    sent <- sendTo s xs sa
-    waitWhen0 sent s
-    when (sent >= 0) $ sendAllTo s (B.drop sent xs) sa
+sendAllTo s bs0 sa = loop bs0
+  where
+    loop bs = do
+        -- "send" throws an exception.
+        sent <- sendTo s bs sa
+        waitWhen0 sent s
+        when (sent /= B.length bs) $ loop $ B.drop sent bs
 
 -- | Send data to the socket.  The socket must be in a connected
 -- state.  The data is sent as if the parts have been concatenated.
