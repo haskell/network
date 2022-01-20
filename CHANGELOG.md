@@ -1,3 +1,8 @@
+## Version 3.1.2.7
+
+* No change from 3.1.2.6 but to take a right procedure to upload "network"
+  to Hackage for Windows.
+
 ## Version 3.1.2.6
 
 * Making IPv4PktInfo on Win the same as that on Posix
