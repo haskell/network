@@ -1,3 +1,10 @@
+## Version 3.1.2.6
+
+* Making IPv4PktInfo on Win the same as that on Posix
+  [#522](https://github.com/haskell/network/issues/522)
+* Add support for nix/ghcjs
+  [#517](https://github.com/haskell/network/issues/517)
+
 ## Version 3.1.2.5
 
 * Regenerate `configure` script with autoconf-2.69 to temporarily fix broken cabal-3.4.0.0 on Windows. Note that the old one was generated with autoconf-2.71.
