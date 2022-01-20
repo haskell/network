@@ -29,7 +29,10 @@ sendAll
     -> L.ByteString -- ^ Data to send
     -> IO ()
 sendAll _ "" = return ()
-sendAll s bs = do
-    sent <- send s bs
-    waitWhen0 (fromIntegral sent) s
-    when (sent >= 0) $ sendAll s $ L.drop sent bs
+sendAll s bs0 = loop bs0
+  where
+    loop bs = do
+        -- "send" throws an exception.
+        sent <- send s bs
+        waitWhen0 (fromIntegral sent) s
+        when (sent /= L.length bs) $ loop $ L.drop sent bs
