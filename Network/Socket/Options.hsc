@@ -10,9 +10,9 @@
 module Network.Socket.Options (
     SocketOption(SockOpt
                 ,UnsupportedSocketOption
-                ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
-                ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
-                ,MaxSegment,NoDelay,Cork,Linger,ReusePort
+                ,AcceptConn,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError
+                ,DontRoute,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline
+                ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
                 ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
                 ,UseLoopBack,UserTimeout,IPv6Only
                 ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
@@ -69,6 +69,13 @@ pattern UnsupportedSocketOption :: SocketOption
 pattern UnsupportedSocketOption = SockOpt (-1) (-1)
 
 #ifdef SOL_SOCKET
+-- | SO_ACCEPTCONN, read-only
+pattern AcceptConn :: SocketOption
+#ifdef SO_ACCEPTCONN
+pattern AcceptConn     = SockOpt (#const SOL_SOCKET) (#const SO_ACCEPTCONN)
+#else
+pattern AcceptConn     = SockOpt (-1) (-1)
+#endif
 -- | SO_DEBUG
 pattern Debug :: SocketOption
 #ifdef SO_DEBUG
