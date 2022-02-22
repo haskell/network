@@ -282,11 +282,11 @@ recvBufMsg s bufsizs clen flags = do
           with msgHdr $ \msgHdrPtr -> do
             len <- (fmap fromIntegral) <$>
 #if !defined(mingw32_HOST_OS)
-                throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmg" $
+                throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmsg" $
                       c_recvmsg fd msgHdrPtr _cflags
 #else
                 alloca $ \len_ptr -> do
-                    _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmg" $
+                    _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmsg" $
                             c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
                     peek len_ptr
 #endif
