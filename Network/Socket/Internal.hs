@@ -142,7 +142,7 @@ throwSocketErrorIfMinus1RetryMayBlock
 -- the IO action returns a result of @-1@, but retries in case of an
 -- interrupted operation.  Checks for operations that would block and
 -- executes an alternative action before retrying in that case.  If the error
--- is one handled by the exempt filter then ignore it and return the errorcode.
+-- is one handled by the exempt filter then ignore it and return the error code.
 throwSocketErrorIfMinus1RetryMayBlockBut
     :: (Eq a, Num a)
     => (CInt -> Bool) -- ^ exception exempt filter
