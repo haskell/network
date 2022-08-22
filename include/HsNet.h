@@ -126,11 +126,11 @@ cmsg_nxthdr(struct msghdr *mhdr, struct cmsghdr *cmsg);
 extern unsigned char *
 cmsg_data(struct cmsghdr *cmsg);
 
-extern int
-cmsg_space(int l);
+extern size_t
+cmsg_space(size_t l);
 
-extern int
-cmsg_len(int l);
+extern size_t
+cmsg_len(size_t l);
 #endif /* _WIN32 */
 
 INLINE int

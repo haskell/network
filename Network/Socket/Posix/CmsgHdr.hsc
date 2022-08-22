@@ -22,7 +22,11 @@ import Network.Socket.Posix.MsgHdr
 import Network.Socket.Types
 
 data CmsgHdr = CmsgHdr {
-    cmsgHdrLen   :: !CInt
+#ifdef __linux__
+    cmsgHdrLen   :: !CSize
+#else
+    cmsgHdrLen   :: !(#type socklen_t)
+#endif
   , cmsgHdrLevel :: !CInt
   , cmsgHdrType  :: !CInt
   } deriving (Eq, Show)
@@ -61,7 +65,7 @@ withCmsgs cmsgs0 action
 
 toCmsgHdr :: Cmsg -> Ptr CmsgHdr -> IO ()
 toCmsgHdr (Cmsg (CmsgId lvl typ) (PS fptr off len)) ctrlPtr = do
-    poke ctrlPtr $ CmsgHdr (c_cmsg_len (fromIntegral len)) lvl typ
+    poke ctrlPtr $ CmsgHdr (fromIntegral $ c_cmsg_len (fromIntegral len)) lvl typ
     withForeignPtr fptr $ \src0 -> do
         let src = src0 `plusPtr` off
         dst <- c_cmsg_data ctrlPtr
@@ -96,7 +100,7 @@ foreign import ccall unsafe "cmsg_data"
   c_cmsg_data :: Ptr CmsgHdr -> IO (Ptr Word8)
 
 foreign import ccall unsafe "cmsg_space"
-  c_cmsg_space :: CInt -> CInt
+  c_cmsg_space :: CSize -> CSize
 
 foreign import ccall unsafe "cmsg_len"
-  c_cmsg_len :: CInt -> CInt
+  c_cmsg_len :: CSize -> CSize

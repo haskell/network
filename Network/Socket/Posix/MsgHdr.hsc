@@ -15,11 +15,19 @@ import Network.Socket.Posix.IOVec (IOVec)
 
 data MsgHdr sa = MsgHdr
     { msgName    :: !(Ptr sa)
-    , msgNameLen :: !CUInt
+    , msgNameLen :: !(#type socklen_t)
     , msgIov     :: !(Ptr IOVec)
+#ifdef __linux__
     , msgIovLen  :: !CSize
+#else
+    , msgIovLen  :: !CInt
+#endif
     , msgCtrl    :: !(Ptr Word8)
-    , msgCtrlLen :: !CInt
+#ifdef __linux__
+    , msgCtrlLen :: !CSize
+#else
+    , msgCtrlLen :: !(#type socklen_t)
+#endif
     , msgFlags   :: !CInt
     }
 
