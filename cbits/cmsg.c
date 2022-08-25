@@ -87,11 +87,11 @@ unsigned char *cmsg_data(struct cmsghdr *cmsg) {
   return (CMSG_DATA(cmsg));
 }
 
-int cmsg_space(int l) {
+size_t cmsg_space(size_t l) {
   return (CMSG_SPACE(l));
 }
 
-int cmsg_len(int l) {
+size_t cmsg_len(size_t l) {
   return (CMSG_LEN(l));
 }
 #endif /* _WIN32 */
