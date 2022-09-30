@@ -1151,7 +1151,9 @@ unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 #if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p sa@(SockAddrUnix path) = do
-    when (length path > unixPathMax) $ error "pokeSockAddr: path is too long"
+    when (length path > unixPathMax) $ error
+      $ "pokeSockAddr: path is too long in SockAddrUnix " <> show path
+      <> ", length " <> show (length path) <> ", unixPathMax " <> show unixPathMax
     zeroMemory p $ fromIntegral $ sizeOfSockAddr sa
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
