@@ -1320,7 +1320,7 @@ socktypeBijection :: Bijection SocketType String
 socktypeBijection =
     [ (UnsupportedSocketType, "UnsupportedSocketType")
     , (Stream, "Stream")
-    , (Datagram, "Datagram") 
+    , (Datagram, "Datagram")
     , (Raw, "Raw")
     , (RDM, "RDM")
     , (SeqPacket, "SeqPacket")
