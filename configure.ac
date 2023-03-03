@@ -1,5 +1,5 @@
 AC_INIT([Haskell network package],
-        [3.1.2.7],
+        [3.1.2.8],
         [libraries@haskell.org],
         [network])
 

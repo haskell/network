@@ -1,6 +1,6 @@
 cabal-version:  1.18
 name:           network
-version:        3.1.2.7
+version:        3.1.2.8
 license:        BSD3
 license-file:   LICENSE
 maintainer:     Kazu Yamamoto, Evan Borden

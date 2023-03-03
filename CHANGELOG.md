@@ -1,3 +1,11 @@
+## Version 3.1.2.8
+
+* Ignoring error from shutdown in gracefulClose
+* Fix bitsize of some msghdr and cmsghdr fields on Linux
+  [#535](https://github.com/haskell/network/issues/535)
+* Add SO_ACCEPTCONN SocketOption
+  [#524](https://github.com/haskell/network/issues/524)
+
 ## Version 3.1.2.7
 
 * No change from 3.1.2.6 but to take a right procedure to upload "network"
