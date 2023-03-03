@@ -51,10 +51,13 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
   where
     sendRecvFIN = do
         -- Sending TCP FIN.
-        shutdown s ShutdownSend
-        -- Waiting TCP FIN.
-        E.bracket (mallocBytes bufSize) free $ \buf -> do
-            {-# SCC "" #-} recvEOFloop buf
+        ex <- E.try $ shutdown s ShutdownSend
+        case ex of
+          Left (E.SomeException _) -> return ()
+          Right () -> do
+              -- Waiting TCP FIN.
+              E.bracket (mallocBytes bufSize) free $ \buf -> do
+                  {-# SCC "" #-} recvEOFloop buf
     -- milliseconds. Taken from BSD fast clock value.
     clock = 200
     recvEOFloop buf = loop 0
