@@ -77,6 +77,10 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.8'
 
+    - uses: actions/download-artifact@v3
+      with:
+        name: configure
+
     - name: Cache
       uses: actions/cache@v3
       env:
@@ -105,3 +109,21 @@ jobs:
       run: |
         cabal install doctest --overwrite-policy=always
         cabal repl --build-depends=QuickCheck --with-ghc=doctest
+
+    # check windows can generate autoconf too
+    - uses: msys2/setup-msys2@v2
+      if: matrix.os == 'windows-latest'
+      with:
+        update: true
+        install: autoconf
+    - if: matrix.os == 'windows-latest'
+      name: autoreconf
+      shell: msys2 {0}
+      run: |
+        rm configure include/HsNetworkConfig.h.in
+        autoreconf -i
+    - if: matrix.os == 'windows-latest'
+      name: Build
+      run: |
+        cabal clean
+        cabal build --enable-tests --disable-benchmarks all
