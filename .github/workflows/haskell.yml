@@ -2,9 +2,9 @@ name: Haskell CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ 'master', 'ci' ]
   pull_request:
-    branches: [ master ]
+    branches: [ 'master' ]
 
 env:
   autoconf_ver: 2.69
@@ -29,94 +29,6 @@ jobs:
         path: |
           configure
           include/HsNetworkConfig.h.in
-
-  build:
-
-    runs-on: ${{ matrix.os }}
-
-    needs: autoconf
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10.4']
-        exclude:
-        - os: windows-latest
-          ghc: "8.0"
-        - os: windows-latest
-          ghc: "8.2"
-        - os: windows-latest
-          ghc: "8.4"
-        - os: windows-latest
-          ghc: "8.6"
-        - os: windows-latest
-          ghc: "8.10"
-        - os: macOS-latest
-          ghc: "8.0"
-        - os: macOS-latest
-          ghc: "8.2"
-        - os: macOS-latest
-          ghc: "8.4"
-        - os: macOS-latest
-          ghc: "8.6"
-        - os: macOS-latest
-          ghc: "8.8"
-
-    steps:
-    - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2
-      with:
-        ghc-version: ${{ matrix.ghc }}
-        cabal-version: '3.4.1.0'
-
-    - uses: actions/download-artifact@v3
-      with:
-        name: configure
-
-    - name: Cache
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-cabal
-      with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
-
-    - if: matrix.os != 'windows-latest'
-      run: |
-        sh ./enable_doctest.sh
-
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --disable-benchmarks
-    - name: Build
-      run: |
-        cabal build --enable-tests --disable-benchmarks all
-    - name: Run tests
-      run: cabal test all
-
-    # check windows can generate autoconf too
-    - uses: msys2/setup-msys2@v2
-      if: matrix.os == 'windows-latest'
-      with:
-        update: true
-        install: autoconf
-    - if: matrix.os == 'windows-latest'
-      name: autoreconf
-      shell: msys2 {0}
-      run: |
-        rm configure include/HsNetworkConfig.h.in
-        autoreconf -i
-    - if: matrix.os == 'windows-latest'
-      name: Build
-      run: |
-        cabal clean
-        cabal build --enable-tests --disable-benchmarks all
 
   sdist:
     runs-on: ubuntu-latest
@@ -147,3 +59,49 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: dist-newstyle/sdist/network-*
+
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:  [ 'ubuntu-latest', 'macOS-latest', 'windows-latest' ]
+        ghc: [ '8.10', '9.0', '9.2' ]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: haskell/actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: '3.8'
+
+    - name: Cache
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-cabal
+      with:
+        path: ~/.cabal
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+
+    - name: Install dependencies
+      run: |
+        cabal update
+        cabal build --only-dependencies --enable-tests --disable-benchmarks
+
+    - name: Build
+      run: cabal build --enable-tests --disable-benchmarks all
+
+    - name: Run tests
+      run: cabal test --test-show-details=streaming
+
+    - name: Run doctest
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        cabal install doctest --overwrite-policy=always
+        cabal repl --build-depends=QuickCheck --with-ghc=doctest
