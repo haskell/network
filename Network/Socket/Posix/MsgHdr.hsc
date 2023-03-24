@@ -14,21 +14,21 @@ import Network.Socket.Internal (zeroMemory)
 import Network.Socket.Posix.IOVec (IOVec)
 
 data MsgHdr sa = MsgHdr
-    { msgName    :: !(Ptr sa)
-    , msgNameLen :: !(#type socklen_t)
-    , msgIov     :: !(Ptr IOVec)
+    { msgName    :: Ptr sa
+    , msgNameLen :: #type socklen_t
+    , msgIov     :: Ptr IOVec
 #ifdef __linux__
-    , msgIovLen  :: !CSize
+    , msgIovLen  :: CSize
 #else
-    , msgIovLen  :: !CInt
+    , msgIovLen  :: CInt
 #endif
-    , msgCtrl    :: !(Ptr Word8)
+    , msgCtrl    :: Ptr Word8
 #ifdef __linux__
-    , msgCtrlLen :: !CSize
+    , msgCtrlLen :: CSize
 #else
-    , msgCtrlLen :: !(#type socklen_t)
+    , msgCtrlLen :: #type socklen_t
 #endif
-    , msgFlags   :: !CInt
+    , msgFlags   :: CInt
     }
 
 instance Storable (MsgHdr sa) where

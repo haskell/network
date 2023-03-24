@@ -27,16 +27,16 @@ type ULONG = Word32
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
-    cmsgId   :: !CmsgId
-  , cmsgData :: !ByteString
+    cmsgId   :: CmsgId
+  , cmsgData :: ByteString
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
 -- | Identifier of control message (ancillary data).
 data CmsgId = CmsgId {
-    cmsgLevel :: !CInt
-  , cmsgType  :: !CInt
+    cmsgLevel :: CInt
+  , cmsgType  :: CInt
   } deriving (Eq)
 
 -- | Unsupported identifier

@@ -104,7 +104,7 @@ import Network.Socket.ReadShow
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-data Socket = Socket !(IORef CInt) !CInt {- for Show -}
+data Socket = Socket (IORef CInt) CInt {- for Show -}
 
 instance Show Socket where
     show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
@@ -1052,13 +1052,13 @@ type ScopeID = Word32
 -- 'isSupportedSockAddr'.
 data SockAddr
   = SockAddrInet
-        !PortNumber      -- sin_port
-        !HostAddress     -- sin_addr  (ditto)
+        PortNumber      -- sin_port
+        HostAddress     -- sin_addr  (ditto)
   | SockAddrInet6
-        !PortNumber      -- sin6_port
-        !FlowInfo        -- sin6_flowinfo (ditto)
-        !HostAddress6    -- sin6_addr (ditto)
-        !ScopeID         -- sin6_scope_id (ditto)
+        PortNumber      -- sin6_port
+        FlowInfo        -- sin6_flowinfo (ditto)
+        HostAddress6    -- sin6_addr (ditto)
+        ScopeID         -- sin6_scope_id (ditto)
   -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
   | SockAddrUnix
         String           -- sun_path

@@ -15,8 +15,8 @@ import Network.Socket.Imports
 type ULONG = Word32
 
 data WSABuf = WSABuf
-    { wsaBufPtr :: !(Ptr Word8)
-    , wsaBufLen :: !ULONG
+    { wsaBufPtr :: Ptr Word8
+    , wsaBufLen :: ULONG
     }
 
 instance Storable WSABuf where

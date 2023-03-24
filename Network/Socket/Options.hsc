@@ -50,11 +50,11 @@ import Network.Socket.ReadShow
 -- is supported on your system: see 'isSupportedSocketOption'
 data SocketOption = SockOpt
 #if __GLASGOW_HASKELL__ >= 806
-    !CInt -- ^ Option Level
-    !CInt -- ^ Option Name
+    CInt -- ^ Option Level
+    CInt -- ^ Option Name
 #else
-    !CInt -- Option Level
-    !CInt -- Option Name
+    CInt -- Option Level
+    CInt -- Option Name
 #endif
   deriving (Eq)
 

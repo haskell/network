@@ -19,9 +19,9 @@ import Network.Socket.Win32.MsgHdr
 import Network.Socket.Types
 
 data CmsgHdr = CmsgHdr {
-    cmsgHdrLen   :: !CUInt
-  , cmsgHdrLevel :: !CInt
-  , cmsgHdrType  :: !CInt
+    cmsgHdrLen   :: CUInt
+  , cmsgHdrLevel :: CInt
+  , cmsgHdrType  :: CInt
   } deriving (Eq, Show)
 
 instance Storable CmsgHdr where

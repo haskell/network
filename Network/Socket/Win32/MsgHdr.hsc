@@ -18,13 +18,13 @@ type ULONG = Word32
 -- The size of BufferLen is different on pre-vista compilers.
 -- But since those platforms are out of support anyway we ignore that.
 data MsgHdr sa = MsgHdr
-    { msgName      :: !(Ptr sa)
-    , msgNameLen   :: !CInt
-    , msgBuffer    :: !(Ptr WSABuf)
-    , msgBufferLen :: !DWORD
-    , msgCtrl      :: !(Ptr Word8)
-    , msgCtrlLen   :: !ULONG
-    , msgFlags     :: !DWORD
+    { msgName      :: Ptr sa
+    , msgNameLen   :: CInt
+    , msgBuffer    :: Ptr WSABuf
+    , msgBufferLen :: DWORD
+    , msgCtrl      :: Ptr Word8
+    , msgCtrlLen   :: ULONG
+    , msgFlags     :: DWORD
     } deriving Show
 
 instance Storable (MsgHdr sa) where

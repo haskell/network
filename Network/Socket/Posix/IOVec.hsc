@@ -14,8 +14,8 @@ import Network.Socket.Imports
 #include <sys/uio.h>
 
 data IOVec = IOVec
-    { iovBase :: !(Ptr Word8)
-    , iovLen  :: !CSize
+    { iovBase :: Ptr Word8
+    , iovLen  :: CSize
     }
 
 instance Storable IOVec where
