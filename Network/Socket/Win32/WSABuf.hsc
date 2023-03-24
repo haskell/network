@@ -20,8 +20,8 @@ data WSABuf = WSABuf
     }
 
 instance Storable WSABuf where
-  sizeOf    _ = #{size WSABUF}
-  alignment _ = #alignment WSABUF
+  sizeOf    ~_ = #{size WSABUF}
+  alignment ~_ = #alignment WSABUF
 
   peek p = do
     base <- (#peek WSABUF, buf) p

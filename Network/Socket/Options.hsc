@@ -466,8 +466,8 @@ data StructLinger = StructLinger {
   deriving (Eq, Ord, Show)
 
 instance Storable StructLinger where
-    sizeOf    _ = (#const sizeof(struct linger))
-    alignment _ = alignment (0 :: CInt)
+    sizeOf    ~_ = (#const sizeof(struct linger))
+    alignment ~_ = alignment (0 :: CInt)
 
     peek p = do
         onoff  <- (#peek struct linger, l_onoff) p

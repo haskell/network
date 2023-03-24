@@ -28,8 +28,8 @@ data MsgHdr sa = MsgHdr
     } deriving Show
 
 instance Storable (MsgHdr sa) where
-  sizeOf    _ = #{size WSAMSG}
-  alignment _ = #alignment WSAMSG
+  sizeOf    ~_ = #{size WSAMSG}
+  alignment ~_ = #alignment WSAMSG
 
   peek p = do
     name       <- (#peek WSAMSG, name)          p

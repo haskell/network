@@ -982,8 +982,8 @@ foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 {-# DEPRECATED ntohl "Use getAddrInfo instead" #-}
 
 instance Storable PortNumber where
-   sizeOf    _ = sizeOf    (0 :: Word16)
-   alignment _ = alignment (0 :: Word16)
+   sizeOf    ~_ = sizeOf    (0 :: Word16)
+   alignment ~_ = alignment (0 :: Word16)
    poke p (PortNum po) = poke (castPtr p) (htons po)
    peek p = PortNum . ntohs <$> peek (castPtr p)
 
@@ -1283,8 +1283,8 @@ newtype In6Addr = In6Addr HostAddress6
 #endif
 
 instance Storable In6Addr where
-    sizeOf    _ = #const sizeof(struct in6_addr)
-    alignment _ = #alignment struct in6_addr
+    sizeOf    ~_ = #const sizeof(struct in6_addr)
+    alignment ~_ = #alignment struct in6_addr
 
     peek p = do
         a <- peek32 p 0

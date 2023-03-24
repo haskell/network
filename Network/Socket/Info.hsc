@@ -108,8 +108,8 @@ data AddrInfo = AddrInfo {
   } deriving (Eq, Show)
 
 instance Storable AddrInfo where
-    sizeOf    _ = #const sizeof(struct addrinfo)
-    alignment _ = alignment (0 :: CInt)
+    sizeOf    ~_ = #const sizeof(struct addrinfo)
+    alignment ~_ = alignment (0 :: CInt)
 
     peek p = do
         ai_flags <- (#peek struct addrinfo, ai_flags) p
