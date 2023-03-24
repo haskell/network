@@ -353,8 +353,7 @@ whenSupported s action
   | isSupportedSocketOption s = action >> return ()
   | otherwise                 = return ()
 
--- | Set a socket option that expects an Int value.
--- There is currently no API to set e.g. the timeval socket options
+-- | Set a socket option that expects an 'Int' value.
 setSocketOption :: Socket
                 -> SocketOption -- Option Name
                 -> Int          -- Option Value
@@ -379,8 +378,7 @@ setSockOpt s (SockOpt level opt) v = do
           throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
           c_setsockopt fd level opt ptr sz
 
--- | Get a socket option that gives an Int value.
--- There is currently no API to get e.g. the timeval socket options
+-- | Get a socket option that gives an 'Int' value.
 getSocketOption :: Socket
                 -> SocketOption  -- Option Name
                 -> IO Int        -- Option Value
@@ -396,8 +394,8 @@ getSocketOption s so = do
 -- | Get a socket option.
 getSockOpt :: forall a . Storable a
            => Socket
-           -> SocketOption  -- Option Name
-           -> IO a        -- Option Value
+           -> SocketOption -- Option Name
+           -> IO a         -- Option Value
 getSockOpt s (SockOpt level opt) = do
     alloca $ \ptr -> do
         let sz = fromIntegral $ sizeOf (undefined :: a)
