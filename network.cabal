@@ -4,9 +4,18 @@ version:            3.1.2.8
 license:            BSD3
 license-file:       LICENSE
 maintainer:         Kazu Yamamoto, Evan Borden
+
 tested-with:
-    ghc ==8.0.2 ghc ==8.2.2 ghc ==8.4.4 ghc ==8.6.5 ghc ==8.8.3
-    ghc ==8.10.1
+    GHC == 9.6.1
+    GHC == 9.4.4
+    GHC == 9.2.7
+    GHC == 9.0.2
+    GHC == 8.10.7
+    GHC == 8.8.4
+    GHC == 8.6.5
+    GHC == 8.4.4
+    GHC == 8.2.2
+    GHC == 8.0.2
 
 homepage:           https://github.com/haskell/network
 bug-reports:        https://github.com/haskell/network/issues
@@ -41,9 +50,12 @@ description:
 
 category:           Network
 build-type:         Configure
-extra-source-files:
+
+extra-doc-files:
     README.md
     CHANGELOG.md
+
+extra-source-files:
     examples/*.hs
     tests/*.hs
     config.guess
@@ -68,7 +80,7 @@ extra-tmp-files:
 
 source-repository head
     type:     git
-    location: git://github.com/haskell/network.git
+    location: https://github.com/haskell/network.git
 
 flag devel
     description: using tests for developers
