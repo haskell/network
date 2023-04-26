@@ -17,7 +17,9 @@ import System.Posix.Types (Fd(..))
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
-#if !defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS)
+import Network.Socket.Win32.Cmsg
+#else
 import Network.Socket.Posix.Cmsg
 #endif
 import Network.Socket.Types
