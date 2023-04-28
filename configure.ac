@@ -4,7 +4,9 @@ AC_INIT([Haskell network package],
         [network])
 
 dnl See also HsNet.h
-ac_includes_default="#define _GNU_SOURCE 1  /* for struct ucred on Linux */
+ac_includes_default="#ifndef _WIN32
+# define _GNU_SOURCE 1  /* for struct ucred on Linux */
+#endif
 $ac_includes_default
 
 #ifdef _WIN32
