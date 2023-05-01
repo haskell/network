@@ -19,7 +19,9 @@
 # endif
 #endif
 
-#define _GNU_SOURCE 1 /* for struct ucred on Linux */
+#ifndef _WIN32
+# define _GNU_SOURCE 1 /* for struct ucred on Linux */
+#endif
 #define __APPLE_USE_RFC_3542 1 /* for IPV6_RECVPKTINFO */
 
 #ifdef _WIN32
