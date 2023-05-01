@@ -1,3 +1,8 @@
+## Version 3.1.2.9
+
+* Resolving the runtime linker problem on Windows.
+  [#552](https://github.com/haskell/network/issues/552)
+
 ## Version 3.1.2.8
 
 * Ignoring error from shutdown in gracefulClose
