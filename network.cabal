@@ -131,7 +131,7 @@ library
       cpp-options: -D_WIN32_WINNT=0x0601
       cc-options: -D_WIN32_WINNT=0x0601
       build-depends:
-        Win32 >= 2.12.0.1
+        Win32 >= 2.12.0.0
 
 test-suite spec
   default-language: Haskell2010
@@ -149,7 +149,7 @@ test-suite spec
 
   -- On GHC's newer than 9 enable native IO managers
   if impl(ghc >= 9.0)
-    ghc-options: -with-rtsopts="--io-manager=native"
+    ghc-options: -with-rtsopts=--io-manager=native
 
   -- NB: make sure to versions of hspec and hspec-discover
   --     that work together; easiest way is to constraint
