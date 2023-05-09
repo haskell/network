@@ -29,7 +29,7 @@
 # include <ws2tcpip.h>
 # include <mswsock.h>
 # include "win32defs.h"
-# include <afunix.h>
+# include "afunix_compat.h"
 # define IPV6_V6ONLY 27
 #endif
 
