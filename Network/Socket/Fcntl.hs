@@ -7,6 +7,10 @@ import qualified System.Posix.Internals
 
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Cbits
+#else
+# if defined(__IO_MANAGER_WINIO__)
+import GHC.IO.SubSystem ((<!>))
+# endif
 #endif
 import Network.Socket.Imports
 
@@ -15,6 +19,7 @@ import Network.Socket.Imports
 setNonBlockIfNeeded :: CSocket -> IO ()
 setNonBlockIfNeeded fd =
     System.Posix.Internals.setNonBlockingFD (fromIntegral fd) True
+
 -- TODO: remove fromIntegral for WinIO
 
 -- | Set the close_on_exec flag on Unix.
@@ -48,13 +53,20 @@ getCloseOnExec fd = do
 #endif
 
 -- | Get the nonblocking flag.
---   On Windows, this function always returns 'False'.
+--   On Windows, this function always returns 'False' when using MIO but
+--   returns `True` when using WinIO.  Technically on Windows whether the
+--   the socket blocks or not is not determined by the socket itself but
+--   by the operations used on the socket.  Becuase we will always use
+--   overlapping I/O when WinIO is enabled we return `True` here.
 --
 --   Since 2.7.0.0.
 getNonBlock :: CSocket -> IO Bool
 #if defined(mingw32_HOST_OS)
--- | TODO: Query socket for async flag
+# if defined(__IO_MANAGER_WINIO__)
+getNonBlock _ = return False <!> return True
+# else
 getNonBlock _ = return False
+# endif
 #else
 getNonBlock fd = do
     flags <- c_fcntl_read fd fGetFl 0
