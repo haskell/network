@@ -10,9 +10,7 @@
 #undef PACKAGE_TARNAME
 #undef PACKAGE_VERSION
 
-#if !defined(mingw32_HOST_OS) && !defined(_WIN32)
-# define DOMAIN_SOCKET_SUPPORT 1
-#endif
+#define DOMAIN_SOCKET_SUPPORT 1
 
 #if defined(HAVE_STRUCT_UCRED) && HAVE_DECL_SO_PEERCRED
 # define HAVE_STRUCT_UCRED_SO_PEERCRED 1

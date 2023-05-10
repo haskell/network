@@ -12,6 +12,7 @@ module Network.Socket.Win32.Cmsg where
 #include "HsNet.h"
 
 import Data.ByteString.Internal
+import System.Posix.Types (Fd(..))
 import Foreign.ForeignPtr
 import System.IO.Unsafe (unsafeDupablePerformIO)
 
@@ -190,6 +191,9 @@ instance Storable IPv6PktInfo where
         In6Addr ha6 <- (#peek IN6_PKTINFO, ipi6_addr)    p
         n :: ULONG  <- (#peek IN6_PKTINFO, ipi6_ifindex) p
         return $ IPv6PktInfo (fromIntegral n) ha6
+
+instance ControlMessage Fd where
+    controlMessageId = CmsgIdFd
 
 cmsgIdBijection :: Bijection CmsgId String
 cmsgIdBijection =
