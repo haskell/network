@@ -1,3 +1,8 @@
+## Version 3.1.3.0
+
+* Supporting AF_UNIX on Windows
+  [#553](https://github.com/haskell/network/issues/553)
+
 ## Version 3.1.2.9
 
 * Resolving the runtime linker problem on Windows.
