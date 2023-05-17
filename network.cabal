@@ -168,6 +168,9 @@ library
             cpp-options: -D_WIN32_WINNT=0x0600
             cc-options:  -D_WIN32_WINNT=0x0600
 
+        build-depends:
+            temporary
+
 test-suite spec
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
