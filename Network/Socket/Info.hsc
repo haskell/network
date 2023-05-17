@@ -413,11 +413,7 @@ unpackBits ((k,v):xs) r
 -- SockAddr
 
 instance Show SockAddr where
-#if defined(DOMAIN_SOCKET_SUPPORT)
   showsPrec _ (SockAddrUnix str) = showString str
-#else
-  showsPrec _ SockAddrUnix{} = error "showsPrec: not supported"
-#endif
   showsPrec _ (SockAddrInet port ha)
    = showHostAddress ha
    . showString ":"
