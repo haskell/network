@@ -143,6 +143,7 @@ module Network.Socket
                   ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
                   ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
     , StructLinger (..)
+    , SocketTimeout (..)
     , isSupportedSocketOption
     , whenSupported
     , getSocketOption

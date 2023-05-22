@@ -232,6 +232,11 @@ sendManyTo s cs addr = do
 --
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
+--
+-- Currently, the 'recv' family is blocked on Windows because a proper
+-- IO manager is not implemented. To use with 'System.Timeout.timeout'
+-- on Windows, use 'Network.Socket.setSocketOption' with
+-- 'Network.Socket.RecvTimeOut' as well.
 recv :: Socket        -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received

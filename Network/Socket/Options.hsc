@@ -26,6 +26,7 @@ module Network.Socket.Options (
   , getSockOpt
   , setSockOpt
   , StructLinger (..)
+  , SocketTimeout (..)
   ) where
 
 import qualified Text.Read as P
@@ -251,14 +252,14 @@ pattern SendLowWater   = SockOpt (#const SOL_SOCKET) (#const SO_SNDLOWAT)
 #else
 pattern SendLowWater   = SockOpt (-1) (-1)
 #endif
--- | SO_RCVTIMEO: this does not work at this moment.
+-- | SO_RCVTIMEO: timeout in microseconds
 pattern RecvTimeOut :: SocketOption
 #ifdef SO_RCVTIMEO
 pattern RecvTimeOut    = SockOpt (#const SOL_SOCKET) (#const SO_RCVTIMEO)
 #else
 pattern RecvTimeOut    = SockOpt (-1) (-1)
 #endif
--- | SO_SNDTIMEO: this does not work at this moment.
+-- | SO_SNDTIMEO: timeout in microseconds
 pattern SendTimeOut :: SocketOption
 #ifdef SO_SNDTIMEO
 pattern SendTimeOut    = SockOpt (#const SOL_SOCKET) (#const SO_SNDTIMEO)
@@ -481,6 +482,8 @@ instance Storable StructLinger where
 ----------------------------------------------------------------
 
 -- | Timeout in microseconds.
+--   This will be converted into struct timeval on Unix and
+--   DWORD (as milliseconds) on Windows.
 newtype SocketTimeout = SocketTimeout Word32 deriving (Eq, Ord, Show)
 
 #if defined(mingw32_HOST_OS)
