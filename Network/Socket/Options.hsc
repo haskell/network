@@ -38,7 +38,7 @@ import Network.Socket.Internal
 import Network.Socket.Types
 import Network.Socket.ReadShow
 
------------------------------------------------------------------------------
+----------------------------------------------------------------
 -- Socket Properties
 
 -- | Socket options for use with 'setSocketOption' and 'getSocketOption'.
@@ -55,18 +55,75 @@ data SocketOption = SockOpt
 #endif
   deriving (Eq)
 
+----------------------------------------------------------------
+
+socketOptionBijection :: Bijection SocketOption String
+socketOptionBijection =
+    [ (UnsupportedSocketOption, "UnsupportedSocketOption")
+    , (Debug, "Debug")
+    , (ReuseAddr, "ReuseAddr")
+    , (SoDomain, "SoDomain")
+    , (Type, "Type")
+    , (SoProtocol, "SoProtocol")
+    , (SoError, "SoError")
+    , (DontRoute, "DontRoute")
+    , (Broadcast, "Broadcast")
+    , (SendBuffer, "SendBuffer")
+    , (RecvBuffer, "RecvBuffer")
+    , (KeepAlive, "KeepAlive")
+    , (OOBInline, "OOBInline")
+    , (Linger, "Linger")
+    , (ReusePort, "ReusePort")
+    , (RecvLowWater, "RecvLowWater")
+    , (SendLowWater, "SendLowWater")
+    , (RecvTimeOut, "RecvTimeOut")
+    , (SendTimeOut, "SendTimeOut")
+    , (UseLoopBack, "UseLoopBack")
+    , (MaxSegment, "MaxSegment")
+    , (NoDelay, "NoDelay")
+    , (UserTimeout, "UserTimeout")
+    , (Cork, "Cork")
+    , (TimeToLive, "TimeToLive")
+    , (RecvIPv4TTL, "RecvIPv4TTL")
+    , (RecvIPv4TOS, "RecvIPv4TOS")
+    , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
+    , (IPv6Only, "IPv6Only")
+    , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
+    , (RecvIPv6TClass, "RecvIPv6TClass")
+    , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
+    ]
+
+instance Show SocketOption where
+    showsPrec = bijectiveShow socketOptionBijection def
+      where
+        defname = "SockOpt"
+        unwrap = \(CustomSockOpt nm) -> nm
+        def = defShow defname unwrap showIntInt
+
+
+instance Read SocketOption where
+    readPrec = bijectiveRead socketOptionBijection def
+      where
+        defname = "SockOpt"
+        def = defRead defname CustomSockOpt readIntInt
+
+----------------------------------------------------------------
+
+pattern UnsupportedSocketOption :: SocketOption
+pattern UnsupportedSocketOption = SockOpt (-1) (-1)
+
 -- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption opt = opt /= SockOpt (-1) (-1)
 
--- | Get the 'SocketType' of an active socket.
---
---   Since: 3.0.1.0
-getSocketType :: Socket -> IO SocketType
-getSocketType s = unpackSocketType <$> getSockOpt s Type
+-- | Execute the given action only when the specified socket option is
+--  supported. Any return value is ignored.
+whenSupported :: SocketOption -> IO a -> IO ()
+whenSupported s action
+  | isSupportedSocketOption s = action >> return ()
+  | otherwise                 = return ()
 
-pattern UnsupportedSocketOption :: SocketOption
-pattern UnsupportedSocketOption = SockOpt (-1) (-1)
+----------------------------------------------------------------
 
 #ifdef SOL_SOCKET
 -- | SO_ACCEPTCONN, read-only
@@ -317,6 +374,71 @@ pattern CustomSockOpt xy <- ((\(SockOpt x y) -> (x, y)) -> xy)
   where
     CustomSockOpt (x, y) = SockOpt x y
 
+----------------------------------------------------------------
+
+-- | Set a socket option that expects an 'Int' value.
+setSocketOption :: Socket
+                -> SocketOption -- Option Name
+                -> Int          -- Option Value
+                -> IO ()
+#ifdef SO_LINGER
+setSocketOption s so@Linger v = do
+    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
+    setSockOpt s so arg
+#endif
+setSocketOption s sa v = setSockOpt s sa (fromIntegral v :: CInt)
+
+-- | Set a socket option.
+setSockOpt :: Storable a
+           => Socket
+           -> SocketOption
+           -> a
+           -> IO ()
+setSockOpt s (SockOpt level opt) v = do
+    with v $ \ptr -> void $ do
+        let sz = fromIntegral $ sizeOf v
+        withFdSocket s $ \fd ->
+          throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
+          c_setsockopt fd level opt ptr sz
+
+----------------------------------------------------------------
+
+-- | Get a socket option that gives an 'Int' value.
+getSocketOption :: Socket
+                -> SocketOption  -- Option Name
+                -> IO Int        -- Option Value
+#ifdef SO_LINGER
+getSocketOption s so@Linger = do
+    StructLinger onoff linger <- getSockOpt s so
+    return $ fromIntegral $ if onoff == 0 then 0 else linger
+#endif
+getSocketOption s so = do
+    n :: CInt <- getSockOpt s so
+    return $ fromIntegral n
+
+-- | Get a socket option.
+getSockOpt :: forall a . Storable a
+           => Socket
+           -> SocketOption -- Option Name
+           -> IO a         -- Option Value
+getSockOpt s (SockOpt level opt) = do
+    alloca $ \ptr -> do
+        let sz = fromIntegral $ sizeOf (undefined :: a)
+        withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
+            throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
+                c_getsockopt fd level opt ptr ptr_sz
+        peek ptr
+
+----------------------------------------------------------------
+
+-- | Get the 'SocketType' of an active socket.
+--
+--   Since: 3.0.1.0
+getSocketType :: Socket -> IO SocketType
+getSocketType s = unpackSocketType <$> getSockOpt s Type
+
+----------------------------------------------------------------
+
 #if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE CustomSockOpt #-}
 #endif
@@ -346,114 +468,7 @@ instance Storable StructLinger where
         (#poke struct linger, l_linger) p linger
 #endif
 
--- | Execute the given action only when the specified socket option is
---  supported. Any return value is ignored.
-whenSupported :: SocketOption -> IO a -> IO ()
-whenSupported s action
-  | isSupportedSocketOption s = action >> return ()
-  | otherwise                 = return ()
-
--- | Set a socket option that expects an 'Int' value.
-setSocketOption :: Socket
-                -> SocketOption -- Option Name
-                -> Int          -- Option Value
-                -> IO ()
-#ifdef SO_LINGER
-setSocketOption s so@Linger v = do
-    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
-    setSockOpt s so arg
-#endif
-setSocketOption s sa v = setSockOpt s sa (fromIntegral v :: CInt)
-
--- | Set a socket option.
-setSockOpt :: Storable a
-           => Socket
-           -> SocketOption
-           -> a
-           -> IO ()
-setSockOpt s (SockOpt level opt) v = do
-    with v $ \ptr -> void $ do
-        let sz = fromIntegral $ sizeOf v
-        withFdSocket s $ \fd ->
-          throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
-          c_setsockopt fd level opt ptr sz
-
--- | Get a socket option that gives an 'Int' value.
-getSocketOption :: Socket
-                -> SocketOption  -- Option Name
-                -> IO Int        -- Option Value
-#ifdef SO_LINGER
-getSocketOption s so@Linger = do
-    StructLinger onoff linger <- getSockOpt s so
-    return $ fromIntegral $ if onoff == 0 then 0 else linger
-#endif
-getSocketOption s so = do
-    n :: CInt <- getSockOpt s so
-    return $ fromIntegral n
-
--- | Get a socket option.
-getSockOpt :: forall a . Storable a
-           => Socket
-           -> SocketOption -- Option Name
-           -> IO a         -- Option Value
-getSockOpt s (SockOpt level opt) = do
-    alloca $ \ptr -> do
-        let sz = fromIntegral $ sizeOf (undefined :: a)
-        withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
-            throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
-                c_getsockopt fd level opt ptr ptr_sz
-        peek ptr
-
-
-socketOptionBijection :: Bijection SocketOption String
-socketOptionBijection =
-    [ (UnsupportedSocketOption, "UnsupportedSocketOption")
-    , (Debug, "Debug")
-    , (ReuseAddr, "ReuseAddr")
-    , (SoDomain, "SoDomain")
-    , (Type, "Type")
-    , (SoProtocol, "SoProtocol")
-    , (SoError, "SoError")
-    , (DontRoute, "DontRoute")
-    , (Broadcast, "Broadcast")
-    , (SendBuffer, "SendBuffer")
-    , (RecvBuffer, "RecvBuffer")
-    , (KeepAlive, "KeepAlive")
-    , (OOBInline, "OOBInline")
-    , (Linger, "Linger")
-    , (ReusePort, "ReusePort")
-    , (RecvLowWater, "RecvLowWater")
-    , (SendLowWater, "SendLowWater")
-    , (RecvTimeOut, "RecvTimeOut")
-    , (SendTimeOut, "SendTimeOut")
-    , (UseLoopBack, "UseLoopBack")
-    , (MaxSegment, "MaxSegment")
-    , (NoDelay, "NoDelay")
-    , (UserTimeout, "UserTimeout")
-    , (Cork, "Cork")
-    , (TimeToLive, "TimeToLive")
-    , (RecvIPv4TTL, "RecvIPv4TTL")
-    , (RecvIPv4TOS, "RecvIPv4TOS")
-    , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
-    , (IPv6Only, "IPv6Only")
-    , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
-    , (RecvIPv6TClass, "RecvIPv6TClass")
-    , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
-    ]
-
-instance Show SocketOption where
-    showsPrec = bijectiveShow socketOptionBijection def
-      where
-        defname = "SockOpt"
-        unwrap = \(CustomSockOpt nm) -> nm
-        def = defShow defname unwrap showIntInt
-
-
-instance Read SocketOption where
-    readPrec = bijectiveRead socketOptionBijection def
-      where
-        defname = "SockOpt"
-        def = defRead defname CustomSockOpt readIntInt
+----------------------------------------------------------------
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
