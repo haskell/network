@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -13,16 +14,24 @@ module Network.Socket.Unix (
   , getPeerEid
   ) where
 
+import Foreign.Marshal.Alloc (allocaBytes)
+import Network.Socket.Buffer
+import Network.Socket.Fcntl
+import Network.Socket.Imports
+import Network.Socket.Types
 import System.Posix.Types (Fd(..))
 
-import Network.Socket.Buffer
-import Network.Socket.Imports
 #if defined(mingw32_HOST_OS)
+import Network.Socket.Syscall
 import Network.Socket.Win32.Cmsg
+import System.Directory
+import System.IO
+import System.IO.Temp
 #else
+import Foreign.Marshal.Array (peekArray)
+import Network.Socket.Internal
 import Network.Socket.Posix.Cmsg
 #endif
-import Network.Socket.Types
 
 #if defined(HAVE_GETPEEREID)
 import System.IO.Error (catchIOError)
@@ -30,13 +39,7 @@ import System.IO.Error (catchIOError)
 #ifdef HAVE_GETPEEREID
 import Foreign.Marshal.Alloc (alloca)
 #endif
-#ifdef DOMAIN_SOCKET_SUPPORT
-import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Marshal.Array (peekArray)
 
-import Network.Socket.Fcntl
-import Network.Socket.Internal
-#endif
 #ifdef HAVE_STRUCT_UCRED_SO_PEERCRED
 import Network.Socket.Options
 #endif
@@ -126,11 +129,7 @@ getPeerEid _ = return (0, 0)
 --
 --   Since 2.7.0.0.
 isUnixDomainSocketAvailable :: Bool
-#if defined(DOMAIN_SOCKET_SUPPORT)
 isUnixDomainSocketAvailable = True
-#else
-isUnixDomainSocketAvailable = False
-#endif
 
 data NullSockAddr = NullSockAddr
 
@@ -143,15 +142,11 @@ instance SocketAddress NullSockAddr where
 --   Use this function in the case where 'isUnixDomainSocketAvailable' is
 --  'True'.
 sendFd :: Socket -> CInt -> IO ()
-#if defined(DOMAIN_SOCKET_SUPPORT)
 sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
     let cmsg = encodeCmsg $ Fd outfd
     sendBufMsg s NullSockAddr [(buf,dummyBufSize)] [cmsg] mempty
   where
     dummyBufSize = 1
-#else
-sendFd _ _ = error "Network.Socket.sendFd"
-#endif
 
 -- | Receive a file descriptor over a UNIX-domain socket. Note that the resulting
 --   file descriptor may have to be put into non-blocking mode in order to be
@@ -159,7 +154,6 @@ sendFd _ _ = error "Network.Socket.sendFd"
 --   Use this function in the case where 'isUnixDomainSocketAvailable' is
 --  'True'.
 recvFd :: Socket -> IO CInt
-#if defined(DOMAIN_SOCKET_SUPPORT)
 recvFd s = allocaBytes dummyBufSize $ \buf -> do
     (NullSockAddr, _, cmsgs, _) <- recvBufMsg s [(buf,dummyBufSize)] 32 mempty
     case (lookupCmsg CmsgIdFd cmsgs >>= decodeCmsg) :: Maybe Fd of
@@ -167,9 +161,6 @@ recvFd s = allocaBytes dummyBufSize $ \buf -> do
       Just (Fd fd) -> return fd
   where
     dummyBufSize = 16
-#else
-recvFd _ = error "Network.Socket.recvFd"
-#endif
 
 -- | Build a pair of connected socket objects.
 --   For portability, use this function in the case
@@ -179,7 +170,21 @@ socketPair :: Family              -- Family Name (usually AF_UNIX)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
-#if defined(DOMAIN_SOCKET_SUPPORT)
+#if defined(mingw32_HOST_OS)
+socketPair _ _ _ = withSystemTempFile "temp-for-pair" $ \file hdl -> do
+    hClose hdl
+    removeFile file
+    listenSock <- socket AF_UNIX Stream defaultProtocol
+    bind listenSock $ SockAddrUnix file
+    listen listenSock 10
+    clientSock <- socket AF_UNIX Stream defaultProtocol
+    connect clientSock $ SockAddrUnix file
+    (serverSock, _ :: SockAddr) <- accept listenSock
+    close listenSock
+    withFdSocket clientSock setNonBlockIfNeeded
+    withFdSocket serverSock setNonBlockIfNeeded
+    return (clientSock, serverSock)
+#else
 socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
       let c_stype = packSocketType stype
@@ -194,6 +199,4 @@ socketPair family stype protocol =
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
-#else
-socketPair _ _ _ = error "Network.Socket.socketPair"
 #endif

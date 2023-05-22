@@ -93,9 +93,7 @@ import GHC.IO (IO (..))
 
 import qualified Text.Read as P
 
-#if defined(DOMAIN_SOCKET_SUPPORT)
 import Foreign.Marshal.Array
-#endif
 
 import Network.Socket.Imports
 
@@ -1075,11 +1073,7 @@ isSupportedSockAddr :: SockAddr -> Bool
 isSupportedSockAddr addr = case addr of
   SockAddrInet{}  -> True
   SockAddrInet6{} -> True
-#if defined(DOMAIN_SOCKET_SUPPORT)
   SockAddrUnix{}  -> True
-#else
-  SockAddrUnix{}  -> False
-#endif
 
 instance SocketAddress SockAddr where
     sizeOfSocketAddress = sizeOfSockAddr
@@ -1098,7 +1092,6 @@ type CSaFamily = (#type sa_family_t)
 -- 'SockAddr'.  This function differs from 'Foreign.Storable.sizeOf'
 -- in that the value of the argument /is/ used.
 sizeOfSockAddr :: SockAddr -> Int
-#if defined(DOMAIN_SOCKET_SUPPORT)
 # ifdef linux_HOST_OS
 -- http://man7.org/linux/man-pages/man7/unix.7.html says:
 -- "an abstract socket address is distinguished (from a
@@ -1118,9 +1111,6 @@ sizeOfSockAddr (SockAddrUnix path) =
 # else
 sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
 # endif
-#else
-sizeOfSockAddr SockAddrUnix{}  = error "sizeOfSockAddr: not supported"
-#endif
 sizeOfSockAddr SockAddrInet{}  = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
@@ -1135,10 +1125,8 @@ withSockAddr addr f = do
 -- structure, and attempting to do so could overflow the allocated storage
 -- space.  This constant holds the maximum allowable path length.
 --
-#if defined(DOMAIN_SOCKET_SUPPORT)
 unixPathMax :: Int
 unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
-#endif
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
@@ -1149,7 +1137,6 @@ unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
 
 -- | Write the given 'SockAddr' to the given memory location.
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
-#if defined(DOMAIN_SOCKET_SUPPORT)
 pokeSockAddr p sa@(SockAddrUnix path) = do
     when (length path > unixPathMax) $ error
       $ "pokeSockAddr: path is too long in SockAddrUnix " <> show path
@@ -1162,9 +1149,6 @@ pokeSockAddr p sa@(SockAddrUnix path) = do
     let pathC = map castCharToCChar path
     -- the buffer is already filled with nulls.
     pokeArray ((#ptr struct sockaddr_un, sun_path) p) pathC
-#else
-pokeSockAddr _ SockAddrUnix{} = error "pokeSockAddr: not supported"
-#endif
 pokeSockAddr p (SockAddrInet port addr) = do
     zeroMemory p (#const sizeof(struct sockaddr_in))
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
@@ -1189,11 +1173,9 @@ peekSockAddr :: Ptr SockAddr -> IO SockAddr
 peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
   case family :: CSaFamily of
-#if defined(DOMAIN_SOCKET_SUPPORT)
     (#const AF_UNIX) -> do
         str <- peekCAString ((#ptr struct sockaddr_un, sun_path) p)
         return (SockAddrUnix str)
-#endif
     (#const AF_INET) -> do
         addr <- (#peek struct sockaddr_in, sin_addr) p
         port <- (#peek struct sockaddr_in, sin_port) p
