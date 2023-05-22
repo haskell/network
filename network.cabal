@@ -122,8 +122,8 @@ library
 
     default-language: Haskell2010
     include-dirs:     include
-    includes:         HsNet.h HsNetDef.h alignment.h win32defs.h
-    install-includes: HsNet.h HsNetDef.h alignment.h win32defs.h
+    includes:         HsNet.h HsNetDef.h alignment.h win32defs.h afunix_compat.h
+    install-includes: HsNet.h HsNetDef.h alignment.h win32defs.h afunix_compat.h
     ghc-options:      -Wall -fwarn-tabs
     build-depends:
         base >=4.9 && <5,
