@@ -38,6 +38,8 @@ import Network.Socket.Internal
 import Network.Socket.Types
 import Network.Socket.ReadShow
 
+#include <sys/time.h>
+
 ----------------------------------------------------------------
 -- Socket Properties
 
@@ -386,6 +388,8 @@ setSocketOption s so@Linger v = do
     let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
     setSockOpt s so arg
 #endif
+setSocketOption s so@RecvTimeOut v = setSockOpt s so $ SocketTimeout $ fromIntegral v
+setSocketOption s so@SendTimeOut v = setSockOpt s so $ SocketTimeout $ fromIntegral v
 setSocketOption s sa v = setSockOpt s sa (fromIntegral v :: CInt)
 
 -- | Set a socket option.
@@ -412,6 +416,12 @@ getSocketOption s so@Linger = do
     StructLinger onoff linger <- getSockOpt s so
     return $ fromIntegral $ if onoff == 0 then 0 else linger
 #endif
+getSocketOption s so@RecvTimeOut = do
+    SocketTimeout to <- getSockOpt s so
+    return $ fromIntegral to
+getSocketOption s so@SendTimeOut = do
+    SocketTimeout to <- getSockOpt s so
+    return $ fromIntegral to
 getSocketOption s so = do
     n :: CInt <- getSockOpt s so
     return $ fromIntegral n
@@ -466,6 +476,33 @@ instance Storable StructLinger where
     poke p (StructLinger onoff linger) = do
         (#poke struct linger, l_onoff)  p onoff
         (#poke struct linger, l_linger) p linger
+#endif
+
+----------------------------------------------------------------
+
+-- | Timeout in microseconds.
+newtype SocketTimeout = SocketTimeout Word32 deriving (Eq, Ord, Show)
+
+#if defined(mingw32_HOST_OS)
+instance Storable SocketTimeout where
+    sizeOf (SocketTimeout to) = sizeOf to -- DWORD as milliseconds
+    alignment _ = 0
+    peek ptr    = do
+        to <- peek (castPtr ptr)
+        return $ SocketTimeout (to * 1000)
+    poke ptr (SocketTimeout to) = poke (castPtr ptr) (to `div` 1000)
+#else
+instance Storable SocketTimeout where
+    sizeOf _    = (#size struct timeval)
+    alignment _ = (#const offsetof(struct {char x__; struct timeval (y__); }, y__))
+    peek ptr    = do
+            sec  <- (#peek struct timeval, tv_sec)  ptr
+            usec <- (#peek struct timeval, tv_usec) ptr
+            return $ SocketTimeout (sec * 1000000 + usec)
+    poke ptr (SocketTimeout to) = do
+            let (sec, usec) = to `divMod` 1000000
+            (#poke struct timeval, tv_sec)  ptr sec
+            (#poke struct timeval, tv_usec) ptr usec
 #endif
 
 ----------------------------------------------------------------
