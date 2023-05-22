@@ -126,6 +126,8 @@ getPeerEid _ = return (0, 0)
 {-# Deprecated getPeerEid "Use getPeerCredential instead" #-}
 
 -- | Whether or not UNIX-domain sockets are available.
+--   'AF_UNIX' is supported on Windows since 3.1.3.0.
+--   So, this variable is 'True` on all platforms.
 --
 --   Since 2.7.0.0.
 isUnixDomainSocketAvailable :: Bool
@@ -139,8 +141,7 @@ instance SocketAddress NullSockAddr where
     pokeSocketAddress _ _ = return ()
 
 -- | Send a file descriptor over a UNIX-domain socket.
---   Use this function in the case where 'isUnixDomainSocketAvailable' is
---  'True'.
+--   This function does not work on Windows.
 sendFd :: Socket -> CInt -> IO ()
 sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
     let cmsg = encodeCmsg $ Fd outfd
@@ -151,8 +152,7 @@ sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
 -- | Receive a file descriptor over a UNIX-domain socket. Note that the resulting
 --   file descriptor may have to be put into non-blocking mode in order to be
 --   used safely. See 'setNonBlockIfNeeded'.
---   Use this function in the case where 'isUnixDomainSocketAvailable' is
---  'True'.
+--   This function does not work on Windows.
 recvFd :: Socket -> IO CInt
 recvFd s = allocaBytes dummyBufSize $ \buf -> do
     (NullSockAddr, _, cmsgs, _) <- recvBufMsg s [(buf,dummyBufSize)] 32 mempty
@@ -163,9 +163,8 @@ recvFd s = allocaBytes dummyBufSize $ \buf -> do
     dummyBufSize = 16
 
 -- | Build a pair of connected socket objects.
---   For portability, use this function in the case
---   where 'isUnixDomainSocketAvailable' is 'True'
---   and specify 'AF_UNIX' to the first argument.
+--   On Windows, this function emulates socketpair() using
+--   'AF_UNIX' and a temporary file will remain.
 socketPair :: Family              -- Family Name (usually AF_UNIX)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
