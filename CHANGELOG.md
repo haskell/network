@@ -1,3 +1,12 @@
+## Version 3.1.4.0
+
+* Install and use afunix_compat.h header.
+  [#556](https://github.com/haskell/network/pull/556)
+* Supporting SO_SNDTIMEO and SO_RCVTIMEO.
+  [#555](https://github.com/haskell/network/pull/555)
+* Emulating socketPair on Windows.
+  [#554](https://github.com/haskell/network/pull/554)
+
 ## Version 3.1.3.0
 
 * Supporting AF_UNIX on Windows
