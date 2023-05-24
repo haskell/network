@@ -26,6 +26,7 @@ module Network.Socket.Options (
   , getSockOpt
   , setSockOpt
   , StructLinger (..)
+  , SocketTimeout (..)
   ) where
 
 import qualified Text.Read as P
@@ -38,7 +39,9 @@ import Network.Socket.Internal
 import Network.Socket.Types
 import Network.Socket.ReadShow
 
------------------------------------------------------------------------------
+#include <sys/time.h>
+
+----------------------------------------------------------------
 -- Socket Properties
 
 -- | Socket options for use with 'setSocketOption' and 'getSocketOption'.
@@ -55,18 +58,75 @@ data SocketOption = SockOpt
 #endif
   deriving (Eq)
 
+----------------------------------------------------------------
+
+socketOptionBijection :: Bijection SocketOption String
+socketOptionBijection =
+    [ (UnsupportedSocketOption, "UnsupportedSocketOption")
+    , (Debug, "Debug")
+    , (ReuseAddr, "ReuseAddr")
+    , (SoDomain, "SoDomain")
+    , (Type, "Type")
+    , (SoProtocol, "SoProtocol")
+    , (SoError, "SoError")
+    , (DontRoute, "DontRoute")
+    , (Broadcast, "Broadcast")
+    , (SendBuffer, "SendBuffer")
+    , (RecvBuffer, "RecvBuffer")
+    , (KeepAlive, "KeepAlive")
+    , (OOBInline, "OOBInline")
+    , (Linger, "Linger")
+    , (ReusePort, "ReusePort")
+    , (RecvLowWater, "RecvLowWater")
+    , (SendLowWater, "SendLowWater")
+    , (RecvTimeOut, "RecvTimeOut")
+    , (SendTimeOut, "SendTimeOut")
+    , (UseLoopBack, "UseLoopBack")
+    , (MaxSegment, "MaxSegment")
+    , (NoDelay, "NoDelay")
+    , (UserTimeout, "UserTimeout")
+    , (Cork, "Cork")
+    , (TimeToLive, "TimeToLive")
+    , (RecvIPv4TTL, "RecvIPv4TTL")
+    , (RecvIPv4TOS, "RecvIPv4TOS")
+    , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
+    , (IPv6Only, "IPv6Only")
+    , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
+    , (RecvIPv6TClass, "RecvIPv6TClass")
+    , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
+    ]
+
+instance Show SocketOption where
+    showsPrec = bijectiveShow socketOptionBijection def
+      where
+        defname = "SockOpt"
+        unwrap = \(CustomSockOpt nm) -> nm
+        def = defShow defname unwrap showIntInt
+
+
+instance Read SocketOption where
+    readPrec = bijectiveRead socketOptionBijection def
+      where
+        defname = "SockOpt"
+        def = defRead defname CustomSockOpt readIntInt
+
+----------------------------------------------------------------
+
+pattern UnsupportedSocketOption :: SocketOption
+pattern UnsupportedSocketOption = SockOpt (-1) (-1)
+
 -- | Does the 'SocketOption' exist on this system?
 isSupportedSocketOption :: SocketOption -> Bool
 isSupportedSocketOption opt = opt /= SockOpt (-1) (-1)
 
--- | Get the 'SocketType' of an active socket.
---
---   Since: 3.0.1.0
-getSocketType :: Socket -> IO SocketType
-getSocketType s = unpackSocketType <$> getSockOpt s Type
+-- | Execute the given action only when the specified socket option is
+--  supported. Any return value is ignored.
+whenSupported :: SocketOption -> IO a -> IO ()
+whenSupported s action
+  | isSupportedSocketOption s = action >> return ()
+  | otherwise                 = return ()
 
-pattern UnsupportedSocketOption :: SocketOption
-pattern UnsupportedSocketOption = SockOpt (-1) (-1)
+----------------------------------------------------------------
 
 #ifdef SOL_SOCKET
 -- | SO_ACCEPTCONN, read-only
@@ -192,14 +252,14 @@ pattern SendLowWater   = SockOpt (#const SOL_SOCKET) (#const SO_SNDLOWAT)
 #else
 pattern SendLowWater   = SockOpt (-1) (-1)
 #endif
--- | SO_RCVTIMEO: this does not work at this moment.
+-- | SO_RCVTIMEO: timeout in microseconds
 pattern RecvTimeOut :: SocketOption
 #ifdef SO_RCVTIMEO
 pattern RecvTimeOut    = SockOpt (#const SOL_SOCKET) (#const SO_RCVTIMEO)
 #else
 pattern RecvTimeOut    = SockOpt (-1) (-1)
 #endif
--- | SO_SNDTIMEO: this does not work at this moment.
+-- | SO_SNDTIMEO: timeout in microseconds
 pattern SendTimeOut :: SocketOption
 #ifdef SO_SNDTIMEO
 pattern SendTimeOut    = SockOpt (#const SOL_SOCKET) (#const SO_SNDTIMEO)
@@ -317,6 +377,79 @@ pattern CustomSockOpt xy <- ((\(SockOpt x y) -> (x, y)) -> xy)
   where
     CustomSockOpt (x, y) = SockOpt x y
 
+----------------------------------------------------------------
+
+-- | Set a socket option that expects an 'Int' value.
+setSocketOption :: Socket
+                -> SocketOption -- Option Name
+                -> Int          -- Option Value
+                -> IO ()
+#ifdef SO_LINGER
+setSocketOption s so@Linger v = do
+    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
+    setSockOpt s so arg
+#endif
+setSocketOption s so@RecvTimeOut v = setSockOpt s so $ SocketTimeout $ fromIntegral v
+setSocketOption s so@SendTimeOut v = setSockOpt s so $ SocketTimeout $ fromIntegral v
+setSocketOption s sa v = setSockOpt s sa (fromIntegral v :: CInt)
+
+-- | Set a socket option.
+setSockOpt :: Storable a
+           => Socket
+           -> SocketOption
+           -> a
+           -> IO ()
+setSockOpt s (SockOpt level opt) v = do
+    with v $ \ptr -> void $ do
+        let sz = fromIntegral $ sizeOf v
+        withFdSocket s $ \fd ->
+          throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
+          c_setsockopt fd level opt ptr sz
+
+----------------------------------------------------------------
+
+-- | Get a socket option that gives an 'Int' value.
+getSocketOption :: Socket
+                -> SocketOption  -- Option Name
+                -> IO Int        -- Option Value
+#ifdef SO_LINGER
+getSocketOption s so@Linger = do
+    StructLinger onoff linger <- getSockOpt s so
+    return $ fromIntegral $ if onoff == 0 then 0 else linger
+#endif
+getSocketOption s so@RecvTimeOut = do
+    SocketTimeout to <- getSockOpt s so
+    return $ fromIntegral to
+getSocketOption s so@SendTimeOut = do
+    SocketTimeout to <- getSockOpt s so
+    return $ fromIntegral to
+getSocketOption s so = do
+    n :: CInt <- getSockOpt s so
+    return $ fromIntegral n
+
+-- | Get a socket option.
+getSockOpt :: forall a . Storable a
+           => Socket
+           -> SocketOption -- Option Name
+           -> IO a         -- Option Value
+getSockOpt s (SockOpt level opt) = do
+    alloca $ \ptr -> do
+        let sz = fromIntegral $ sizeOf (undefined :: a)
+        withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
+            throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
+                c_getsockopt fd level opt ptr ptr_sz
+        peek ptr
+
+----------------------------------------------------------------
+
+-- | Get the 'SocketType' of an active socket.
+--
+--   Since: 3.0.1.0
+getSocketType :: Socket -> IO SocketType
+getSocketType s = unpackSocketType <$> getSockOpt s Type
+
+----------------------------------------------------------------
+
 #if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE CustomSockOpt #-}
 #endif
@@ -346,114 +479,36 @@ instance Storable StructLinger where
         (#poke struct linger, l_linger) p linger
 #endif
 
--- | Execute the given action only when the specified socket option is
---  supported. Any return value is ignored.
-whenSupported :: SocketOption -> IO a -> IO ()
-whenSupported s action
-  | isSupportedSocketOption s = action >> return ()
-  | otherwise                 = return ()
+----------------------------------------------------------------
 
--- | Set a socket option that expects an 'Int' value.
-setSocketOption :: Socket
-                -> SocketOption -- Option Name
-                -> Int          -- Option Value
-                -> IO ()
-#ifdef SO_LINGER
-setSocketOption s so@Linger v = do
-    let arg = if v == 0 then StructLinger 0 0 else StructLinger 1 (fromIntegral v)
-    setSockOpt s so arg
+-- | Timeout in microseconds.
+--   This will be converted into struct timeval on Unix and
+--   DWORD (as milliseconds) on Windows.
+newtype SocketTimeout = SocketTimeout Word32 deriving (Eq, Ord, Show)
+
+#if defined(mingw32_HOST_OS)
+instance Storable SocketTimeout where
+    sizeOf (SocketTimeout to) = sizeOf to -- DWORD as milliseconds
+    alignment _ = 0
+    peek ptr    = do
+        to <- peek (castPtr ptr)
+        return $ SocketTimeout (to * 1000)
+    poke ptr (SocketTimeout to) = poke (castPtr ptr) (to `div` 1000)
+#else
+instance Storable SocketTimeout where
+    sizeOf _    = (#size struct timeval)
+    alignment _ = (#const offsetof(struct {char x__; struct timeval (y__); }, y__))
+    peek ptr    = do
+            sec  <- (#peek struct timeval, tv_sec)  ptr
+            usec <- (#peek struct timeval, tv_usec) ptr
+            return $ SocketTimeout (sec * 1000000 + usec)
+    poke ptr (SocketTimeout to) = do
+            let (sec, usec) = to `divMod` 1000000
+            (#poke struct timeval, tv_sec)  ptr sec
+            (#poke struct timeval, tv_usec) ptr usec
 #endif
-setSocketOption s sa v = setSockOpt s sa (fromIntegral v :: CInt)
 
--- | Set a socket option.
-setSockOpt :: Storable a
-           => Socket
-           -> SocketOption
-           -> a
-           -> IO ()
-setSockOpt s (SockOpt level opt) v = do
-    with v $ \ptr -> void $ do
-        let sz = fromIntegral $ sizeOf v
-        withFdSocket s $ \fd ->
-          throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
-          c_setsockopt fd level opt ptr sz
-
--- | Get a socket option that gives an 'Int' value.
-getSocketOption :: Socket
-                -> SocketOption  -- Option Name
-                -> IO Int        -- Option Value
-#ifdef SO_LINGER
-getSocketOption s so@Linger = do
-    StructLinger onoff linger <- getSockOpt s so
-    return $ fromIntegral $ if onoff == 0 then 0 else linger
-#endif
-getSocketOption s so = do
-    n :: CInt <- getSockOpt s so
-    return $ fromIntegral n
-
--- | Get a socket option.
-getSockOpt :: forall a . Storable a
-           => Socket
-           -> SocketOption -- Option Name
-           -> IO a         -- Option Value
-getSockOpt s (SockOpt level opt) = do
-    alloca $ \ptr -> do
-        let sz = fromIntegral $ sizeOf (undefined :: a)
-        withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
-            throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
-                c_getsockopt fd level opt ptr ptr_sz
-        peek ptr
-
-
-socketOptionBijection :: Bijection SocketOption String
-socketOptionBijection =
-    [ (UnsupportedSocketOption, "UnsupportedSocketOption")
-    , (Debug, "Debug")
-    , (ReuseAddr, "ReuseAddr")
-    , (SoDomain, "SoDomain")
-    , (Type, "Type")
-    , (SoProtocol, "SoProtocol")
-    , (SoError, "SoError")
-    , (DontRoute, "DontRoute")
-    , (Broadcast, "Broadcast")
-    , (SendBuffer, "SendBuffer")
-    , (RecvBuffer, "RecvBuffer")
-    , (KeepAlive, "KeepAlive")
-    , (OOBInline, "OOBInline")
-    , (Linger, "Linger")
-    , (ReusePort, "ReusePort")
-    , (RecvLowWater, "RecvLowWater")
-    , (SendLowWater, "SendLowWater")
-    , (RecvTimeOut, "RecvTimeOut")
-    , (SendTimeOut, "SendTimeOut")
-    , (UseLoopBack, "UseLoopBack")
-    , (MaxSegment, "MaxSegment")
-    , (NoDelay, "NoDelay")
-    , (UserTimeout, "UserTimeout")
-    , (Cork, "Cork")
-    , (TimeToLive, "TimeToLive")
-    , (RecvIPv4TTL, "RecvIPv4TTL")
-    , (RecvIPv4TOS, "RecvIPv4TOS")
-    , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
-    , (IPv6Only, "IPv6Only")
-    , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
-    , (RecvIPv6TClass, "RecvIPv6TClass")
-    , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
-    ]
-
-instance Show SocketOption where
-    showsPrec = bijectiveShow socketOptionBijection def
-      where
-        defname = "SockOpt"
-        unwrap = \(CustomSockOpt nm) -> nm
-        def = defShow defname unwrap showIntInt
-
-
-instance Read SocketOption where
-    readPrec = bijectiveRead socketOptionBijection def
-      where
-        defname = "SockOpt"
-        def = defRead defname CustomSockOpt readIntInt
+----------------------------------------------------------------
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
