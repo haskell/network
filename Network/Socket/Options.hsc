@@ -488,16 +488,16 @@ newtype SocketTimeout = SocketTimeout Word32 deriving (Eq, Ord, Show)
 
 #if defined(mingw32_HOST_OS)
 instance Storable SocketTimeout where
-    sizeOf (SocketTimeout to) = sizeOf to -- DWORD as milliseconds
-    alignment _ = 0
+    sizeOf ~(SocketTimeout to) = sizeOf to -- DWORD as milliseconds
+    alignment ~_ = 0
     peek ptr    = do
         to <- peek (castPtr ptr)
         return $ SocketTimeout (to * 1000)
     poke ptr (SocketTimeout to) = poke (castPtr ptr) (to `div` 1000)
 #else
 instance Storable SocketTimeout where
-    sizeOf _    = (#size struct timeval)
-    alignment _ = (#const offsetof(struct {char x__; struct timeval (y__); }, y__))
+    sizeOf    ~_ = (#size struct timeval)
+    alignment ~_ = (#const offsetof(struct {char x__; struct timeval (y__); }, y__))
     peek ptr    = do
             sec  <- (#peek struct timeval, tv_sec)  ptr
             usec <- (#peek struct timeval, tv_usec) ptr
