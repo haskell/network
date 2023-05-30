@@ -19,14 +19,14 @@ import Network.Socket.Win32.MsgHdr
 import Network.Socket.Types
 
 data CmsgHdr = CmsgHdr {
-    cmsgHdrLen   :: !CUInt
-  , cmsgHdrLevel :: !CInt
-  , cmsgHdrType  :: !CInt
+    cmsgHdrLen   :: CUInt
+  , cmsgHdrLevel :: CInt
+  , cmsgHdrType  :: CInt
   } deriving (Eq, Show)
 
 instance Storable CmsgHdr where
-  sizeOf    _ = #{size WSACMSGHDR}
-  alignment _ = #alignment WSACMSGHDR
+  sizeOf    ~_ = #{size WSACMSGHDR}
+  alignment ~_ = #alignment WSACMSGHDR
 
   peek p = do
     len <- (#peek WSACMSGHDR, cmsg_len)   p

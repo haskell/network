@@ -104,7 +104,7 @@ import Network.Socket.ReadShow
 -----------------------------------------------------------------------------
 
 -- | Basic type for a socket.
-data Socket = Socket !(IORef CInt) !CInt {- for Show -}
+data Socket = Socket (IORef CInt) CInt {- for Show -}
 
 instance Show Socket where
     show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
@@ -982,8 +982,8 @@ foreign import CALLCONV unsafe "ntohl" ntohl :: Word32 -> Word32
 {-# DEPRECATED ntohl "Use getAddrInfo instead" #-}
 
 instance Storable PortNumber where
-   sizeOf    _ = sizeOf    (0 :: Word16)
-   alignment _ = alignment (0 :: Word16)
+   sizeOf    ~_ = sizeOf    (0 :: Word16)
+   alignment ~_ = alignment (0 :: Word16)
    poke p (PortNum po) = poke (castPtr p) (htons po)
    peek p = PortNum . ntohs <$> peek (castPtr p)
 
@@ -1007,6 +1007,7 @@ class SocketAddress sa where
 sockaddrStorageLen :: Int
 sockaddrStorageLen = 128
 
+{-# NOINLINE withSocketAddress #-}
 withSocketAddress :: SocketAddress sa => sa -> (Ptr sa -> Int -> IO a) -> IO a
 withSocketAddress addr f = do
     let sz = sizeOfSocketAddress addr
@@ -1051,13 +1052,13 @@ type ScopeID = Word32
 -- 'isSupportedSockAddr'.
 data SockAddr
   = SockAddrInet
-        !PortNumber      -- sin_port
-        !HostAddress     -- sin_addr  (ditto)
+        PortNumber      -- sin_port
+        HostAddress     -- sin_addr  (ditto)
   | SockAddrInet6
-        !PortNumber      -- sin6_port
-        !FlowInfo        -- sin6_flowinfo (ditto)
-        !HostAddress6    -- sin6_addr (ditto)
-        !ScopeID         -- sin6_scope_id (ditto)
+        PortNumber      -- sin6_port
+        FlowInfo        -- sin6_flowinfo (ditto)
+        HostAddress6    -- sin6_addr (ditto)
+        ScopeID         -- sin6_scope_id (ditto)
   -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
   | SockAddrUnix
         String           -- sun_path
@@ -1114,6 +1115,9 @@ sizeOfSockAddr SockAddrUnix{}  = #const sizeof(struct sockaddr_un)
 sizeOfSockAddr SockAddrInet{}  = #const sizeof(struct sockaddr_in)
 sizeOfSockAddr SockAddrInet6{} = #const sizeof(struct sockaddr_in6)
 
+-- The combination of "-XString" and inlining results in a bug where
+-- "sz" is always 0.
+{-# NOINLINE withSockAddr #-}
 -- | Use a 'SockAddr' with a function requiring a pointer to a
 -- 'SockAddr' and the length of that 'SockAddr'.
 withSockAddr :: SockAddr -> (Ptr SockAddr -> Int -> IO a) -> IO a
@@ -1279,8 +1283,8 @@ newtype In6Addr = In6Addr HostAddress6
 #endif
 
 instance Storable In6Addr where
-    sizeOf    _ = #const sizeof(struct in6_addr)
-    alignment _ = #alignment struct in6_addr
+    sizeOf    ~_ = #const sizeof(struct in6_addr)
+    alignment ~_ = #alignment struct in6_addr
 
     peek p = do
         a <- peek32 p 0

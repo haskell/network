@@ -175,6 +175,9 @@ library
         build-depends:
             temporary
 
+    if impl(ghc >=8)
+        default-extensions: Strict StrictData
+
 test-suite spec
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
@@ -200,3 +203,6 @@ test-suite spec
 
     if flag(devel)
         cpp-options: -DDEVELOPMENT
+
+    if impl(ghc >=8)
+        default-extensions: Strict StrictData

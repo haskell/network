@@ -27,16 +27,16 @@ type ULONG = Word32
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
-    cmsgId   :: !CmsgId
-  , cmsgData :: !ByteString
+    cmsgId   :: CmsgId
+  , cmsgData :: ByteString
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
 -- | Identifier of control message (ancillary data).
 data CmsgId = CmsgId {
-    cmsgLevel :: !CInt
-  , cmsgType  :: !CInt
+    cmsgLevel :: CInt
+  , cmsgType  :: CInt
   } deriving (Eq)
 
 -- | Unsupported identifier
@@ -160,8 +160,8 @@ instance ControlMessage IPv4PktInfo where
     controlMessageId = CmsgIdIPv4PktInfo
 
 instance Storable IPv4PktInfo where
-    sizeOf    _ = #{size IN_PKTINFO}
-    alignment _ = #alignment IN_PKTINFO
+    sizeOf    ~_ = #{size IN_PKTINFO}
+    alignment ~_ = #alignment IN_PKTINFO
     poke p (IPv4PktInfo n _ ha) = do
         (#poke IN_PKTINFO, ipi_ifindex)  p (fromIntegral n :: CInt)
         (#poke IN_PKTINFO, ipi_addr)     p ha
@@ -182,8 +182,8 @@ instance ControlMessage IPv6PktInfo where
     controlMessageId = CmsgIdIPv6PktInfo
 
 instance Storable IPv6PktInfo where
-    sizeOf    _ = #{size IN6_PKTINFO}
-    alignment _ = #alignment IN6_PKTINFO
+    sizeOf    ~_ = #{size IN6_PKTINFO}
+    alignment ~_ = #alignment IN6_PKTINFO
     poke p (IPv6PktInfo n ha6) = do
         (#poke IN6_PKTINFO, ipi6_ifindex) p (fromIntegral n :: CInt)
         (#poke IN6_PKTINFO, ipi6_addr)    p (In6Addr ha6)

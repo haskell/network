@@ -50,11 +50,11 @@ import Network.Socket.ReadShow
 -- is supported on your system: see 'isSupportedSocketOption'
 data SocketOption = SockOpt
 #if __GLASGOW_HASKELL__ >= 806
-    !CInt -- ^ Option Level
-    !CInt -- ^ Option Name
+    CInt -- ^ Option Level
+    CInt -- ^ Option Name
 #else
-    !CInt -- Option Level
-    !CInt -- Option Name
+    CInt -- Option Level
+    CInt -- Option Name
 #endif
   deriving (Eq)
 
@@ -466,8 +466,8 @@ data StructLinger = StructLinger {
   deriving (Eq, Ord, Show)
 
 instance Storable StructLinger where
-    sizeOf    _ = (#const sizeof(struct linger))
-    alignment _ = alignment (0 :: CInt)
+    sizeOf    ~_ = (#const sizeof(struct linger))
+    alignment ~_ = alignment (0 :: CInt)
 
     peek p = do
         onoff  <- (#peek struct linger, l_onoff) p

@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -294,9 +293,9 @@ withWSABuffromBS cs f = withBufSizs cs $ \bufsizs -> withWSABuf bufsizs f
 withBufSizs :: [ByteString] -> ([(Ptr Word8, Int)] -> IO a) -> IO a
 withBufSizs bss0 f = loop bss0 id
   where
-    loop []                    !build = f $ build []
-    loop (PS fptr off len:bss) !build = withForeignPtr fptr $ \ptr -> do
-        let !ptr' = ptr `plusPtr` off
+    loop []                    build = f $ build []
+    loop (PS fptr off len:bss) build = withForeignPtr fptr $ \ptr -> do
+        let ptr' = ptr `plusPtr` off
         loop bss (build . ((ptr',len) :))
 
 -- | Send data to the socket using sendmsg(2).

@@ -26,16 +26,16 @@ import qualified Text.Read as P
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
-    cmsgId   :: !CmsgId
-  , cmsgData :: !ByteString
+    cmsgId   :: CmsgId
+  , cmsgData :: ByteString
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
 -- | Identifier of control message (ancillary data).
 data CmsgId = CmsgId {
-    cmsgLevel :: !CInt
-  , cmsgType  :: !CInt
+    cmsgLevel :: CInt
+  , cmsgType  :: CInt
   } deriving (Eq)
 
 -- | Unsupported identifier
@@ -177,8 +177,8 @@ instance ControlMessage IPv4PktInfo where
 
 instance Storable IPv4PktInfo where
 #if defined (IP_PKTINFO)
-    sizeOf    _ = (#size struct in_pktinfo)
-    alignment _ = alignment (0 :: CInt)
+    sizeOf    ~_ = (#size struct in_pktinfo)
+    alignment ~_ = alignment (0 :: CInt)
     poke p (IPv4PktInfo n sa ha) = do
         (#poke struct in_pktinfo, ipi_ifindex)  p (fromIntegral n :: CInt)
         (#poke struct in_pktinfo, ipi_spec_dst) p sa
@@ -189,8 +189,8 @@ instance Storable IPv4PktInfo where
         ha <- (#peek struct in_pktinfo, ipi_addr)     p
         return $ IPv4PktInfo n sa ha
 #else
-    sizeOf    _ = 0
-    alignment _ = 1
+    sizeOf    ~_ = 0
+    alignment ~_ = 1
     poke _ _ = error "Unsupported control message type"
     peek _   = error "Unsupported control message type"
 #endif
@@ -208,8 +208,8 @@ instance ControlMessage IPv6PktInfo where
 
 instance Storable IPv6PktInfo where
 #if defined (IPV6_PKTINFO)
-    sizeOf    _ = (#size struct in6_pktinfo)
-    alignment _ = alignment (0 :: CInt)
+    sizeOf    ~_ = (#size struct in6_pktinfo)
+    alignment ~_ = alignment (0 :: CInt)
     poke p (IPv6PktInfo n ha6) = do
         (#poke struct in6_pktinfo, ipi6_ifindex) p (fromIntegral n :: CInt)
         (#poke struct in6_pktinfo, ipi6_addr)    p (In6Addr ha6)
@@ -218,8 +218,8 @@ instance Storable IPv6PktInfo where
         n :: CInt   <- (#peek struct in6_pktinfo, ipi6_ifindex) p
         return $ IPv6PktInfo (fromIntegral n) ha6
 #else
-    sizeOf    _ = 0
-    alignment _ = 1
+    sizeOf    ~_ = 0
+    alignment ~_ = 1
     poke _ _ = error "Unsupported control message type"
     peek _   = error "Unsupported control message type"
 #endif
