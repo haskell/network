@@ -175,6 +175,10 @@ library
         build-depends:
             temporary
 
+    if os(haiku)
+        extra-libraries:
+            network
+
     if impl(ghc >=8)
         default-extensions: Strict StrictData
 
