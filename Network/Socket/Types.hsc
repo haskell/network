@@ -345,35 +345,35 @@ pattern Stream              :: SocketType
 #ifdef SOCK_STREAM
 pattern Stream               = SocketType (#const SOCK_STREAM)
 #else
-pattern Stream               = (-1)
+pattern Stream               = UnsupportedSocketType
 #endif
 
 pattern Datagram            :: SocketType
 #ifdef SOCK_DGRAM
 pattern Datagram             = SocketType (#const SOCK_DGRAM)
 #else
-pattern Datagram             = (-1)
+pattern Datagram             = UnsupportedSocketType
 #endif
 
 pattern Raw                 :: SocketType
 #ifdef SOCK_RAW
 pattern Raw                  = SocketType (#const SOCK_RAW)
 #else
-pattern Raw                  = (-1)
+pattern Raw                  = UnsupportedSocketType
 #endif
 
 pattern RDM                 :: SocketType
 #ifdef SOCK_RDM
 pattern RDM                  = SocketType (#const SOCK_RDM)
 #else
-pattern RDM                  = (-1)
+pattern RDM                  = UnsupportedSocketType
 #endif
 
 pattern SeqPacket           :: SocketType
 #ifdef SOCK_SEQPACKET
 pattern SeqPacket            = SocketType (#const SOCK_SEQPACKET)
 #else
-pattern SeqPacket            = (-1)
+pattern SeqPacket            = UnsupportedSocketType
 #endif
 
 ------------------------------------------------------------------------
