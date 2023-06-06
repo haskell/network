@@ -176,6 +176,9 @@ library
             temporary
 
     if os(haiku)
+        c-sources:
+            cbits/swap.c
+
         extra-libraries:
             network
 
