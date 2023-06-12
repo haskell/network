@@ -14,6 +14,7 @@
 module Network.Socket.Types (
     -- * Socket type
       Socket
+    , CSocket
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
@@ -103,8 +104,14 @@ import Network.Socket.ReadShow
 
 -----------------------------------------------------------------------------
 
+#if defined(mingw32_HOST_OS)
+type CSocket = SOCKET
+#else
+type CSocket = CInt
+#endif
+
 -- | Basic type for a socket.
-data Socket = Socket (IORef CInt) CInt {- for Show -}
+data Socket = Socket (IORef CSocket) CSocket {- for Show -}
 
 instance Show Socket where
     show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
@@ -114,7 +121,7 @@ instance Eq Socket where
 
 {-# DEPRECATED fdSocket "Use withFdSocket or unsafeFdSocket instead" #-}
 -- | Currently, this is an alias of `unsafeFdSocket`.
-fdSocket :: Socket -> IO CInt
+fdSocket :: Socket -> IO CSocket
 fdSocket = unsafeFdSocket
 
 -- | Getting a file descriptor from a socket.
@@ -139,7 +146,7 @@ fdSocket = unsafeFdSocket
 --   'touchSocket' can be used for this purpose.
 --
 --   A safer option is to use 'withFdSocket' instead.
-unsafeFdSocket :: Socket -> IO CInt
+unsafeFdSocket :: Socket -> IO CSocket
 unsafeFdSocket (Socket ref _) = readIORef ref
 
 -- | Ensure that the given 'Socket' stays alive (i.e. not garbage-collected)
@@ -171,7 +178,7 @@ touch (IORef (STRef mutVar)) =
 -- descriptor.
 --
 -- Since: 3.1.0.0
-withFdSocket :: Socket -> (CInt -> IO r) -> IO r
+withFdSocket :: Socket -> (CSocket -> IO r) -> IO r
 withFdSocket (Socket ref _) f = do
   fd <- readIORef ref
   -- Should we throw an exception if the socket is already invalid?
@@ -187,7 +194,7 @@ withFdSocket (Socket ref _) f = do
 --   of unexpectedly being closed if the socket is finalized. It is
 --   now the caller's responsibility to ultimately close the
 --   duplicated file descriptor.
-socketToFd :: Socket -> IO CInt
+socketToFd :: Socket -> IO CSocket
 socketToFd s = do
 #if defined(mingw32_HOST_OS)
     fd <- unsafeFdSocket s
@@ -197,7 +204,7 @@ socketToFd s = do
     return fd2
 
 foreign import ccall unsafe "wsaDuplicate"
-   c_wsaDuplicate :: CInt -> IO CInt
+   c_wsaDuplicate :: CSocket -> IO CSocket
 #else
     fd <- unsafeFdSocket s
     -- FIXME: throw error no if -1
@@ -206,18 +213,18 @@ foreign import ccall unsafe "wsaDuplicate"
     return fd2
 
 foreign import ccall unsafe "dup"
-   c_dup :: CInt -> IO CInt
+   c_dup :: CSocket -> IO CSocket
 #endif
 
 -- | Creating a socket from a file descriptor.
-mkSocket :: CInt -> IO Socket
+mkSocket :: CSocket -> IO Socket
 mkSocket fd = do
     ref <- newIORef fd
     let s = Socket ref fd
     void $ mkWeakIORef ref $ close s
     return s
 
-invalidSocket :: CInt
+invalidSocket :: CSocket
 #if defined(mingw32_HOST_OS)
 invalidSocket = #const INVALID_SOCKET
 #else
@@ -226,8 +233,8 @@ invalidSocket = -1
 
 invalidateSocket ::
       Socket
-   -> (CInt -> IO a)
-   -> (CInt -> IO a)
+   -> (CSocket -> IO a)
+   -> (CSocket -> IO a)
    -> IO a
 invalidateSocket (Socket ref _) errorAction normalAction = do
     oldfd <- atomicModifyIORef' ref $ \cur -> (invalidSocket, cur)
@@ -246,7 +253,7 @@ close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
     closeFdWith closeFd (toFd oldfd)
   where
-    toFd :: CInt -> Fd
+    toFd :: CSocket -> Fd
     toFd = fromIntegral
     -- closeFd ignores the return value of c_close and
     -- does not throw exceptions
@@ -260,7 +267,7 @@ close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     -- closeFdWith avoids the deadlock of IO manager.
     closeFdWith closeFd (toFd oldfd)
   where
-    toFd :: CInt -> Fd
+    toFd :: CSocket -> Fd
     toFd = fromIntegral
     closeFd :: Fd -> IO ()
     closeFd fd = do
@@ -269,10 +276,10 @@ close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
-  c_close :: CInt -> IO CInt
+  c_close :: CSocket -> IO CInt
 #else
 foreign import ccall unsafe "close"
-  c_close :: CInt -> IO CInt
+  c_close :: CSocket -> IO CInt
 #endif
 
 -----------------------------------------------------------------------------

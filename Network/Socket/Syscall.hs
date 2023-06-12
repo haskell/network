@@ -139,7 +139,7 @@ connect :: SocketAddress sa => Socket -> sa -> IO ()
 connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
     connectLoop s p_sa (fromIntegral sz)
 
-connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
+connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CSocket -> IO ()
 connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
   where
     errLoc = "Network.Socket.connect: " ++ show s
@@ -223,31 +223,31 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
 #endif
 
 foreign import CALLCONV unsafe "socket"
-  c_socket :: CInt -> CInt -> CInt -> IO CInt
+  c_socket :: CInt -> CInt -> CInt -> IO CSocket
 foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+  c_bind :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+  c_connect :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
+  c_listen :: CSocket -> CInt -> IO CInt
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+  c_accept4 :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CSocket
 #else
 foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CSocket
 #endif
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept_safe :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CSocket
 foreign import ccall unsafe "rtsSupportsBoundThreads"
   threaded :: Bool
 foreign import ccall unsafe "HsNet.h acceptNewSock"
-  c_acceptNewSock :: Ptr () -> IO CInt
+  c_acceptNewSock :: Ptr () -> IO CSocket
 foreign import ccall unsafe "HsNet.h newAcceptParams"
-  c_newAcceptParams :: CInt -> CInt -> Ptr a -> IO (Ptr ())
+  c_newAcceptParams :: CSocket -> CInt -> Ptr a -> IO (Ptr ())
 foreign import ccall unsafe "HsNet.h &acceptDoProc"
   c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
 foreign import ccall unsafe "free"
