@@ -105,7 +105,7 @@ import Network.Socket.ReadShow
 -----------------------------------------------------------------------------
 
 #if defined(mingw32_HOST_OS)
-type CSocket = SOCKET
+type CSocket = CULong
 #else
 type CSocket = CInt
 #endif

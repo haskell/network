@@ -139,7 +139,7 @@ connect :: SocketAddress sa => Socket -> sa -> IO ()
 connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
     connectLoop s p_sa (fromIntegral sz)
 
-connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CSocket -> IO ()
+connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
 connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
   where
     errLoc = "Network.Socket.connect: " ++ show s

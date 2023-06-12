@@ -511,6 +511,6 @@ instance Storable SocketTimeout where
 ----------------------------------------------------------------
 
 foreign import CALLCONV unsafe "getsockopt"
-  c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
+  c_getsockopt :: CSocket -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "setsockopt"
-  c_setsockopt :: CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
+  c_setsockopt :: CSocket -> CInt -> CInt -> Ptr a -> CInt -> IO CInt

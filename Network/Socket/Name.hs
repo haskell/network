@@ -35,9 +35,9 @@ getSocketName s =
      peekSocketAddress ptr
 
 foreign import CALLCONV unsafe "getpeername"
-  c_getpeername :: CInt -> Ptr sa -> Ptr CInt -> IO CInt
+  c_getpeername :: CSocket -> Ptr sa -> Ptr CInt -> IO CInt
 foreign import CALLCONV unsafe "getsockname"
-  c_getsockname :: CInt -> Ptr sa -> Ptr CInt -> IO CInt
+  c_getsockname :: CSocket -> Ptr sa -> Ptr CInt -> IO CInt
 
 -- ---------------------------------------------------------------------------
 -- socketPort
