@@ -24,6 +24,7 @@ module Network.Socket.ByteString.IO
     -- $vectored
     , sendMany
     , sendManyTo
+    , sendManyWithFds
 
     -- * Receive data from a socket
     , recv
@@ -53,6 +54,7 @@ import Data.ByteString.Internal (create, ByteString(..))
 import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Marshal.Utils (with)
 import Network.Socket.Internal
+import System.Posix.Types (Fd(..))
 
 import Network.Socket.Flag
 
@@ -216,6 +218,21 @@ sendManyTo s cs addr = do
                           c_sendmsg fd msgHdrPtr 0 send_ptr nullPtr nullPtr
                   peek send_ptr
 #endif
+
+-- | Send data and file descriptors over a UNIX-domain socket in
+--   a single system call. This function does not work on Windows.
+sendManyWithFds :: Socket       -- ^ Socket
+                -> [ByteString] -- ^ Data to send
+                -> [Fd]         -- ^ File descriptors
+                -> IO ()
+sendManyWithFds s bss fds =
+    void $
+        withBufSizs bss $ \bufsizs ->
+            sendBufMsg s addr bufsizs cmsgs flags
+  where
+    addr = NullSockAddr
+    cmsgs = encodeCmsg <$> fds
+    flags = mempty
 
 -- ----------------------------------------------------------------------------
 -- Receiving

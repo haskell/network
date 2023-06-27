@@ -48,6 +48,9 @@ module Network.Socket.Internal
     -- * Initialization
     , withSocketsDo
 
+    -- * Null socket address type
+    , NullSockAddr (..)
+
     -- * Low-level helpers
     , zeroMemory
     ) where

@@ -1,3 +1,10 @@
+## Version 3.1.5.0
+
+* [#541](https://github.com/haskell/network/issues/541)
+  * Export `Network.Socket.Internal.NullSockAddr`
+  * Add `Network.Socket.ByteString.sendManyWithFds`
+  * Add `Network.Socket.ByteString.Lazy.sendWithFds`
+
 ## Version 3.1.4.0
 
 * Install and use afunix_compat.h header.
