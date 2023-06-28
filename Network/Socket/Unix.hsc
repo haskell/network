@@ -133,13 +133,6 @@ getPeerEid _ = return (0, 0)
 isUnixDomainSocketAvailable :: Bool
 isUnixDomainSocketAvailable = True
 
-data NullSockAddr = NullSockAddr
-
-instance SocketAddress NullSockAddr where
-    sizeOfSocketAddress _ = 0
-    peekSocketAddress _   = return NullSockAddr
-    pokeSocketAddress _ _ = return ()
-
 -- | Send a file descriptor over a UNIX-domain socket.
 --   This function does not work on Windows.
 sendFd :: Socket -> CInt -> IO ()

@@ -67,6 +67,9 @@ module Network.Socket.Types (
     , pokeSockAddr
     , withSockAddr
 
+    -- * Null socket address type
+    , NullSockAddr(..)
+
     -- * Unsorted
     , ProtocolNumber
     , defaultProtocol
@@ -1020,6 +1023,17 @@ withNewSocketAddress :: SocketAddress sa => (Ptr sa -> Int -> IO a) -> IO a
 withNewSocketAddress f = allocaBytes sockaddrStorageLen $ \ptr -> do
     zeroMemory ptr $ fromIntegral sockaddrStorageLen
     f ptr sockaddrStorageLen
+
+------------------------------------------------------------------------
+
+-- | A null 'SocketAddress' for situations where a socket address
+--   parameter is optional.
+data NullSockAddr = NullSockAddr
+
+instance SocketAddress NullSockAddr where
+    sizeOfSocketAddress _ = 0
+    peekSocketAddress _   = return NullSockAddr
+    pokeSocketAddress _ _ = return ()
 
 ------------------------------------------------------------------------
 -- Socket addresses

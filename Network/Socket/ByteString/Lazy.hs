@@ -23,6 +23,7 @@ module Network.Socket.ByteString.Lazy (
     -- * Send data to a socket
     send
   , sendAll
+  , sendWithFds
     -- * Receive data from a socket
   , getContents
   , recv
@@ -33,6 +34,7 @@ import           Network.Socket                (ShutdownCmd (..), shutdown)
 import           Prelude                       hiding (getContents)
 import           System.IO.Unsafe              (unsafeInterleaveIO)
 import           System.IO.Error               (catchIOError)
+import           System.Posix.Types            (Fd(..))
 
 #if defined(mingw32_HOST_OS)
 import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
@@ -41,9 +43,18 @@ import Network.Socket.ByteString.Lazy.Posix    (send, sendAll)
 #endif
 
 import qualified Data.ByteString               as S
+import qualified Data.ByteString.Lazy          as L
 import qualified Network.Socket.ByteString     as N
 import           Network.Socket.Imports
 import           Network.Socket.Types
+
+-- | Send data and file descriptors over a UNIX-domain socket in
+--   a single system call. This function does not work on Windows.
+sendWithFds :: Socket     -- ^ Socket
+            -> ByteString -- ^ Data to send
+            -> [Fd]       -- ^ File descriptors
+            -> IO ()
+sendWithFds s lbs fds = N.sendManyWithFds s (L.toChunks lbs) fds
 
 -- -----------------------------------------------------------------------------
 -- Receiving

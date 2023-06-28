@@ -29,6 +29,7 @@ module Network.Socket.ByteString
     -- $vectored
     , sendMany
     , sendManyTo
+    , sendManyWithFds
 
     -- * Receive data from a socket
     , recv
