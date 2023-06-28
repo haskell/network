@@ -252,14 +252,16 @@ pattern SendLowWater   = SockOpt (#const SOL_SOCKET) (#const SO_SNDLOWAT)
 #else
 pattern SendLowWater   = SockOpt (-1) (-1)
 #endif
--- | SO_RCVTIMEO: timeout in microseconds
+-- | SO_RCVTIMEO: timeout in microseconds. This option is not useful
+-- in the normal case where sockets are non-blocking.
 pattern RecvTimeOut :: SocketOption
 #ifdef SO_RCVTIMEO
 pattern RecvTimeOut    = SockOpt (#const SOL_SOCKET) (#const SO_RCVTIMEO)
 #else
 pattern RecvTimeOut    = SockOpt (-1) (-1)
 #endif
--- | SO_SNDTIMEO: timeout in microseconds
+-- | SO_SNDTIMEO: timeout in microseconds. This option is not useful
+-- in the normal case where sockets are non-blocking.
 pattern SendTimeOut :: SocketOption
 #ifdef SO_SNDTIMEO
 pattern SendTimeOut    = SockOpt (#const SOL_SOCKET) (#const SO_SNDTIMEO)
