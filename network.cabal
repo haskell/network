@@ -6,9 +6,9 @@ license-file:       LICENSE
 maintainer:         Kazu Yamamoto, Evan Borden
 
 tested-with:
-    GHC == 9.6.1
-    GHC == 9.4.4
-    GHC == 9.2.7
+    GHC == 9.6.2
+    GHC == 9.4.5
+    GHC == 9.2.8
     GHC == 9.0.2
     GHC == 8.10.7
     GHC == 8.8.4
@@ -131,7 +131,7 @@ library
     ghc-options:      -Wall -fwarn-tabs
     build-depends:
         base >=4.9 && <5,
-        bytestring >=0.10 && <0.12,
+        bytestring >=0.10 && <0.13,
         deepseq,
         directory
 

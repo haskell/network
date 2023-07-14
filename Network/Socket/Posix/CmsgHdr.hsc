@@ -11,8 +11,9 @@ module Network.Socket.Posix.CmsgHdr (
 #include <sys/types.h>
 #include <sys/socket.h>
 
-import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.ForeignPtr
+import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Marshal.Utils (copyBytes)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal
 
@@ -69,7 +70,7 @@ toCmsgHdr (Cmsg (CmsgId lvl typ) (PS fptr off len)) ctrlPtr = do
     withForeignPtr fptr $ \src0 -> do
         let src = src0 `plusPtr` off
         dst <- c_cmsg_data ctrlPtr
-        memcpy dst src len
+        copyBytes dst src len
 
 parseCmsgs :: SocketAddress sa => Ptr (MsgHdr sa) -> IO [Cmsg]
 parseCmsgs msgptr = do
@@ -88,7 +89,7 @@ fromCmsgHdr ptr = do
     CmsgHdr len lvl typ <- peek ptr
     src <- c_cmsg_data ptr
     let siz = fromIntegral len - (src `minusPtr` ptr)
-    Cmsg (CmsgId lvl typ) <$> create (fromIntegral siz) (\dst -> memcpy dst src siz)
+    Cmsg (CmsgId lvl typ) <$> create (fromIntegral siz) (\dst -> copyBytes dst src siz)
 
 foreign import ccall unsafe "cmsg_firsthdr"
   c_cmsg_firsthdr :: Ptr (MsgHdr sa) -> IO (Ptr CmsgHdr)
