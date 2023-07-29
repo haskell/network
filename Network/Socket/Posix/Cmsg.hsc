@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -15,6 +16,7 @@ module Network.Socket.Posix.Cmsg where
 
 import Data.ByteString.Internal
 import Foreign.ForeignPtr
+import Foreign.Marshal.Array (peekArray, pokeArray)
 import System.IO.Unsafe (unsafeDupablePerformIO)
 import System.Posix.Types (Fd(..))
 
@@ -82,9 +84,9 @@ pattern CmsgIdIPv6PktInfo = CmsgId (#const IPPROTO_IPV6) (#const IPV6_PKTINFO)
 pattern CmsgIdIPv6PktInfo = CmsgId (-1) (-1)
 #endif
 
--- | The identifier for 'Fd'.
-pattern CmsgIdFd :: CmsgId
-pattern CmsgIdFd = CmsgId (#const SOL_SOCKET) (#const SCM_RIGHTS)
+-- | The identifier for 'Fds'.
+pattern CmsgIdFds :: CmsgId
+pattern CmsgIdFds = CmsgId (#const SOL_SOCKET) (#const SCM_RIGHTS)
 
 ----------------------------------------------------------------
 
@@ -102,13 +104,15 @@ filterCmsg cid cmsgs = filter (\cmsg -> cmsgId cmsg == cid) cmsgs
 ----------------------------------------------------------------
 
 -- | Control message type class.
---   Each control message type has a numeric 'CmsgId' and a 'Storable'
---   data representation.
-class Storable a => ControlMessage a where
+--   Each control message type has a numeric 'CmsgId' and encode
+--   and decode functions.
+class ControlMessage a where
     controlMessageId :: CmsgId
+    encodeCmsg :: a -> Cmsg
+    decodeCmsg :: Cmsg -> Maybe a
 
-encodeCmsg :: forall a . ControlMessage a => a -> Cmsg
-encodeCmsg x = unsafeDupablePerformIO $ do
+encodeStorableCmsg :: forall a . (ControlMessage a, Storable a) => a -> Cmsg
+encodeStorableCmsg x = unsafeDupablePerformIO $ do
     bs <- create siz $ \p0 -> do
         let p = castPtr p0
         poke p x
@@ -117,8 +121,8 @@ encodeCmsg x = unsafeDupablePerformIO $ do
   where
     siz = sizeOf x
 
-decodeCmsg :: forall a . (ControlMessage a, Storable a) => Cmsg -> Maybe a
-decodeCmsg (Cmsg cmsid (PS fptr off len))
+decodeStorableCmsg :: forall a . (ControlMessage a, Storable a) => Cmsg -> Maybe a
+decodeStorableCmsg (Cmsg cmsid (PS fptr off len))
   | cid /= cmsid = Nothing
   | len < siz    = Nothing
   | otherwise    = unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
@@ -139,6 +143,8 @@ newtype IPv4TTL = IPv4TTL CInt deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv4TTL where
     controlMessageId = CmsgIdIPv4TTL
+    encodeCmsg = encodeStorableCmsg
+    decodeCmsg = decodeStorableCmsg
 
 ----------------------------------------------------------------
 
@@ -147,6 +153,8 @@ newtype IPv6HopLimit = IPv6HopLimit CInt deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv6HopLimit where
     controlMessageId = CmsgIdIPv6HopLimit
+    encodeCmsg = encodeStorableCmsg
+    decodeCmsg = decodeStorableCmsg
 
 ----------------------------------------------------------------
 
@@ -155,6 +163,8 @@ newtype IPv4TOS = IPv4TOS CChar deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv4TOS where
     controlMessageId = CmsgIdIPv4TOS
+    encodeCmsg = encodeStorableCmsg
+    decodeCmsg = decodeStorableCmsg
 
 ----------------------------------------------------------------
 
@@ -163,6 +173,8 @@ newtype IPv6TClass = IPv6TClass CInt deriving (Eq, Show, Storable)
 
 instance ControlMessage IPv6TClass where
     controlMessageId = CmsgIdIPv6TClass
+    encodeCmsg = encodeStorableCmsg
+    decodeCmsg = decodeStorableCmsg
 
 ----------------------------------------------------------------
 
@@ -174,6 +186,8 @@ instance Show IPv4PktInfo where
 
 instance ControlMessage IPv4PktInfo where
     controlMessageId = CmsgIdIPv4PktInfo
+    encodeCmsg = encodeStorableCmsg
+    decodeCmsg = decodeStorableCmsg
 
 instance Storable IPv4PktInfo where
 #if defined (IP_PKTINFO)
@@ -205,6 +219,8 @@ instance Show IPv6PktInfo where
 
 instance ControlMessage IPv6PktInfo where
     controlMessageId = CmsgIdIPv6PktInfo
+    encodeCmsg = encodeStorableCmsg
+    decodeCmsg = decodeStorableCmsg
 
 instance Storable IPv6PktInfo where
 #if defined (IPV6_PKTINFO)
@@ -226,8 +242,26 @@ instance Storable IPv6PktInfo where
 
 ----------------------------------------------------------------
 
-instance ControlMessage Fd where
-    controlMessageId = CmsgIdFd
+instance ControlMessage [Fd] where
+    controlMessageId = CmsgIdFds
+
+    encodeCmsg fds = unsafeDupablePerformIO $ do
+        bs <- create siz $ \p0 -> do
+            let p = castPtr p0
+            pokeArray p fds
+        return $ Cmsg CmsgIdFds bs
+        where
+            siz = sizeOf (undefined :: Fd) * length fds
+
+    decodeCmsg (Cmsg cmsid (PS fptr off len))
+        | cmsid /= CmsgIdFds = Nothing
+        | otherwise          =
+            unsafeDupablePerformIO $ withForeignPtr fptr $ \p0 -> do
+                let p = castPtr (p0 `plusPtr` off)
+                    numFds = len `div` sizeOfFd
+                Just <$> peekArray numFds p
+        where
+            sizeOfFd = sizeOf (undefined :: Fd)
 
 cmsgIdBijection :: Bijection CmsgId String
 cmsgIdBijection =
@@ -238,7 +272,7 @@ cmsgIdBijection =
     , (CmsgIdIPv6TClass, "CmsgIdIPv6TClass")
     , (CmsgIdIPv4PktInfo, "CmsgIdIPv4PktInfo")
     , (CmsgIdIPv6PktInfo, "CmsgIdIPv6PktInfo")
-    , (CmsgIdFd, "CmsgIdFd")
+    , (CmsgIdFds, "CmsgIdFds")
     ]
 
 instance Show CmsgId where

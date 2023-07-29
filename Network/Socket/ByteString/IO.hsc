@@ -231,7 +231,7 @@ sendManyWithFds s bss fds =
             sendBufMsg s addr bufsizs cmsgs flags
   where
     addr = NullSockAddr
-    cmsgs = encodeCmsg <$> fds
+    cmsgs = encodeCmsg . (:[]) <$> fds
     flags = mempty
 
 -- ----------------------------------------------------------------------------
