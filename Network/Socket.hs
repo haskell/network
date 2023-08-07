@@ -245,13 +245,11 @@ module Network.Socket
             ,CmsgIdIPv6TClass
             ,CmsgIdIPv4PktInfo
             ,CmsgIdIPv6PktInfo
-            ,CmsgIdFd
+            ,CmsgIdFds
             ,UnsupportedCmsgId)
     -- ** APIs for control message
     , lookupCmsg
     , filterCmsg
-    , decodeCmsg
-    , encodeCmsg
     -- ** Class and types for control message
     , ControlMessage(..)
     , IPv4TTL(..)

@@ -137,7 +137,7 @@ isUnixDomainSocketAvailable = True
 --   This function does not work on Windows.
 sendFd :: Socket -> CInt -> IO ()
 sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
-    let cmsg = encodeCmsg $ Fd outfd
+    let cmsg = encodeCmsg [Fd outfd]
     sendBufMsg s NullSockAddr [(buf,dummyBufSize)] [cmsg] mempty
   where
     dummyBufSize = 1
@@ -149,9 +149,9 @@ sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
 recvFd :: Socket -> IO CInt
 recvFd s = allocaBytes dummyBufSize $ \buf -> do
     (NullSockAddr, _, cmsgs, _) <- recvBufMsg s [(buf,dummyBufSize)] 32 mempty
-    case (lookupCmsg CmsgIdFd cmsgs >>= decodeCmsg) :: Maybe Fd of
-      Nothing      -> return (-1)
-      Just (Fd fd) -> return fd
+    case (lookupCmsg CmsgIdFds cmsgs >>= decodeCmsg) :: Maybe [Fd] of
+      Just (Fd fd : _) -> return fd
+      _                -> return (-1)
   where
     dummyBufSize = 16
 

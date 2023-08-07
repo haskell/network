@@ -14,6 +14,7 @@ import Network.Test.Common
 import System.Mem (performGC)
 import System.IO.Error (tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
+import System.Posix.Types (Fd(..))
 import Foreign.C.Types ()
 
 import Test.Hspec
@@ -378,6 +379,10 @@ spec = do
             let msgid = CmsgId (-300) (-300) in
             show msgid `shouldBe` "CmsgId (-300) (-300)"
 
+    describe "bijective encodeCmsg-decodeCmsg roundtrip equality" $ do
+        it "holds for [Fd]" $ forAll genFds $
+            \x -> (decodeCmsg . encodeCmsg $ x) == Just (x :: [Fd])
+
     describe "bijective read-show roundtrip equality" $ do
         it "holds for Family" $ forAll familyGen $
             \x -> (read . show $ x) == (x :: Family)
@@ -414,6 +419,9 @@ sockoptGen = biasedGen (\g -> SockOpt <$> g <*> g) sockoptPatterns arbitrary
 
 cmsgidGen :: Gen CmsgId
 cmsgidGen = biasedGen (\g -> CmsgId <$> g <*> g) cmsgidPatterns arbitrary
+
+genFds :: Gen [Fd]
+genFds = listOf (Fd <$> arbitrary)
 
 -- pruned lists of pattern synonym values for each type to generate values from
 
@@ -462,5 +470,5 @@ cmsgidPatterns = nub
     , CmsgIdIPv6TClass
     , CmsgIdIPv4PktInfo
     , CmsgIdIPv6PktInfo
-    , CmsgIdFd
+    , CmsgIdFds
     ]
