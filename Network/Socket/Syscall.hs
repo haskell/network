@@ -191,7 +191,7 @@ listen s backlog = withFdSocket s $ \fd -> do
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
- new_sock <- callAccept listing_fd new_sa sz >>= mkSocket
+ new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close mkSocket
  new_addr <- peekSocketAddress new_sa
  return (new_sock, new_addr)
   where
