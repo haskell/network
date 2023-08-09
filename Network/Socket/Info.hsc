@@ -7,24 +7,18 @@
 
 module Network.Socket.Info where
 
+import Control.Exception (try, IOException)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
 import System.IO.Error (ioeSetErrorString, mkIOError)
+import System.IO.Unsafe (unsafePerformIO)
+import Text.Read (readEither)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
-import Network.Socket.Syscall
+import Network.Socket.Syscall (socket)
 import Network.Socket.Types
-
------------------------------------------------------------------------------
-
--- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
--- address string consisting of a dotted decimal IPv4 address or an
--- IPv6 address e.g., @\"192.168.0.1\"@.
-type HostName       = String
--- | Either a service name e.g., @\"http\"@ or a numeric port number.
-type ServiceName    = String
 
 -----------------------------------------------------------------------------
 -- Address and service lookups
@@ -463,10 +457,74 @@ showHostAddress6 ha6@(a1, a2, a3, a4)
         scanl (\c i -> if i == 0 then c - 1 else 0) 0 fields `zip` [0..]
 
 -----------------------------------------------------------------------------
-
 -- | A utility function to open a socket with `AddrInfo`.
 -- This is a just wrapper for the following code:
 --
 -- > \addr -> socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 openSocket :: AddrInfo -> IO Socket
 openSocket addr = socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+
+-----------------------------------------------------------------------------
+-- SockEndpoint
+
+-- | Read a string representing a socket endpoint.
+readSockEndpoint :: PortNumber -> String -> Either String SockEndpoint
+readSockEndpoint defPort hostport = case hostport of
+  '/':_ -> Right $ EndpointByAddr $ SockAddrUnix hostport
+  '[':tl -> case span ((/=) ']') tl of
+    (_, []) -> Left $ "unterminated IPv6 address: " <> hostport
+    (ipv6, _:port) -> case readAddr ipv6 of
+      Nothing -> Left $ "invalid IPv6 address: " <> ipv6
+      Just addr -> EndpointByAddr . sockAddrPort addr <$> readPort port
+  _ -> case span ((/=) ':') hostport of
+    (host, port) -> case readAddr host of
+      Nothing -> EndpointByName host <$> readPort port
+      Just addr -> EndpointByAddr . sockAddrPort addr <$> readPort port
+ where
+  readPort "" = Right defPort
+  readPort ":" = Right defPort
+  readPort (':':port) = case readEither port of
+    Right p -> Right p
+    Left _ -> Left $ "bad port: " <> port
+  readPort x = Left $ "bad port: " <> x
+  hints = Just $ defaultHints { addrFlags = [AI_NUMERICHOST] }
+  readAddr host = case unsafePerformIO (try (getAddrInfo hints (Just host) Nothing)) of
+    Left e -> Nothing where _ = e :: IOException
+    Right r -> Just (addrAddress (head r))
+  sockAddrPort h p = case h of
+    SockAddrInet _ a -> SockAddrInet p a
+    SockAddrInet6 _ f a s -> SockAddrInet6 p f a s
+    x -> x
+
+showSockEndpoint :: SockEndpoint -> String
+showSockEndpoint n = case n of
+  EndpointByName h p -> h <> ":" <> show p
+  EndpointByAddr a -> show a
+
+-- | Resolve a socket endpoint into a list of socket addresses.
+-- The result is always non-empty; Haskell throws an exception if name
+-- resolution fails.
+resolveEndpoint :: SockEndpoint -> IO [SockAddr]
+resolveEndpoint name = case name of
+  EndpointByAddr a -> return [a]
+  EndpointByName host port -> fmap addrAddress <$> getAddrInfo hints (Just host) (Just (show port))
+ where
+  hints = Just $ defaultHints { addrSocketType = Stream }
+  -- prevents duplicates, otherwise getAddrInfo returns all socket types
+
+-- | Shortcut for creating a socket from a socket endpoint.
+--
+-- >>> import Network.Socket
+-- >>> let Right sn = readSockEndpoint 0 "0.0.0.0:0"
+-- >>> (s, a) <- socketFromEndpoint sn head Stream defaultProtocol
+-- >>> bind s a
+socketFromEndpoint
+  :: SockEndpoint
+  -> ([SockAddr] -> SockAddr)
+  -> SocketType
+  -> ProtocolNumber
+  -> IO (Socket, SockAddr)
+socketFromEndpoint end select stype protocol = do
+  a <- select <$> resolveEndpoint end
+  s <- socket (sockAddrFamily a) stype protocol
+  return (s, a)

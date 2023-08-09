@@ -154,6 +154,27 @@ spec = do
             -- check if an exception is not thrown.
             isSupportedSockAddr addr `shouldBe` True
 
+        it "endpoints API, IPv4" $ do
+            let Right end = readSockEndpoint 0 "127.0.0.1:6001"
+            (sock, addr) <- socketFromEndpoint end head Stream defaultProtocol
+            bind sock addr
+            listen sock 1
+            close sock
+
+        it "endpoints API, IPv6" $ do
+            let Right end = readSockEndpoint 0 "[::1]:6001"
+            (sock, addr) <- socketFromEndpoint end head Stream defaultProtocol
+            bind sock addr
+            listen sock 1
+            close sock
+
+        it "endpoints API, DNS" $ do
+            let Right end = readSockEndpoint 0 "localhost:6001"
+            (sock, addr) <- socketFromEndpoint end head Stream defaultProtocol
+            bind sock addr
+            listen sock 1
+            close sock
+
 #if !defined(mingw32_HOST_OS)
     when isUnixDomainSocketAvailable $ do
         context "unix sockets" $ do
