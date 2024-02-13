@@ -273,9 +273,9 @@ getAddrInfo hints node service = alloc getaddrinfo
         "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
       , maybe "Nothing" show hints
       , ", host name: "
-      , show node
+      , maybe "Nothing" show node
       , ", service name: "
-      , show service
+      , maybe "Nothing" show service
       , ")"
       ]
 #if defined(darwin_HOST_OS)
