@@ -149,6 +149,7 @@ library
             Network.Socket.Win32.CmsgHdr
             Network.Socket.Win32.WSABuf
             Network.Socket.Win32.MsgHdr
+            Network.Socket.Win32.WinIO
 
         extra-libraries:
             ws2_32

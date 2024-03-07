@@ -19,6 +19,10 @@ module Network.Socket.Buffer (
 import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
 #else
 import Foreign.Ptr (nullPtr)
+#if defined(__IO_MANAGER_WINIO__)
+import GHC.Event.Windows (withOverlapped)
+import GHC.IO.SubSystem ((<!>))
+#endif
 #endif
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (with)
@@ -30,6 +34,7 @@ import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
 import Network.Socket.Win32.CmsgHdr
 import Network.Socket.Win32.MsgHdr
 import Network.Socket.Win32.WSABuf
+import Network.Socket.Win32.WinIO
 #else
 import Network.Socket.Posix.CmsgHdr
 import Network.Socket.Posix.MsgHdr
@@ -235,7 +240,8 @@ sendBufMsg s sa bufsizs cmsgs flags = do
               c_sendmsg fd msgHdrPtr cflags
 #else
               alloca $ \send_ptr ->
-                c_sendmsg fd msgHdrPtr (fromIntegral cflags) send_ptr nullPtr nullPtr
+                withAsyncSupport "Network.Socket.Buffer.sendMsg" (fromIntegral fd) 0 send_ptr $
+                  \hwnd buff ovlp -> c_sendmsg (fromIntegral hwnd) msgHdrPtr (fromIntegral cflags) buff ovlp nullPtr
 #endif
   return $ fromIntegral sz
 
