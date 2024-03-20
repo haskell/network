@@ -183,8 +183,14 @@ module Network.Socket
     , packFamily
     , unpackFamily
     -- ** Protocol number
-    , ProtocolNumber
+    , ProtocolNumber(DefaultProtocol,GeneralProtocol
+                    ,IPPROTO_IPV4,IPPROTO_IPV6
+                    ,IPPROTO_UDP,IPPROTO_TCP
+                    ,IPPROTO_ICMP,IPPROTO_ICMPV6,IPPROTO_RAW
+                    )
     , defaultProtocol
+    , packProtocol
+    , unpackProtocol
     -- * Basic socket address type
     , SockAddr(..)
     , isSupportedSockAddr

@@ -71,8 +71,14 @@ module Network.Socket.Types (
     , NullSockAddr(..)
 
     -- * Unsorted
-    , ProtocolNumber
+    , ProtocolNumber(DefaultProtocol,GeneralProtocol
+                    ,IPPROTO_IPV4,IPPROTO_IPV6
+                    ,IPPROTO_UDP,IPPROTO_TCP
+                    ,IPPROTO_ICMP,IPPROTO_ICMPV6,IPPROTO_RAW
+                    )
     , defaultProtocol
+    , packProtocol
+    , unpackProtocol
     , PortNumber
     , defaultPort
 
@@ -281,14 +287,96 @@ foreign import ccall unsafe "close"
 -----------------------------------------------------------------------------
 
 -- | Protocol number.
-type ProtocolNumber = CInt
+--
+-- Derives all defined instances for Foreign.C.Types.CInt
+-- to preserve API integrity as much as possible
+--
+-- Show and Read instances are defined explicitly to match
+-- pattern synonym names, and are specialized for IP protocol
+-- numbers. The @ProtocolNumber@ type can be used with non-IP protocol
+-- families as well, but will be displayed and parsed as if they were
+-- IP protocol numbers
+newtype ProtocolNumber = ProtocolNumber { packProtocol :: CInt }
+        deriving (Bounded, Enum, Eq, Integral, Num, Ord, Real, FiniteBits, Bits, Storable)
+
+unpackProtocol :: CInt -> ProtocolNumber
+unpackProtocol = ProtocolNumber
+{-# INLINE unpackProtocol #-}
 
 -- | This is the default protocol for a given service.
 --
 -- >>> defaultProtocol
--- 0
+-- DefaultProtocol
 defaultProtocol :: ProtocolNumber
-defaultProtocol = 0
+defaultProtocol = DefaultProtocol
+
+-- * Unlike other types, pattern synonym values for ProtocolNumbers are defined according to
+--   canonical IANA protocol number assignment table.
+--   names correspond to constant definitions from header file "netinet/in.h"
+
+-- | Universal default for any protocol family = 0
+pattern DefaultProtocol :: ProtocolNumber
+pattern DefaultProtocol = ProtocolNumber 0
+
+-- | ICMP = 1
+pattern IPPROTO_ICMP :: ProtocolNumber
+pattern IPPROTO_ICMP = ProtocolNumber 1
+
+-- | IPv4 = 4
+pattern IPPROTO_IPV4 :: ProtocolNumber
+pattern IPPROTO_IPV4 = ProtocolNumber 4
+
+-- | TCP = 6
+pattern IPPROTO_TCP :: ProtocolNumber
+pattern IPPROTO_TCP = ProtocolNumber 6
+
+-- | UDP = 17
+pattern IPPROTO_UDP :: ProtocolNumber
+pattern IPPROTO_UDP = ProtocolNumber 17
+
+-- | IPv6 = 41
+pattern IPPROTO_IPV6 :: ProtocolNumber
+pattern IPPROTO_IPV6 = ProtocolNumber 41
+
+-- | ICMP IPv6 = 58
+pattern IPPROTO_ICMPV6 :: ProtocolNumber
+pattern IPPROTO_ICMPV6 = ProtocolNumber 58
+
+-- | Raw = 255
+pattern IPPROTO_RAW :: ProtocolNumber
+pattern IPPROTO_RAW = ProtocolNumber 255
+
+
+pattern GeneralProtocol :: CInt -> ProtocolNumber
+pattern GeneralProtocol n  = ProtocolNumber n
+#if __GLASGOW_HASKELL__ >= 806
+{-# COMPLETE GeneralProtocol #-}
+#endif
+
+
+protoNumBijection :: Bijection ProtocolNumber String
+protoNumBijection =
+    [ (DefaultProtocol,"DefaultProtocol")
+    , (IPPROTO_IPV4,   "IPPROTO_IPV4")
+    , (IPPROTO_IPV6,   "IPPROTO_IPV6")
+    , (IPPROTO_UDP,    "IPPROTO_UDP")
+    , (IPPROTO_TCP,    "IPPROTO_TCP")
+    , (IPPROTO_ICMP,   "IPPROTO_ICMP")
+    , (IPPROTO_ICMPV6, "IPPROTO_ICMPV6")
+    , (IPPROTO_RAW,    "IPPROTO_RAW")
+    ]
+
+instance Show ProtocolNumber where
+    showsPrec = bijectiveShow protoNumBijection def
+      where
+        def = defShow "" packProtocol _showInt
+
+instance Read ProtocolNumber where
+    readPrec = bijectiveRead protoNumBijection def
+      where
+        def = defRead "" unpackProtocol _readInt
+
+
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -404,7 +492,7 @@ newtype Family = Family { packFamily :: CInt } deriving (Eq, Ord)
 isSupportedFamily :: Family -> Bool
 isSupportedFamily f = case f of
     UnsupportedFamily -> False
-    GeneralFamily _   -> True
+    _                 -> True
 
 -- | Convert 'CInt' to 'Family'.
 unpackFamily :: CInt -> Family
