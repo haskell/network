@@ -6,20 +6,20 @@ on:
   pull_request:
     branches: [ 'master' ]
 
-env:
-  autoconf_ver: 2.69
+# env:
+#   autoconf_ver: 2.69
 
 jobs:
   autoconf:
     runs-on: ubuntu-latest
-    container: ubuntu:22.10
+    # container: ubuntu:22.10
 
     steps:
     - uses: actions/checkout@v4
     - name: install autoconf
       run: |
-        apt-get update -y -qq
-        apt-get install -y -qq build-essential autoconf${{ env.autoconf_ver }}
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq build-essential autoconf${{ env.autoconf_ver }}
     - name: run autoreconf
       run: |
         autoreconf${{ env.autoconf_ver }} -fi
