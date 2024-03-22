@@ -67,7 +67,10 @@ jobs:
       fail-fast: false
       matrix:
         os:  [ 'ubuntu-latest', 'macOS-latest', 'windows-latest' ]
-        ghc: [ '8.0', '9.4', '9.6', '9.8' ]
+        ghc: [ '8.4', '9.4', '9.6', '9.8' ]
+        # Dependency hsc2hs does not build on Windows with GHC < 8.4
+        # so we test 8.4 as lowest.
+        # See https://github.com/haskell/hsc2hs/issues/81
 
     steps:
     - uses: actions/checkout@v4
@@ -105,6 +108,7 @@ jobs:
 
     - name: Cache (save)
       uses: actions/cache/save@v4
+      if:   always()
       with:
         path: ${{ steps.setup.outputs.cabal-store }}
         key:  ${{ steps.cache.outputs.cache-primary-key }}
