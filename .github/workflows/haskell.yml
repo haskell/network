@@ -6,24 +6,24 @@ on:
   pull_request:
     branches: [ 'master' ]
 
-env:
-  autoconf_ver: 2.69
+# env:
+#   autoconf_ver: 2.69
 
 jobs:
   autoconf:
     runs-on: ubuntu-latest
-    container: ubuntu:22.10
+    # container: ubuntu:22.10
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: install autoconf
       run: |
-        apt-get update -y -qq
-        apt-get install -y -qq build-essential autoconf${{ env.autoconf_ver }}
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq build-essential autoconf${{ env.autoconf_ver }}
     - name: run autoreconf
       run: |
         autoreconf${{ env.autoconf_ver }} -fi
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: configure
         path: |
@@ -35,12 +35,12 @@ jobs:
     needs: autoconf
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2
+    - uses: actions/checkout@v4
+    - uses: haskell-actions/setup@v2
       with:
-        cabal-version: '3.4'
+        cabal-version: 'latest'
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: configure
 
@@ -48,13 +48,13 @@ jobs:
       run: |
         cabal sdist
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: dist-tarball
         path: dist-newstyle/sdist/network-*
 
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: dist-newstyle/sdist/network-*
@@ -67,50 +67,48 @@ jobs:
       fail-fast: false
       matrix:
         os:  [ 'ubuntu-latest', 'macOS-latest', 'windows-latest' ]
-        ghc: [ '8.10', '9.0', '9.2', '9.4', '9.6' ]
+        ghc: [ '8.4', '9.4', '9.6', '9.8' ]
+        # Dependency hsc2hs does not build on Windows with GHC < 8.4
+        # so we test 8.4 as lowest.
+        # See https://github.com/haskell/hsc2hs/issues/81
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: haskell/actions/setup@v2
+    - uses: haskell-actions/setup@v2
       id: setup
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: latest
         cabal-update:  true
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: configure
-
-    - name: Haskell versions
-      shell: bash
-      run: |
-        echo "GHC_VERSION=$(ghc --numeric-version)" >> "${GITHUB_ENV}"
-        echo "CABAL_VERSION=$(cabal --numeric-version)" >> "${GITHUB_ENV}"
 
     - name: Cabal configure
       run: |
         cabal configure --enable-tests --disable-benchmarks --disable-documentation
 
     - name: Cache (restore)
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       id:   cache
       with:
         path: ${{ steps.setup.outputs.cabal-store }}
-        key: build-${{ runner.os }}-ghc-${{ env.GHC_VERSION }}-cabal-${{ env.CABAL_VERSION }}-sha-${{ github.sha }}
+        key: build-${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}-sha-${{ github.sha }}
           # Append commit SHA so that new cache is always written.
           # This is fine as long as we do not hit the total cache limit of 10GB.
         restore-keys: |
-             build-${{ runner.os }}-ghc-${{ env.GHC_VERSION }}-cabal-${{ env.CABAL_VERSION }}-
-             build-${{ runner.os }}-ghc-${{ env.GHC_VERSION }}-
+             build-${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}-
+             build-${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-
 
     - name: Install dependencies
       run: |
         cabal build --only-dependencies
 
     - name: Cache (save)
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@v4
+      if:   always()
       with:
         path: ${{ steps.setup.outputs.cabal-store }}
         key:  ${{ steps.cache.outputs.cache-primary-key }}
