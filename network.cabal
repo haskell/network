@@ -207,3 +207,6 @@ test-suite spec
 
     if impl(ghc >=8)
         default-extensions: Strict StrictData
+
+    if os(windows)
+        cpp-options: -D_WIN32
