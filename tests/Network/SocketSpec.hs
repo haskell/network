@@ -379,9 +379,11 @@ spec = do
             let msgid = CmsgId (-300) (-300) in
             show msgid `shouldBe` "CmsgId (-300) (-300)"
 
+#if !defined(_WIN32)
     describe "bijective encodeCmsg-decodeCmsg roundtrip equality" $ do
         it "holds for [Fd]" $ forAll genFds $
             \x -> (decodeCmsg . encodeCmsg $ x) == Just (x :: [Fd])
+#endif
 
     describe "bijective read-show roundtrip equality" $ do
         it "holds for Family" $ forAll familyGen $
