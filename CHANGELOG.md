@@ -1,3 +1,21 @@
+## Version 3.2.0.0
+
+* Breaking change: Using Strict and StrictData.
+* Breaking change: Allow a control message to contain multiple file descriptors
+  [#567](https://github.com/haskell/network/issues/567)
+* Breaking change: CmsgIdFd -> CmsgIdFds
+  [#575](https://github.com/haskell/network/issues/575)
+* SocketTypes: use UnsupportedSocketType instead of -1.
+  [#560](https://github.com/haskell/network/issues/560)
+* Expose NullSockAddr, add send-with-fds functions.
+  [#562](https://github.com/haskell/network/issues/562)
+* Allow bytestring-0.12 and replace deprecated memcpy by copyBytes.
+  [#564](https://github.com/haskell/network/issues/564)
+* Close file descriptor in accept when exception happens
+  [#569](https://github.com/haskell/network/issues/569)
+* Bump CI to GHC 9.8 and latest versions of actions
+  [#573](https://github.com/haskell/network/issues/573)
+
 ## Version 3.1.5.0
 
 * [#541](https://github.com/haskell/network/issues/541)
