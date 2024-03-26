@@ -100,6 +100,44 @@
 -- unexpected things would happen. There is one exception for multiple
 -- threads vs a single 'Socket': one thread reads data from a 'Socket'
 -- only and the other thread writes data to the 'Socket' only.
+--
+-- The preferred way to terminate a thread that is blocked on a call to
+-- 'Network.Socket.ByteString.recv' is to use 'shutdown'
+--
+-- > import Control.Concurrent (forkFinally, threadDelay)
+-- > import qualified Control.Exception as E
+-- > import Control.Monad (forever, guard, void)
+-- > import Control.Monad.IO.Class (liftIO)
+-- > import Control.Monad.Trans.Maybe (runMaybeT)
+-- > import qualified Data.ByteString as BS
+-- > import Network.Socket
+-- > import Network.Socket.ByteString
+-- >
+-- > main =
+-- >   let maxQueuedConnections = 3
+-- >       gracefulCloseTimeout = 5000
+-- >    in do
+-- >         sock <- socket AF_UNIX Stream defaultProtocol
+-- >         bind sock (SockAddrUnix "./socket")
+-- >         listen sock maxQueuedConnections
+-- >
+-- >         E.bracketOnError (accept sock) (\(connectedSock, _) -> close connectedSock) $
+-- >           \(connectedSock, _) -> void $ do
+-- >             forkFinally
+-- >               (printer connectedSock)
+-- >               (const $ gracefulClose connectedSock gracefulCloseTimeout >> print "closed")
+-- >
+-- >             threadDelay (5_000_000)
+-- >             putStrLn "Time's up"
+-- >             shutdown connectedSock ShutdownBoth
+-- >
+-- > printer :: Socket -> IO ()
+-- > printer connectedSock =
+-- >   -- https://www.haskellforall.com/2012/07/breaking-from-loop.html
+-- >   void $ runMaybeT $ forever $ do
+-- >     bytes <- liftIO $ recv connectedSock 4096
+-- >     guard $ not (BS.null bytes)
+-- >     liftIO $ print $ "Got bytes: " <> show bytes
 -----------------------------------------------------------------------------
 
 -- In order to process this file, you need to have CALLCONV defined.

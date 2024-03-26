@@ -32,6 +32,12 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownReceive', further receives are disallowed.  If it is
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
+--
+-- This will wake up all threads that are blocked on a
+-- 'Network.Socket.ByteString.recv' call on this socket, regardless
+-- of which 'ShutdownCmd' is given.
+-- Calling shutdown on a socket is the preferred way to abort a
+-- connection from another thread.
 shutdown :: Socket -> ShutdownCmd -> IO ()
 shutdown s stype = void $ withFdSocket s $ \fd ->
   throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
