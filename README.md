@@ -10,7 +10,6 @@ And then use `cabal configure; cabal build` or `stack build`.
 
 The `network` package support [3 major versions of GHC](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/intro.html#ghc-version-numbering-policy) only.
 This means that the current stable version and two previous stable versions are supported.
-However, all GHC 8.x are supported currently.
 
 ### Windows
 
@@ -44,31 +43,3 @@ So, if you use `CALLCONV`/`SAFE_ON_WIN`, the following is also necessary:
 ```
 ##include "HsNetDef.h"
 ```
-
-## Milestones
-
-### 2.6
-
-- [x] Making `SockAddrCan` deprecated
-
-### 2.7
-
-See https://github.com/haskell/network/issues/296
-
-- [x] Making `Network` deprecated
-- [x] Making `Network.BSD` deprecated
-- [x] Making `MkSocket` deprecated
-- [x] Making many APIs deprecated
-
-### 2.8
-
-- [x] Stop exporting the `PortNum` Constructor in `PortNumber`
-
-### 3.0
-
-- [x] Removing `Network`
-- [x] Removing `Network.BSD`
-- [x] Removing `SockAddrCan`
-- [x] Changing the internal structure of `Socket`.
-- [x] Make address extensible.
-- [x] Remove EOF errors
