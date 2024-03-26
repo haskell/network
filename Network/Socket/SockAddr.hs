@@ -20,6 +20,7 @@ import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
 import Network.Socket.Flag
 import Network.Socket.Imports
+import Network.Socket.Info ()
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 #else
