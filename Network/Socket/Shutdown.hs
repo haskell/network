@@ -56,8 +56,7 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
           Left (E.SomeException _) -> return ()
           Right () -> do
               -- Waiting TCP FIN.
-              E.bracket (mallocBytes bufSize) free $ \buf -> do
-                  {-# SCC "" #-} recvEOFloop buf
+              E.bracket (mallocBytes bufSize) free recvEOFloop
     -- milliseconds. Taken from BSD fast clock value.
     clock = 200
     recvEOFloop buf = loop 0

@@ -132,7 +132,7 @@ library
     ghc-options:      -Wall -fwarn-tabs
     build-depends:
         base >=4.9 && <5,
-        bytestring >=0.10 && <0.13,
+        bytestring >=0.10,
         deepseq,
         directory
 
