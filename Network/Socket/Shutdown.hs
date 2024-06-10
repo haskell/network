@@ -11,7 +11,7 @@ module Network.Socket.Shutdown (
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (threadDelay, yield)
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
@@ -55,6 +55,9 @@ gracefulClose s tmout0 = sendRecvFIN `E.finally` close s
         case ex of
           Left (E.SomeException _) -> return ()
           Right () -> do
+              -- Giving CPU time to other threads hoping that
+              -- FIN arrives meanwhile.
+              yield
               -- Waiting TCP FIN.
               E.bracket (mallocBytes bufSize) free recvEOFloop
     recvEOFloop buf = loop 1 0
