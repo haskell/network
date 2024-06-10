@@ -47,7 +47,7 @@ foreign import CALLCONV unsafe "shutdown"
 --
 --   Since: 3.1.1.0
 gracefulClose :: Socket -> Int -> IO ()
-gracefulClose s tmout = sendRecvFIN `E.finally` close s
+gracefulClose s tmout0 = sendRecvFIN `E.finally` close s
   where
     sendRecvFIN = do
         -- Sending TCP FIN.
@@ -57,21 +57,18 @@ gracefulClose s tmout = sendRecvFIN `E.finally` close s
           Right () -> do
               -- Waiting TCP FIN.
               E.bracket (mallocBytes bufSize) free recvEOFloop
-    -- milliseconds. Taken from BSD fast clock value.
-    clock = 200
-    recvEOFloop buf = loop 0
+    recvEOFloop buf = loop 1 0
       where
-        loop delay = do
+        loop delay tmout = do
             -- We don't check the (positive) length.
             -- In normal case, it's 0. That is, only FIN is received.
             -- In error cases, data is available. But there is no
             -- application which can read it. So, let's stop receiving
             -- to prevent attacks.
             r <- recvBufNoWait s buf bufSize
-            let delay' = delay + clock
-            when (r == -1 && delay' < tmout) $ do
-                threadDelay (clock * 1000)
-                loop delay'
+            when (r == -1 && tmout < tmout0) $ do
+                threadDelay (delay * 1000)
+                loop (delay * 2) (tmout + delay)
     -- Don't use 4092 here. The GHC runtime takes the global lock
     -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
     bufSize = 1024
