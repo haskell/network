@@ -86,7 +86,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     create = do
         let c_stype = modifyFlag $ packSocketType stype
         throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-            c_socket (packFamily family) c_stype protocol
+            c_socket (packFamily family) c_stype (packProtocol protocol)
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
     modifyFlag c_stype = c_stype .|. sockNonBlock

@@ -345,6 +345,23 @@ spec = do
             let socktype = GeneralSocketType (-300) in
             show socktype `shouldBe` "GeneralSocketType (-300)"
 
+    describe "show ProtocolNumber" $ do
+        it "works for pattern synonyms" $
+            let proto = DefaultProtocol in
+            show proto `shouldBe` "DefaultProtocol"
+
+        it "works for unsupported" $
+            let proto = GeneralProtocol (-1) in
+            show proto `shouldBe` "-1"
+
+        it "works for positive values" $
+            let proto = GeneralProtocol 300 in
+            show proto `shouldBe` "300"
+
+        it "works for negative values" $
+            let proto = GeneralProtocol (-300) in
+            show proto `shouldBe` "-300"
+
     describe "show SocketOptions" $ do
         it "works for pattern synonyms" $
             let opt = ReuseAddr in
@@ -392,6 +409,9 @@ spec = do
         it "holds for SocketType" $ forAll socktypeGen $
             \x -> (read . show $ x) == (x :: SocketType)
 
+        it "holds for ProtocolNumber" $ forAll protoGen $
+            \x -> (read . show $ x) == (x :: ProtocolNumber)
+
         it "holds for SocketOption" $ forAll sockoptGen $
             \x -> (read . show $ x) == (x :: SocketOption)
 
@@ -415,6 +435,9 @@ familyGen = biasedGen (fmap GeneralFamily) familyPatterns arbitrary
 
 socktypeGen :: Gen SocketType
 socktypeGen = biasedGen (fmap GeneralSocketType) socktypePatterns arbitrary
+
+protoGen :: Gen ProtocolNumber
+protoGen = biasedGen (fmap GeneralProtocol) protoPatterns arbitrary
 
 sockoptGen :: Gen SocketOption
 sockoptGen = biasedGen (\g -> SockOpt <$> g <*> g) sockoptPatterns arbitrary
@@ -474,3 +497,16 @@ cmsgidPatterns = nub
     , CmsgIdIPv6PktInfo
     , CmsgIdFds
     ]
+
+protoPatterns :: [ProtocolNumber]
+protoPatterns = nub
+    [ DefaultProtocol
+    , IPPROTO_IPV4
+    , IPPROTO_IPV6
+    , IPPROTO_UDP
+    , IPPROTO_TCP
+    , IPPROTO_ICMP
+    , IPPROTO_ICMPV6
+    , IPPROTO_RAW
+    ]
+
