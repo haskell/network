@@ -53,7 +53,9 @@ module Network.Socket.Types (
     , withNewSocketAddress
 
     -- * Socket address type
+    , SockEndpoint(..)
     , SockAddr(..)
+    , sockAddrFamily
     , isSupportedSockAddr
     , HostAddress
     , hostAddressToTuple
@@ -75,6 +77,8 @@ module Network.Socket.Types (
     , defaultProtocol
     , PortNumber
     , defaultPort
+    , HostName
+    , ServiceName
 
     -- * Low-level helpers
     , zeroMemory
@@ -289,6 +293,13 @@ type ProtocolNumber = CInt
 -- 0
 defaultProtocol :: ProtocolNumber
 defaultProtocol = 0
+
+-- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
+-- address string consisting of a dotted decimal IPv4 address or an
+-- IPv6 address e.g., @\"192.168.0.1\"@.
+type HostName       = String
+-- | Either a service name e.g., @\"http\"@ or a numeric port number.
+type ServiceName    = String
 
 -----------------------------------------------------------------------------
 -- Socket types
@@ -1060,6 +1071,23 @@ type FlowInfo = Word32
 -- | Scope identifier.
 type ScopeID = Word32
 
+-- | Socket endpoints.
+--
+-- A wrapper around socket addresses that also accommodates the
+-- popular usage of specifying them by name, e.g. "example.com:80".
+-- We don't support service names here (string aliases for port
+-- numbers) because they also imply a particular socket type, which
+-- is outside of the scope of this data type.
+--
+-- This roughly corresponds to the "authority" part of a URI, as
+-- defined here: https://tools.ietf.org/html/rfc3986#section-3.2
+--
+-- See also 'Network.Socket.socketFromEndpoint'.
+data SockEndpoint
+  = EndpointByName !HostName !PortNumber
+  | EndpointByAddr !SockAddr
+  deriving (Eq, Ord)
+
 -- | Socket addresses.
 --  The existence of a constructor does not necessarily imply that
 --  that socket address type is supported on your system: see
@@ -1082,6 +1110,12 @@ instance NFData SockAddr where
   rnf (SockAddrInet _ _) = ()
   rnf (SockAddrInet6 _ _ _ _) = ()
   rnf (SockAddrUnix str) = rnf str
+
+sockAddrFamily :: SockAddr -> Family
+sockAddrFamily addr = case addr of
+  SockAddrInet _ _ -> AF_INET
+  SockAddrInet6 _ _ _ _ -> AF_INET6
+  SockAddrUnix _ -> AF_UNIX
 
 -- | Is the socket address type supported on this system?
 isSupportedSockAddr :: SockAddr -> Bool
