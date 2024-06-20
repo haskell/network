@@ -1,13 +1,15 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.SocketSpec (main, spec) where
 
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (readMVar)
+import Control.Exception (SomeException)
 import Control.Monad
 import Data.Maybe (fromJust)
-import Data.List (nub)
+import Data.List (isInfixOf, nub)
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
@@ -33,9 +35,16 @@ spec = do
               sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
               connect sock (addrAddress addr)
               return sock
+          assumedFreePort = 8003 :: Int
 
         it "fails to connect and throws an IOException" $ do
-            connect' (8003 :: Int) `shouldThrow` anyIOException
+            connect' assumedFreePort `shouldThrow` anyIOException
+
+        it "fails to connect exception contains target port" $ do
+            connect' assumedFreePort `shouldThrow` \(e :: SomeException) -> show assumedFreePort `isInfixOf` show e
+
+        it "fails to connect exception contains target host" $ do
+            connect' assumedFreePort `shouldThrow` \(e :: SomeException) -> serverAddr `isInfixOf` show e
 
         it "successfully connects to a socket with no exception" $ do
             withPort $ \portVar -> test (tcp serverAddr return portVar)
