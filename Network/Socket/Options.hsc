@@ -17,6 +17,7 @@ module Network.Socket.Options (
                 ,UseLoopBack,UserTimeout,IPv6Only
                 ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
                 ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo
+                ,KeepIdle,KeepInterval,KeepCount
                 ,CustomSockOpt)
   , isSupportedSocketOption
   , whenSupported
@@ -94,6 +95,9 @@ socketOptionBijection =
     , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
     , (RecvIPv6TClass, "RecvIPv6TClass")
     , (RecvIPv6PktInfo, "RecvIPv6PktInfo")
+    , (KeepIdle, "KeepIdle")
+    , (KeepInterval, "KeepInterval")
+    , (KeepCount, "KeepCount")
     ]
 
 instance Show SocketOption where
@@ -305,6 +309,27 @@ pattern Cork :: SocketOption
 pattern Cork           = SockOpt (#const IPPROTO_TCP) (#const TCP_CORK)
 #else
 pattern Cork           = SockOpt (-1) (-1)
+#endif
+-- | TCP_KEEPIDLE
+pattern KeepIdle :: SocketOption
+#ifdef TCP_KEEPIDLE
+pattern KeepIdle       = SockOpt (#const IPPROTO_TCP) (#const TCP_KEEPIDLE)
+#else
+pattern KeepIdle       = SockOpt (-1) (-1)
+#endif
+-- | TCP_KEEPINTVL
+pattern KeepInterval :: SocketOption
+#ifdef TCP_KEEPINTVL
+pattern KeepInterval   = SockOpt (#const IPPROTO_TCP) (#const TCP_KEEPINTVL)
+#else
+pattern KeepInterval   = SockOpt (-1) (-1)
+#endif
+-- | TCP_KEEPCNT
+pattern KeepCount :: SocketOption
+#ifdef TCP_KEEPCNT
+pattern KeepCount      = SockOpt (#const IPPROTO_TCP) (#const TCP_KEEPCNT)
+#else
+pattern KeepCount      = SockOpt (-1) (-1)
 #endif
 #endif // HAVE_DECL_IPPROTO_TCP
 
