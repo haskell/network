@@ -1,3 +1,14 @@
+## Version 3.2.1.0
+
+* Trying to release with the latest autoreconf.
+  Packing "network" in the local directory instead of CI.
+* Remove includes from .cabal-file
+  [#583](https://github.com/haskell/network/issues/583)
+* making gracefulClose more graceful
+  [#580](https://github.com/haskell/network/issues/580)
+* Update config.guess, config.sub to their latest versions
+  [#579](https://github.com/haskell/network/issues/579)
+
 ## Version 3.2.0.0
 
 * Breaking change: Using Strict and StrictData.
