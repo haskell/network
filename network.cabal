@@ -125,7 +125,6 @@ library
     include-dirs:     include
     install-includes: HsNet.h HsNetDef.h alignment.h win32defs.h
     if os(windows)
-        includes:         afunix_compat.h
         install-includes: afunix_compat.h
 
     ghc-options:      -Wall -fwarn-tabs
