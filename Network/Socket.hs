@@ -382,6 +382,12 @@ module Network.Socket (
 
     -- * Special constants
     maxListenQueue,
+
+    -- * STM to check read and write
+    waitReadSocketSTM,
+    waitAndCancelReadSocketSTM,
+    waitWriteSocketSTM,
+    waitAndCancelWriteSocketSTM,
 ) where
 
 import Network.Socket.Buffer hiding (
@@ -399,6 +405,7 @@ import Network.Socket.Info
 import Network.Socket.Internal
 import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
+import Network.Socket.STM
 import Network.Socket.Shutdown
 import Network.Socket.SockAddr
 import Network.Socket.Syscall hiding (accept, bind, connect)

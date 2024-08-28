@@ -115,6 +115,7 @@ library
         Network.Socket.Name
         Network.Socket.Options
         Network.Socket.ReadShow
+        Network.Socket.STM
         Network.Socket.Shutdown
         Network.Socket.SockAddr
         Network.Socket.Syscall
@@ -132,7 +133,8 @@ library
         base >=4.9 && <5,
         bytestring >=0.10,
         deepseq,
-        directory
+        directory,
+        stm
 
     if !os(windows)
         other-modules:
