@@ -5,11 +5,11 @@ module Network.Socket.ByteString.LazySpec (main, spec) where
 
 import Prelude hiding (getContents)
 
+import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Network.Socket
 import Network.Socket.ByteString.Lazy
 import Network.Test.Common
-import Control.Monad
 
 import Test.Hspec
 

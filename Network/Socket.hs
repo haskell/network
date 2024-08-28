@@ -3,6 +3,11 @@
 #include "HsNetDef.h"
 
 -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+
+-- In order to process this file, you need to have CALLCONV defined.
+
 -- |
 -- Module      :  Network.Socket
 -- Copyright   :  (c) The University of Glasgow 2001
@@ -100,169 +105,291 @@
 -- unexpected things would happen. There is one exception for multiple
 -- threads vs a single 'Socket': one thread reads data from a 'Socket'
 -- only and the other thread writes data to the 'Socket' only.
------------------------------------------------------------------------------
-
--- In order to process this file, you need to have CALLCONV defined.
-
-module Network.Socket
-    (
+module Network.Socket (
     -- * Initialisation
-      withSocketsDo
+    withSocketsDo,
 
     -- * Address information
-    , getAddrInfo
+    getAddrInfo,
+
     -- ** Types
-    , HostName
-    , ServiceName
-    , AddrInfo(..)
-    , defaultHints
+    HostName,
+    ServiceName,
+    AddrInfo (..),
+    defaultHints,
+
     -- ** Flags
-    , AddrInfoFlag(..)
-    , addrInfoFlagImplemented
+    AddrInfoFlag (..),
+    addrInfoFlagImplemented,
 
     -- * Socket operations
-    , connect
-    , bind
-    , listen
-    , accept
+    connect,
+    bind,
+    listen,
+    accept,
+
     -- ** Closing
-    , close
-    , close'
-    , gracefulClose
-    , shutdown
-    , ShutdownCmd(..)
+    close,
+    close',
+    gracefulClose,
+    shutdown,
+    ShutdownCmd (..),
 
     -- * Socket options
-    , SocketOption(SockOpt
-                  ,UnsupportedSocketOption
-                  ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
-                  ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline
-                  ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
-                  ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
-                  ,UseLoopBack,UserTimeout,IPv6Only
-                  ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
-                  ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo)
-    , StructLinger (..)
-    , SocketTimeout (..)
-    , isSupportedSocketOption
-    , whenSupported
-    , getSocketOption
-    , setSocketOption
-    , getSockOpt
-    , setSockOpt
+    SocketOption (
+        SockOpt,
+        UnsupportedSocketOption,
+        Debug,
+        ReuseAddr,
+        SoDomain,
+        Type,
+        SoProtocol,
+        SoError,
+        DontRoute,
+        Broadcast,
+        SendBuffer,
+        RecvBuffer,
+        KeepAlive,
+        OOBInline,
+        TimeToLive,
+        MaxSegment,
+        NoDelay,
+        Cork,
+        Linger,
+        ReusePort,
+        RecvLowWater,
+        SendLowWater,
+        RecvTimeOut,
+        SendTimeOut,
+        UseLoopBack,
+        UserTimeout,
+        IPv6Only,
+        RecvIPv4TTL,
+        RecvIPv4TOS,
+        RecvIPv4PktInfo,
+        RecvIPv6HopLimit,
+        RecvIPv6TClass,
+        RecvIPv6PktInfo
+    ),
+    StructLinger (..),
+    SocketTimeout (..),
+    isSupportedSocketOption,
+    whenSupported,
+    getSocketOption,
+    setSocketOption,
+    getSockOpt,
+    setSockOpt,
 
     -- * Socket
-    , Socket
-    , socket
-    , openSocket
-    , withFdSocket
-    , unsafeFdSocket
-    , touchSocket
-    , socketToFd
-    , fdSocket
-    , mkSocket
-    , socketToHandle
+    Socket,
+    socket,
+    openSocket,
+    withFdSocket,
+    unsafeFdSocket,
+    touchSocket,
+    socketToFd,
+    fdSocket,
+    mkSocket,
+    socketToHandle,
+
     -- ** Types of Socket
-    , SocketType(GeneralSocketType, UnsupportedSocketType, NoSocketType
-                , Stream, Datagram, Raw, RDM, SeqPacket)
-    , isSupportedSocketType
-    , getSocketType
+    SocketType (
+        GeneralSocketType,
+        UnsupportedSocketType,
+        NoSocketType,
+        Stream,
+        Datagram,
+        Raw,
+        RDM,
+        SeqPacket
+    ),
+    isSupportedSocketType,
+    getSocketType,
+
     -- ** Family
-    , Family(GeneralFamily, UnsupportedFamily
-            ,AF_UNSPEC,AF_UNIX,AF_INET,AF_INET6,AF_IMPLINK,AF_PUP,AF_CHAOS
-            ,AF_NS,AF_NBS,AF_ECMA,AF_DATAKIT,AF_CCITT,AF_SNA,AF_DECnet
-            ,AF_DLI,AF_LAT,AF_HYLINK,AF_APPLETALK,AF_ROUTE,AF_NETBIOS
-            ,AF_NIT,AF_802,AF_ISO,AF_OSI,AF_NETMAN,AF_X25,AF_AX25,AF_OSINET
-            ,AF_GOSSIP,AF_IPX,Pseudo_AF_XTP,AF_CTF,AF_WAN,AF_SDL,AF_NETWARE
-            ,AF_NDD,AF_INTF,AF_COIP,AF_CNT,Pseudo_AF_RTIP,Pseudo_AF_PIP
-            ,AF_SIP,AF_ISDN,Pseudo_AF_KEY,AF_NATM,AF_ARP,Pseudo_AF_HDRCMPLT
-            ,AF_ENCAP,AF_LINK,AF_RAW,AF_RIF,AF_NETROM,AF_BRIDGE,AF_ATMPVC
-            ,AF_ROSE,AF_NETBEUI,AF_SECURITY,AF_PACKET,AF_ASH,AF_ECONET
-            ,AF_ATMSVC,AF_IRDA,AF_PPPOX,AF_WANPIPE,AF_BLUETOOTH,AF_CAN)
-    , isSupportedFamily
-    , packFamily
-    , unpackFamily
+    Family (
+        GeneralFamily,
+        UnsupportedFamily,
+        AF_UNSPEC,
+        AF_UNIX,
+        AF_INET,
+        AF_INET6,
+        AF_IMPLINK,
+        AF_PUP,
+        AF_CHAOS,
+        AF_NS,
+        AF_NBS,
+        AF_ECMA,
+        AF_DATAKIT,
+        AF_CCITT,
+        AF_SNA,
+        AF_DECnet,
+        AF_DLI,
+        AF_LAT,
+        AF_HYLINK,
+        AF_APPLETALK,
+        AF_ROUTE,
+        AF_NETBIOS,
+        AF_NIT,
+        AF_802,
+        AF_ISO,
+        AF_OSI,
+        AF_NETMAN,
+        AF_X25,
+        AF_AX25,
+        AF_OSINET,
+        AF_GOSSIP,
+        AF_IPX,
+        Pseudo_AF_XTP,
+        AF_CTF,
+        AF_WAN,
+        AF_SDL,
+        AF_NETWARE,
+        AF_NDD,
+        AF_INTF,
+        AF_COIP,
+        AF_CNT,
+        Pseudo_AF_RTIP,
+        Pseudo_AF_PIP,
+        AF_SIP,
+        AF_ISDN,
+        Pseudo_AF_KEY,
+        AF_NATM,
+        AF_ARP,
+        Pseudo_AF_HDRCMPLT,
+        AF_ENCAP,
+        AF_LINK,
+        AF_RAW,
+        AF_RIF,
+        AF_NETROM,
+        AF_BRIDGE,
+        AF_ATMPVC,
+        AF_ROSE,
+        AF_NETBEUI,
+        AF_SECURITY,
+        AF_PACKET,
+        AF_ASH,
+        AF_ECONET,
+        AF_ATMSVC,
+        AF_IRDA,
+        AF_PPPOX,
+        AF_WANPIPE,
+        AF_BLUETOOTH,
+        AF_CAN
+    ),
+    isSupportedFamily,
+    packFamily,
+    unpackFamily,
+
     -- ** Protocol number
-    , ProtocolNumber
-    , defaultProtocol
+    ProtocolNumber,
+    defaultProtocol,
+
     -- * Basic socket address type
-    , SockAddr(..)
-    , isSupportedSockAddr
-    , getPeerName
-    , getSocketName
+    SockAddr (..),
+    isSupportedSockAddr,
+    getPeerName,
+    getSocketName,
+
     -- ** Host address
-    , HostAddress
-    , hostAddressToTuple
-    , tupleToHostAddress
+    HostAddress,
+    hostAddressToTuple,
+    tupleToHostAddress,
+
     -- ** Host address6
-    , HostAddress6
-    , hostAddress6ToTuple
-    , tupleToHostAddress6
+    HostAddress6,
+    hostAddress6ToTuple,
+    tupleToHostAddress6,
+
     -- ** Flow Info
-    , FlowInfo
+    FlowInfo,
+
     -- ** Scope ID
-    , ScopeID
-    , ifNameToIndex
-    , ifIndexToName
+    ScopeID,
+    ifNameToIndex,
+    ifIndexToName,
+
     -- ** Port number
-    , PortNumber
-    , defaultPort
-    , socketPortSafe
-    , socketPort
+    PortNumber,
+    defaultPort,
+    socketPortSafe,
+    socketPort,
 
     -- * UNIX-domain socket
-    , isUnixDomainSocketAvailable
-    , socketPair
-    , sendFd
-    , recvFd
-    , getPeerCredential
+    isUnixDomainSocketAvailable,
+    socketPair,
+    sendFd,
+    recvFd,
+    getPeerCredential,
 
     -- * Name information
-    , getNameInfo
-    , NameInfoFlag(..)
+    getNameInfo,
+    NameInfoFlag (..),
 
     -- * Low level
-    -- ** socket operations
-    , setCloseOnExecIfNeeded
-    , getCloseOnExec
-    , setNonBlockIfNeeded
-    , getNonBlock
-    -- ** Sending and receiving data
-    , sendBuf
-    , recvBuf
-    , sendBufTo
-    , recvBufFrom
-    -- ** Advanced IO
-    , sendBufMsg
-    , recvBufMsg
-    , MsgFlag(MSG_OOB,MSG_DONTROUTE,MSG_PEEK,MSG_EOR,MSG_TRUNC,MSG_CTRUNC,MSG_WAITALL)
-    -- ** Control message (ancillary data)
-    , Cmsg(..)
-    , CmsgId(CmsgId
-            ,CmsgIdIPv4TTL
-            ,CmsgIdIPv6HopLimit
-            ,CmsgIdIPv4TOS
-            ,CmsgIdIPv6TClass
-            ,CmsgIdIPv4PktInfo
-            ,CmsgIdIPv6PktInfo
-            ,CmsgIdFds
-            ,UnsupportedCmsgId)
-    -- ** APIs for control message
-    , lookupCmsg
-    , filterCmsg
-    -- ** Class and types for control message
-    , ControlMessage(..)
-    , IPv4TTL(..)
-    , IPv6HopLimit(..)
-    , IPv4TOS(..)
-    , IPv6TClass(..)
-    , IPv4PktInfo(..)
-    , IPv6PktInfo(..)
-    -- * Special constants
-    , maxListenQueue
-    ) where
 
-import Network.Socket.Buffer hiding (sendBufTo, recvBufFrom, sendBufMsg, recvBufMsg)
+    -- ** socket operations
+    setCloseOnExecIfNeeded,
+    getCloseOnExec,
+    setNonBlockIfNeeded,
+    getNonBlock,
+
+    -- ** Sending and receiving data
+    sendBuf,
+    recvBuf,
+    sendBufTo,
+    recvBufFrom,
+
+    -- ** Advanced IO
+    sendBufMsg,
+    recvBufMsg,
+    MsgFlag (
+        MSG_OOB,
+        MSG_DONTROUTE,
+        MSG_PEEK,
+        MSG_EOR,
+        MSG_TRUNC,
+        MSG_CTRUNC,
+        MSG_WAITALL
+    ),
+
+    -- ** Control message (ancillary data)
+    Cmsg (..),
+    CmsgId (
+        CmsgId,
+        CmsgIdIPv4TTL,
+        CmsgIdIPv6HopLimit,
+        CmsgIdIPv4TOS,
+        CmsgIdIPv6TClass,
+        CmsgIdIPv4PktInfo,
+        CmsgIdIPv6PktInfo,
+        CmsgIdFds,
+        UnsupportedCmsgId
+    ),
+
+    -- ** APIs for control message
+    lookupCmsg,
+    filterCmsg,
+
+    -- ** Class and types for control message
+    ControlMessage (..),
+    IPv4TTL (..),
+    IPv6HopLimit (..),
+    IPv4TOS (..),
+    IPv6TClass (..),
+    IPv4PktInfo (..),
+    IPv6PktInfo (..),
+
+    -- * Special constants
+    maxListenQueue,
+) where
+
+import Network.Socket.Buffer hiding (
+    recvBufFrom,
+    recvBufMsg,
+    sendBufMsg,
+    sendBufTo,
+ )
 import Network.Socket.Cbits
 import Network.Socket.Fcntl
 import Network.Socket.Flag
@@ -274,7 +401,7 @@ import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options
 import Network.Socket.Shutdown
 import Network.Socket.SockAddr
-import Network.Socket.Syscall hiding (connect, bind, accept)
+import Network.Socket.Syscall hiding (accept, bind, connect)
 import Network.Socket.Types
 import Network.Socket.Unix
 #if !defined(mingw32_HOST_OS)

@@ -1,16 +1,15 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
-
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.Socket.ReadShow where
 
+import Control.Monad (mzero)
 import Text.Read ((<++))
 import qualified Text.Read as P
 import qualified Text.Read.Lex as P
-import Control.Monad (mzero)
 
 -- type alias for individual correspondences of a (possibly partial) bijection
 type Pair a b = (a, b)
@@ -18,13 +17,12 @@ type Pair a b = (a, b)
 -- | helper function for equality on first tuple element
 {-# INLINE eqFst #-}
 eqFst :: Eq a => a -> (a, b) -> Bool
-eqFst x = \(x',_) -> x' == x
+eqFst x = \(x', _) -> x' == x
 
 -- | helper function for equality on snd tuple element
 {-# INLINE eqSnd #-}
 eqSnd :: Eq b => b -> (a, b) -> Bool
-eqSnd y = \(_,y') -> y' == y
-
+eqSnd y = \(_, y') -> y' == y
 
 -- | Unified automorphic involution over @Either a b@ that converts between
 --   LHS and RHS elements of a list of @Pair a b@ mappings and is the identity
@@ -33,9 +31,9 @@ eqSnd y = \(_,y') -> y' == y
 --   If list contains duplicate matches, short-circuits to the first matching @Pair@
 lookBetween :: (Eq a, Eq b) => [Pair a b] -> Either a b -> Either a b
 lookBetween ps = \case
-  Left  x | (_,y):_ <- filter (eqFst x) ps -> Right y
-  Right y | (x,_):_ <- filter (eqSnd y) ps -> Left  x
-  z -> z
+    Left x | (_, y) : _ <- filter (eqFst x) ps -> Right y
+    Right y | (x, _) : _ <- filter (eqSnd y) ps -> Left x
+    z -> z
 
 -- Type alias for partial bijections between two types, consisting of a list
 -- of individual correspondences that are checked in order and short-circuit
@@ -53,13 +51,15 @@ type Bijection a b = [Pair a b]
 namePrefix :: Int -> String -> (Int -> b -> ShowS) -> b -> ShowS
 namePrefix i name f x
     | null name = f i x
-    | otherwise = showParen (i > app_prec) $ showString name . showChar ' ' . f (app_prec+1) x
+    | otherwise =
+        showParen (i > app_prec) $ showString name . showChar ' ' . f (app_prec + 1) x
 {-# INLINE namePrefix #-}
 
 -- | Helper function for defining bijective Show instances that represents
 -- a common use-case where a constructor (or constructor-like pattern) name
 -- (optionally) precedes an internal value with a separate show function
-defShow :: Eq a => String -> (a -> b) -> (Int -> b -> ShowS) -> (Int -> a -> ShowS)
+defShow
+    :: Eq a => String -> (a -> b) -> (Int -> b -> ShowS) -> (Int -> a -> ShowS)
 defShow name unwrap shoPrec = \i x -> namePrefix i name shoPrec (unwrap x)
 {-# INLINE defShow #-}
 
@@ -82,7 +82,7 @@ defRead name wrap redPrec = expectPrefix name $ wrap <$> redPrec
 {-# INLINE defRead #-}
 
 -- | Alias for showsPrec that pairs well with `_readInt`
-_showInt :: (Show a) => Int -> a -> ShowS
+_showInt :: Show a => Int -> a -> ShowS
 _showInt = showsPrec
 {-# INLINE _showInt #-}
 
@@ -98,27 +98,29 @@ showIntInt i (x, y) = _showInt i x . showChar ' ' . _showInt i y
 {-# INLINE showIntInt #-}
 
 -- | consume and return two integer-like values from two consecutive lexical tokens
-readIntInt :: (Bounded a, Integral a, Bounded b, Integral b) => P.ReadPrec (a, b)
+readIntInt
+    :: (Bounded a, Integral a, Bounded b, Integral b) => P.ReadPrec (a, b)
 readIntInt = do
-  x <- _readInt
-  y <- _readInt
-  return (x, y)
+    x <- _readInt
+    y <- _readInt
+    return (x, y)
 {-# INLINE readIntInt #-}
 
-bijectiveShow :: (Eq a) => Bijection a String -> (Int -> a -> ShowS) -> (Int -> a -> ShowS)
+bijectiveShow
+    :: Eq a => Bijection a String -> (Int -> a -> ShowS) -> (Int -> a -> ShowS)
 bijectiveShow bi def = \i x ->
     case lookBetween bi (Left x) of
         Right y -> showString y
         _ -> def i x
 
-bijectiveRead :: (Eq a) => Bijection a String -> P.ReadPrec a -> P.ReadPrec a
+bijectiveRead :: Eq a => Bijection a String -> P.ReadPrec a -> P.ReadPrec a
 bijectiveRead bi def = P.parens $ bijective <++ def
   where
     bijective = do
-      (P.Ident y) <- P.lexP
-      case lookBetween bi (Right y) of
-          Left x -> return x
-          _ -> mzero
+        (P.Ident y) <- P.lexP
+        case lookBetween bi (Right y) of
+            Left x -> return x
+            _ -> mzero
 
 app_prec :: Int
 app_prec = 10
@@ -129,8 +131,8 @@ safeInt :: forall a. (Bounded a, Integral a) => P.ReadPrec a
 safeInt = do
     i <- signed
     if (i >= fromIntegral (minBound :: a) && i <= fromIntegral (maxBound :: a))
-    then return $ fromIntegral i
-    else mzero
+        then return $ fromIntegral i
+        else mzero
   where
     signed :: P.ReadPrec Integer
     signed = P.readPrec

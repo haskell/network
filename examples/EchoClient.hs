@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 -- Echo client program
 module Main (main) where
 
@@ -21,7 +22,7 @@ runTCPClient host port client = withSocketsDo $ do
     E.bracket (open addr) close client
   where
     resolve = do
-        let hints = defaultHints { addrSocketType = Stream }
+        let hints = defaultHints{addrSocketType = Stream}
         head <$> getAddrInfo (Just hints) (Just host) (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
         connect sock $ addrAddress addr

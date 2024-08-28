@@ -16,37 +16,36 @@
 --
 -- > import Network.Socket
 -- > import Network.Socket.ByteString
---
-module Network.Socket.ByteString
-    (
+module Network.Socket.ByteString (
     -- * Send data to a socket
-      send
-    , sendAll
-    , sendTo
-    , sendAllTo
+    send,
+    sendAll,
+    sendTo,
+    sendAllTo,
 
     -- ** Vectored I/O
     -- $vectored
-    , sendMany
-    , sendManyTo
-    , sendManyWithFds
+    sendMany,
+    sendManyTo,
+    sendManyWithFds,
 
     -- * Receive data from a socket
-    , recv
-    , recvFrom
+    recv,
+    recvFrom,
 
     -- * Advanced send and recv
-    , sendMsg
-    , recvMsg
-    ) where
+    sendMsg,
+    recvMsg,
+) where
 
 import Data.ByteString (ByteString)
 
+import Network.Socket.ByteString.IO hiding (recvFrom, sendAllTo, sendTo)
 import qualified Network.Socket.ByteString.IO as G
-import Network.Socket.ByteString.IO hiding (sendTo, sendAllTo, recvFrom)
 import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------
+
 -- ** Vectored I/O
 
 -- $vectored

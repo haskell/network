@@ -3,11 +3,11 @@
 module Network.Socket.ByteStringSpec (main, spec) where
 
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Data.Bits
-import Data.Maybe
 import Control.Monad
+import Data.Bits
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as C
+import Data.Maybe
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
@@ -243,20 +243,23 @@ spec = do
             serverReady <- newEmptyMVar
 
             let server sock = do
-                    whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
+                    whenSupported RecvIPv4TTL $ setSocketOption sock RecvIPv4TTL 1
                     whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
-                    whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
+                    whenSupported RecvIPv4TOS $ setSocketOption sock RecvIPv4TOS 1
                     putMVar serverReady ()
 
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
                     whenSupported RecvIPv4PktInfo $
-                      ((lookupCmsg CmsgIdIPv4PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv4PktInfo) `shouldNotBe` Nothing
+                        ((lookupCmsg CmsgIdIPv4PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv4PktInfo)
+                            `shouldNotBe` Nothing
                     when (not isAppVeyor) $ do
-                      whenSupported RecvIPv4TTL $
-                        ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL) `shouldNotBe` Nothing
-                      whenSupported RecvIPv4TOS $
-                        ((lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS) `shouldNotBe` Nothing
+                        whenSupported RecvIPv4TTL $
+                            ((lookupCmsg CmsgIdIPv4TTL cmsgs >>= decodeCmsg) :: Maybe IPv4TTL)
+                                `shouldNotBe` Nothing
+                        whenSupported RecvIPv4TOS $
+                            ((lookupCmsg CmsgIdIPv4TOS cmsgs >>= decodeCmsg) :: Maybe IPv4TOS)
+                                `shouldNotBe` Nothing
                 client sock addr = takeMVar serverReady >> sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -270,18 +273,21 @@ spec = do
 
             let server sock = do
                     whenSupported RecvIPv6HopLimit $ setSocketOption sock RecvIPv6HopLimit 1
-                    whenSupported RecvIPv6TClass   $ setSocketOption sock RecvIPv6TClass 1
-                    whenSupported RecvIPv6PktInfo  $ setSocketOption sock RecvIPv6PktInfo 1
+                    whenSupported RecvIPv6TClass $ setSocketOption sock RecvIPv6TClass 1
+                    whenSupported RecvIPv6PktInfo $ setSocketOption sock RecvIPv6PktInfo 1
                     putMVar serverReady ()
 
                     (_, _, cmsgs, _) <- recvMsg sock 1024 128 mempty
 
                     whenSupported RecvIPv6HopLimit $
-                      ((lookupCmsg CmsgIdIPv6HopLimit cmsgs >>= decodeCmsg) :: Maybe IPv6HopLimit) `shouldNotBe` Nothing
+                        ((lookupCmsg CmsgIdIPv6HopLimit cmsgs >>= decodeCmsg) :: Maybe IPv6HopLimit)
+                            `shouldNotBe` Nothing
                     whenSupported RecvIPv6TClass $
-                      ((lookupCmsg CmsgIdIPv6TClass cmsgs >>= decodeCmsg) :: Maybe IPv6TClass) `shouldNotBe` Nothing
+                        ((lookupCmsg CmsgIdIPv6TClass cmsgs >>= decodeCmsg) :: Maybe IPv6TClass)
+                            `shouldNotBe` Nothing
                     whenSupported RecvIPv6PktInfo $
-                      ((lookupCmsg CmsgIdIPv6PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv6PktInfo) `shouldNotBe` Nothing
+                        ((lookupCmsg CmsgIdIPv6PktInfo cmsgs >>= decodeCmsg) :: Maybe IPv6PktInfo)
+                            `shouldNotBe` Nothing
                 client sock addr = takeMVar serverReady >> sendTo sock seg addr
 
                 seg = C.pack "This is a test message"
@@ -294,8 +300,8 @@ spec = do
             serverReady <- newEmptyMVar
 
             let server sock = do
-                    whenSupported RecvIPv4TTL     $ setSocketOption sock RecvIPv4TTL 1
-                    whenSupported RecvIPv4TOS     $ setSocketOption sock RecvIPv4TOS 1
+                    whenSupported RecvIPv4TTL $ setSocketOption sock RecvIPv4TTL 1
+                    whenSupported RecvIPv4TOS $ setSocketOption sock RecvIPv4TOS 1
                     whenSupported RecvIPv4PktInfo $ setSocketOption sock RecvIPv4PktInfo 1
                     putMVar serverReady ()
 

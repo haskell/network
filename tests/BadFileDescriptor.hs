@@ -7,7 +7,7 @@
 module Main where
 
 import Control.Concurrent (forkIO)
-import Control.Monad (void, forever)
+import Control.Monad (forever, void)
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString (recv, sendAll)
 
@@ -32,11 +32,12 @@ relay s1 s2 = forever $ do
 
 serverSocket :: HostName -> ServiceName -> IO Socket
 serverSocket host port = do
-    let hints = defaultHints {
-                addrFlags = [AI_PASSIVE]
-              , addrSocketType = Stream
-              }
-    addr:_ <- getAddrInfo (Just hints) (Just host) (Just port)
+    let hints =
+            defaultHints
+                { addrFlags = [AI_PASSIVE]
+                , addrSocketType = Stream
+                }
+    addr : _ <- getAddrInfo (Just hints) (Just host) (Just port)
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     bind sock (addrAddress addr)
     listen sock 1
@@ -44,8 +45,8 @@ serverSocket host port = do
 
 clientSocket :: HostName -> ServiceName -> IO Socket
 clientSocket host port = do
-    let hints = defaultHints { addrSocketType = Stream }
-    addr:_ <- getAddrInfo (Just hints) (Just host) (Just port)
+    let hints = defaultHints{addrSocketType = Stream}
+    addr : _ <- getAddrInfo (Just hints) (Just host) (Just port)
     sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
     connect sock (addrAddress addr)
     return sock

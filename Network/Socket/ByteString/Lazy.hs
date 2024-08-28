@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 -- |
 -- Module      : Network.Socket.ByteString.Lazy
 -- Copyright   : (c) Bryan O'Sullivan 2009
@@ -18,23 +19,26 @@
 -- > import Network.Socket
 -- > import Network.Socket.ByteString.Lazy
 -- > import Prelude hiding (getContents)
---
 module Network.Socket.ByteString.Lazy (
     -- * Send data to a socket
-    send
-  , sendAll
-  , sendWithFds
-    -- * Receive data from a socket
-  , getContents
-  , recv
-  ) where
+    send,
+    sendAll,
+    sendWithFds,
 
-import           Data.ByteString.Lazy.Internal (ByteString(..), defaultChunkSize)
-import           Network.Socket                (ShutdownCmd (..), shutdown)
-import           Prelude                       hiding (getContents)
-import           System.IO.Unsafe              (unsafeInterleaveIO)
-import           System.IO.Error               (catchIOError)
-import           System.Posix.Types            (Fd(..))
+    -- * Receive data from a socket
+    getContents,
+    recv,
+) where
+
+import Data.ByteString.Lazy.Internal (
+    ByteString (..),
+    defaultChunkSize,
+ )
+import Network.Socket (ShutdownCmd (..), shutdown)
+import System.IO.Error (catchIOError)
+import System.IO.Unsafe (unsafeInterleaveIO)
+import System.Posix.Types (Fd (..))
+import Prelude hiding (getContents)
 
 #if defined(mingw32_HOST_OS)
 import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
@@ -42,22 +46,27 @@ import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
 import Network.Socket.ByteString.Lazy.Posix    (send, sendAll)
 #endif
 
-import qualified Data.ByteString               as S
-import qualified Data.ByteString.Lazy          as L
-import qualified Network.Socket.ByteString     as N
-import           Network.Socket.Imports
-import           Network.Socket.Types
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
+import qualified Network.Socket.ByteString as N
+import Network.Socket.Imports
+import Network.Socket.Types
 
 -- | Send data and file descriptors over a UNIX-domain socket in
 --   a single system call. This function does not work on Windows.
-sendWithFds :: Socket     -- ^ Socket
-            -> ByteString -- ^ Data to send
-            -> [Fd]       -- ^ File descriptors
-            -> IO ()
+sendWithFds
+    :: Socket
+    -- ^ Socket
+    -> ByteString
+    -- ^ Data to send
+    -> [Fd]
+    -- ^ File descriptors
+    -> IO ()
 sendWithFds s lbs fds = N.sendManyWithFds s (L.toChunks lbs) fds
 
 -- -----------------------------------------------------------------------------
 -- Receiving
+
 -- | Receive data from the socket.  The socket must be in a connected
 -- state.  Data is received on demand, in chunks; each chunk will be
 -- sized to reflect the amount of data received by individual 'recv'
@@ -68,16 +77,18 @@ sendWithFds s lbs fds = N.sendManyWithFds s (L.toChunks lbs) fds
 -- down.  If there is an error and an exception is thrown, the socket
 -- is not shut down.
 getContents
-    :: Socket -- ^ Connected socket
-    -> IO ByteString -- ^ Data received
+    :: Socket
+    -- ^ Connected socket
+    -> IO ByteString
+    -- ^ Data received
 getContents s = loop
   where
     loop = unsafeInterleaveIO $ do
         sbs <- N.recv s defaultChunkSize
         if S.null sbs
             then do
-              shutdown s ShutdownReceive `catchIOError` const (return ())
-              return Empty
+                shutdown s ShutdownReceive `catchIOError` const (return ())
+                return Empty
             else Chunk sbs <$> loop
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -88,10 +99,14 @@ getContents s = loop
 --
 -- If there is no more data to be received, returns an empty 'ByteString'.
 recv
-    :: Socket -- ^ Connected socket
-    -> Int64 -- ^ Maximum number of bytes to receive
-    -> IO ByteString -- ^ Data received
+    :: Socket
+    -- ^ Connected socket
+    -> Int64
+    -- ^ Maximum number of bytes to receive
+    -> IO ByteString
+    -- ^ Data received
 recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes)
   where
-    chunk k | S.null k  = Empty
-            | otherwise = Chunk k Empty
+    chunk k
+        | S.null k = Empty
+        | otherwise = Chunk k Empty

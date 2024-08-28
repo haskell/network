@@ -1,25 +1,26 @@
 {-# LANGUAGE CPP #-}
-module Network.Socket.SockAddr (
-      getPeerName
-    , getSocketName
-    , connect
-    , bind
-    , accept
-    , sendBufTo
-    , recvBufFrom
-    , sendBufMsg
-    , recvBufMsg
-    ) where
 
-import Control.Exception (try, throwIO, IOException)
+module Network.Socket.SockAddr (
+    getPeerName,
+    getSocketName,
+    connect,
+    bind,
+    accept,
+    sendBufTo,
+    recvBufFrom,
+    sendBufMsg,
+    recvBufMsg,
+) where
+
+import Control.Exception (IOException, throwIO, try)
 import System.Directory (removeFile)
 import System.IO.Error (isAlreadyInUseError, isDoesNotExistError)
 
 import qualified Network.Socket.Buffer as G
-import qualified Network.Socket.Name as G
-import qualified Network.Socket.Syscall as G
 import Network.Socket.Flag
 import Network.Socket.Imports
+import qualified Network.Socket.Name as G
+import qualified Network.Socket.Syscall as G
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 #else
@@ -46,24 +47,24 @@ connect = G.connect
 -- use port.
 bind :: Socket -> SockAddr -> IO ()
 bind s a = case a of
-  SockAddrUnix p -> do
-    -- gracefully handle the fact that UNIX systems don't clean up closed UNIX
-    -- domain sockets, inspired by https://stackoverflow.com/a/13719866
-    res <- try (G.bind s a)
-    case res of
-      Right () -> return ()
-      Left e | not (isAlreadyInUseError e) -> throwIO (e :: IOException)
-      Left e | otherwise -> do
-        -- socket might be in use, try to connect
-        res2 <- try (G.connect s a)
-        case res2 of
-          Right () -> close s >> throwIO e
-          Left e2 | not (isDoesNotExistError e2) -> throwIO (e2 :: IOException)
-          _ -> do
-            -- socket not actually in use, remove it and retry bind
-            void (try $ removeFile p :: IO (Either IOError ()))
-            G.bind s a
-  _ -> G.bind s a
+    SockAddrUnix p -> do
+        -- gracefully handle the fact that UNIX systems don't clean up closed UNIX
+        -- domain sockets, inspired by https://stackoverflow.com/a/13719866
+        res <- try (G.bind s a)
+        case res of
+            Right () -> return ()
+            Left e | not (isAlreadyInUseError e) -> throwIO (e :: IOException)
+            Left e | otherwise -> do
+                -- socket might be in use, try to connect
+                res2 <- try (G.connect s a)
+                case res2 of
+                    Right () -> close s >> throwIO e
+                    Left e2 | not (isDoesNotExistError e2) -> throwIO (e2 :: IOException)
+                    _ -> do
+                        -- socket not actually in use, remove it and retry bind
+                        void (try $ removeFile p :: IO (Either IOError ()))
+                        G.bind s a
+    _ -> G.bind s a
 
 -- | Accept a connection.  The socket must be bound to an address and
 -- listening for connections.  The return value is a pair @(conn,
@@ -97,22 +98,35 @@ recvBufFrom :: Socket -> Ptr a -> Int -> IO (Int, SockAddr)
 recvBufFrom = G.recvBufFrom
 
 -- | Send data to the socket using sendmsg(2).
-sendBufMsg :: Socket            -- ^ Socket
-           -> SockAddr          -- ^ Destination address
-           -> [(Ptr Word8,Int)] -- ^ Data to be sent
-           -> [Cmsg]            -- ^ Control messages
-           -> MsgFlag           -- ^ Message flags
-           -> IO Int            -- ^ The length actually sent
+sendBufMsg
+    :: Socket
+    -- ^ Socket
+    -> SockAddr
+    -- ^ Destination address
+    -> [(Ptr Word8, Int)]
+    -- ^ Data to be sent
+    -> [Cmsg]
+    -- ^ Control messages
+    -> MsgFlag
+    -- ^ Message flags
+    -> IO Int
+    -- ^ The length actually sent
 sendBufMsg = G.sendBufMsg
 
 -- | Receive data from the socket using recvmsg(2).
-recvBufMsg :: Socket            -- ^ Socket
-        -> [(Ptr Word8,Int)] -- ^ A list of a pair of buffer and its size.
-                             --   If the total length is not large enough,
-                             --   'MSG_TRUNC' is returned
-        -> Int               -- ^ The buffer size for control messages.
-                             --   If the length is not large enough,
-                             --   'MSG_CTRUNC' is returned
-        -> MsgFlag           -- ^ Message flags
-        -> IO (SockAddr,Int,[Cmsg],MsgFlag) -- ^ Source address, received data, control messages and message flags
+recvBufMsg
+    :: Socket
+    -- ^ Socket
+    -> [(Ptr Word8, Int)]
+    -- ^ A list of a pair of buffer and its size.
+    --   If the total length is not large enough,
+    --   'MSG_TRUNC' is returned
+    -> Int
+    -- ^ The buffer size for control messages.
+    --   If the length is not large enough,
+    --   'MSG_CTRUNC' is returned
+    -> MsgFlag
+    -- ^ Message flags
+    -> IO (SockAddr, Int, [Cmsg], MsgFlag)
+    -- ^ Source address, received data, control messages and message flags
 recvBufMsg = G.recvBufMsg
