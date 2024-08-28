@@ -1,3 +1,11 @@
+## Version 3.2.2.0
+
+* New API: waitReadSocketSTM, waitAndCancelReadSocketSTM,
+  waitWriteSocketSTM, waitAndCancelWriteSocketSTM
+  [#586](https://github.com/haskell/network/issues/585)
+* Checking the length of ASCII string allowing trailing 0.
+  [#585](https://github.com/haskell/network/issues/585)
+
 ## Version 3.2.1.0
 
 * Trying to release with the latest autoreconf.
