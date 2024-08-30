@@ -7,6 +7,7 @@
 
 module Network.Socket.Info where
 
+import qualified Data.List.NonEmpty as NE
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
@@ -289,6 +290,15 @@ getAddrInfo hints node service = alloc getaddrinfo
 #else
     filteredHints = hints
 #endif
+
+getAddrInfoNE
+    :: Maybe AddrInfo
+    -> Maybe HostName
+    -> Maybe ServiceName
+    -> IO (NE.NonEmpty AddrInfo)
+getAddrInfoNE hints node service =
+    -- getAddrInfo never returns an empty list.
+    NE.fromList <$> getAddrInfo hints node service
 
 followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
 followAddrInfo ptr_ai
