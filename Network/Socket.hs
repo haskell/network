@@ -57,7 +57,7 @@
 -- >                 addrFlags = [AI_PASSIVE]
 -- >               , addrSocketType = Stream
 -- >               }
--- >         NE.head <$> getAddrInfoNE (Just hints) mhost (Just port)
+-- >         NE.head <$> getAddrInfo (Just hints) mhost (Just port)
 -- >     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
 -- >         setSocketOption sock ReuseAddr 1
 -- >         withFdSocket sock setCloseOnExecIfNeeded
@@ -97,7 +97,7 @@
 -- >   where
 -- >     resolve = do
 -- >         let hints = defaultHints { addrSocketType = Stream }
--- >         NE.head <$> getAddrInfoNE (Just hints) (Just host) (Just port)
+-- >         NE.head <$> getAddrInfo (Just hints) (Just host) (Just port)
 -- >     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
 -- >         connect sock $ addrAddress addr
 -- >         return sock
@@ -112,8 +112,7 @@ module Network.Socket (
     withSocketsDo,
 
     -- * Address information
-    getAddrInfo,
-    getAddrInfoNE,
+    GetAddrInfo (..),
 
     -- ** Types
     HostName,

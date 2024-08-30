@@ -201,6 +201,19 @@ defaultHints = AddrInfo {
   , addrCanonName  = Nothing
   }
 
+class GetAddrInfo t where
+    getAddrInfo
+        :: Maybe AddrInfo -- ^ preferred socket type or protocol
+        -> Maybe HostName -- ^ host name to look up
+        -> Maybe ServiceName -- ^ service name to look up
+        -> IO (t AddrInfo) -- ^ resolved addresses, with "best" first
+
+instance GetAddrInfo [] where
+    getAddrInfo = getAddrInfoList
+
+instance GetAddrInfo NE.NonEmpty where
+    getAddrInfo = getAddrInfoNE
+
 -----------------------------------------------------------------------------
 -- | Resolve a host or service name to one or more addresses.
 -- The 'AddrInfo' values that this function returns contain 'SockAddr'
@@ -242,12 +255,12 @@ defaultHints = AddrInfo {
 -- >>> addrAddress addr
 -- 127.0.0.1:80
 
-getAddrInfo
+getAddrInfoList
     :: Maybe AddrInfo -- ^ preferred socket type or protocol
     -> Maybe HostName -- ^ host name to look up
     -> Maybe ServiceName -- ^ service name to look up
     -> IO [AddrInfo] -- ^ resolved addresses, with "best" first
-getAddrInfo hints node service = alloc getaddrinfo
+getAddrInfoList hints node service = alloc getaddrinfo
   where
     alloc body = withSocketsDo $ maybeWith withCString node $ \c_node ->
         maybeWith withCString service                       $ \c_service ->

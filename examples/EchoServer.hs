@@ -30,7 +30,7 @@ runTCPServer mhost port server = withSocketsDo $ do
                     { addrFlags = [AI_PASSIVE]
                     , addrSocketType = Stream
                     }
-        NE.head <$> getAddrInfoNE (Just hints) mhost (Just port)
+        NE.head <$> getAddrInfo (Just hints) mhost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
         setSocketOption sock ReuseAddr 1
         withFdSocket sock setCloseOnExecIfNeeded

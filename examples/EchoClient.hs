@@ -24,7 +24,7 @@ runTCPClient host port client = withSocketsDo $ do
   where
     resolve = do
         let hints = defaultHints{addrSocketType = Stream}
-        NE.head <$> getAddrInfoNE (Just hints) (Just host) (Just port)
+        NE.head <$> getAddrInfo (Just hints) (Just host) (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
         connect sock $ addrAddress addr
         return sock

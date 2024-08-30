@@ -245,7 +245,7 @@ bracketWithReraise tid setup teardown thing =
 
 resolveClient :: SocketType -> HostName -> PortNumber -> IO AddrInfo
 resolveClient socketType host port =
-    NE.head <$> getAddrInfoNE (Just hints) (Just host) (Just $ show port)
+    NE.head <$> getAddrInfo (Just hints) (Just host) (Just $ show port)
   where
     hints = defaultHints {
         addrSocketType = socketType
@@ -254,7 +254,7 @@ resolveClient socketType host port =
 
 resolveServer :: SocketType -> HostName -> IO AddrInfo
 resolveServer socketType host =
-    NE.head <$> getAddrInfoNE (Just hints) (Just host) Nothing
+    NE.head <$> getAddrInfo (Just hints) (Just host) Nothing
   where
     hints = defaultHints {
         addrSocketType = socketType
