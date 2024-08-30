@@ -63,8 +63,9 @@ import Network.Socket.Types
 -- can be handled with one socket.
 --
 -- >>> import Network.Socket
+-- >>> import qualified Data.List.NonEmpty as NE
 -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_NUMERICSERV], addrSocketType = Stream }
--- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
+-- >>> addr <- NE.head <$> getAddrInfo (Just hints) (Just "127.0.0.1") (Just "5000")
 -- >>> sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
 -- >>> Network.Socket.bind sock (addrAddress addr)
 -- >>> getSocketName sock

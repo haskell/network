@@ -112,7 +112,7 @@ module Network.Socket (
     withSocketsDo,
 
     -- * Address information
-    GetAddrInfo (..),
+    getAddrInfo,
 
     -- ** Types
     HostName,

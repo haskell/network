@@ -202,6 +202,47 @@ defaultHints = AddrInfo {
   }
 
 class GetAddrInfo t where
+    -----------------------------------------------------------------------------
+    -- | Resolve a host or service name to one or more addresses.
+    -- The 'AddrInfo' values that this function returns contain 'SockAddr'
+    -- values that you can pass directly to 'connect' or
+    -- 'bind'.
+    --
+    -- This function is protocol independent.  It can return both IPv4 and
+    -- IPv6 address information.
+    --
+    -- The 'AddrInfo' argument specifies the preferred query behaviour,
+    -- socket options, or protocol.  You can override these conveniently
+    -- using Haskell's record update syntax on 'defaultHints', for example
+    -- as follows:
+    --
+    -- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Stream }
+    --
+    -- You must provide a 'Just' value for at least one of the 'HostName'
+    -- or 'ServiceName' arguments.  'HostName' can be either a numeric
+    -- network address (dotted quad for IPv4, colon-separated hex for
+    -- IPv6) or a hostname.  In the latter case, its addresses will be
+    -- looked up unless 'AI_NUMERICHOST' is specified as a hint.  If you
+    -- do not provide a 'HostName' value /and/ do not set 'AI_PASSIVE' as
+    -- a hint, network addresses in the result will contain the address of
+    -- the loopback interface.
+    --
+    -- If the query fails, this function throws an IO exception instead of
+    -- returning an empty list.  Otherwise, it returns a non-empty list
+    -- of 'AddrInfo' values.
+    --
+    -- There are several reasons why a query might result in several
+    -- values.  For example, the queried-for host could be multihomed, or
+    -- the service might be available via several protocols.
+    --
+    -- Note: the order of arguments is slightly different to that defined
+    -- for @getaddrinfo@ in RFC 2553.  The 'AddrInfo' parameter comes first
+    -- to make partial application easier.
+    --
+    -- >>> import qualified Data.List.NonEmpty as NE
+    -- >>> addr <- NE.head <$> getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
+    -- >>> addrAddress addr
+    -- 127.0.0.1:80
     getAddrInfo
         :: Maybe AddrInfo -- ^ preferred socket type or protocol
         -> Maybe HostName -- ^ host name to look up
@@ -213,47 +254,6 @@ instance GetAddrInfo [] where
 
 instance GetAddrInfo NE.NonEmpty where
     getAddrInfo = getAddrInfoNE
-
------------------------------------------------------------------------------
--- | Resolve a host or service name to one or more addresses.
--- The 'AddrInfo' values that this function returns contain 'SockAddr'
--- values that you can pass directly to 'connect' or
--- 'bind'.
---
--- This function is protocol independent.  It can return both IPv4 and
--- IPv6 address information.
---
--- The 'AddrInfo' argument specifies the preferred query behaviour,
--- socket options, or protocol.  You can override these conveniently
--- using Haskell's record update syntax on 'defaultHints', for example
--- as follows:
---
--- >>> let hints = defaultHints { addrFlags = [AI_NUMERICHOST], addrSocketType = Stream }
---
--- You must provide a 'Just' value for at least one of the 'HostName'
--- or 'ServiceName' arguments.  'HostName' can be either a numeric
--- network address (dotted quad for IPv4, colon-separated hex for
--- IPv6) or a hostname.  In the latter case, its addresses will be
--- looked up unless 'AI_NUMERICHOST' is specified as a hint.  If you
--- do not provide a 'HostName' value /and/ do not set 'AI_PASSIVE' as
--- a hint, network addresses in the result will contain the address of
--- the loopback interface.
---
--- If the query fails, this function throws an IO exception instead of
--- returning an empty list.  Otherwise, it returns a non-empty list
--- of 'AddrInfo' values.
---
--- There are several reasons why a query might result in several
--- values.  For example, the queried-for host could be multihomed, or
--- the service might be available via several protocols.
---
--- Note: the order of arguments is slightly different to that defined
--- for @getaddrinfo@ in RFC 2553.  The 'AddrInfo' parameter comes first
--- to make partial application easier.
---
--- >>> addr:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
--- >>> addrAddress addr
--- 127.0.0.1:80
 
 getAddrInfoList
     :: Maybe AddrInfo -- ^ preferred socket type or protocol
