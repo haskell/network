@@ -7,6 +7,7 @@
 
 module Network.Socket.Info where
 
+import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
@@ -255,12 +256,12 @@ instance GetAddrInfo [] where
 instance GetAddrInfo NE.NonEmpty where
     getAddrInfo = getAddrInfoNE
 
-getAddrInfoList
+getAddrInfoNE
     :: Maybe AddrInfo -- ^ preferred socket type or protocol
     -> Maybe HostName -- ^ host name to look up
     -> Maybe ServiceName -- ^ service name to look up
-    -> IO [AddrInfo] -- ^ resolved addresses, with "best" first
-getAddrInfoList hints node service = alloc getaddrinfo
+    -> IO (NonEmpty AddrInfo) -- ^ resolved addresses, with "best" first
+getAddrInfoNE hints node service = alloc getaddrinfo
   where
     alloc body = withSocketsDo $ maybeWith withCString node $ \c_node ->
         maybeWith withCString service                       $ \c_service ->
@@ -271,13 +272,10 @@ getAddrInfoList hints node service = alloc getaddrinfo
         ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
         if ret == 0 then do
             ptr_addrs <- peek ptr_ptr_addrs
-            ais       <- followAddrInfo ptr_addrs
-            c_freeaddrinfo ptr_addrs
             -- POSIX requires that getaddrinfo(3) returns at least one addrinfo.
             -- See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html
-            case ais of
-              [] -> ioError $ mkIOError NoSuchThing message Nothing Nothing
-              _ -> return ais
+            ais       <- followAddrInfo ptr_addrs
+            return ais
           else do
             err <- gai_strerror ret
             ioError $ ioeSetErrorString
@@ -304,22 +302,31 @@ getAddrInfoList hints node service = alloc getaddrinfo
     filteredHints = hints
 #endif
 
-getAddrInfoNE
+getAddrInfoList
     :: Maybe AddrInfo
     -> Maybe HostName
     -> Maybe ServiceName
-    -> IO (NE.NonEmpty AddrInfo)
-getAddrInfoNE hints node service =
+    -> IO [AddrInfo]
+getAddrInfoList hints node service =
     -- getAddrInfo never returns an empty list.
-    NE.fromList <$> getAddrInfo hints node service
+    NE.toList <$> getAddrInfoNE hints node service
 
-followAddrInfo :: Ptr AddrInfo -> IO [AddrInfo]
+followAddrInfo :: Ptr AddrInfo -> IO (NonEmpty AddrInfo)
 followAddrInfo ptr_ai
-    | ptr_ai == nullPtr = return []
+    | ptr_ai == nullPtr = error "fixme"
     | otherwise = do
-        a  <- peek ptr_ai
-        as <- (# peek struct addrinfo, ai_next) ptr_ai >>= followAddrInfo
-        return (a : as)
+        a <- peek ptr_ai
+        ptr <- (# peek struct addrinfo, ai_next) ptr_ai
+        go ptr a
+  where
+    go :: Ptr AddrInfo -> AddrInfo -> IO (NonEmpty AddrInfo)
+    go ptr a
+      | ptr == nullPtr = return $ NE.singleton a
+      | otherwise = do
+            a' <- peek ptr
+            ptr' <- (# peek struct addrinfo, ai_next) ptr
+            as <- go ptr' a'
+            return $ NE.cons a as
 
 foreign import ccall safe "hsnet_getaddrinfo"
     c_getaddrinfo :: CString -> CString -> Ptr AddrInfo -> Ptr (Ptr AddrInfo)
