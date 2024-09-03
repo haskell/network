@@ -317,16 +317,16 @@ followAddrInfo ptr_ai
     | otherwise = do
         a <- peek ptr_ai
         ptr <- (# peek struct addrinfo, ai_next) ptr_ai
-        go ptr a
+        (a :|) <$> go ptr
   where
-    go :: Ptr AddrInfo -> AddrInfo -> IO (NonEmpty AddrInfo)
-    go ptr a
-      | ptr == nullPtr = return $ NE.singleton a
+    go :: Ptr AddrInfo -> IO [AddrInfo]
+    go ptr
+      | ptr == nullPtr = return []
       | otherwise = do
             a' <- peek ptr
             ptr' <- (# peek struct addrinfo, ai_next) ptr
-            as <- go ptr' a'
-            return $ NE.cons a as
+            as' <- go ptr'
+            return (a':as')
 
 foreign import ccall safe "hsnet_getaddrinfo"
     c_getaddrinfo :: CString -> CString -> Ptr AddrInfo -> Ptr (Ptr AddrInfo)
