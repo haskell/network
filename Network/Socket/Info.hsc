@@ -207,7 +207,9 @@ class GetAddrInfo t where
     -- | Resolve a host or service name to one or more addresses.
     -- The 'AddrInfo' values that this function returns contain 'SockAddr'
     -- values that you can pass directly to 'connect' or
-    -- 'bind'.
+    -- 'bind'. Instances for the hidden 'GetAddrInfo' class are lists and
+    -- 'NonEmpty' only. Use of 'NonEmpty' is recommended as getaddrinfo() never
+    -- returns an empty list.
     --
     -- This function is protocol independent.  It can return both IPv4 and
     -- IPv6 address information.
