@@ -248,6 +248,8 @@ class GetAddrInfo t where
     -- >>> addr <- NE.head <$> getAddrInfo (Just hints) (Just "127.0.0.1") (Just "http")
     -- >>> addrAddress addr
     -- 127.0.0.1:80
+    --
+    -- Polymorphic version: @since 3.2.3.0
     getAddrInfo
         :: Maybe AddrInfo -- ^ preferred socket type or protocol
         -> Maybe HostName -- ^ host name to look up
