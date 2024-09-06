@@ -274,8 +274,6 @@ getAddrInfoNE hints node service = alloc getaddrinfo
         ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
         if ret == 0 then do
             ptr_addrs <- peek ptr_ptr_addrs
-            -- POSIX requires that getaddrinfo(3) returns at least one addrinfo.
-            -- See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html
             ais       <- followAddrInfo ptr_addrs
             return ais
           else do
@@ -315,6 +313,8 @@ getAddrInfoList hints node service =
 
 followAddrInfo :: Ptr AddrInfo -> IO (NonEmpty AddrInfo)
 followAddrInfo ptr_ai
+    -- POSIX requires that getaddrinfo(3) returns at least one addrinfo.
+    -- See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html
     | ptr_ai == nullPtr = ioError $ mkIOError NoSuchThing "getaddrinfo must return at least one addrinfo" Nothing Nothing
     | otherwise = do
         a <- peek ptr_ai
