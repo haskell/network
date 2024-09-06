@@ -207,9 +207,15 @@ class GetAddrInfo t where
     -- | Resolve a host or service name to one or more addresses.
     -- The 'AddrInfo' values that this function returns contain 'SockAddr'
     -- values that you can pass directly to 'connect' or
-    -- 'bind'. Instances for the hidden 'GetAddrInfo' class are lists and
-    -- 'NonEmpty' only. Use of 'NonEmpty' is recommended as getaddrinfo() never
-    -- returns an empty list.
+    -- 'bind'.
+    --
+    -- This function calls @getaddrinfo(3)@, which never successfully returns
+    -- with an empty list. If the query fails, 'getAddrInfo' throws an IO
+    -- exception.
+    --
+    -- For backwards-compatibility reasons, a hidden 'GetAddrInfo' class is used
+    -- to make the result polymorphic. It only has instances for @[]@ (lists)
+    -- and 'NonEmpty' only. Use of 'NonEmpty' is recommended.
     --
     -- This function is protocol independent.  It can return both IPv4 and
     -- IPv6 address information.
@@ -229,10 +235,6 @@ class GetAddrInfo t where
     -- do not provide a 'HostName' value /and/ do not set 'AI_PASSIVE' as
     -- a hint, network addresses in the result will contain the address of
     -- the loopback interface.
-    --
-    -- If the query fails, this function throws an IO exception instead of
-    -- returning an empty list.  Otherwise, it returns a non-empty list
-    -- of 'AddrInfo' values.
     --
     -- There are several reasons why a query might result in several
     -- values.  For example, the queried-for host could be multihomed, or
