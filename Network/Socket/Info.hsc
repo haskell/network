@@ -315,7 +315,7 @@ getAddrInfoList hints node service =
 
 followAddrInfo :: Ptr AddrInfo -> IO (NonEmpty AddrInfo)
 followAddrInfo ptr_ai
-    | ptr_ai == nullPtr = ioError $ mkIOError NoSuchThing "getaddrinfo must retuan at least one addrinfo" Nothing Nothing
+    | ptr_ai == nullPtr = ioError $ mkIOError NoSuchThing "getaddrinfo must return at least one addrinfo" Nothing Nothing
     | otherwise = do
         a <- peek ptr_ai
         ptr <- (# peek struct addrinfo, ai_next) ptr_ai
