@@ -35,6 +35,7 @@ import qualified Control.Exception as E
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
+import qualified Data.List.NonEmpty as NE
 import Network.Socket
 import System.Directory
 import System.Timeout (timeout)
@@ -244,7 +245,7 @@ bracketWithReraise tid setup teardown thing =
 
 resolveClient :: SocketType -> HostName -> PortNumber -> IO AddrInfo
 resolveClient socketType host port =
-    head <$> getAddrInfo (Just hints) (Just host) (Just $ show port)
+    NE.head <$> getAddrInfo (Just hints) (Just host) (Just $ show port)
   where
     hints = defaultHints {
         addrSocketType = socketType
@@ -253,7 +254,7 @@ resolveClient socketType host port =
 
 resolveServer :: SocketType -> HostName -> IO AddrInfo
 resolveServer socketType host =
-    head <$> getAddrInfo (Just hints) (Just host) Nothing
+    NE.head <$> getAddrInfo (Just hints) (Just host) Nothing
   where
     hints = defaultHints {
         addrSocketType = socketType

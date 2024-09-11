@@ -118,7 +118,7 @@ spec = do
 
         it "does not cause segfault on macOS 10.8.2 due to AI_NUMERICSERV" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
-            void $ getAddrInfo (Just hints) (Just "localhost") Nothing
+            void (getAddrInfo (Just hints) (Just "localhost") Nothing :: IO [AddrInfo])
 
 #if defined(mingw32_HOST_OS)
     let lpdevname = "loopback_0"

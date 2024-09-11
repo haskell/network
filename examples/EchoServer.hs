@@ -5,6 +5,7 @@ import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 import Control.Monad (forever, unless, void)
 import qualified Data.ByteString as S
+import qualified Data.List.NonEmpty as NE
 import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 
@@ -29,7 +30,7 @@ runTCPServer mhost port server = withSocketsDo $ do
                     { addrFlags = [AI_PASSIVE]
                     , addrSocketType = Stream
                     }
-        head <$> getAddrInfo (Just hints) mhost (Just port)
+        NE.head <$> getAddrInfo (Just hints) mhost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
         setSocketOption sock ReuseAddr 1
         withFdSocket sock setCloseOnExecIfNeeded
