@@ -215,7 +215,7 @@ class GetAddrInfo t where
     --
     -- For backwards-compatibility reasons, a hidden 'GetAddrInfo' class is used
     -- to make the result polymorphic. It only has instances for @[]@ (lists)
-    -- and 'NonEmpty' only. Use of 'NonEmpty' is recommended.
+    -- and 'NonEmpty'. Use of 'NonEmpty' is recommended.
     --
     -- This function is protocol independent.  It can return both IPv4 and
     -- IPv6 address information.
