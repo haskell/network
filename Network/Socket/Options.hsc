@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE GADTs #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -25,6 +26,8 @@ module Network.Socket.Options (
   , setSocketOption
   , getSockOpt
   , setSockOpt
+  , SockOptValue (..)
+  , setSockOptValue
   , StructLinger (..)
   , SocketTimeout (..)
   ) where
@@ -408,6 +411,22 @@ setSockOpt s (SockOpt level opt) v = do
           throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
           c_setsockopt fd level opt ptr sz
 
+-- | Set a socket option value
+--
+-- The existential 'SockOptValue' enables things like:
+--
+-- @
+-- mapM_ (uncurry $ 'setSockOptValue' sock) [
+--       ('NoDelay', 'SockOptValue' @Int 1)
+--     , ('Linger', 'SockOptValue' ('StructLinger' 1 0))
+--     ]
+-- @
+setSockOptValue :: Socket
+                     -> SocketOption
+                     -> SockOptValue
+                     -> IO ()
+setSockOptValue s opt (SockOptValue v) = setSockOpt s opt v
+
 ----------------------------------------------------------------
 
 -- | Get a socket option that gives an 'Int' value.
@@ -456,8 +475,8 @@ getSocketType s = unpackSocketType <$> getSockOpt s Type
 {-# COMPLETE CustomSockOpt #-}
 #endif
 #ifdef SO_LINGER
--- | Low level 'SO_LINBER' option value, which can be used with 'setSockOpt'.
---
+-- | Low level @SO_LINGER@ option value, which can be used with 'setSockOpt' or
+-- @'setSockOptValue' . 'SockOptValue'@.
 data StructLinger = StructLinger {
     -- | Set the linger option on.
     sl_onoff  :: CInt,
@@ -480,6 +499,13 @@ instance Storable StructLinger where
         (#poke struct linger, l_onoff)  p onoff
         (#poke struct linger, l_linger) p linger
 #endif
+
+-- | A type that can hold any 'Storable' socket option value (e.g.
+-- 'StructLinger' and 'CInt')
+--
+-- See 'setSockOptValue'
+data SockOptValue where
+  SockOptValue :: Storable a => a -> SockOptValue
 
 ----------------------------------------------------------------
 

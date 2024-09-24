@@ -181,6 +181,8 @@ module Network.Socket (
     setSocketOption,
     getSockOpt,
     setSockOpt,
+    SockOptValue (..),
+    setSockOptValue,
 
     -- * Socket
     Socket,
