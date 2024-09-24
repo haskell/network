@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE GADTs #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -25,6 +26,8 @@ module Network.Socket.Options (
   , setSocketOption
   , getSockOpt
   , setSockOpt
+  , SocketOptValue (..)
+  , setSocketOptValue
   , StructLinger (..)
   , SocketTimeout (..)
   ) where
@@ -408,6 +411,22 @@ setSockOpt s (SockOpt level opt) v = do
           throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
           c_setsockopt fd level opt ptr sz
 
+-- | Set a socket option value
+--
+-- The existential 'SocketOptValue' enables things like:
+--
+-- @
+-- mapM_ (uncurry $ 'setSocketOptValue' sock) [
+--       ('NoDelay', 'SocketOptValue' @Int 1)
+--     , ('Linger', 'SocketOptValue' ('StructLinger' 1 0))
+--     ]
+-- @
+setSocketOptValue :: Socket
+                     -> SocketOption
+                     -> SocketOptValue
+                     -> IO ()
+setSocketOptValue s opt (SocketOptValue v) = setSockOpt s opt v
+
 ----------------------------------------------------------------
 
 -- | Get a socket option that gives an 'Int' value.
@@ -456,8 +475,8 @@ getSocketType s = unpackSocketType <$> getSockOpt s Type
 {-# COMPLETE CustomSockOpt #-}
 #endif
 #ifdef SO_LINGER
--- | Low level 'SO_LINBER' option value, which can be used with 'setSockOpt'.
---
+-- | Low level @SO_LINGER@ option value, which can be used with 'setSockOpt' or
+-- @'setSocketOptValue' . 'SocketOptValue'@.
 data StructLinger = StructLinger {
     -- | Set the linger option on.
     sl_onoff  :: CInt,
@@ -480,6 +499,13 @@ instance Storable StructLinger where
         (#poke struct linger, l_onoff)  p onoff
         (#poke struct linger, l_linger) p linger
 #endif
+
+-- | A type that can hold any 'Storable' socket option value (e.g.
+-- 'StructLinger' and 'CInt')
+--
+-- See 'setSocketOptValue'
+data SocketOptValue where
+  SocketOptValue :: Storable a => a -> SocketOptValue
 
 ----------------------------------------------------------------
 
