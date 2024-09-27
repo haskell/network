@@ -173,16 +173,18 @@ module Network.Socket (
         RecvIPv6TClass,
         RecvIPv6PktInfo
     ),
-    StructLinger (..),
-    SocketTimeout (..),
     isSupportedSocketOption,
     whenSupported,
     getSocketOption,
     setSocketOption,
+    -- ** General socket options
+    StructLinger (..),
+    SocketTimeout (..),
     getSockOpt,
     setSockOpt,
-    SocketOptValue (..),
-    setSocketOptValue,
+    -- ** Integrated socket options
+    SockOptValue (..),
+    setSockOptValue,
 
     -- * Socket
     Socket,

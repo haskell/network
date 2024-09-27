@@ -26,8 +26,8 @@ module Network.Socket.Options (
   , setSocketOption
   , getSockOpt
   , setSockOpt
-  , SocketOptValue (..)
-  , setSocketOptValue
+  , SockOptValue (..)
+  , setSockOptValue
   , StructLinger (..)
   , SocketTimeout (..)
   ) where
@@ -413,19 +413,19 @@ setSockOpt s (SockOpt level opt) v = do
 
 -- | Set a socket option value
 --
--- The existential 'SocketOptValue' enables things like:
+-- The existential 'SockOptValue' enables things like:
 --
 -- @
--- mapM_ (uncurry $ 'setSocketOptValue' sock) [
---       ('NoDelay', 'SocketOptValue' @Int 1)
---     , ('Linger', 'SocketOptValue' ('StructLinger' 1 0))
+-- mapM_ (uncurry $ 'setSockOptValue' sock) [
+--       ('NoDelay', 'SockOptValue' @Int 1)
+--     , ('Linger', 'SockOptValue' ('StructLinger' 1 0))
 --     ]
 -- @
-setSocketOptValue :: Socket
+setSockOptValue :: Socket
                      -> SocketOption
-                     -> SocketOptValue
+                     -> SockOptValue
                      -> IO ()
-setSocketOptValue s opt (SocketOptValue v) = setSockOpt s opt v
+setSockOptValue s opt (SockOptValue v) = setSockOpt s opt v
 
 ----------------------------------------------------------------
 
@@ -476,7 +476,7 @@ getSocketType s = unpackSocketType <$> getSockOpt s Type
 #endif
 #ifdef SO_LINGER
 -- | Low level @SO_LINGER@ option value, which can be used with 'setSockOpt' or
--- @'setSocketOptValue' . 'SocketOptValue'@.
+-- @'setSockOptValue' . 'SockOptValue'@.
 data StructLinger = StructLinger {
     -- | Set the linger option on.
     sl_onoff  :: CInt,
@@ -503,9 +503,9 @@ instance Storable StructLinger where
 -- | A type that can hold any 'Storable' socket option value (e.g.
 -- 'StructLinger' and 'CInt')
 --
--- See 'setSocketOptValue'
-data SocketOptValue where
-  SocketOptValue :: Storable a => a -> SocketOptValue
+-- See 'setSocOptValue'
+data SockOptValue where
+  SockOptValue :: Storable a => a -> SockOptValue
 
 ----------------------------------------------------------------
 
