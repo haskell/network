@@ -1,8 +1,18 @@
+## Version 3.2.4.0
+
+* New API: setSockOptValue.
+  [#588](https://github.com/haskell/network/issues/588)
+
+## Version 3.2.3.0
+
+* Making getAddrInfo polymorphic
+  [#587](https://github.com/haskell/network/issues/587)
+
 ## Version 3.2.2.0
 
 * New API: waitReadSocketSTM, waitAndCancelReadSocketSTM,
   waitWriteSocketSTM, waitAndCancelWriteSocketSTM
-  [#586](https://github.com/haskell/network/issues/585)
+  [#586](https://github.com/haskell/network/issues/586)
 * Checking the length of ASCII string allowing trailing 0.
   [#585](https://github.com/haskell/network/issues/585)
 
