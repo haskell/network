@@ -8,9 +8,10 @@ module Network.Socket.Shutdown (
   , gracefulClose
   ) where
 
-import Control.Concurrent (threadDelay, yield)
+import Control.Concurrent (yield)
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
+import System.Timeout
 
 #if !defined(mingw32_HOST_OS)
 import Control.Concurrent.STM
@@ -83,18 +84,7 @@ bufSize :: Int
 bufSize = 1024
 
 recvEOFloop :: Socket -> Int -> Ptr Word8 -> IO ()
-recvEOFloop s tmout0 buf = loop 1 0
-  where
-    loop delay tmout = do
-        -- We don't check the (positive) length.
-        -- In normal case, it's 0. That is, only FIN is received.
-        -- In error cases, data is available. But there is no
-        -- application which can read it. So, let's stop receiving
-        -- to prevent attacks.
-        r <- recvBufNoWait s buf bufSize
-        when (r == -1 && tmout < tmout0) $ do
-            threadDelay (delay * 1000)
-            loop (delay * 2) (tmout + delay)
+recvEOFloop s tmout0 buf = void $ timeout tmout0 $ recvBuf s buf bufSize
 
 #if !defined(mingw32_HOST_OS)
 data Wait = MoreData | TimeoutTripped
