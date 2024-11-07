@@ -1,3 +1,8 @@
+## Version 3.2.5.0
+
+* `gracefulClose` based on STM racing and `timeout`.
+  [#587](https://github.com/haskell/network/issues/587)
+
 ## Version 3.2.4.0
 
 * New API: setSockOptValue.
