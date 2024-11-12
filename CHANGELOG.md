@@ -1,3 +1,7 @@
+## Version 3.2.6.0
+
+* fixing the Show instance of IPv4-mapped IPv6 address on little endian machines
+
 ## Version 3.2.5.0
 
 * `gracefulClose` based on STM racing and `timeout`.
