@@ -57,6 +57,7 @@ module Network.Socket.Types (
     , isSupportedSockAddr
     , HostAddress
     , hostAddressToTuple
+    , hostAddressToTuple'
     , tupleToHostAddress
     , HostAddress6
     , hostAddress6ToTuple
@@ -1229,6 +1230,11 @@ hostAddressToTuple :: HostAddress -> (Word8, Word8, Word8, Word8)
 hostAddressToTuple ha' =
     let ha = htonl ha'
         byte i = fromIntegral (ha `shiftR` i) :: Word8
+    in (byte 24, byte 16, byte 8, byte 0)
+
+hostAddressToTuple' :: HostAddress -> (Word8, Word8, Word8, Word8)
+hostAddressToTuple' ha =
+    let byte i = fromIntegral (ha `shiftR` i) :: Word8
     in (byte 24, byte 16, byte 8, byte 0)
 
 -- | Converts IPv4 quadruple to 'HostAddress'.
