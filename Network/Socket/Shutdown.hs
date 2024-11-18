@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNetDef.h"
 
@@ -59,7 +60,8 @@ gracefulClose s tmout0 = sendRecvFIN `E.finally` close s
         -- Sending TCP FIN.
         ex <- E.try $ shutdown s ShutdownSend
         case ex of
-          Left (E.SomeException _) -> return ()
+          -- Don't catch asynchronous exceptions
+          Left (_ :: E.IOException) -> return ()
           Right () -> do
               -- Giving CPU time to other threads hoping that
               -- FIN arrives meanwhile.
