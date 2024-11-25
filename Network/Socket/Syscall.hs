@@ -11,6 +11,7 @@ import System.IO.Error (catchIOError)
 #endif
 
 #if defined(mingw32_HOST_OS)
+import Control.Exception (bracket)
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
 #else
@@ -202,13 +203,12 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
                        throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                          c_accept_safe fd sa ptr_len
        | otherwise = do
-             paramData <- c_newAcceptParams fd (fromIntegral sz) sa
-             rc        <- asyncDoProc c_acceptDoProc paramData
-             new_fd    <- c_acceptNewSock paramData
-             c_free paramData
-             when (rc /= 0) $
-               throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-             return new_fd
+             bracket (c_newAcceptParams fd (fromIntegral sz) sa) c_free $ \paramData -> do
+                 rc     <- asyncDoProc c_acceptDoProc paramData
+                 new_fd <- c_acceptNewSock paramData
+                 when (rc /= 0) $
+                     throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
+                 return new_fd
 #else
      callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
