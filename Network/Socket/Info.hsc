@@ -7,6 +7,7 @@
 
 module Network.Socket.Info where
 
+import Control.Exception (mask, onException)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
@@ -274,11 +275,12 @@ getAddrInfoNE hints node service = alloc getaddrinfo
             maybeWith with filteredHints                    $ \c_hints ->
                   alloca                                    $ \ptr_ptr_addrs ->
                       body c_node c_service c_hints ptr_ptr_addrs
-    getaddrinfo c_node c_service c_hints ptr_ptr_addrs = do
+    getaddrinfo c_node c_service c_hints ptr_ptr_addrs = mask $ \release -> do
         ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
         if ret == 0 then do
             ptr_addrs <- peek ptr_ptr_addrs
-            ais       <- followAddrInfo ptr_addrs
+            ais       <- release (followAddrInfo ptr_addrs) `onException` c_freeaddrinfo ptr_addrs
+            c_freeaddrinfo ptr_addrs
             return ais
           else do
             err <- gai_strerror ret
