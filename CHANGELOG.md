@@ -1,3 +1,12 @@
+## Version 3.2.7.0
+
+* Using nested `bracket` for `gracefulClose`.
+  [#591](https://github.com/haskell/network/issues/590)
+* Fix memory leak in getaddrinfo and make it async exception safe.
+  [#591](https://github.com/haskell/network/pull/591)
+* Make call to c_free async exception safe.
+  [#592](https://github.com/haskell/network/pull/592)
+
 ## Version 3.2.6.0
 
 * fixing the Show instance of IPv4-mapped IPv6 address on little endian machines
