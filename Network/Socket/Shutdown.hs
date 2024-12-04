@@ -77,7 +77,7 @@ recvEOF s tmout0 buf = do
       Nothing -> recvEOFtimeout s tmout0 buf
       Just _ -> recvEOFevent s tmout0 buf
 #else
-recvEOF = recvEOFloop
+recvEOF = recvEOFtimeout
 #endif
 
 -- Don't use 4092 here. The GHC runtime takes the global lock
