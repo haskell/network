@@ -74,7 +74,7 @@ recvEOF :: Socket -> Int -> Ptr Word8 -> IO ()
 recvEOF s tmout0 buf = do
     mevmgr <- Ev.getSystemEventManager
     case mevmgr of
-      Nothing -> recvEOFloop s tmout0 buf
+      Nothing -> recvEOFtimeout s tmout0 buf
       Just _ -> recvEOFevent s tmout0 buf
 #else
 recvEOF = recvEOFloop
@@ -85,8 +85,8 @@ recvEOF = recvEOFloop
 bufSize :: Int
 bufSize = 1024
 
-recvEOFloop :: Socket -> Int -> Ptr Word8 -> IO ()
-recvEOFloop s tmout0 buf = void $ timeout tmout0 $ recvBuf s buf bufSize
+recvEOFtimeout :: Socket -> Int -> Ptr Word8 -> IO ()
+recvEOFtimeout s tmout0 buf = void $ timeout tmout0 $ recvBuf s buf bufSize
 
 #if !defined(mingw32_HOST_OS)
 data Wait = MoreData | TimeoutTripped
