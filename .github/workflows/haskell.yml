@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:  [ 'ubuntu-latest', 'macOS-latest', 'windows-latest' ]
+        os:  [ 'ubuntu-latest', 'macOS-latest', 'macos-13', 'windows-latest' ]
         ghc: [ '9.4', '9.6', '9.8' ]
 
     steps:
