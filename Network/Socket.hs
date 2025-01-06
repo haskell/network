@@ -174,11 +174,13 @@ module Network.Socket (
     whenSupported,
     getSocketOption,
     setSocketOption,
+
     -- ** General socket options
     StructLinger (..),
     SocketTimeout (..),
     getSockOpt,
     setSockOpt,
+
     -- ** Integrated socket options
     SockOptValue (..),
     setSockOptValue,
@@ -391,6 +393,9 @@ module Network.Socket (
     waitAndCancelReadSocketSTM,
     waitWriteSocketSTM,
     waitAndCancelWriteSocketSTM,
+
+    -- * Deprecated
+    withSocketsDo,
 ) where
 
 import Network.Socket.Buffer hiding (
@@ -398,10 +403,6 @@ import Network.Socket.Buffer hiding (
     recvBufMsg,
     sendBufMsg,
     sendBufTo,
-
-    -- * Initialisation on Windows
-    withSocketsDo,
-
  )
 import Network.Socket.Cbits
 import Network.Socket.Fcntl
