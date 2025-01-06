@@ -48,7 +48,7 @@
 -- >
 -- > -- from the "network-run" package.
 -- > runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
--- > runTCPServer mhost port server = withSocketsDo $ do
+-- > runTCPServer mhost port server = do
 -- >     addr <- resolve
 -- >     E.bracket (open addr) close loop
 -- >   where
@@ -91,7 +91,7 @@
 -- >
 -- > -- from the "network-run" package.
 -- > runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
--- > runTCPClient host port client = withSocketsDo $ do
+-- > runTCPClient host port client = do
 -- >     addr <- resolve
 -- >     E.bracket (open addr) close client
 -- >   where
@@ -108,9 +108,6 @@
 -- threads vs a single 'Socket': one thread reads data from a 'Socket'
 -- only and the other thread writes data to the 'Socket' only.
 module Network.Socket (
-    -- * Initialisation
-    withSocketsDo,
-
     -- * Address information
     getAddrInfo,
 
@@ -401,6 +398,10 @@ import Network.Socket.Buffer hiding (
     recvBufMsg,
     sendBufMsg,
     sendBufTo,
+
+    -- * Initialisation on Windows
+    withSocketsDo,
+
  )
 import Network.Socket.Cbits
 import Network.Socket.Fcntl
