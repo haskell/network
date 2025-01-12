@@ -404,12 +404,17 @@ setSockOpt :: Storable a
            -> SocketOption
            -> a
            -> IO ()
+#ifdef HAVE_SETSOCKOPT
 setSockOpt s (SockOpt level opt) v = do
     with v $ \ptr -> void $ do
         let sz = fromIntegral $ sizeOf v
         withFdSocket s $ \fd ->
           throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
           c_setsockopt fd level opt ptr sz
+#else
+setSockOpt _ _ _  = unsupported "setSockOpt"
+{-# WARNING setSockOpt "operation will throw 'IOError' \"unsupported operation\"" #-}
+#endif
 
 -- | Set a socket option value
 --
@@ -474,7 +479,7 @@ getSocketType s = unpackSocketType <$> getSockOpt s Type
 #if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE CustomSockOpt #-}
 #endif
-#ifdef SO_LINGER
+
 -- | Low level @SO_LINGER@ option value, which can be used with 'setSockOpt' or
 -- @'setSockOptValue' . 'SockOptValue'@.
 data StructLinger = StructLinger {
@@ -486,6 +491,7 @@ data StructLinger = StructLinger {
   }
   deriving (Eq, Ord, Show)
 
+#ifdef SO_LINGER
 instance Storable StructLinger where
     sizeOf    ~_ = (#const sizeof(struct linger))
     alignment ~_ = alignment (0 :: CInt)
@@ -540,5 +546,7 @@ instance Storable SocketTimeout where
 
 foreign import CALLCONV unsafe "getsockopt"
   c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
+#ifdef HAVE_SETSOCKOPT
 foreign import CALLCONV unsafe "setsockopt"
   c_setsockopt :: CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
+#endif

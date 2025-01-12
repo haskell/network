@@ -77,18 +77,28 @@ AC_CHECK_HEADERS([sys/uio.h sys/socket.h netinet/in.h netinet/tcp.h])
 AC_CHECK_HEADERS([sys/un.h arpa/inet.h netdb.h])
 AC_CHECK_HEADERS([net/if.h netioapi.h])
 
-AC_CHECK_TYPES([struct ucred])
+AC_CHECK_TYPES([struct ucred, struct addrinfo, struct cmsghdr])
 
 AC_CHECK_FUNCS([gai_strerror gethostent accept4])
 AC_CHECK_FUNCS([getpeereid])
+AC_CHECK_FUNCS([getnameinfo getaddrinfo])
+AC_CHECK_FUNCS([socket bind connect listen])
+AC_CHECK_FUNCS([sendto recvfrom])
+AC_CHECK_FUNCS([setsockopt])
+AC_CHECK_FUNCS([if_nametoindex if_indextoname])
+AC_CHECK_FUNCS([getpeername])
+AC_CHECK_FUNCS([socketpair])
+AC_CHECK_FUNCS([dup])
 
-AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_NUMERICSERV, AI_V4MAPPED])
+AC_CHECK_DECLS([AI_ADDRCONFIG, AI_ALL, AI_ADDRCONFIG, AI_NUMERICHOST, AI_NUMERICSERV, AI_PASSIVE, AI_V4MAPPED])
+AC_CHECK_DECLS([NI_DGRAM, NI_NAMEREQD, NI_NOFQDN, NI_NUMERICHOST, NI_NUMERICSERV])
 AC_CHECK_DECLS([IPV6_V6ONLY])
 AC_CHECK_DECLS([IPPROTO_IP, IPPROTO_TCP, IPPROTO_IPV6])
 AC_CHECK_DECLS([SO_PEERCRED])
 
 AC_CHECK_MEMBERS([struct msghdr.msg_control, struct msghdr.msg_accrights])
 AC_CHECK_MEMBERS([struct sockaddr.sa_len])
+AC_CHECK_MEMBERS([struct sockaddr_un.sun_path])
 
 dnl This is a necessary hack
 AC_MSG_NOTICE([creating ./network.buildinfo])

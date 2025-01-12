@@ -7,8 +7,14 @@ import Network.Socket.Imports
 -- | This is the value of SOMAXCONN, typically 128.
 -- 128 is good enough for normal network servers but
 -- is too small for high performance servers.
+--
+-- TODO what if not present
 maxListenQueue :: Int
+#ifdef SOMAXCONN
 maxListenQueue = #const SOMAXCONN
+#else
+maxListenQueue = 1
+#endif
 
 #if defined(mingw32_HOST_OS)
 wsaNotInitialized :: CInt
