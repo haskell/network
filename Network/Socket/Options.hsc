@@ -299,6 +299,8 @@ pattern NoDelay        = SockOpt (-1) (-1)
 pattern UserTimeout :: SocketOption
 #ifdef TCP_USER_TIMEOUT
 pattern UserTimeout    = SockOpt (#const IPPROTO_TCP) (#const TCP_USER_TIMEOUT)
+#elif defined(TCP_CONNECTIONTIMEOUT)
+pattern UserTimeout    = SockOpt (#const IPPROTO_TCP) (#const TCP_CONNECTIONTIMEOUT)
 #else
 pattern UserTimeout    = SockOpt (-1) (-1)
 #endif
