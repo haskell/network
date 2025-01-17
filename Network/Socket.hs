@@ -149,6 +149,7 @@ module Network.Socket (
         SendBuffer,
         RecvBuffer,
         KeepAlive,
+        KeepInit,
         OOBInline,
         TimeToLive,
         MaxSegment,
