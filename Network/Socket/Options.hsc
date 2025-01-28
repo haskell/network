@@ -12,8 +12,8 @@ module Network.Socket.Options (
     SocketOption(SockOpt
                 ,UnsupportedSocketOption
                 ,AcceptConn,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError
-                ,DontRoute,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline
-                ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
+                ,DontRoute,Broadcast,SendBuffer,RecvBuffer,KeepAlive,KeepInit
+                ,OOBInline,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
                 ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
                 ,UseLoopBack,UserTimeout,IPv6Only
                 ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
@@ -77,6 +77,7 @@ socketOptionBijection =
     , (SendBuffer, "SendBuffer")
     , (RecvBuffer, "RecvBuffer")
     , (KeepAlive, "KeepAlive")
+    , (KeepInit, "KeepInit")
     , (OOBInline, "OOBInline")
     , (Linger, "Linger")
     , (ReusePort, "ReusePort")
@@ -220,6 +221,15 @@ pattern KeepAlive      = SockOpt (#const SOL_SOCKET) (#const SO_KEEPALIVE)
 #else
 pattern KeepAlive      = SockOpt (-1) (-1)
 #endif
+-- | TCP_KEEPINIT
+pattern KeepInit :: SocketOption
+#ifdef TCP_KEEPINIT
+pattern KeepInit       = SockOpt (#const IPPROTO_TCP) (#const TCP_KEEPINIT)
+#elif defined(TCP_CONNECTIONTIMEOUT)
+pattern KeepInit       = SockOpt (#const IPPROTO_TCP) (#const TCP_CONNECTIONTIMEOUT)
+#else
+pattern KeepInit       = SockOpt (-1) (-1)
+#endif
 -- | SO_OOBINLINE
 pattern OOBInline :: SocketOption
 #ifdef SO_OOBINLINE
@@ -299,8 +309,6 @@ pattern NoDelay        = SockOpt (-1) (-1)
 pattern UserTimeout :: SocketOption
 #ifdef TCP_USER_TIMEOUT
 pattern UserTimeout    = SockOpt (#const IPPROTO_TCP) (#const TCP_USER_TIMEOUT)
-#elif defined(TCP_CONNECTIONTIMEOUT)
-pattern UserTimeout    = SockOpt (#const IPPROTO_TCP) (#const TCP_CONNECTIONTIMEOUT)
 #else
 pattern UserTimeout    = SockOpt (-1) (-1)
 #endif

@@ -456,8 +456,8 @@ sockoptPatterns :: [SocketOption]
 sockoptPatterns = nub
     [UnsupportedSocketOption
     ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
-    ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,OOBInline,TimeToLive
-    ,MaxSegment,NoDelay,Cork,Linger,ReusePort
+    ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,KeepInit,OOBInline
+    ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
     ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
     ,UseLoopBack,UserTimeout,IPv6Only
     ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
