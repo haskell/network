@@ -120,6 +120,7 @@ sendFd(int sock, int outfd);
 extern int
 recvFd(int sock);
 
+#ifdef HAVE_STRUCT_CMSGHDR
 extern struct cmsghdr *
 cmsg_firsthdr(struct msghdr *mhdr);
 
@@ -134,8 +135,10 @@ cmsg_space(size_t l);
 
 extern size_t
 cmsg_len(size_t l);
+#endif
 #endif /* _WIN32 */
 
+#ifdef HAVE_GETNAMEINFO
 INLINE int
 hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
 # if defined(_WIN32)
@@ -146,7 +149,9 @@ hsnet_getnameinfo(const struct sockaddr* a,socklen_t b, char* c,
 {
   return getnameinfo(a,b,c,d,e,f,g);
 }
+#endif
 
+#ifdef HAVE_GETADDRINFO
 INLINE int
 hsnet_getaddrinfo(const char *hostname, const char *servname,
 		  const struct addrinfo *hints, struct addrinfo **res)
@@ -159,6 +164,7 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
 {
     freeaddrinfo(ai);
 }
+#endif
 
 #ifndef IOV_MAX
 # define IOV_MAX 1024

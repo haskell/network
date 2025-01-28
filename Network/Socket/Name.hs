@@ -17,6 +17,7 @@ import Network.Socket.Types
 
 -- | Getting peer's socket address.
 getPeerName :: SocketAddress sa => Socket -> IO sa
+#ifdef HAVE_GETPEERNAME
 getPeerName s =
  withNewSocketAddress $ \ptr sz ->
    with (fromIntegral sz) $ \int_star -> withFdSocket s $ \fd -> do
@@ -24,6 +25,10 @@ getPeerName s =
        c_getpeername fd ptr int_star
      _sz <- peek int_star
      peekSocketAddress ptr
+#else
+getPeerName _ = unsupported "getPeerName"
+{-# WARNING getPeerName "operation will throw 'IOError' \"unsupported operation\"" #-}
+#endif
 
 -- | Getting my socket address.
 getSocketName :: SocketAddress sa => Socket -> IO sa
@@ -34,8 +39,10 @@ getSocketName s =
        c_getsockname fd ptr int_star
      peekSocketAddress ptr
 
+#ifdef HAVE_GETPEERNAME
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CInt -> Ptr sa -> Ptr CInt -> IO CInt
+#endif
 foreign import CALLCONV unsafe "getsockname"
   c_getsockname :: CInt -> Ptr sa -> Ptr CInt -> IO CInt
 
