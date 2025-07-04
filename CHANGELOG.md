@@ -1,3 +1,8 @@
+## Version 3.3.0.0
+
+* Basic support for WINIO
+  [#509](https://github.com/haskell/network/pull/509)
+
 ## Version 3.2.7.0
 
 * Using nested `bracket` for `gracefulClose`.

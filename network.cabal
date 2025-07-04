@@ -4,7 +4,6 @@ version:            3.2.7.0
 license:            BSD3
 license-file:       LICENSE
 maintainer:         Kazu Yamamoto, Tamar Christina
-
 tested-with:
     GHC == 9.8.2
     GHC == 9.6.4
@@ -169,12 +168,16 @@ library
             iphlpapi
             mswsock
 
-        if impl(ghc >=7.10)
+        build-depends:   temporary
+
+        if impl(ghc >=7.10 && <9.0)
             cpp-options: -D_WIN32_WINNT=0x0600
             cc-options:  -D_WIN32_WINNT=0x0600
 
-        build-depends:
-            temporary
+        if impl(ghc >=9.0)
+            cpp-options:   -D_WIN32_WINNT=0x0601
+            cc-options:    -D_WIN32_WINNT=0x0601
+            build-depends: Win32 >=2.12.0.1
 
     if impl(ghc >=8)
         default-extensions: Strict StrictData
@@ -201,6 +204,9 @@ test-suite spec
         temporary,
         hspec >=2.6,
         QuickCheck
+
+    if os(windows) && impl(ghc >=9.0)
+        ghc-options: -with-rtsopts=--io-manager=native
 
     if flag(devel)
         cpp-options: -DDEVELOPMENT

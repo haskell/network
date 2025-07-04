@@ -71,7 +71,8 @@ socket2FD :: Socket -> IO FD
 socket2FD s = do
   fd <- unsafeFdSocket s
   -- HACK, 1 means True
-  return $ FD{ fdFD = fd, fdIsSocket_ = 1 }
+  -- TODO: remove fromIntegral for WinIO
+  return $ FD{ fdFD = fromIntegral fd, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -298,27 +299,27 @@ recvBufMsg s bufsizs clen flags = do
 
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "send"
-  c_send :: CInt -> Ptr a -> CSize -> CInt -> IO CInt
+  c_send :: CSocket -> Ptr a -> CSize -> CInt -> IO CInt
 foreign import ccall unsafe "sendmsg"
-  c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> CInt -> IO CInt -- fixme CSsize
+  c_sendmsg :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt -- fixme CSsize
 foreign import ccall unsafe "recvmsg"
-  c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> CInt -> IO CInt
+  c_recvmsg :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
 #else
 foreign import CALLCONV SAFE_ON_WIN "ioctlsocket"
-  c_ioctlsocket :: CInt -> CLong -> Ptr CULong -> IO CInt
+  c_ioctlsocket :: CSocket -> CLong -> Ptr CULong -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSAGetLastError"
   c_WSAGetLastError :: IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
   -- fixme Handle for SOCKET, see #426
-  c_sendmsg :: CInt -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
+  c_sendmsg :: CSocket -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
-  c_recvmsg :: CInt -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
+  c_recvmsg :: CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 #endif
 
 foreign import ccall unsafe "recv"
-  c_recv :: CInt -> Ptr CChar -> CSize -> CInt -> IO CInt
+  c_recv :: CSocket -> Ptr CChar -> CSize -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "sendto"
-  c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
+  c_sendto :: CSocket -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
-  c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
+  c_recvfrom :: CSocket -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
 
