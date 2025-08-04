@@ -167,6 +167,7 @@ module Network.Socket (
         RecvIPv4TTL,
         RecvIPv4TOS,
         RecvIPv4PktInfo,
+        DontFragment,
         RecvIPv6HopLimit,
         RecvIPv6TClass,
         RecvIPv6PktInfo

@@ -460,7 +460,7 @@ sockoptPatterns = nub
     ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
     ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
     ,UseLoopBack,UserTimeout,IPv6Only
-    ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
+    ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo,DontFragment
     ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo]
 
 cmsgidPatterns :: [CmsgId]
