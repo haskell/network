@@ -83,6 +83,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     -- This socket is not managed by the IO manager yet.
     -- So, we don't have to call "close" which uses "closeFdWith".
     unsetIPv6Only s
+    setDontFragment s
     return s
   where
     create = do
@@ -119,6 +120,15 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
 #else
     unsetIPv6Only _ = return ()
 #endif
+
+    setDontFragment s = when (family == AF_INET) $
+#if HAVE_DECL_IP_DONTFRAG || HAVE_DECL_IP_MTU_DISCOVER
+      setSocketOption s DontFragment 1
+#else
+      -- do nothing
+      return ()
+#endif
+
 
 -----------------------------------------------------------------------------
 -- Binding a socket

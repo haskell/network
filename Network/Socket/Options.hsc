@@ -16,7 +16,7 @@ module Network.Socket.Options (
                 ,OOBInline,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
                 ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
                 ,UseLoopBack,UserTimeout,IPv6Only
-                ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo
+                ,RecvIPv4TTL,RecvIPv4TOS,RecvIPv4PktInfo,DontFragment
                 ,RecvIPv6HopLimit,RecvIPv6TClass,RecvIPv6PktInfo
                 ,CustomSockOpt)
   , isSupportedSocketOption
@@ -94,6 +94,7 @@ socketOptionBijection =
     , (RecvIPv4TTL, "RecvIPv4TTL")
     , (RecvIPv4TOS, "RecvIPv4TOS")
     , (RecvIPv4PktInfo, "RecvIPv4PktInfo")
+    , (DontFragment, "DontFragment")
     , (IPv6Only, "IPv6Only")
     , (RecvIPv6HopLimit, "RecvIPv6HopLimit")
     , (RecvIPv6TClass, "RecvIPv6TClass")
@@ -351,6 +352,15 @@ pattern RecvIPv4PktInfo  = SockOpt (#const IPPROTO_IP) (#const IP_RECVPKTINFO)
 pattern RecvIPv4PktInfo  = SockOpt (#const IPPROTO_IP) (#const IP_PKTINFO)
 #else
 pattern RecvIPv4PktInfo  = SockOpt (-1) (-1)
+#endif
+-- | IP_DONTFRAG
+pattern DontFragment :: SocketOption
+#if HAVE_DECL_IP_DONTFRAG
+pattern DontFragment   = SockOpt (#const IPPROTO_IP) (#const IP_DONTFRAG)
+#elif HAVE_DECL_IP_MTU_DISCOVER
+pattern DontFragment   = SockOpt (#const IPPROTO_IP) (#const IP_MTU_DISCOVER)
+#else
+pattern DontFragment   = SockOpt (-1) (-1)
 #endif
 #endif // HAVE_DECL_IPPROTO_IP
 
