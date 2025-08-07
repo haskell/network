@@ -1,3 +1,4 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 
 module Network.Socket.Fcntl where
@@ -27,7 +28,7 @@ setCloseOnExecIfNeeded fd = System.Posix.Internals.setCloseOnExec fd
 #endif
 
 #if !defined(mingw32_HOST_OS)
-foreign import ccall unsafe "fcntl"
+foreign import capi unsafe "fcntl.h fcntl"
   c_fcntl_read  :: CInt -> CInt -> CInt -> IO CInt
 #endif
 
