@@ -1,3 +1,14 @@
+# CHANGELOG for network
+
+## Version 3.2.8.0
+
+* sockopt: add IP_DONTFRAG/IP_MTU_DISCOVER option.
+  [#603](https://github.com/haskell/network/pull/603)
+* Add new SocketOption KeepInit.
+  [#600](https://github.com/haskell/network/pull/600)
+* Remove withSocketsDo from examples.
+  [#596](https://github.com/haskell/network/pull/596)
+
 ## Version 3.2.7.0
 
 * Using nested `bracket` for `gracefulClose`.
