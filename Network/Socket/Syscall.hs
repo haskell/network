@@ -6,9 +6,7 @@ module Network.Socket.Syscall where
 
 import Foreign.Marshal.Utils (with)
 import qualified Control.Exception as E
-# if defined(mingw32_HOST_OS)
 import System.IO.Error (catchIOError)
-#endif
 
 #if defined(mingw32_HOST_OS)
 import Control.Exception (bracket)
