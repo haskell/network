@@ -7,13 +7,13 @@ module Network.Socket.Syscall where
 import Data.Either (isRight)
 import qualified Control.Exception as E
 import Foreign.Marshal.Utils (with)
+import System.IO.Error (catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import Foreign (FunPtr)
 import Foreign.Marshal.Alloc (alloca)
 import GHC.Conc (asyncDoProc)
 import Network.Socket.Cbits
-import System.IO.Error (catchIOError)
 # if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
 import Foreign.Ptr (wordPtrToPtr)
