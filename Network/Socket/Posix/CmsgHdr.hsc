@@ -4,8 +4,10 @@
 
 module Network.Socket.Posix.CmsgHdr (
     Cmsg(..)
+#ifdef HAVE_STRUCT_CMSGHDR
   , withCmsgs
   , parseCmsgs
+#endif
   ) where
 
 #include <sys/types.h>
@@ -21,6 +23,8 @@ import Network.Socket.Imports
 import Network.Socket.Posix.Cmsg
 import Network.Socket.Posix.MsgHdr
 import Network.Socket.Types
+
+#ifdef HAVE_STRUCT_CMSGHDR
 
 data CmsgHdr = CmsgHdr {
 #ifdef __linux__
@@ -105,3 +109,5 @@ foreign import ccall unsafe "cmsg_space"
 
 foreign import ccall unsafe "cmsg_len"
   c_cmsg_len :: CSize -> CSize
+
+#endif

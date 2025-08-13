@@ -78,6 +78,7 @@ module Network.Socket.Types (
     , defaultPort
 
     -- * Low-level helpers
+    , unsupported
     , zeroMemory
     , htonl
     , ntohl
@@ -88,16 +89,19 @@ import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
 import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
+import System.IO.Error (ioeSetLocation)
 import System.Posix.Types (Fd)
 import Control.DeepSeq (NFData (..))
 import GHC.Exts (touch##)
 import GHC.IORef (IORef (..))
 import GHC.STRef (STRef (..))
 import GHC.IO (IO (..))
+import GHC.IO.Exception (unsupportedOperation)
 
 import qualified Text.Read as P
 
 import Foreign.Marshal.Array
+import Foreign.Marshal.Utils (fillBytes)
 
 import Network.Socket.Imports
 
@@ -203,6 +207,7 @@ socketToFd s = do
 foreign import ccall unsafe "wsaDuplicate"
    c_wsaDuplicate :: CInt -> IO CInt
 #else
+#if HAVE_DUP
     fd <- unsafeFdSocket s
     -- FIXME: throw error no if -1
     fd2 <- c_dup fd
@@ -211,6 +216,10 @@ foreign import ccall unsafe "wsaDuplicate"
 
 foreign import ccall unsafe "dup"
    c_dup :: CInt -> IO CInt
+#else
+    unsupported "socketToFd"
+{-# WARNING socketToFd "operation will throw 'IOError' \"unsupported operation\"" #-}
+#endif
 #endif
 
 -- | Creating a socket from a file descriptor.
@@ -1140,12 +1149,14 @@ withSockAddr addr f = do
     let sz = sizeOfSockAddr addr
     allocaBytes sz $ \p -> pokeSockAddr p addr >> f (castPtr p) sz
 
+#if defined(HAVE_STRUCT_SOCKADDR_UN_SUN_PATH)
 -- We cannot bind sun_paths longer than than the space in the sockaddr_un
 -- structure, and attempting to do so could overflow the allocated storage
 -- space.  This constant holds the maximum allowable path length.
 --
 unixPathMax :: Int
 unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
+#endif
 
 -- We can't write an instance of 'Storable' for 'SockAddr' because
 -- @sockaddr@ is a sum type of variable size but
@@ -1157,18 +1168,22 @@ unixPathMax = #const sizeof(((struct sockaddr_un *)NULL)->sun_path)
 -- | Write the given 'SockAddr' to the given memory location.
 pokeSockAddr :: Ptr a -> SockAddr -> IO ()
 pokeSockAddr p sa@(SockAddrUnix path) = do
+#if defined(HAVE_STRUCT_SOCKADDR_UN_SUN_PATH)
     let pathC = map castCharToCChar path
         len = length pathC
     when (len >= unixPathMax) $ error
       $ "pokeSockAddr: path is too long in SockAddrUnix " <> show path
       <> ", length " <> show len <> ", unixPathMax " <> show unixPathMax
+#endif
     zeroMemory p $ fromIntegral $ sizeOfSockAddr sa
 # if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
     (#poke struct sockaddr_un, sun_len) p ((#const sizeof(struct sockaddr_un)) :: Word8)
 # endif
     (#poke struct sockaddr_un, sun_family) p ((#const AF_UNIX) :: CSaFamily)
+#if defined(HAVE_STRUCT_SOCKADDR_UN_SUN_PATH)
     -- the buffer is already filled with nulls.
     pokeArray ((#ptr struct sockaddr_un, sun_path) p) pathC
+#endif
 pokeSockAddr p (SockAddrInet port addr) = do
     zeroMemory p (#const sizeof(struct sockaddr_in))
 #if defined(HAVE_STRUCT_SOCKADDR_SA_LEN)
@@ -1194,7 +1209,11 @@ peekSockAddr p = do
   family <- (#peek struct sockaddr, sa_family) p
   case family :: CSaFamily of
     (#const AF_UNIX) -> do
+#if defined(HAVE_STRUCT_SOCKADDR_UN_SUN_PATH)
         str <- peekCAString ((#ptr struct sockaddr_un, sun_path) p)
+#else
+        let str = ""
+#endif
         return (SockAddrUnix str)
     (#const AF_INET) -> do
         addr <- (#peek struct sockaddr_in, sin_addr) p
@@ -1440,8 +1459,11 @@ instance Read PortNumber where
 ------------------------------------------------------------------------
 -- Helper functions
 
-foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
+-- | Throw an 'IOError' to signal that an operation is unsupported.
+unsupported :: String -> IO a
+unsupported func = ioError $ ioeSetLocation unsupportedOperation $
+  "Network.Socket." ++ func
 
 -- | Zero a structure.
 zeroMemory :: Ptr a -> CSize -> IO ()
-zeroMemory dest nbytes = memset dest 0 (fromIntegral nbytes)
+zeroMemory dest nbytes = fillBytes dest 0 (fromIntegral nbytes)

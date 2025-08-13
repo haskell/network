@@ -81,14 +81,26 @@ aiFlagMapping =
 #else
      (AI_ALL, 0),
 #endif
+#if HAVE_DECL_AI_CANONNAME
      (AI_CANONNAME, #const AI_CANONNAME),
+#else
+     (AI_CANONNAME, 0),
+#endif
+#if HAVE_DECL_AI_NUMERICHOST
      (AI_NUMERICHOST, #const AI_NUMERICHOST),
+#else
+     (AI_NUMERICHOST, 0),
+#endif
 #if HAVE_DECL_AI_NUMERICSERV
      (AI_NUMERICSERV, #const AI_NUMERICSERV),
 #else
      (AI_NUMERICSERV, 0),
 #endif
+#if HAVE_DECL_AI_PASSIVE
      (AI_PASSIVE, #const AI_PASSIVE),
+#else
+     (AI_PASSIVE, 0),
+#endif
 #if HAVE_DECL_AI_V4MAPPED
      (AI_V4MAPPED, #const AI_V4MAPPED)
 #else
@@ -110,6 +122,7 @@ data AddrInfo = AddrInfo {
   , addrCanonName :: Maybe String
   } deriving (Eq, Show)
 
+#if HAVE_STRUCT_ADDRINFO
 instance Storable AddrInfo where
     sizeOf    ~_ = #const sizeof(struct addrinfo)
     alignment ~_ = alignment (0 :: CInt)
@@ -149,6 +162,8 @@ instance Storable AddrInfo where
         (#poke struct addrinfo, ai_addr) p nullPtr
         (#poke struct addrinfo, ai_canonname) p nullPtr
         (#poke struct addrinfo, ai_next) p nullPtr
+#else
+#endif
 
 -- | Flags that control the querying behaviour of 'getNameInfo'.
 --   For more information, see <https://tools.ietf.org/html/rfc3493#page-30>
@@ -176,11 +191,34 @@ data NameInfoFlag =
 
 niFlagMapping :: [(NameInfoFlag, CInt)]
 
-niFlagMapping = [(NI_DGRAM, #const NI_DGRAM),
-                 (NI_NAMEREQD, #const NI_NAMEREQD),
-                 (NI_NOFQDN, #const NI_NOFQDN),
-                 (NI_NUMERICHOST, #const NI_NUMERICHOST),
-                 (NI_NUMERICSERV, #const NI_NUMERICSERV)]
+niFlagMapping =
+    [
+#if HAVE_DECL_NI_
+     (NI_DGRAM, #const NI_DGRAM),
+#else
+     (NI_DGRAM, 0),
+#endif
+#if HAVE_DECL_NI_NAMEREQD
+     (NI_NAMEREQD, #const NI_NAMEREQD),
+#else
+     (NI_NAMEREQD, 0),
+#endif
+#if HAVE_DECL_NI_NOFQDN
+     (NI_NOFQDN, #const NI_NOFQDN),
+#else
+     (NI_NOFQDN, 0),
+#endif
+#if HAVE_DECL_NI_NUMERICHOST
+     (NI_NUMERICHOST, #const NI_NUMERICHOST),
+#else
+     (NI_NUMERICHOST, 0),
+#endif
+#if HAVE_DECL_NI_NUMERICSERV
+     (NI_NUMERICSERV, #const NI_NUMERICSERV)
+#else
+     (NI_NUMERICSERV, 0)
+#endif
+    ]
 
 -- | Default hints for address lookup with 'getAddrInfo'.
 --
@@ -268,6 +306,7 @@ getAddrInfoNE
     -> Maybe HostName -- ^ host name to look up
     -> Maybe ServiceName -- ^ service name to look up
     -> IO (NonEmpty AddrInfo) -- ^ resolved addresses, with "best" first
+#if HAVE_GETADDRINFO
 getAddrInfoNE hints node service = alloc getaddrinfo
   where
     alloc body = withSocketsDo $ maybeWith withCString node $ \c_node ->
@@ -308,15 +347,6 @@ getAddrInfoNE hints node service = alloc getaddrinfo
     filteredHints = hints
 #endif
 
-getAddrInfoList
-    :: Maybe AddrInfo
-    -> Maybe HostName
-    -> Maybe ServiceName
-    -> IO [AddrInfo]
-getAddrInfoList hints node service =
-    -- getAddrInfo never returns an empty list.
-    NE.toList <$> getAddrInfoNE hints node service
-
 followAddrInfo :: Ptr AddrInfo -> IO (NonEmpty AddrInfo)
 followAddrInfo ptr_ai
     -- POSIX requires that getaddrinfo(3) returns at least one addrinfo.
@@ -342,6 +372,10 @@ foreign import ccall safe "hsnet_getaddrinfo"
 
 foreign import ccall safe "hsnet_freeaddrinfo"
     c_freeaddrinfo :: Ptr AddrInfo -> IO ()
+#else
+getAddrInfoNE _ _ _ = unsupported "getAddrInfoNE"
+{-# WARNING getAddrInfo "operation will throw 'IOError' \"unsupported operation\"" #-}
+#endif
 
 gai_strerror :: CInt -> IO String
 
@@ -353,6 +387,15 @@ foreign import ccall safe "gai_strerror"
 #else
 gai_strerror n = ioError $ userError $ "Network.Socket.gai_strerror not supported: " ++ show n
 #endif
+
+getAddrInfoList
+    :: Maybe AddrInfo
+    -> Maybe HostName
+    -> Maybe ServiceName
+    -> IO [AddrInfo]
+getAddrInfoList hints node service =
+    -- getAddrInfo never returns an empty list.
+    NE.toList <$> getAddrInfoNE hints node service
 
 -----------------------------------------------------------------------------
 
@@ -382,6 +425,7 @@ getNameInfo
     -> Bool -- ^ whether to look up a service name
     -> SockAddr -- ^ the address to look up
     -> IO (Maybe HostName, Maybe ServiceName)
+#if HAVE_GETNAMEINFO
 getNameInfo flags doHost doService addr = alloc getnameinfo
   where
     alloc body = withSocketsDo $
@@ -423,6 +467,10 @@ getNameInfo flags doHost doService addr = alloc getnameinfo
 foreign import ccall safe "hsnet_getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
                   -> CSize -> CInt -> IO CInt
+#else
+getNameInfo _ _ _ _ = unsupported "getNameInfo"
+{-# WARNING getNameInfo "operation will throw 'IOError' \"unsupported operation\"" #-}
+#endif
 
 -- | Pack a list of values into a bitmask.  The possible mappings from
 -- value to bit-to-set are given as the first argument.  We assume
