@@ -23,4 +23,4 @@ jobs:
           substituters = https://cache.iog.io https://cache.zw3rk.com https://cache.nixos.org/
     - name: "Build and run tests with nix"
       run: |
-        nix flake check   
+        nix flake check --allow-import-from-derivation
