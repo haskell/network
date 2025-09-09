@@ -5,7 +5,7 @@
 #  include "windows.h"
 #endif
 
-module Network.Socket.Buffer (
+module Network.Socket.Buffer.Posix (
     sendBufTo
   , sendBuf
   , recvBufFrom
@@ -17,8 +17,6 @@ module Network.Socket.Buffer (
 
 #if !defined(mingw32_HOST_OS)
 import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
-#else
-import Foreign.Ptr (nullPtr)
 #endif
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (with)
@@ -27,6 +25,7 @@ import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
+import qualified Network.Socket.Types as Generic
 import Network.Socket.Win32.CmsgHdr
 import Network.Socket.Win32.MsgHdr
 import Network.Socket.Win32.WSABuf
@@ -37,14 +36,42 @@ import Network.Socket.Posix.IOVec
 #endif
 
 import Network.Socket.Imports
+#if defined(mingw32_HOST_OS)
+import Network.Socket.Internal hiding (throwSocketErrorWaitRead, throwSocketErrorWaitWrite, throwSocketErrorWaitReadBut)
+#else
 import Network.Socket.Internal
-import Network.Socket.Name
-import Network.Socket.Types
+#endif
+import Network.Socket.Name (getPeerName)
+import Network.Socket.Types (
+    SocketAddress,
+    withSocketAddress,
+    withNewSocketAddress,
+    peekSocketAddress,
+    )
+import Network.Socket.Types.Posix
 import Network.Socket.Flag
 
 #if defined(mingw32_HOST_OS)
 type DWORD   = Word32
 type LPDWORD = Ptr DWORD
+
+-- On Windows, threadWaitRead is a no-op, so don't sweat wrapping Posix.Socket -> generic Socket.
+throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
+throwSocketErrorWaitRead _ = throwSocketErrorIfMinus1Retry
+
+throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
+throwSocketErrorWaitWrite _ = throwSocketErrorIfMinus1Retry
+
+throwSocketErrorWaitReadBut :: (Eq a, Num a) => (CInt -> Bool) -> Socket -> String -> IO a -> IO a
+throwSocketErrorWaitReadBut exempt _ = throwSocketErrorIfMinus1ButRetry exempt
+
+-- getPeerName takes the generic Socket; wrap our Posix.Socket.
+getPeerName' :: SocketAddress sa => Socket -> IO sa
+getPeerName' s = getPeerName (Generic.Socket (Left s))
+#else
+-- On non-Windows, Socket = Posix.Socket, so the generic versions work.
+getPeerName' :: SocketAddress sa => Socket -> IO sa
+getPeerName' = getPeerName
 #endif
 
 -- | Send data to the socket.  The recipient can be specified
@@ -122,7 +149,7 @@ recvBufFrom s ptr nbytes
             len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
                      c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
             sockaddr <- peekSocketAddress ptr_sa
-                `catchIOError` \_ -> getPeerName s
+                `catchIOError` \_ -> getPeerName' s
             return (fromIntegral len, sockaddr)
 
 -- | Receive data from the socket.  The socket must be in a connected
@@ -290,11 +317,11 @@ recvBufMsg s bufsizs clen flags = do
                             c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
                     peek len_ptr
 #endif
-            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
+            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName' s
             hdr <- peek msgHdrPtr
-            cmsgs <- parseCmsgs msgHdrPtr
+            cmsgs' <- parseCmsgs msgHdrPtr
             let flags' = MsgFlag $ fromIntegral $ msgFlags hdr
-            return (sockaddr, len, cmsgs, flags')
+            return (sockaddr, len, cmsgs', flags')
 
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "send"
@@ -321,4 +348,3 @@ foreign import CALLCONV SAFE_ON_WIN "sendto"
   c_sendto :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "recvfrom"
   c_recvfrom :: CInt -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
-

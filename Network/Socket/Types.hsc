@@ -13,17 +13,18 @@
 
 module Network.Socket.Types (
     -- * Socket type
-      Socket
+      Socket (..)
+#if defined(mingw32_HOST_OS)
+    , eitherSocket
+#endif
     , withFdSocket
     , unsafeFdSocket
     , touchSocket
     , socketToFd
     , fdSocket
     , mkSocket
-    , invalidateSocket
     , close
     , close'
-    , c_close
     -- * Types of socket
     , SocketType(GeneralSocketType, UnsupportedSocketType, NoSocketType
                 , Stream, Datagram, Raw, RDM, SeqPacket)
@@ -84,16 +85,8 @@ module Network.Socket.Types (
     , In6Addr(..)
     ) where
 
-import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
-import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
-import GHC.Conc (closeFdWith)
-import System.Posix.Types (Fd)
 import Control.DeepSeq (NFData (..))
-import GHC.Exts (touch##)
-import GHC.IORef (IORef (..))
-import GHC.STRef (STRef (..))
-import GHC.IO (IO (..))
 
 import qualified Text.Read as P
 
@@ -104,17 +97,33 @@ import Network.Socket.Imports
 ----- readshow module import
 import Network.Socket.ReadShow
 
+import qualified Network.Socket.Types.Posix as Posix
 
 -----------------------------------------------------------------------------
 
--- | Basic type for a socket.
-data Socket = Socket (IORef CInt) CInt {- for Show -}
+-- If we're on a Windows system, we might be using the legacy
+-- Posix emulation event manager (where everything is blocking IO),
+-- or we may have access to the nice new WinIO event manager,
+-- which does actual async IO with IO Completion Ports
+-- (almost, but not quite, entirely unlike epoll/kqueue).
+#if defined(mingw32_HOST_OS)
+import qualified Network.Socket.Types.WinIO as Win
+
+newtype Socket = Socket (Either Posix.Socket Win.Socket)
+    deriving (Eq)
+
+eitherSocket :: (Posix.Socket -> a) -> (Win.Socket -> a) -> Socket -> a
+eitherSocket p w (Socket es) = either p w es
+{-# INLINE eitherSocket #-}
 
 instance Show Socket where
-    show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
+    show = eitherSocket show show
 
-instance Eq Socket where
-    Socket ref1 _ == Socket ref2 _ = ref1 == ref2
+#else
+
+type Socket = Posix.Socket
+
+#endif
 
 {-# DEPRECATED fdSocket "Use withFdSocket or unsafeFdSocket instead" #-}
 -- | Currently, this is an alias of `unsafeFdSocket`.
@@ -144,7 +153,11 @@ fdSocket = unsafeFdSocket
 --
 --   A safer option is to use 'withFdSocket' instead.
 unsafeFdSocket :: Socket -> IO CInt
-unsafeFdSocket (Socket ref _) = readIORef ref
+#if defined(mingw32_HOST_OS)
+unsafeFdSocket = eitherSocket Posix.unsafeFdSocket Win.unsafeFdSocket
+#else
+unsafeFdSocket = Posix.unsafeFdSocket
+#endif
 
 -- | Ensure that the given 'Socket' stays alive (i.e. not garbage-collected)
 --   at the given place in the sequence of IO actions. This function can be
@@ -155,15 +168,11 @@ unsafeFdSocket (Socket ref _) = readIORef ref
 -- > -- using fd with blocking operations such as accept(2)
 -- > touchSocket sock
 touchSocket :: Socket -> IO ()
-touchSocket (Socket ref _) = touch ref
-
-touch :: IORef a -> IO ()
-touch (IORef (STRef mutVar)) =
-  -- Thanks to a GHC issue, this touch# may not be quite guaranteed
-  -- to work. There's talk of replacing the touch# primop with one
-  -- that works better with the optimizer. But this seems to be the
-  -- "right" way to do it for now.
-  IO $ \s -> (## touch## mutVar s, () ##)
+#if defined(mingw32_HOST_OS)
+touchSocket = eitherSocket Posix.touchSocket Win.touchSocket
+#else
+touchSocket = Posix.touchSocket
+#endif
 
 -- | Get a file descriptor from a 'Socket'. The socket will never
 -- be closed automatically before @withFdSocket@ completes, but
@@ -176,15 +185,11 @@ touch (IORef (STRef mutVar)) =
 --
 -- Since: 3.1.0.0
 withFdSocket :: Socket -> (CInt -> IO r) -> IO r
-withFdSocket (Socket ref _) f = do
-  fd <- readIORef ref
-  -- Should we throw an exception if the socket is already invalid?
-  -- That will catch some mistakes but certainly not all.
-
-  r <- f fd
-
-  touch ref
-  return r
+#if defined(mingw32_HOST_OS)
+withFdSocket = eitherSocket Posix.withFdSocket Win.withFdSocket
+#else
+withFdSocket = Posix.withFdSocket
+#endif
 
 -- | Socket is closed and a duplicated file descriptor is returned.
 --   The duplicated descriptor is no longer subject to the possibility
@@ -192,51 +197,19 @@ withFdSocket (Socket ref _) f = do
 --   now the caller's responsibility to ultimately close the
 --   duplicated file descriptor.
 socketToFd :: Socket -> IO CInt
-socketToFd s = do
 #if defined(mingw32_HOST_OS)
-    fd <- unsafeFdSocket s
-    fd2 <- c_wsaDuplicate fd
-    -- FIXME: throw error no if -1
-    close s
-    return fd2
-
-foreign import ccall unsafe "wsaDuplicate"
-   c_wsaDuplicate :: CInt -> IO CInt
+socketToFd = eitherSocket Posix.socketToFd Win.socketToFd
 #else
-    fd <- unsafeFdSocket s
-    -- FIXME: throw error no if -1
-    fd2 <- c_dup fd
-    close s
-    return fd2
-
-foreign import ccall unsafe "dup"
-   c_dup :: CInt -> IO CInt
+socketToFd = Posix.socketToFd
 #endif
 
--- | Creating a socket from a file descriptor.
+-- | Create a socket from a file descriptor.
 mkSocket :: CInt -> IO Socket
-mkSocket fd = do
-    ref <- newIORef fd
-    let s = Socket ref fd
-    void $ mkWeakIORef ref $ close s
-    return s
-
-invalidSocket :: CInt
 #if defined(mingw32_HOST_OS)
-invalidSocket = #const INVALID_SOCKET
+mkSocket fd = (Socket . Left) <$> Posix.mkSocket fd
 #else
-invalidSocket = -1
+mkSocket = Posix.mkSocket
 #endif
-
-invalidateSocket ::
-      Socket
-   -> (CInt -> IO a)
-   -> (CInt -> IO a)
-   -> IO a
-invalidateSocket (Socket ref _) errorAction normalAction = do
-    oldfd <- atomicModifyIORef' ref $ \cur -> (invalidSocket, cur)
-    if oldfd == invalidSocket then errorAction oldfd else normalAction oldfd
-
 -----------------------------------------------------------------------------
 
 -- | Close the socket. This function does not throw exceptions even if
@@ -246,39 +219,20 @@ invalidateSocket (Socket ref _) errorAction normalAction = do
 --   the other use 'close', unexpected behavior may happen.
 --   For more information, please refer to the documentation of 'unsafeFdSocket'.
 close :: Socket -> IO ()
-close s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
-    -- closeFdWith avoids the deadlock of IO manager.
-    closeFdWith closeFd (toFd oldfd)
-  where
-    toFd :: CInt -> Fd
-    toFd = fromIntegral
-    -- closeFd ignores the return value of c_close and
-    -- does not throw exceptions
-    closeFd :: Fd -> IO ()
-    closeFd = void . c_close . fromIntegral
+#if defined(mingw32_HOST_OS)
+close = eitherSocket Posix.close Win.close
+#else
+close = Posix.close
+#endif
 
 -- | Close the socket. This function throws exceptions if
 --   the underlying system call returns errors.
 close' :: Socket -> IO ()
-close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
-    -- closeFdWith avoids the deadlock of IO manager.
-    closeFdWith closeFd (toFd oldfd)
-  where
-    toFd :: CInt -> Fd
-    toFd = fromIntegral
-    closeFd :: Fd -> IO ()
-    closeFd fd = do
-        ret <- c_close $ fromIntegral fd
-        when (ret == -1) $ throwErrno "Network.Socket.close'"
-
 #if defined(mingw32_HOST_OS)
-foreign import CALLCONV unsafe "closesocket"
-  c_close :: CInt -> IO CInt
+close' = eitherSocket Posix.close' Win.close'
 #else
-foreign import ccall unsafe "close"
-  c_close :: CInt -> IO CInt
+close' = Posix.close'
 #endif
-
 -----------------------------------------------------------------------------
 
 -- | Protocol number.

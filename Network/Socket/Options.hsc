@@ -34,13 +34,13 @@ module Network.Socket.Options (
 
 import qualified Text.Read as P
 
-import Foreign.Marshal.Alloc (alloca)
-import Foreign.Marshal.Utils (with)
-
 import Network.Socket.Imports
-import Network.Socket.Internal
-import Network.Socket.Types
+import qualified Network.Socket.Options.Posix as Posix
+#if defined(mingw32_HOST_OS)
+import qualified Network.Socket.Options.WinIO as Win
+#endif
 import Network.Socket.ReadShow
+import Network.Socket.Types
 
 #include <sys/time.h>
 
@@ -424,12 +424,14 @@ setSockOpt :: Storable a
            -> SocketOption
            -> a
            -> IO ()
-setSockOpt s (SockOpt level opt) v = do
-    with v $ \ptr -> void $ do
-        let sz = fromIntegral $ sizeOf v
-        withFdSocket s $ \fd ->
-          throwSocketErrorIfMinus1_ "Network.Socket.setSockOpt" $
-          c_setsockopt fd level opt ptr sz
+#if defined(mingw32_HOST_OS)
+setSockOpt s (SockOpt opt level) = eitherSocket
+    (\ps -> Posix.setSockOpt ps opt level)
+    (\ws -> Win.setSockOpt ws opt level)
+    s
+#else
+setSockOpt s (SockOpt opt level) = Posix.setSockOpt s opt level
+#endif
 
 -- | Set a socket option value
 --
@@ -473,13 +475,14 @@ getSockOpt :: forall a . Storable a
            => Socket
            -> SocketOption -- Option Name
            -> IO a         -- Option Value
-getSockOpt s (SockOpt level opt) = do
-    alloca $ \ptr -> do
-        let sz = fromIntegral $ sizeOf (undefined :: a)
-        withFdSocket s $ \fd -> with sz $ \ptr_sz -> do
-            throwSocketErrorIfMinus1Retry_ "Network.Socket.getSockOpt" $
-                c_getsockopt fd level opt ptr ptr_sz
-        peek ptr
+#if defined(mingw32_HOST_OS)
+getSockOpt s (SockOpt opt level) = eitherSocket
+    (\ps -> Posix.getSockOpt ps opt level)
+    (\ws -> Win.getSockOpt ws opt level)
+    s
+#else
+getSockOpt s (SockOpt opt level) = Posix.getSockOpt s opt level
+#endif
 
 ----------------------------------------------------------------
 
@@ -555,10 +558,3 @@ instance Storable SocketTimeout where
             (#poke struct timeval, tv_sec)  ptr sec
             (#poke struct timeval, tv_usec) ptr usec
 #endif
-
-----------------------------------------------------------------
-
-foreign import CALLCONV unsafe "getsockopt"
-  c_getsockopt :: CInt -> CInt -> CInt -> Ptr a -> Ptr CInt -> IO CInt
-foreign import CALLCONV unsafe "setsockopt"
-  c_setsockopt :: CInt -> CInt -> CInt -> Ptr a -> CInt -> IO CInt
