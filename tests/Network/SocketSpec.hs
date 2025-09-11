@@ -158,11 +158,13 @@ spec = do
     when isUnixDomainSocketAvailable $ do
         context "unix sockets" $ do
             it "basic unix sockets end-to-end" $ do
-                let client sock = send sock testMsg
-                    server (sock, addr) = do
-                        recv sock 1024 `shouldReturn` testMsg
-                        addr `shouldBe` (SockAddrUnix "")
-                test . setClientAction client $ unixWithUnlink unixAddr server
+                withSystemTempDirectory "haskell-network" $ \path -> do
+                    let unixAddr = path ++ "/socket-file"
+                    let client sock = send sock testMsg
+                        server (sock, addr) = do
+                            recv sock 1024 `shouldReturn` testMsg
+                            addr `shouldBe` (SockAddrUnix "")
+                    test . setClientAction client $ unixWithUnlink unixAddr server
 #endif
 
 #ifdef linux_HOST_OS
@@ -208,19 +210,21 @@ spec = do
         --
         describe "getPeerCredential" $ do
             it "can return something" $ do
-                -- It would be useful to check that we did not get garbage
-                -- back, but rather the actual uid of the test program.  For
-                -- that we'd need System.Posix.User, but that is not available
-                -- under Windows.  For now, accept the risk that we did not get
-                -- the right answer.
-                --
-                let server (sock, _) = do
-                        (_, uid, _) <- getPeerCredential sock
-                        uid `shouldNotBe` Nothing
-                    client sock = do
-                        (_, uid, _) <- getPeerCredential sock
-                        uid `shouldNotBe` Nothing
-                test . setClientAction client $ unixWithUnlink unixAddr server
+                withSystemTempDirectory "haskell-network" $ \path -> do
+                    let unixAddr = path ++ "/socket-file"
+                    -- It would be useful to check that we did not get garbage
+                    -- back, but rather the actual uid of the test program.  For
+                    -- that we'd need System.Posix.User, but that is not available
+                    -- under Windows.  For now, accept the risk that we did not get
+                    -- the right answer.
+                    --
+                    let server (sock, _) = do
+                            (_, uid, _) <- getPeerCredential sock
+                            uid `shouldNotBe` Nothing
+                        client sock = do
+                            (_, uid, _) <- getPeerCredential sock
+                            uid `shouldNotBe` Nothing
+                    test . setClientAction client $ unixWithUnlink unixAddr server
             {- The below test fails on many *BSD systems, because the getsockopt()
             call that underlies getpeereid() does not have the same meaning for
             all address families, but the C-library was not checking that the

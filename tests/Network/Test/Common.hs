@@ -21,7 +21,6 @@ module Network.Test.Common
   -- * Common constants
   , serverAddr
   , serverAddr6
-  , unixAddr
   , testMsg
   , lazyTestMsg
   ) where
@@ -52,9 +51,6 @@ testMsg = "This is a test message."
 
 lazyTestMsg :: L.ByteString
 lazyTestMsg = L.fromStrict "This is a test message."
-
-unixAddr :: String
-unixAddr = "/tmp/network-test"
 
 -- | Establish a connection between client and server and then run
 -- 'clientAct' and 'serverAct', in different threads.  Both actions
