@@ -86,7 +86,11 @@ pattern CmsgIdIPv6PktInfo = CmsgId (-1) (-1)
 
 -- | The identifier for 'Fds'.
 pattern CmsgIdFds :: CmsgId
+#if defined(SCM_RIGHTS)
 pattern CmsgIdFds = CmsgId (#const SOL_SOCKET) (#const SCM_RIGHTS)
+#else
+pattern CmsgIdFds = CmsgId (-1) (-1)
+#endif
 
 ----------------------------------------------------------------
 

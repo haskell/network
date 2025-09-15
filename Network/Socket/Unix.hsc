@@ -177,6 +177,7 @@ socketPair _ _ _ = withSystemTempFile "temp-for-pair" $ \file hdl -> do
     withFdSocket serverSock setNonBlockIfNeeded
     return (clientSock, serverSock)
 #else
+#if HAVE_SOCKETPAIR
 socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
       let c_stype = packSocketType stype
@@ -191,4 +192,8 @@ socketPair family stype protocol =
 
 foreign import ccall unsafe "socketpair"
   c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
+#else
+socketPair _ _ _ = unsupported "socketPair"
+{-# WARNING socketPair "operation will throw 'IOError' \"unsupported operation\"" #-}
+#endif
 #endif
