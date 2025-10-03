@@ -4,16 +4,19 @@
 
 module Network.Socket.Syscall where
 
-import Foreign.Marshal.Utils (with)
 import qualified Control.Exception as E
-# if defined(mingw32_HOST_OS)
-import System.IO.Error (catchIOError)
-#endif
+import Foreign.Marshal.Utils (with)
 
 #if defined(mingw32_HOST_OS)
 import Control.Exception (bracket)
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
+import System.IO.Error (catchIOError)
+# if defined(HAS_WINIO)
+import qualified GHC.Event.Windows as Mgr
+import Foreign.Ptr (wordPtrToPtr)
+import GHC.IO.SubSystem ((<!>))
+# endif
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
@@ -79,6 +82,10 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     -- Let's ensure that the socket (file descriptor) is closed even on
     -- asynchronous exceptions.
     setNonBlock fd
+#if defined(mingw32_HOST_OS) && defined(HAS_WINIO)
+    -- Associate socket with I/O manager immediately if using WinIO
+    (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
+#endif
     s <- mkSocket fd
     -- This socket is not managed by the IO manager yet.
     -- So, we don't have to call "close" which uses "closeFdWith".
@@ -203,7 +210,12 @@ listen s backlog = withFdSocket s $ \fd -> do
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
- new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close mkSocket
+ new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close $ \fd -> do
+#if defined(HAS_WINIO)
+     -- Associate accepted socket with I/O manager if using WinIO
+     (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
+#endif
+     mkSocket fd
  new_addr <- peekSocketAddress new_sa
  return (new_sock, new_addr)
   where
@@ -234,31 +246,31 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
 #endif
 
 foreign import CALLCONV unsafe "socket"
-  c_socket :: CInt -> CInt -> CInt -> IO CInt
+  c_socket :: CInt -> CInt -> CInt -> IO CSocket
 foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+  c_bind :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
+  c_connect :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
+  c_listen :: CSocket -> CInt -> IO CInt
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
+  c_accept4 :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CSocket
 #else
 foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CSocket
 #endif
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
+  c_accept_safe :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CSocket
 foreign import ccall unsafe "rtsSupportsBoundThreads"
   threaded :: Bool
 foreign import ccall unsafe "HsNet.h acceptNewSock"
-  c_acceptNewSock :: Ptr () -> IO CInt
+  c_acceptNewSock :: Ptr () -> IO CSocket
 foreign import ccall unsafe "HsNet.h newAcceptParams"
-  c_newAcceptParams :: CInt -> CInt -> Ptr a -> IO (Ptr ())
+  c_newAcceptParams :: CSocket -> CInt -> Ptr a -> IO (Ptr ())
 foreign import ccall unsafe "HsNet.h &acceptDoProc"
   c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
 foreign import ccall unsafe "free"
