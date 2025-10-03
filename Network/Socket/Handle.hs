@@ -19,9 +19,18 @@ import Network.Socket.Types
 -- Haskell, e.g. merely performing 'hClose' on a TCP socket won't
 -- cooperate with peer's 'gracefulClose', i.e. proper shutdown
 -- sequence with appropriate handshakes specified by the protocol.
+-- TODO: WinIO doesn't use fd, add support
+--       Need to remove fromIntegral.
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = invalidateSocket s err $ \oldfd -> do
-    h <- fdToHandle' oldfd (Just GHC.IO.Device.Stream) True (show s) mode True {-bin-}
+    h <-
+        fdToHandle'
+            (fromIntegral oldfd)
+            (Just GHC.IO.Device.Stream)
+            True
+            (show s)
+            mode
+            True {-bin-}
     hSetBuffering h NoBuffering
     return h
   where

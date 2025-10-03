@@ -6,16 +6,16 @@ module Network.SocketSpec (main, spec) where
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (readMVar)
 import Control.Monad
-import Data.Maybe (fromJust)
 import Data.List (nub)
+import Data.Maybe (fromJust)
+import Foreign.C.Types ()
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
-import System.Mem (performGC)
 import System.IO.Error (tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
+import System.Mem (performGC)
 import System.Posix.Types (Fd(..))
-import Foreign.C.Types ()
 
 import Test.Hspec
 import Test.QuickCheck
