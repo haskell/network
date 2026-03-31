@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 #include "HsNet.h"
 ##include "HsNetDef.h"
@@ -446,68 +445,6 @@ unpackBits [] _    = []
 unpackBits ((k,v):xs) r
     | r .&. v /= 0 = k : unpackBits xs (r .&. complement v)
     | otherwise    = unpackBits xs r
-
------------------------------------------------------------------------------
--- SockAddr
-
--- |
---
--- >>> SockAddrInet6 80 0 (0,0,0xffff,0x01020304) 0
--- [::ffff:1.2.3.4]:80
-instance Show SockAddr where
-  showsPrec _ (SockAddrUnix str) = showString str
-  showsPrec _ (SockAddrInet port ha)
-   = showHostAddress ha
-   . showString ":"
-   . shows port
-  showsPrec _ (SockAddrInet6 port _ ha6 _)
-   = showChar '['
-   . showHostAddress6 ha6
-   . showString "]:"
-   . shows port
-
-
--- Taken from on the implementation of showIPv4 in Data.IP.Addr
-showHostAddress :: HostAddress -> ShowS
-showHostAddress ip =
-  let (u3, u2, u1, u0) = hostAddressToTuple ip in
-  foldr1 (.) . intersperse (showChar '.') $ map showInt [u3, u2, u1, u0]
-
-showHostAddress' :: HostAddress -> ShowS
-showHostAddress' ip =
-  let (u3, u2, u1, u0) = hostAddressToTuple' ip in
-  foldr1 (.) . intersperse (showChar '.') $ map showInt [u3, u2, u1, u0]
-
--- Taken from showIPv6 in Data.IP.Addr.
-
--- | Show an IPv6 address in the most appropriate notation, based on recommended
--- representation proposed by <http://tools.ietf.org/html/rfc5952 RFC 5952>.
---
--- /The implementation is completely compatible with the current implementation
--- of the `inet_ntop` function in glibc./
-showHostAddress6 :: HostAddress6 -> ShowS
-showHostAddress6 ha6@(a1, a2, a3, a4)
-    -- IPv4-Mapped IPv6 Address
-    | a1 == 0 && a2 == 0 && a3 == 0xffff =
-      showString "::ffff:" . showHostAddress' a4
-    -- IPv4-Compatible IPv6 Address (exclude IPRange ::/112)
-    | a1 == 0 && a2 == 0 && a3 == 0 && a4 >= 0x10000 =
-        showString "::" . showHostAddress' a4
-    -- length of longest run > 1, replace it with "::"
-    | end - begin > 1 =
-        showFields prefix . showString "::" . showFields suffix
-    | otherwise =
-        showFields fields
-  where
-    fields =
-        let (u7, u6, u5, u4, u3, u2, u1, u0) = hostAddress6ToTuple ha6 in
-        [u7, u6, u5, u4, u3, u2, u1, u0]
-    showFields = foldr (.) id . intersperse (showChar ':') . map showHex
-    prefix = take begin fields  -- fields before "::"
-    suffix = drop end fields    -- fields after "::"
-    begin = end + diff          -- the longest run of zeros
-    (diff, end) = minimum $
-        scanl (\c i -> if i == 0 then c - 1 else 0) 0 fields `zip` [0..]
 
 -----------------------------------------------------------------------------
 
