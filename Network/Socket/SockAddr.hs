@@ -46,25 +46,25 @@ connect = G.connect
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: Socket -> SockAddr -> IO ()
-bind s a = case a of
+bind s sa = case sa of
     SockAddrUnix p -> do
         -- gracefully handle the fact that UNIX systems don't clean up closed UNIX
         -- domain sockets, inspired by https://stackoverflow.com/a/13719866
-        res <- try (G.bind s a)
+        res <- try (G.bind s sa)
         case res of
             Right () -> return ()
             Left e | not (isAlreadyInUseError e) -> throwIO (e :: IOException)
             Left e | otherwise -> do
                 -- socket might be in use, try to connect
-                res2 <- try (G.connect s a)
+                res2 <- try (G.connect s sa)
                 case res2 of
                     Right () -> close s >> throwIO e
                     Left e2 | not (isDoesNotExistError e2) -> throwIO (e2 :: IOException)
                     _ -> do
                         -- socket not actually in use, remove it and retry bind
                         void (try $ removeFile p :: IO (Either IOError ()))
-                        G.bind s a
-    _ -> G.bind s a
+                        G.bind s sa
+    _ -> G.bind s sa
 
 -- | Accept a connection.  The socket must be bound to an address and
 -- listening for connections.  The return value is a pair @(conn,
