@@ -84,11 +84,26 @@ import Network.Socket.Types
 -- | Throw an 'IOError' corresponding to the current socket error.
 throwSocketError :: String  -- ^ textual description of the error location
                  -> IO a
+#if defined(mingw32_HOST_OS)
+throwSocketError name =
+    c_getLastError >>= throwSocketErrorCode name
+#else
+throwSocketError = throwErrno
+#endif
 
 -- | Like 'throwSocketError', but the error code is supplied as an argument.
 --
 -- On Windows, do not use errno.  Use a system error code instead.
 throwSocketErrorCode :: String -> CInt -> IO a
+#if defined(mingw32_HOST_OS)
+throwSocketErrorCode name rc = do
+    pstr <- c_getWSError rc
+    str  <- peekCString pstr
+    ioError (ioeSetErrorString (mkIOError OtherError name Nothing Nothing) str)
+#else
+throwSocketErrorCode loc errno =
+    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
+#endif
 
 -- | Throw an 'IOError' corresponding to the current socket error if
 -- the IO action returns a result of @-1@.  Discards the result of the
@@ -98,6 +113,13 @@ throwSocketErrorIfMinus1_
     => String  -- ^ textual description of the location
     -> IO a    -- ^ the 'IO' operation to be executed
     -> IO ()
+#if defined(mingw32_HOST_OS)
+throwSocketErrorIfMinus1_ name act = do
+  _ <- throwSocketErrorIfMinus1Retry name act
+  return ()
+#else
+throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
+#endif
 
 {-# SPECIALIZE throwSocketErrorIfMinus1_ :: String -> IO CInt -> IO () #-}
 
@@ -109,6 +131,12 @@ throwSocketErrorIfMinus1Retry
     => String  -- ^ textual description of the location
     -> IO a    -- ^ the 'IO' operation to be executed
     -> IO a
+#if defined(mingw32_HOST_OS)
+throwSocketErrorIfMinus1Retry
+  = throwSocketErrorIfMinus1ButRetry (const False)
+#else
+throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
+#endif
 
 {-# SPECIALIZE throwSocketErrorIfMinus1Retry :: String -> IO CInt -> IO CInt #-}
 
@@ -136,6 +164,13 @@ throwSocketErrorIfMinus1RetryMayBlock
                --   immediate retry would block
     -> IO a    -- ^ the 'IO' operation to be executed
     -> IO a
+#if defined(mingw32_HOST_OS)
+throwSocketErrorIfMinus1RetryMayBlock name _ act
+  = throwSocketErrorIfMinus1Retry name act
+#else
+throwSocketErrorIfMinus1RetryMayBlock name on_block act =
+    throwErrnoIfMinus1RetryMayBlock name act on_block
+#endif
 
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
@@ -154,22 +189,20 @@ throwSocketErrorIfMinus1RetryMayBlockBut
                       --   immediate retry would block
     -> IO a           -- ^ the 'IO' operation to be executed
     -> IO a
+#if defined(mingw32_HOST_OS)
+throwSocketErrorIfMinus1RetryMayBlockBut exempt name _ act
+  = throwSocketErrorIfMinus1ButRetry exempt name act
+#else
+throwSocketErrorIfMinus1RetryMayBlockBut _exempt name on_block act =
+    throwErrnoIfMinus1RetryMayBlock name act on_block
+#endif
 
 {-# SPECIALIZE throwSocketErrorIfMinus1RetryMayBlock
         :: String -> IO b -> IO CInt -> IO CInt #-}
 
+-- ---------------------------------------------------------------------
+
 #if defined(mingw32_HOST_OS)
-
-throwSocketErrorIfMinus1RetryMayBlock name _ act
-  = throwSocketErrorIfMinus1Retry name act
-
-throwSocketErrorIfMinus1RetryMayBlockBut exempt name _ act
-  = throwSocketErrorIfMinus1ButRetry exempt name act
-
-throwSocketErrorIfMinus1_ name act = do
-  _ <- throwSocketErrorIfMinus1Retry name act
-  return ()
-
 throwSocketErrorIfMinus1ButRetry :: (Eq a, Num a) =>
                                     (CInt -> Bool) -> String -> IO a -> IO a
 throwSocketErrorIfMinus1ButRetry exempt name act = do
@@ -189,41 +222,14 @@ throwSocketErrorIfMinus1ButRetry exempt name act = do
           else throwSocketError name
    else return r
 
-throwSocketErrorIfMinus1Retry
-  = throwSocketErrorIfMinus1ButRetry (const False)
-
-throwSocketErrorCode name rc = do
-    pstr <- c_getWSError rc
-    str  <- peekCString pstr
-    ioError (ioeSetErrorString (mkIOError OtherError name Nothing Nothing) str)
-
-throwSocketError name =
-    c_getLastError >>= throwSocketErrorCode name
-
 foreign import CALLCONV unsafe "WSAGetLastError"
   c_getLastError :: IO CInt
 
 foreign import ccall unsafe "getWSErrorDescr"
   c_getWSError :: CInt -> IO (Ptr CChar)
-
-#else
-
-throwSocketErrorIfMinus1RetryMayBlock name on_block act =
-    throwErrnoIfMinus1RetryMayBlock name act on_block
-
-throwSocketErrorIfMinus1RetryMayBlockBut _exempt name on_block act =
-    throwErrnoIfMinus1RetryMayBlock name act on_block
-
-throwSocketErrorIfMinus1Retry = throwErrnoIfMinus1Retry
-
-throwSocketErrorIfMinus1_ = throwErrnoIfMinus1_
-
-throwSocketError = throwErrno
-
-throwSocketErrorCode loc errno =
-    ioError (errnoToIOError loc (Errno errno) Nothing Nothing)
-
 #endif
+
+-- ---------------------------------------------------------------------
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
