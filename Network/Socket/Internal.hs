@@ -37,6 +37,7 @@ module Network.Socket.Internal
 #if defined(mingw32_HOST_OS)
     , throwSocketErrorIfMinus1ButRetry
 #endif
+    , annotateIOException
     -- ** Guards that wait and retry if the operation would block
     -- | These guards are based on 'throwSocketErrorIfMinus1RetryMayBlock'.
     -- They wait for socket readiness if the action fails with @EWOULDBLOCK@
@@ -77,6 +78,65 @@ import Network.Socket.Cbits
 #endif
 import Network.Socket.Imports
 import Network.Socket.Types
+
+import qualified Foreign.C.Error as C
+import GHC.IO.Exception (IOException (..))
+import System.IO.Error (modifyIOError)
+
+annotateIOException :: IO a -> String -> IO a
+annotateIOException io anno = modifyIOError f io
+  where
+    f ioe = ioe { ioe_description = ioe_description ioe ++ " " ++ errname ++ anno }
+      where
+         errname = case ioe_errno ioe of
+           Nothing -> ""
+           Just n -> "[" ++ showErrno n ++ "] "
+
+showErrno :: CInt -> String
+showErrno n = case lookup (C.Errno n) errnoNames of
+  Nothing -> show n
+  Just name -> name
+
+errnoNames :: [(C.Errno, String)]
+errnoNames = [
+    (C.eACCES,          "EACCES")
+  , (C.eADDRINUSE,      "EADDRINUSE")
+  , (C.eADDRNOTAVAIL,   "EADDRNOTAVAIL")
+  , (C.eAFNOSUPPORT,    "EAFNOSUPPORT")
+  , (C.eAGAIN,          "EAGAIN")
+  , (C.eBADF,           "EBADF")
+  , (C.eCONNABORTED,    "ECONNABORTED")
+  , (C.eCONNRESET,      "ECONNRESET")
+  , (C.eDESTADDRREQ,    "EDESTADDRREQ")
+  , (C.eEXIST,          "EEXIST")
+  , (C.eFAULT,          "EFAULT")
+  , (C.eINTR,           "EINTR")
+  , (C.eINVAL,          "EINVAL")
+  , (C.eIO,             "EIO")
+  , (C.eISCONN,         "EISCONN")
+  , (C.eISDIR,          "EISDIR")
+  , (C.eLOOP,           "ELOOP")
+  , (C.eMFILE,          "EMFILE")
+  , (C.eMSGSIZE,        "EMSGSIZE")
+  , (C.eNAMETOOLONG,    "ENAMETOOLONG")
+  , (C.eNETDOWN,        "ENETDOWN")
+  , (C.eNETUNREACH,     "ENETUNREACH")
+  , (C.eMFILE,          "EMFILE")
+  , (C.eNFILE,          "ENFILE")
+  , (C.eNOBUFS,         "ENOBUFS")
+  , (C.eNOENT,          "ENOENT")
+  , (C.eNOMEM,          "ENOMEM")
+  , (C.eNOTCONN,        "ENOTCONN")
+  , (C.eNOTDIR,         "ENOTDIR")
+  , (C.eNOTSOCK,        "ENOTSOCK")
+  , (C.eOPNOTSUPP,      "EOPNOTSUPP")
+  , (C.ePIPE,           "EPIPE")
+  , (C.ePROTONOSUPPORT, "EPROTONOSUPPORT")
+  , (C.ePROTOTYPE,      "EPROTOTYPE")
+  , (C.eROFS,           "EROFS")
+  , (C.eTIMEDOUT,       "ETIMEDOUT")
+  , (C.eWOULDBLOCK,     "EWOULDBLOCK")
+  ]
 
 -- ---------------------------------------------------------------------
 -- Guards for socket operations that may fail

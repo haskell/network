@@ -197,6 +197,8 @@ module Network.Socket (
     socketToFd,
     fdSocket,
     mkSocket,
+    labelSocket,
+    socketLabel,
     socketToHandle,
 
     -- ** Types of Socket

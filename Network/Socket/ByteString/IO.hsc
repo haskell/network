@@ -57,6 +57,7 @@ import Network.Socket.Internal
 import System.Posix.Types (Fd(..))
 
 import Network.Socket.Flag
+import Network.Socket.SockAddr (annotateWithSocket)
 
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
@@ -78,8 +79,10 @@ import Network.Socket.Win32.MsgHdr (MsgHdr(..))
 send :: Socket     -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send s xs = unsafeUseAsCStringLen xs $ \(str, len) ->
-    sendBuf s (castPtr str) len
+send s xs = send' `annotateWithSocket` (s, Nothing)
+  where
+    send' = unsafeUseAsCStringLen xs $ \(str, len) ->
+      sendBuf s (castPtr str) len
 
 waitWhen0 :: Int -> Socket -> IO ()
 waitWhen0 0 s = when rtsSupportsBoundThreads $
@@ -145,11 +148,12 @@ sendMany :: Socket       -- ^ Connected socket
          -> [ByteString]  -- ^ Data to send
          -> IO ()
 sendMany _ [] = return ()
-sendMany s cs = do
-    sent <- sendManyInner
-    waitWhen0 sent s
-    when (sent >= 0) $ sendMany s $ remainingChunks sent cs
+sendMany s cs = sendMany' `annotateWithSocket` (s, Nothing)
   where
+    sendMany' = do
+        sent <- sendManyInner
+        waitWhen0 sent s
+        when (sent >= 0) $ sendMany s $ remainingChunks sent cs
     sendManyInner =
 #if !defined(mingw32_HOST_OS)
       fmap fromIntegral . withIOVecfromBS cs $ \(iovsPtr, iovsLen) ->
@@ -178,11 +182,12 @@ sendManyTo :: Socket       -- ^ Socket
            -> SockAddr      -- ^ Recipient address
            -> IO ()
 sendManyTo _ [] _    = return ()
-sendManyTo s cs addr = do
-    sent <- fromIntegral <$> sendManyToInner
-    waitWhen0 sent s
-    when (sent >= 0) $ sendManyTo s (remainingChunks sent cs) addr
+sendManyTo s cs addr = sendManyTo' `annotateWithSocket` (s, Nothing)
   where
+    sendManyTo' =  do
+        sent <- fromIntegral <$> sendManyToInner
+        waitWhen0 sent s
+        when (sent >= 0) $ sendManyTo s (remainingChunks sent cs) addr
     sendManyToInner =
       withSockAddr addr $ \addrPtr addrSize ->
 #if !defined(mingw32_HOST_OS)
@@ -225,11 +230,11 @@ sendManyWithFds :: Socket       -- ^ Socket
                 -> [ByteString] -- ^ Data to send
                 -> [Fd]         -- ^ File descriptors
                 -> IO ()
-sendManyWithFds s bss fds =
-    void $
+sendManyWithFds s bss fds = sendManyWithFds' `annotateWithSocket` (s, Nothing)
+  where
+    sendManyWithFds' = void $
         withBufSizs bss $ \bufsizs ->
             sendBufMsg s addr bufsizs cmsgs flags
-  where
     addr = NullSockAddr
     cmsgs = encodeCmsg . (:[]) <$> fds
     flags = mempty
@@ -257,8 +262,8 @@ recv :: Socket        -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
 recv s nbytes
-    | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv")
-    | otherwise  = createAndTrim nbytes $ \ptr -> recvBuf s ptr nbytes
+    | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv") `annotateWithSocket` (s, Nothing)
+    | otherwise  = createAndTrim nbytes $ \ptr -> recvBuf s ptr nbytes `annotateWithSocket` (s, Nothing)
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
@@ -323,8 +328,10 @@ sendMsg :: Socket       -- ^ Socket
         -> MsgFlag      -- ^ Message flags
         -> IO Int       -- ^ The length actually sent
 sendMsg _ _    []  _ _ = return 0
-sendMsg s addr bss cmsgs flags = withBufSizs bss $ \bufsizs ->
-    sendBufMsg s addr bufsizs cmsgs flags
+sendMsg s addr bss cmsgs flags = sendMsg' `annotateWithSocket` (s, Just addr)
+  where
+    sendMsg' = withBufSizs bss $ \bufsizs ->
+      sendBufMsg s addr bufsizs cmsgs flags
 
 -- | Receive data from the socket using recvmsg(2).
 recvMsg :: Socket  -- ^ Socket
@@ -336,10 +343,12 @@ recvMsg :: Socket  -- ^ Socket
                    --   'MSG_CTRUNC' is returned
         -> MsgFlag -- ^ Message flags
         -> IO (SockAddr, ByteString, [Cmsg], MsgFlag) -- ^ Source address, received data, control messages and message flags
-recvMsg s siz clen flags = do
-    bs@(PS fptr _ _) <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
-    withForeignPtr fptr $ \ptr -> do
-        (addr,len,cmsgs,flags') <- recvBufMsg s [(ptr,siz)] clen flags
-        let bs' | len < siz = PS fptr 0 len
-                | otherwise = bs
-        return (addr, bs', cmsgs, flags')
+recvMsg s siz clen flags = recvMsg' `annotateWithSocket` (s, Nothing)
+  where
+    recvMsg' = do
+        bs@(PS fptr _ _) <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
+        withForeignPtr fptr $ \ptr -> do
+            (addr,len,cmsgs,flags') <- recvBufMsg s [(ptr,siz)] clen flags
+            let bs' | len < siz = PS fptr 0 len
+                    | otherwise = bs
+            return (addr, bs', cmsgs, flags')
