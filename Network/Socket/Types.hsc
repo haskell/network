@@ -22,6 +22,8 @@ module Network.Socket.Types (
     , fdSocket
     , mkSocket
     , invalidateSocket
+    , labelSocket
+    , socketLabel
     , close
     , close'
     , c_close
@@ -85,7 +87,7 @@ module Network.Socket.Types (
     , In6Addr(..)
     ) where
 
-import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
+import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef, modifyIORef')
 import Foreign.C.Error (throwErrno)
 import Foreign.Marshal.Alloc
 import GHC.Conc (closeFdWith)
@@ -115,13 +117,16 @@ type CSocket = CInt
 #endif
 
 -- | Basic type for a socket.
-data Socket = Socket (IORef CSocket) CSocket {- for Show -}
+data Socket = Socket
+    (IORef CSocket)
+    CSocket {- for Show -}
+    (IORef String) {- for IOException annotation -}
 
 instance Show Socket where
-    show (Socket _ ofd) = "<socket: " ++ show ofd ++ ">"
+    show (Socket _ ofd _) = "<socket: " ++ show ofd ++ ">"
 
 instance Eq Socket where
-    Socket ref1 _ == Socket ref2 _ = ref1 == ref2
+    Socket ref1 _ _ == Socket ref2 _ _ = ref1 == ref2
 
 {-# DEPRECATED fdSocket "Use withFdSocket or unsafeFdSocket instead" #-}
 -- | Currently, this is an alias of `unsafeFdSocket`.
@@ -151,7 +156,7 @@ fdSocket = unsafeFdSocket
 --
 --   A safer option is to use 'withFdSocket' instead.
 unsafeFdSocket :: Socket -> IO CSocket
-unsafeFdSocket (Socket ref _) = readIORef ref
+unsafeFdSocket (Socket ref _ _) = readIORef ref
 
 -- | Ensure that the given 'Socket' stays alive (i.e. not garbage-collected)
 --   at the given place in the sequence of IO actions. This function can be
@@ -162,7 +167,7 @@ unsafeFdSocket (Socket ref _) = readIORef ref
 -- > -- using fd with blocking operations such as accept(2)
 -- > touchSocket sock
 touchSocket :: Socket -> IO ()
-touchSocket (Socket ref _) = touch ref
+touchSocket (Socket ref _ _) = touch ref
 
 touch :: IORef a -> IO ()
 touch (IORef (STRef mutVar)) =
@@ -183,7 +188,7 @@ touch (IORef (STRef mutVar)) =
 --
 -- Since: 3.1.0.0
 withFdSocket :: Socket -> (CSocket -> IO r) -> IO r
-withFdSocket (Socket ref _) f = do
+withFdSocket (Socket ref _ _) f = do
   fd <- readIORef ref
   -- Should we throw an exception if the socket is already invalid?
   -- That will catch some mistakes but certainly not all.
@@ -224,7 +229,8 @@ foreign import ccall unsafe "dup"
 mkSocket :: CSocket -> IO Socket
 mkSocket fd = do
     ref <- newIORef fd
-    let s = Socket ref fd
+    anno <- newIORef $ "sock " ++ show fd
+    let s = Socket ref fd anno
     void $ mkWeakIORef ref $ close s
     return s
 
@@ -240,9 +246,19 @@ invalidateSocket ::
    -> (CSocket -> IO a)
    -> (CSocket -> IO a)
    -> IO a
-invalidateSocket (Socket ref _) errorAction normalAction = do
+invalidateSocket (Socket ref _ _) errorAction normalAction = do
     oldfd <- atomicModifyIORef' ref $ \cur -> (invalidSocket, cur)
     if oldfd == invalidSocket then errorAction oldfd else normalAction oldfd
+
+-- | Labeling a socket. The function in the second argument takes the
+-- old label and returns the new label. The initial value of the label
+-- is "sock \<CInt\>".
+labelSocket :: Socket -> (String -> String) -> IO ()
+labelSocket (Socket _ _ ref) = modifyIORef' ref
+
+-- | Read the label of a socket.
+socketLabel :: Socket -> IO String
+socketLabel (Socket _ _ ref) = readIORef ref
 
 -----------------------------------------------------------------------------
 
@@ -276,7 +292,8 @@ close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     closeFd :: Fd -> IO ()
     closeFd fd = do
         ret <- c_close $ fromIntegral fd
-        when (ret == -1) $ throwErrno "Network.Socket.close'"
+        label <- socketLabel s
+        when (ret == -1) $ throwErrno $ "Network.Socket.close' <" ++ label ++ ">"
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
