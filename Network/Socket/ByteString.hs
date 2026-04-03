@@ -42,6 +42,7 @@ import Data.ByteString (ByteString)
 
 import Network.Socket.ByteString.IO hiding (recvFrom, sendAllTo, sendTo)
 import qualified Network.Socket.ByteString.IO as G
+import Network.Socket.SockAddr (annotateWithSocket)
 import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------
@@ -72,7 +73,7 @@ import Network.Socket.Types
 -- Returns the number of bytes sent. Applications are responsible for
 -- ensuring that all data has been sent.
 sendTo :: Socket -> ByteString -> SockAddr -> IO Int
-sendTo = G.sendTo
+sendTo s bs sa = G.sendTo s bs sa `annotateWithSocket` (s, Just sa)
 
 -- | Send data to the socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  Unlike
@@ -81,11 +82,11 @@ sendTo = G.sendTo
 -- raised, and there is no way to determine how much data, if any, was
 -- successfully sent.
 sendAllTo :: Socket -> ByteString -> SockAddr -> IO ()
-sendAllTo = G.sendAllTo
+sendAllTo s bs sa = G.sendAllTo s bs sa `annotateWithSocket` (s, Just sa)
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
 -- 'ByteString' representing the data received and @address@ is a
 -- 'SockAddr' representing the address of the sending socket.
 recvFrom :: Socket -> Int -> IO (ByteString, SockAddr)
-recvFrom = G.recvFrom
+recvFrom s len = G.recvFrom s len `annotateWithSocket` (s, Nothing)
