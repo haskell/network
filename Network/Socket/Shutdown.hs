@@ -86,7 +86,19 @@ bufSize :: Int
 bufSize = 1024
 
 recvEOFtimeout :: Socket -> Int -> Ptr Word8 -> IO ()
+#if defined(mingw32_HOST_OS)
+-- On Windows with the WinIO (IOCP) I/O manager, GHC's withOverlappedEx
+-- converts async exceptions (including the one thrown by timeout) into a
+-- synchronous IOException via `throwWinErr ... 0`
+-- ("The operation completed successfully").
+-- `timeout` does not recognise this IOException as
+-- its own exception, so it escapes.
+-- Should be safe since we're only calling this on shutdown (see above).
+recvEOFtimeout s tmout0 buf = void $ timeout tmout0 $
+    recvBuf s buf bufSize `E.catch` (\(_ :: E.IOException) -> pure 0)
+#else
 recvEOFtimeout s tmout0 buf = void $ timeout tmout0 $ recvBuf s buf bufSize
+#endif
 
 #if !defined(mingw32_HOST_OS)
 data Wait = MoreData | TimeoutTripped

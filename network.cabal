@@ -103,6 +103,7 @@ library
 
     other-modules:
         Network.Socket.Buffer
+        Network.Socket.Buffer.Posix
         Network.Socket.ByteString.IO
         Network.Socket.ByteString.Internal
         Network.Socket.Cbits
@@ -114,12 +115,15 @@ library
         Network.Socket.Info
         Network.Socket.Name
         Network.Socket.Options
+        Network.Socket.Options.Posix
         Network.Socket.ReadShow
         Network.Socket.STM
         Network.Socket.Shutdown
         Network.Socket.SockAddr
         Network.Socket.Syscall
+        Network.Socket.Syscall.Posix
         Network.Socket.Types
+        Network.Socket.Types.Posix
         Network.Socket.Unix
 
     default-language: Haskell2010
@@ -155,12 +159,18 @@ library
         c-sources:
             cbits/initWinSock.c
             cbits/winSockErr.c
+            cbits/winSock.c
             cbits/asyncAccept.c
 
         other-modules:
+            Network.Socket.Buffer.WinIO
             Network.Socket.ByteString.Lazy.Windows
+            Network.Socket.Options.WinIO
+            Network.Socket.Syscall.WinIO
+            Network.Socket.Types.WinIO
             Network.Socket.Win32.Cmsg
             Network.Socket.Win32.CmsgHdr
+            Network.Socket.Win32.Load
             Network.Socket.Win32.WSABuf
             Network.Socket.Win32.MsgHdr
 
@@ -168,6 +178,7 @@ library
             ws2_32
             iphlpapi
             mswsock
+            ntdll
 
         if impl(ghc >=7.10)
             cpp-options: -D_WIN32_WINNT=0x0600
@@ -191,7 +202,7 @@ test-suite spec
         Network.Socket.ByteString.LazySpec
 
     default-language: Haskell2010
-    ghc-options:      -Wall -threaded
+    ghc-options:      -Wall -threaded "-with-rtsopts=-N --io-manager=native"
     build-depends:
         base,
         bytestring,

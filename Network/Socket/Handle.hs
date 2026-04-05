@@ -1,10 +1,18 @@
-module Network.Socket.Handle where
+{-# LANGUAGE CPP #-}
+module Network.Socket.Handle (socketToHandle) where
 
 import qualified GHC.IO.Device (IODeviceType (Stream))
 import GHC.IO.Handle.FD (fdToHandle')
 import System.IO (BufferMode (..), Handle, IOMode (..), hSetBuffering)
 
+#if defined(mingw32_HOST_OS)
+import GHC.IO.Windows.Handle
+import GHC.IO.Handle.Windows
+import qualified Network.Socket.Types.WinIO as Win
+#endif
+
 import Network.Socket.Types
+import qualified Network.Socket.Types.Posix as Posix
 
 -- | Turns a Socket into an 'Handle'. By default, the new handle is
 -- unbuffered. Use 'System.IO.hSetBuffering' to change the buffering.
@@ -20,7 +28,22 @@ import Network.Socket.Types
 -- cooperate with peer's 'gracefulClose', i.e. proper shutdown
 -- sequence with appropriate handshakes specified by the protocol.
 socketToHandle :: Socket -> IOMode -> IO Handle
-socketToHandle s mode = invalidateSocket s err $ \oldfd -> do
+#if defined(mingw32_HOST_OS)
+socketToHandle = eitherSocket socketToHandlePosix socketToHandleWindows
+
+socketToHandleWindows :: Win.Socket -> IOMode -> IO Handle
+socketToHandleWindows s mode = Win.invalidateSocket s err $ \oldsock -> do
+    h <- mkHandleFromHANDLE (fromHANDLE oldsock :: Io NativeHandle) GHC.IO.Device.Stream "socket" mode Nothing
+    hSetBuffering h NoBuffering
+    return h
+  where
+    err _ = ioError $ userError $ "socketToHandle: socket is no longer valid"
+#else
+socketToHandle = socketToHandlePosix
+#endif
+
+socketToHandlePosix :: Posix.Socket -> IOMode -> IO Handle
+socketToHandlePosix s mode = Posix.invalidateSocket s err $ \oldfd -> do
     h <- fdToHandle' oldfd (Just GHC.IO.Device.Stream) True (show s) mode True {-bin-}
     hSetBuffering h NoBuffering
     return h

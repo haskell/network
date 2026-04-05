@@ -1,9 +1,11 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 #include "HsNetDef.h"
 
 module Network.Socket.Syscall where
 
+import Data.Bifunctor
 import Foreign.Marshal.Utils (with)
 import qualified Control.Exception as E
 # if defined(mingw32_HOST_OS)
@@ -29,10 +31,18 @@ import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types
+import qualified Network.Socket.Types.Posix as Posix
+
+import qualified Network.Socket.Syscall.Posix as Posix
+#if defined(mingw32_HOST_OS)
+import qualified Network.Socket.Types.WinIO as Win
+import qualified Network.Socket.Syscall.WinIO as Win
+import GHC.IO.SubSystem
+#endif
 
 -- ----------------------------------------------------------------------------
--- On Windows, our sockets are not put in non-blocking mode (non-blocking
--- is not supported for regular file descriptors on Windows, and it would
+-- In the Posix event manager, our sockets are not put in non-blocking mode
+-- (non-blocking for regular file descriptors on Windows in the PEM, and it would
 -- be a pain to support it only for sockets).  So there are two cases:
 --
 --  - the threaded RTS uses safe calls for socket operations to get
@@ -75,58 +85,11 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
-socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
-    -- Let's ensure that the socket (file descriptor) is closed even on
-    -- asynchronous exceptions.
-    setNonBlock fd
-    s <- mkSocket fd
-    -- This socket is not managed by the IO manager yet.
-    -- So, we don't have to call "close" which uses "closeFdWith".
-    unsetIPv6Only s
-    setDontFragment s
-    return s
-  where
-    create = do
-        let c_stype = modifyFlag $ packSocketType stype
-        throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
-            c_socket (packFamily family) c_stype protocol
-
-#ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    modifyFlag c_stype = c_stype .|. sockNonBlock
+#if defined(mingw32_HOST_OS)
+socket fam st p = Socket <$>
+    fmap Left (Posix.socket fam st p) <!> fmap Right (Win.socket fam st p)
 #else
-    modifyFlag c_stype = c_stype
-#endif
-
-#ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    setNonBlock _ = return ()
-#else
-    setNonBlock fd = setNonBlockIfNeeded fd
-#endif
-
-#if HAVE_DECL_IPV6_V6ONLY
-    unsetIPv6Only s = when (family == AF_INET6 && stype `elem` [Stream, Datagram]) $
-# if defined(mingw32_HOST_OS)
-      -- The IPv6Only option is only supported on Windows Vista and later,
-      -- so trying to change it might throw an error.
-      setSocketOption s IPv6Only 0 `catchIOError` \_ -> return ()
-# elif defined(openbsd_HOST_OS)
-      -- don't change IPv6Only
-      return ()
-# else
-      -- The default value of the IPv6Only option is platform specific,
-      -- so we explicitly set it to 0 to provide a common default.
-      setSocketOption s IPv6Only 0
-# endif
-#else
-    unsetIPv6Only _ = return ()
-#endif
-
-    setDontFragment s = when (family == AF_INET) $
-#if HAVE_DECL_IP_DONTFRAG || HAVE_DECL_IP_MTU_DISCOVER
-      setSocketOption s DontFragment 1
-#else
-      -- do nothing
-      return ()
+socket = Posix.socket
 #endif
 
 
@@ -139,39 +102,21 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
 -- 'defaultPort' is passed then the system assigns the next available
 -- use port.
 bind :: SocketAddress sa => Socket -> sa -> IO ()
-bind s sa = withSocketAddress sa $ \p_sa siz -> void $ withFdSocket s $ \fd -> do
-  let sz = fromIntegral siz
-  throwSocketErrorIfMinus1Retry "Network.Socket.bind" $ c_bind fd p_sa sz
+#if defined(mingw32_HOST_OS)
+bind = eitherSocket Posix.bind Win.bind
+#else
+bind = Posix.bind
+#endif
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
 
 -- | Connect to a remote socket at address.
-connect :: SocketAddress sa => Socket -> sa -> IO ()
-connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
-    connectLoop s p_sa (fromIntegral sz)
-
-connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
-connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
-  where
-    errLoc = "Network.Socket.connect: " ++ show s
-    loop fd = do
-       r <- c_connect fd p_sa sz
-       when (r == -1) $ do
+connect :: Socket -> SockAddr -> IO ()
 #if defined(mingw32_HOST_OS)
-           throwSocketError errLoc
+connect = eitherSocket Posix.connect Win.connect
 #else
-           err <- getErrno
-           case () of
-             _ | err == eINTR       -> loop fd
-             _ | err == eINPROGRESS -> connectBlocked
---           _ | err == eAGAIN      -> connectBlocked
-             _otherwise             -> throwSocketError errLoc
-
-    connectBlocked = do
-       withFdSocket s $ threadWaitWrite . fromIntegral
-       err <- getSocketOption s SoError
-       when (err /= 0) $ throwSocketErrorCode errLoc (fromIntegral err)
+connect = Posix.connect
 #endif
 
 -----------------------------------------------------------------------------
@@ -181,9 +126,11 @@ connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
 listen :: Socket -> Int -> IO ()
-listen s backlog = withFdSocket s $ \fd -> do
-    throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen fd $ fromIntegral backlog
+#if defined(mingw32_HOST_OS)
+listen = eitherSocket Posix.listen Win.listen
+#else
+listen = Posix.listen
+#endif
 
 -----------------------------------------------------------------------------
 -- Accept
@@ -201,66 +148,10 @@ listen s backlog = withFdSocket s $ \fd -> do
 -- to the socket on the other end of the connection.
 -- On Unix, FD_CLOEXEC is set to the new 'Socket'.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
-accept listing_sock = withNewSocketAddress $ \new_sa sz ->
-    withFdSocket listing_sock $ \listing_fd -> do
- new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close mkSocket
- new_addr <- peekSocketAddress new_sa
- return (new_sock, new_addr)
-  where
 #if defined(mingw32_HOST_OS)
-     callAccept fd sa sz
-       | threaded  = with (fromIntegral sz) $ \ ptr_len ->
-                       throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                         c_accept_safe fd sa ptr_len
-       | otherwise = do
-             bracket (c_newAcceptParams fd (fromIntegral sz) sa) c_free $ \paramData -> do
-                 rc     <- asyncDoProc c_acceptDoProc paramData
-                 new_fd <- c_acceptNewSock paramData
-                 when (rc /= 0) $
-                     throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                 return new_fd
+accept (Socket s) = case s of
+    Left (p :: Posix.Socket) -> first (Socket . Left) <$> Posix.accept p
+    Right (w :: Win.Socket) -> first (Socket . Right) <$> Win.accept w
 #else
-     callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len -> do
-# ifdef HAVE_ADVANCED_SOCKET_FLAGS
-       throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
-                        (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
-# else
-       new_fd <- throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
-                        (c_accept fd sa ptr_len)
-       setNonBlockIfNeeded new_fd
-       setCloseOnExecIfNeeded new_fd
-       return new_fd
-# endif /* HAVE_ADVANCED_SOCKET_FLAGS */
-#endif
-
-foreign import CALLCONV unsafe "socket"
-  c_socket :: CInt -> CInt -> CInt -> IO CInt
-foreign import CALLCONV unsafe "bind"
-  c_bind :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "connect"
-  c_connect :: CInt -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV unsafe "listen"
-  c_listen :: CInt -> CInt -> IO CInt
-
-#ifdef HAVE_ADVANCED_SOCKET_FLAGS
-foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CInt
-#else
-foreign import CALLCONV unsafe "accept"
-  c_accept :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
-#endif
-
-#if defined(mingw32_HOST_OS)
-foreign import CALLCONV safe "accept"
-  c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
-foreign import ccall unsafe "rtsSupportsBoundThreads"
-  threaded :: Bool
-foreign import ccall unsafe "HsNet.h acceptNewSock"
-  c_acceptNewSock :: Ptr () -> IO CInt
-foreign import ccall unsafe "HsNet.h newAcceptParams"
-  c_newAcceptParams :: CInt -> CInt -> Ptr a -> IO (Ptr ())
-foreign import ccall unsafe "HsNet.h &acceptDoProc"
-  c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
-foreign import ccall unsafe "free"
-  c_free:: Ptr a -> IO ()
+accept = Posix.accept
 #endif
