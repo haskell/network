@@ -31,30 +31,18 @@ import Network.Socket.Types
 -- sequence with appropriate handshakes specified by the protocol.
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = invalidateSocket s err $ \oldfd -> do
-    h <-
+    let posix = fdToHandle' (fromIntegral oldfd) (Just GHC.IO.Device.Stream) True (show s) mode True {-bin-}
 #if defined(mingw32_HOST_OS) && defined(HAS_WINIO)
-        socketToHandleMIO oldfd <!> socketToHandleWinIO oldfd
+        native = do
+            let hwnd = wordPtrToPtr $ fromIntegral oldfd
+            Mgr.associateHandle' hwnd
+            let nativeHwnd = fromHANDLE hwnd :: Io NativeHandle
+            mkHandleFromHANDLE nativeHwnd GHC.IO.Device.Stream (show s) mode Nothing
+    h <- posix <!> native
 #else
-        socketToHandleMIO oldfd
+    h <- posix
 #endif
     hSetBuffering h NoBuffering
     return h
   where
     err _ = ioError $ userError $ "socketToHandle: socket is no longer valid"
-
-    socketToHandleMIO oldfd =
-        fdToHandle'
-            (fromIntegral oldfd)
-            (Just GHC.IO.Device.Stream)
-            True
-            (show s)
-            mode
-            True {-bin-}
-
-#if defined(mingw32_HOST_OS) && defined(HAS_WINIO)
-    socketToHandleWinIO oldfd = do
-        let hwnd = wordPtrToPtr $ fromIntegral oldfd
-        Mgr.associateHandle' hwnd
-        let nativeHwnd = fromHANDLE hwnd :: Io NativeHandle
-        mkHandleFromHANDLE nativeHwnd GHC.IO.Device.Stream (show s) mode Nothing
-#endif
