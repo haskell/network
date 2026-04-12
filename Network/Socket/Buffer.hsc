@@ -423,13 +423,19 @@ recvBufMsg s bufsizs clen flags = do
 #endif
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
-            let rawFlags = msgFlags hdr
-                flags' = MsgFlag $ fromIntegral rawFlags
+
+#if !defined(mingw32_HOST_OS)
+            cmsgs <- parseCmsgs msgHdrPtr
+            let flags' = MsgFlag $ fromIntegral $ msgFlags hdr
+#else
+            let flags' = MsgFlag $ fromIntegral (msgFlags hdr)
             -- If the control buffer was truncated (MSG_CTRUNC), the
             -- control data may be invalid and parsing could segfault.
-            cmsgs <- if msgCtrl hdr == nullPtr || (rawFlags .&. #{const MSG_CTRUNC}) /= 0
-                        then return []
-                        else parseCmsgs msgHdrPtr
+            cmsgs <- if msgCtrl hdr == nullPtr || (msgFlags hdr .&. #{const MSG_CTRUNC}) /= 0
+                     then return []
+                     else parseCmsgs msgHdrPtr
+#endif
+
             return (sockaddr, len, cmsgs, flags')
 
 #if !defined(mingw32_HOST_OS)
