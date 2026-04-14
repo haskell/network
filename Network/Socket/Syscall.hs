@@ -82,7 +82,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     -- Let's ensure that the socket (file descriptor) is closed even on
     -- asynchronous exceptions.
     setNonBlock fd
-#if defined(mingw32_HOST_OS) && defined(HAS_WINIO)
+#if defined(HAS_WINIO)
     -- Associate socket with I/O manager immediately if using WinIO
     (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
 #endif
