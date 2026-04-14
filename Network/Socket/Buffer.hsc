@@ -124,30 +124,15 @@ sendBuf s str len = fromIntegral <$> do
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
-    | otherwise   = do
-#if defined(mingw32_HOST_OS)
-# if defined(HAS_WINIO)
-        recvBufFromMIO s ptr nbytes <!> recvBufFromWinIO s ptr nbytes
-# else
-        recvBufFromMIO s ptr nbytes
-# endif
+    | otherwise   =
+#if defined(HAS_WINIO)
+        recvBufFromImpl s ptr nbytes <!> recvBufFromWinIO s ptr nbytes
 #else
-        withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
-            withFdSocket s $ \fd -> do
-                poke ptr_len (fromIntegral sz)
-                let cnbytes = fromIntegral nbytes
-                    flags = 0
-                len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
-                         c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
-                sockaddr <- peekSocketAddress ptr_sa
-                    `catchIOError` \_ -> getPeerName s
-                return (fromIntegral len, sockaddr)
+        recvBufFromImpl s ptr nbytes
 #endif
 
-#if defined(mingw32_HOST_OS)
--- MIO (old I/O manager) implementation
-recvBufFromMIO :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
-recvBufFromMIO s ptr nbytes =
+recvBufFromImpl :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
+recvBufFromImpl s ptr nbytes =
     withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
         withFdSocket s $ \fd -> do
             poke ptr_len (fromIntegral sz)
@@ -159,7 +144,7 @@ recvBufFromMIO s ptr nbytes =
                 `catchIOError` \_ -> getPeerName s
             return (fromIntegral len, sockaddr)
 
-# if defined(HAS_WINIO)
+#if defined(HAS_WINIO)
 recvBufFromWinIO :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFromWinIO s ptr nbytes =
     withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
@@ -201,8 +186,7 @@ recvBufFromWinIO s ptr nbytes =
         | err == #{const ERROR_OPERATION_ABORTED} = Mgr.ioSuccess 0
         | err == #{const ERROR_IO_INCOMPLETE}     = Mgr.ioSuccess 0
         | otherwise                               = Mgr.ioFailed err
-# endif /* HAS_WINIO */
-#endif /* mingw32_HOST_OS */
+#endif /* HAS_WINIO */
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -416,7 +400,7 @@ recvBufMsg s bufsizs clen flags = do
                       c_recvmsg fd msgHdrPtr _cflags
 #else
 # if defined(HAS_WINIO)
-                (recvBufMsgMIO fd msgHdrPtr <!> recvBufMsgWinIO fd msgHdrPtr)
+                recvBufMsgMIO fd msgHdrPtr <!> recvBufMsgWinIO fd msgHdrPtr
 # else
                 recvBufMsgMIO fd msgHdrPtr
 # endif
