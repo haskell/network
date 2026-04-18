@@ -38,6 +38,9 @@ WSASendMsg (SOCKET s, LPWSAMSG lpMsg, DWORD flags,
     DWORD len;
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER,
         &WSASendMsgGUID, sizeof(WSASendMsgGUID), &ptr_SendMsg,
+        /* Sadly we can't perform this async for now as C code can't wait for
+           completion events from the Haskell RTS.  This needs to be moved to
+           Haskell on a re-designed async Network.  */
         sizeof(ptr_SendMsg), &len, NULL, NULL) != 0)
       return -1;
   }
@@ -58,6 +61,9 @@ WSARecvMsg (SOCKET s, LPWSAMSG lpMsg, LPDWORD lpdwNumberOfBytesRecvd,
     DWORD len;
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER,
         &WSARecvMsgGUID, sizeof(WSARecvMsgGUID), &ptr_RecvMsg,
+        /* Sadly we can't perform this async for now as C code can't wait for
+           completion events from the Haskell RTS.  This needs to be moved to
+           Haskell on a re-designed async Network.  */
         sizeof(ptr_RecvMsg), &len, NULL, NULL) != 0)
       return -1;
   }

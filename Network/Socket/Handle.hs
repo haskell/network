@@ -1,8 +1,18 @@
+{-# LANGUAGE CPP #-}
+
 module Network.Socket.Handle where
 
 import qualified GHC.IO.Device (IODeviceType (Stream))
 import GHC.IO.Handle.FD (fdToHandle')
 import System.IO (BufferMode (..), Handle, IOMode (..), hSetBuffering)
+
+#if __IO_MANAGER_WINIO__ >= 2
+import Foreign.Ptr (wordPtrToPtr)
+import GHC.IO.SubSystem ((<!>))
+import qualified GHC.Event.Windows as Mgr
+import GHC.IO.Windows.Handle (fromHANDLE, Io, NativeHandle)
+import GHC.IO.Handle.Windows (mkHandleFromHANDLE)
+#endif
 
 import Network.Socket.Types
 
@@ -21,7 +31,17 @@ import Network.Socket.Types
 -- sequence with appropriate handshakes specified by the protocol.
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = invalidateSocket s err $ \oldfd -> do
-    h <- fdToHandle' oldfd (Just GHC.IO.Device.Stream) True (show s) mode True {-bin-}
+    let posix = fdToHandle' (fromIntegral oldfd) (Just GHC.IO.Device.Stream) True (show s) mode True {-bin-}
+#if __IO_MANAGER_WINIO__ >= 2
+        native = do
+            let hwnd = wordPtrToPtr $ fromIntegral oldfd
+            Mgr.associateHandle' hwnd
+            let nativeHwnd = fromHANDLE hwnd :: Io NativeHandle
+            mkHandleFromHANDLE nativeHwnd GHC.IO.Device.Stream (show s) mode Nothing
+    h <- posix <!> native
+#else
+    h <- posix
+#endif
     hSetBuffering h NoBuffering
     return h
   where
