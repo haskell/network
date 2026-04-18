@@ -6,7 +6,7 @@ import qualified GHC.IO.Device (IODeviceType (Stream))
 import GHC.IO.Handle.FD (fdToHandle')
 import System.IO (BufferMode (..), Handle, IOMode (..), hSetBuffering)
 
-#if defined(HAS_WINIO)
+#if __IO_MANAGER_WINIO__ >= 2
 import Foreign.Ptr (wordPtrToPtr)
 import GHC.IO.SubSystem ((<!>))
 import qualified GHC.Event.Windows as Mgr
@@ -32,7 +32,7 @@ import Network.Socket.Types
 socketToHandle :: Socket -> IOMode -> IO Handle
 socketToHandle s mode = invalidateSocket s err $ \oldfd -> do
     let posix = fdToHandle' (fromIntegral oldfd) (Just GHC.IO.Device.Stream) True (show s) mode True {-bin-}
-#if defined(HAS_WINIO)
+#if __IO_MANAGER_WINIO__ >= 2
         native = do
             let hwnd = wordPtrToPtr $ fromIntegral oldfd
             Mgr.associateHandle' hwnd

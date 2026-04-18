@@ -175,7 +175,7 @@ library
             cc-options:  -D_WIN32_WINNT=0x0600
 
         if impl(ghc >=9.0)
-            cpp-options:   -D_WIN32_WINNT=0x0601 -DHAS_WINIO
+            cpp-options:   -D_WIN32_WINNT=0x0601
             cc-options:    -D_WIN32_WINNT=0x0601
             build-depends: Win32 >=2.12.0.1
 

@@ -8,7 +8,7 @@ import qualified System.Posix.Internals
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Cbits
 #else
-# if defined(HAS_WINIO)
+# if __IO_MANAGER_WINIO__ >= 2
 import GHC.IO.SubSystem ((<!>))
 # endif
 #endif
@@ -62,7 +62,7 @@ getCloseOnExec fd = do
 --   Since 2.7.0.0.
 getNonBlock :: CSocket -> IO Bool
 #if defined(mingw32_HOST_OS)
-# if defined(HAS_WINIO)
+# if __IO_MANAGER_WINIO__ >= 2
 getNonBlock _ = return False <!> return True
 # else
 getNonBlock _ = return False
