@@ -12,7 +12,7 @@ import Control.Exception (bracket)
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
 import System.IO.Error (catchIOError)
-# if defined(HAS_WINIO)
+# if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
 import Foreign.Ptr (wordPtrToPtr)
 import GHC.IO.SubSystem ((<!>))
@@ -82,7 +82,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     -- Let's ensure that the socket (file descriptor) is closed even on
     -- asynchronous exceptions.
     setNonBlock fd
-#if defined(HAS_WINIO)
+#if __IO_MANAGER_WINIO__ >= 2
     -- Associate socket with I/O manager immediately if using WinIO
     (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
 #endif
@@ -211,7 +211,7 @@ accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
  new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close $ \fd -> do
-#if defined(HAS_WINIO)
+#if __IO_MANAGER_WINIO__ >= 2
      -- Associate accepted socket with I/O manager if using WinIO
      (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
 #endif

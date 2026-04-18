@@ -34,11 +34,11 @@ import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
 import Network.Socket.Win32.CmsgHdr
 import Network.Socket.Win32.MsgHdr
 import Network.Socket.Win32.WSABuf
-# if defined(HAS_WINIO)
+## if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
 import GHC.IO.SubSystem ((<!>))
 import Foreign.Ptr (wordPtrToPtr)
-# endif
+## endif
 #else
 import Network.Socket.Posix.CmsgHdr
 import Network.Socket.Posix.MsgHdr
@@ -54,6 +54,28 @@ import Network.Socket.Flag
 #if defined(mingw32_HOST_OS)
 type DWORD   = Word32
 type LPDWORD = Ptr DWORD
+
+-- Windows error/status codes for WinIO completion callbacks.
+-- Defined here so they are expanded by hsc2hs and available inside
+-- ##if blocks that are deferred to GHC's CPP.
+_ERROR_SUCCESS, _ERROR_IO_PENDING, _ERROR_HANDLE_EOF,
+  _ERROR_BROKEN_PIPE, _ERROR_NO_MORE_ITEMS,
+  _ERROR_OPERATION_ABORTED, _ERROR_IO_INCOMPLETE,
+  _WSAECONNABORTED, _WSAECONNRESET, _WSAEDISCON,
+  _WSAEMSGSIZE, _WSAESHUTDOWN, _STATUS_BUFFER_OVERFLOW :: Num a => a
+_ERROR_SUCCESS           = #{const ERROR_SUCCESS}
+_ERROR_IO_PENDING        = #{const ERROR_IO_PENDING}
+_ERROR_HANDLE_EOF        = #{const ERROR_HANDLE_EOF}
+_ERROR_BROKEN_PIPE       = #{const ERROR_BROKEN_PIPE}
+_ERROR_NO_MORE_ITEMS     = #{const ERROR_NO_MORE_ITEMS}
+_ERROR_OPERATION_ABORTED = #{const ERROR_OPERATION_ABORTED}
+_ERROR_IO_INCOMPLETE     = #{const ERROR_IO_INCOMPLETE}
+_WSAECONNABORTED         = #{const WSAECONNABORTED}
+_WSAECONNRESET           = #{const WSAECONNRESET}
+_WSAEDISCON              = #{const WSAEDISCON}
+_WSAEMSGSIZE             = #{const WSAEMSGSIZE}
+_WSAESHUTDOWN            = #{const WSAESHUTDOWN}
+_STATUS_BUFFER_OVERFLOW  = #{const STATUS_BUFFER_OVERFLOW}
 #endif
 
 -- | Send data to the socket.  The recipient can be specified
@@ -125,11 +147,11 @@ recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFrom s ptr nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
     | otherwise   =
-#if defined(HAS_WINIO)
+##if __IO_MANAGER_WINIO__ >= 2
         recvBufFromImpl s ptr nbytes <!> recvBufFromWinIO s ptr nbytes
-#else
+##else
         recvBufFromImpl s ptr nbytes
-#endif
+##endif
 
 recvBufFromImpl :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFromImpl s ptr nbytes =
@@ -144,7 +166,7 @@ recvBufFromImpl s ptr nbytes =
                 `catchIOError` \_ -> getPeerName s
             return (fromIntegral len, sockaddr)
 
-#if defined(HAS_WINIO)
+##if __IO_MANAGER_WINIO__ >= 2
 recvBufFromWinIO :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFromWinIO s ptr nbytes =
     withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
@@ -171,22 +193,22 @@ recvBufFromWinIO s ptr nbytes =
                 err <- c_WSAGetLastError
                 if ret == 0
                     then return $ Mgr.CbDone Nothing
-                    else if err == #{const ERROR_IO_PENDING}
+                    else if err == _ERROR_IO_PENDING
                         then return Mgr.CbPending
                         else return $ Mgr.CbError (fromIntegral err)
 
     completionCB err dwBytes
-        | err == #{const ERROR_SUCCESS}           = Mgr.ioSuccess $ fromIntegral dwBytes
-        | err == #{const WSAECONNABORTED}         = Mgr.ioSuccess 0
-        | err == #{const WSAECONNRESET}           = Mgr.ioSuccess 0
-        | err == #{const WSAEDISCON}              = Mgr.ioSuccess 0
-        | err == #{const ERROR_HANDLE_EOF}        = Mgr.ioSuccess 0
-        | err == #{const ERROR_BROKEN_PIPE}       = Mgr.ioSuccess 0
-        | err == #{const ERROR_NO_MORE_ITEMS}     = Mgr.ioSuccess 0
-        | err == #{const ERROR_OPERATION_ABORTED} = Mgr.ioSuccess 0
-        | err == #{const ERROR_IO_INCOMPLETE}     = Mgr.ioSuccess 0
-        | otherwise                               = Mgr.ioFailed err
-#endif /* HAS_WINIO */
+        | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
+        | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
+        | err == _WSAECONNRESET           = Mgr.ioSuccess 0
+        | err == _WSAEDISCON              = Mgr.ioSuccess 0
+        | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
+        | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
+        | err == _ERROR_NO_MORE_ITEMS     = Mgr.ioSuccess 0
+        | err == _ERROR_OPERATION_ABORTED = Mgr.ioSuccess 0
+        | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
+        | otherwise                       = Mgr.ioFailed err
+##endif /* __IO_MANAGER_WINIO__ */
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -205,11 +227,11 @@ recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
  | otherwise   = do
 #if defined(mingw32_HOST_OS)
-# if defined(HAS_WINIO)
+## if __IO_MANAGER_WINIO__ >= 2
     recvBufMIO s ptr nbytes <!> recvBufWinIO s ptr nbytes
-# else
+## else
     recvBufMIO s ptr nbytes
-# endif
+## endif
 #else
     len <- withFdSocket s $ \fd ->
         throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
@@ -228,7 +250,7 @@ recvBufMIO s ptr nbytes = do
              readRawBufferPtr "Network.Socket.recvBuf" fd ptr 0 cnbytes
     return $ fromIntegral len
 
-# if defined(HAS_WINIO)
+## if __IO_MANAGER_WINIO__ >= 2
 recvBufWinIO :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
     fmap fromIntegral $ Mgr.withException "recvBuf" $
@@ -248,23 +270,23 @@ recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
                 err <- c_WSAGetLastError
                 if ret == 0
                     then return $ Mgr.CbDone Nothing
-                    else if err == #{const ERROR_IO_PENDING}
+                    else if err == _ERROR_IO_PENDING
                         then return Mgr.CbPending
                         else return $ Mgr.CbError (fromIntegral err)
 
     -- https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsarecv#return-value
     completionCB err dwBytes
-        | err == #{const ERROR_SUCCESS}           = Mgr.ioSuccess $ fromIntegral dwBytes
-        | err == #{const WSAECONNABORTED}         = Mgr.ioSuccess 0
-        | err == #{const WSAECONNRESET}           = Mgr.ioSuccess 0
-        | err == #{const WSAEDISCON}              = Mgr.ioSuccess 0
-        | err == #{const ERROR_HANDLE_EOF}        = Mgr.ioSuccess 0
-        | err == #{const ERROR_BROKEN_PIPE}       = Mgr.ioSuccess 0
-        | err == #{const ERROR_NO_MORE_ITEMS}     = Mgr.ioSuccess 0
-        | err == #{const ERROR_OPERATION_ABORTED} = Mgr.ioSuccess 0
-        | err == #{const ERROR_IO_INCOMPLETE}     = Mgr.ioSuccess 0
-        | otherwise                               = Mgr.ioFailed err
-# endif /* HAS_WINIO */
+        | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
+        | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
+        | err == _WSAECONNRESET           = Mgr.ioSuccess 0
+        | err == _WSAEDISCON              = Mgr.ioSuccess 0
+        | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
+        | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
+        | err == _ERROR_NO_MORE_ITEMS     = Mgr.ioSuccess 0
+        | err == _ERROR_OPERATION_ABORTED = Mgr.ioSuccess 0
+        | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
+        | otherwise                       = Mgr.ioFailed err
+## endif /* __IO_MANAGER_WINIO__ */
 #endif /* mingw32_HOST_OS */
 
 -- | Receive data from the socket. This function returns immediately
@@ -399,11 +421,11 @@ recvBufMsg s bufsizs clen flags = do
                 throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmsg" $
                       c_recvmsg fd msgHdrPtr _cflags
 #else
-# if defined(HAS_WINIO)
+## if __IO_MANAGER_WINIO__ >= 2
                 recvBufMsgMIO fd msgHdrPtr <!> recvBufMsgWinIO fd msgHdrPtr
-# else
+## else
                 recvBufMsgMIO fd msgHdrPtr
-# endif
+## endif
 #endif
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
@@ -451,7 +473,7 @@ recvBufMsgMIO fd msgHdrPtr = alloca $ \len_ptr -> do
             c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
     fromIntegral <$> peek len_ptr
 
-# if defined(HAS_WINIO)
+## if __IO_MANAGER_WINIO__ >= 2
 recvBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> IO Int
 recvBufMsgWinIO fd msgHdrPtr = do
     -- Perform async WSARecvMsg using withOverlapped
@@ -470,25 +492,25 @@ recvBufMsgWinIO fd msgHdrPtr = do
         err <- c_WSAGetLastError
         if ret == 0
             then return $ Mgr.CbDone Nothing
-            else if err == #{const ERROR_IO_PENDING}
+            else if err == _ERROR_IO_PENDING
                 then return Mgr.CbPending
                 else return $ Mgr.CbError (fromIntegral err)
 
     completionCB err dwBytes
-      | err == #{const ERROR_SUCCESS}           = Mgr.ioSuccess $ fromIntegral dwBytes
-      | err == #{const WSAEMSGSIZE}             = Mgr.ioSuccess $ fromIntegral dwBytes
-      | err == #{const STATUS_BUFFER_OVERFLOW}   = Mgr.ioSuccess $ fromIntegral dwBytes  -- truncated msg
-      | err == #{const WSAECONNRESET}           = Mgr.ioSuccess 0
-      | err == #{const WSAECONNABORTED}         = Mgr.ioSuccess 0
-      | err == #{const WSAESHUTDOWN}            = Mgr.ioSuccess 0
-      | err == #{const WSAEDISCON}              = Mgr.ioSuccess 0
-      | err == #{const ERROR_HANDLE_EOF}        = Mgr.ioSuccess 0
-      | err == #{const ERROR_BROKEN_PIPE}       = Mgr.ioSuccess 0
-      | err == #{const ERROR_NO_MORE_ITEMS}     = Mgr.ioSuccess 0
-      | err == #{const ERROR_OPERATION_ABORTED} = Mgr.ioSuccess 0
-      | err == #{const ERROR_IO_INCOMPLETE}     = Mgr.ioSuccess 0
-      | otherwise                               = Mgr.ioFailed err
-# endif /* HAS_WINIO */
+      | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
+      | err == _WSAEMSGSIZE             = Mgr.ioSuccess $ fromIntegral dwBytes
+      | err == _STATUS_BUFFER_OVERFLOW  = Mgr.ioSuccess $ fromIntegral dwBytes  -- truncated msg
+      | err == _WSAECONNRESET           = Mgr.ioSuccess 0
+      | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
+      | err == _WSAESHUTDOWN            = Mgr.ioSuccess 0
+      | err == _WSAEDISCON              = Mgr.ioSuccess 0
+      | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
+      | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
+      | err == _ERROR_NO_MORE_ITEMS     = Mgr.ioSuccess 0
+      | err == _ERROR_OPERATION_ABORTED = Mgr.ioSuccess 0
+      | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
+      | otherwise                       = Mgr.ioFailed err
+## endif /* __IO_MANAGER_WINIO__ */
 #endif /* mingw32_HOST_OS */
 
 foreign import ccall unsafe "recv"
