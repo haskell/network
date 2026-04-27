@@ -1,6 +1,8 @@
-resolver: lts-21.25
+resolver: nightly-2025-10-01
+
 packages:
 - '.'
+
 nix:
   packages: [ ncurses ]
 

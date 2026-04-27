@@ -45,7 +45,7 @@ shutdown s stype = void $ withFdSocket s $ \fd ->
     c_shutdown fd $ sdownCmdToInt stype
 
 foreign import CALLCONV unsafe "shutdown"
-  c_shutdown :: CInt -> CInt -> IO CInt
+  c_shutdown :: CSocket -> CInt -> IO CInt
 
 -- | Closing a socket gracefully.
 --   This sends TCP FIN and check if TCP FIN is received from the peer.
