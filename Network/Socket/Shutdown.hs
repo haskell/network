@@ -40,9 +40,12 @@ sdownCmdToInt ShutdownBoth    = 2
 -- 'ShutdownSend', further sends are disallowed.  If it is
 -- 'ShutdownBoth', further sends and receives are disallowed.
 shutdown :: Socket -> ShutdownCmd -> IO ()
-shutdown s stype = void $ withFdSocket s $ \fd ->
-  throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
-    c_shutdown fd $ sdownCmdToInt stype
+shutdown s stype = shutdown' `annotateIOException` show s
+  where
+    shutdown' =
+      void $ withFdSocket s $ \fd ->
+        throwSocketErrorIfMinus1Retry_ "Network.Socket.shutdown" $
+          c_shutdown fd $ sdownCmdToInt stype
 
 foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CSocket -> CInt -> IO CInt
@@ -54,7 +57,7 @@ foreign import CALLCONV unsafe "shutdown"
 --
 --   Since: 3.1.1.0
 gracefulClose :: Socket -> Int -> IO ()
-gracefulClose s tmout0 = sendRecvFIN `E.finally` close s
+gracefulClose s tmout0 = (sendRecvFIN `E.finally` close s) `annotateIOException` show s
   where
     sendRecvFIN = do
         -- Sending TCP FIN.

@@ -78,26 +78,27 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
-socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
-    -- Let's ensure that the socket (file descriptor) is closed even on
-    -- asynchronous exceptions.
-    setNonBlock fd
-#if __IO_MANAGER_WINIO__ >= 2
-    -- Associate socket with I/O manager immediately if using WinIO
-    (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
-#endif
-    s <- mkSocket fd
-    -- This socket is not managed by the IO manager yet.
-    -- So, we don't have to call "close" which uses "closeFdWith".
-    unsetIPv6Only s
-    setDontFragment s
-    return s
+socket family stype protocol =
+    E.bracketOnError create c_close setProp `annotateIOException` (show stype ++ " " ++ show protocol)
   where
+    setProp fd = do
+        -- Let's ensure that the socket (file descriptor) is closed even on
+        -- asynchronous exceptions.
+        setNonBlock fd
+#if __IO_MANAGER_WINIO__ >= 2
+        -- Associate socket with I/O manager immediately if using WinIO
+        (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
+#endif
+        s <- mkSocket fd
+        -- This socket is not managed by the IO manager yet.
+        -- So, we don't have to call "close" which uses "closeFdWith".
+        unsetIPv6Only s
+        setDontFragment s
+        return s
     create = do
         let c_stype = modifyFlag $ packSocketType stype
         throwSocketErrorIfMinus1Retry "Network.Socket.socket" $
             c_socket (packFamily family) c_stype protocol
-
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
     modifyFlag c_stype = c_stype .|. sockNonBlock
 #else
@@ -148,7 +149,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
 bind :: SocketAddress sa => Socket -> sa -> IO ()
 bind s sa = withSocketAddress sa $ \p_sa siz -> void $ withFdSocket s $ \fd -> do
   let sz = fromIntegral siz
-  throwSocketErrorIfMinus1Retry "Network.Socket.bind" $ c_bind fd p_sa sz
+  throwSocketErrorIfMinus1Retry "Network.Socket.bind" (c_bind fd p_sa sz)
 
 -----------------------------------------------------------------------------
 -- Connecting a socket
@@ -188,9 +189,11 @@ connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
 -- specifies the maximum number of queued connections and should be at
 -- least 1; the maximum value is system-dependent (usually 5).
 listen :: Socket -> Int -> IO ()
-listen s backlog = withFdSocket s $ \fd -> do
-    throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
-        c_listen fd $ fromIntegral backlog
+listen s backlog = withFdSocket s listen' `annotateIOException` show s
+  where
+    listen' fd =
+        throwSocketErrorIfMinus1Retry_ "Network.Socket.listen" $
+            c_listen fd $ fromIntegral backlog
 
 -----------------------------------------------------------------------------
 -- Accept
