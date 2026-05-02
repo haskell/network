@@ -422,9 +422,9 @@ recvBufMsg s bufsizs clen flags = do
                       c_recvmsg fd msgHdrPtr _cflags
 #else
 ## if __IO_MANAGER_WINIO__ >= 2
-                recvBufMsgMIO fd msgHdrPtr <!> recvBufMsgWinIO fd msgHdrPtr
+                recvBufMsgMIO s fd msgHdrPtr <!> recvBufMsgWinIO fd msgHdrPtr
 ## else
-                recvBufMsgMIO fd msgHdrPtr
+                recvBufMsgMIO s fd msgHdrPtr
 ## endif
 #endif
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
@@ -467,9 +467,9 @@ foreign import CALLCONV unsafe "WSARecvFrom"
   c_WSARecvFrom :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> LPDWORD -> Ptr sa -> Ptr CInt -> Ptr () -> Ptr () -> IO CInt
 
 -- Helper functions for recvBufMsg on Windows
-recvBufMsgMIO :: CSocket -> Ptr (MsgHdr sa) -> IO Int
-recvBufMsgMIO fd msgHdrPtr = alloca $ \len_ptr -> do
-    _ <- throwSocketErrorIfMinus1Retry "Network.Socket.Buffer.recvmsg" $
+recvBufMsgMIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> IO Int
+recvBufMsgMIO s fd msgHdrPtr = alloca $ \len_ptr -> do
+    _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmsg" $
             c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
     fromIntegral <$> peek len_ptr
 
