@@ -69,7 +69,6 @@ AC_ARG_WITH([cc],
             [C compiler],
             [CC=$withval])
 AC_PROG_CC()
-AC_PROG_AWK()
 
 AC_ARG_WITH([compiler],
             [Haskell compiler],
@@ -110,18 +109,21 @@ WINIO_GHC_OPTIONS=
 case "$host_os" in
 mingw32*)
     AC_MSG_CHECKING([whether $HC defines __IO_MANAGER_WINIO__ >= 2])
-    echo "module Main where" > conftest_ghc_cpp.hs
-    if "$HC" -E -cpp -optP-dM -fforce-recomp conftest_ghc_cpp.hs -o conftest_ghc_cpp.out >/dev/null 2>&1; then
-        if "$AWK" '/^#define __IO_MANAGER_WINIO__/ { if ($3 + 0 >= 2) found = 1 } END { exit found ? 0 : 1 }' conftest_ghc_cpp.out; then
-            AC_MSG_RESULT([yes])
-            WINIO_GHC_OPTIONS="-with-rtsopts=--io-manager=native"
-        else
-            AC_MSG_RESULT([no])
-        fi
+    cat > conftest_ghc_cpp.hs <<EOF
+#if !defined(__IO_MANAGER_WINIO__) || __IO_MANAGER_WINIO__ < 2
+#error __IO_MANAGER_WINIO__ < 2
+#endif
+module Main where
+main :: IO ()
+main = return ()
+EOF
+    if "$HC" -c -cpp -fforce-recomp conftest_ghc_cpp.hs >/dev/null 2>&1; then
+        AC_MSG_RESULT([yes])
+        WINIO_GHC_OPTIONS="-with-rtsopts=--io-manager=native"
     else
         AC_MSG_RESULT([no])
     fi
-    rm -f conftest_ghc_cpp.hs conftest_ghc_cpp.out
+    rm -f conftest_ghc_cpp.hi conftest_ghc_cpp.hs conftest_ghc_cpp.o
     ;;
 esac
 
