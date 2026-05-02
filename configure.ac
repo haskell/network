@@ -106,9 +106,9 @@ AC_MSG_NOTICE([creating ./network.buildinfo])
 echo "install-includes: HsNetworkConfig.h" > network.buildinfo
 
 WINIO_GHC_OPTIONS=
+AC_MSG_CHECKING([whether to use native Windows I/O manager RTS option])
 case "$host_os" in
-mingw32*)
-    AC_MSG_CHECKING([whether $HC defines __IO_MANAGER_WINIO__ >= 2])
+mingw*)
     cat > conftest_ghc_cpp.hs <<EOF
 #if !defined(__IO_MANAGER_WINIO__) || __IO_MANAGER_WINIO__ < 2
 #error __IO_MANAGER_WINIO__ < 2
@@ -121,9 +121,12 @@ EOF
         AC_MSG_RESULT([yes])
         WINIO_GHC_OPTIONS="-with-rtsopts=--io-manager=native"
     else
-        AC_MSG_RESULT([no])
+        AC_MSG_RESULT([no, $HC does not define __IO_MANAGER_WINIO__ >= 2])
     fi
     rm -f conftest_ghc_cpp.hi conftest_ghc_cpp.hs conftest_ghc_cpp.o
+    ;;
+*)
+    AC_MSG_RESULT([no, not Windows])
     ;;
 esac
 
