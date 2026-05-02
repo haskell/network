@@ -69,6 +69,16 @@ AC_ARG_WITH([cc],
             [C compiler],
             [CC=$withval])
 AC_PROG_CC()
+AC_PROG_AWK()
+
+AC_ARG_WITH([compiler],
+            [Haskell compiler],
+            [HC=$withval])
+AC_ARG_WITH([hc],
+            [Haskell compiler],
+            [HC=$withval])
+AS_IF([test -z "$HC"],
+      [HC=ghc])
 
 AC_C_CONST
 
@@ -95,5 +105,35 @@ AC_CHECK_MEMBERS([struct sockaddr.sa_len])
 dnl This is a necessary hack
 AC_MSG_NOTICE([creating ./network.buildinfo])
 echo "install-includes: HsNetworkConfig.h" > network.buildinfo
+
+WINIO_GHC_OPTIONS=
+case "$host_os" in
+mingw32*)
+    AC_MSG_CHECKING([whether $HC defines __IO_MANAGER_WINIO__ >= 2])
+    echo "module Main where" > conftest_ghc_cpp.hs
+    if "$HC" -E -cpp -optP-dM -fforce-recomp conftest_ghc_cpp.hs -o conftest_ghc_cpp.out >/dev/null 2>&1; then
+        if "$AWK" '/^#define __IO_MANAGER_WINIO__/ { if ($3 + 0 >= 2) found = 1 } END { exit found ? 0 : 1 }' conftest_ghc_cpp.out; then
+            AC_MSG_RESULT([yes])
+            WINIO_GHC_OPTIONS="-with-rtsopts=--io-manager=native"
+        else
+            AC_MSG_RESULT([no])
+        fi
+    else
+        AC_MSG_RESULT([no])
+    fi
+    rm -f conftest_ghc_cpp.hs conftest_ghc_cpp.out
+    ;;
+esac
+
+dnl This is an overlay for the existing test-suite in network.cabal. Cabal
+dnl conditionals cannot read values produced by configure, so the probe result
+dnl has to be expressed as generated build info.
+AS_IF([test -n "$WINIO_GHC_OPTIONS"],
+      [cat >> network.buildinfo <<EOF
+
+test-suite spec
+  ghc-options: $WINIO_GHC_OPTIONS
+EOF
+      ])
 
 AC_OUTPUT
