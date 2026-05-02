@@ -205,9 +205,6 @@ test-suite spec
         hspec >=2.6,
         QuickCheck
 
-    if os(windows) && impl(ghc >=9.0)
-        ghc-options: -with-rtsopts=--io-manager=native
-
     if flag(devel)
         cpp-options: -DDEVELOPMENT
 
