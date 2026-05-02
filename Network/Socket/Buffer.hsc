@@ -460,17 +460,21 @@ foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
   -- fixme Handle for SOCKET, see #426
   c_sendmsg :: CSocket -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
-  c_recvmsg :: CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
+  c_recvmsg_mio :: CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 foreign import CALLCONV unsafe "WSARecv"
   c_WSARecv :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 foreign import CALLCONV unsafe "WSARecvFrom"
   c_WSARecvFrom :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> LPDWORD -> Ptr sa -> Ptr CInt -> Ptr () -> Ptr () -> IO CInt
+## if __IO_MANAGER_WINIO__ >= 2
+foreign import CALLCONV unsafe "WSARecvMsg"
+  c_recvmsg_winio :: CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
+## endif
 
 -- Helper functions for recvBufMsg on Windows
 recvBufMsgMIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> IO Int
 recvBufMsgMIO s fd msgHdrPtr = alloca $ \len_ptr -> do
     _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmsg" $
-            c_recvmsg fd msgHdrPtr len_ptr nullPtr nullPtr
+            c_recvmsg_mio fd msgHdrPtr len_ptr nullPtr nullPtr
     fromIntegral <$> peek len_ptr
 
 ## if __IO_MANAGER_WINIO__ >= 2
@@ -483,7 +487,7 @@ recvBufMsgWinIO fd msgHdrPtr = do
   where
     startCB :: Mgr.LPOVERLAPPED -> IO (Mgr.CbResult Int)
     startCB lpOverlapped = do
-        ret <- c_recvmsg fd msgHdrPtr nullPtr (castPtr lpOverlapped) nullPtr
+        ret <- c_recvmsg_winio fd msgHdrPtr nullPtr (castPtr lpOverlapped) nullPtr
         -- Check WSAGetLastError immediately: if the operation didn't
         -- complete synchronously (ret /= 0), we must distinguish
         -- ERROR_IO_PENDING (async completion forthcoming) from real
