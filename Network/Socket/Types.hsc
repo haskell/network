@@ -82,6 +82,9 @@ module Network.Socket.Types (
     , htonl
     , ntohl
     , In6Addr(..)
+
+    -- * Multicast Group
+    , MulticastGroup(..)
     ) where
 
 import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef', mkWeakIORef)
@@ -1504,3 +1507,27 @@ foreign import ccall unsafe "string.h" memset :: Ptr a -> CInt -> CSize -> IO ()
 -- | Zero a structure.
 zeroMemory :: Ptr a -> CSize -> IO ()
 zeroMemory dest nbytes = memset dest 0 (fromIntegral nbytes)
+
+
+------------------------------------------------------------------------
+-- Multicast Group
+
+data MulticastGroup = MulticastGroup
+    { groupAddress :: HostAddress
+    , localAddress :: Maybe HostAddress
+    } deriving (Show, Eq)
+
+instance Storable MulticastGroup where
+    sizeOf ~_ = #size struct ip_mreq
+    alignment ~_ = #alignment struct ip_mreq
+    peek p = do
+        g <- (#peek struct ip_mreq, imr_multiaddr) p
+        l <- (#peek struct ip_mreq, imr_interface) p
+        pure . MulticastGroup g $ case l of
+            0 -> Nothing
+            loc -> Just loc
+    poke p (MulticastGroup g l) = do
+        (#poke struct ip_mreq, imr_multiaddr) p g
+        (#poke struct ip_mreq, imr_interface) p (case l of
+            Nothing -> 0
+            Just loc -> loc)
