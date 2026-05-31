@@ -101,6 +101,13 @@ spec = do
               getSocketOption sock UserTimeout `shouldReturn` 2000
               close sock
 
+    describe "DontFragment" $ do
+        it "can be set" $ do
+            sock <- socket AF_INET Stream defaultProtocol
+            when (isSupportedSocketOption DontFragment) $
+                setSocketOption sock DontFragment 1
+            close sock
+
     describe "getAddrInfo" $ do
         it "works for IPv4 address" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
