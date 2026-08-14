@@ -59,7 +59,7 @@ module Network.Socket.Internal
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 
 #if defined(mingw32_HOST_OS)
-import Control.Exception (evaluate)
+import qualified Control.Exception as E
 import System.IO.Unsafe (unsafePerformIO)
 # if __GLASGOW_HASKELL__ >= 707
 import GHC.IO.Exception (IOErrorType(..))
@@ -337,7 +337,7 @@ to always call 'withSocketsDo' (it's very cheap).
 withSocketsDo :: IO a -> IO a
 #if defined(mingw32_HOST_OS)
 
-withSocketsDo act = evaluate withSocketsInit >> act
+withSocketsDo act = E.evaluate withSocketsInit >> act
 
 {-# NOINLINE withSocketsInit #-}
 withSocketsInit :: ()

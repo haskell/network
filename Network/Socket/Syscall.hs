@@ -8,7 +8,6 @@ import qualified Control.Exception as E
 import Foreign.Marshal.Utils (with)
 
 #if defined(mingw32_HOST_OS)
-import Control.Exception (bracket)
 import Foreign (FunPtr)
 import GHC.Conc (asyncDoProc)
 import System.IO.Error (catchIOError)
@@ -228,7 +227,7 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
                        throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                          c_accept_safe fd sa ptr_len
        | otherwise = do
-             bracket (c_newAcceptParams fd (fromIntegral sz) sa) c_free $ \paramData -> do
+             E.bracket (c_newAcceptParams fd (fromIntegral sz) sa) c_free $ \paramData -> do
                  rc     <- asyncDoProc c_acceptDoProc paramData
                  new_fd <- c_acceptNewSock paramData
                  when (rc /= 0) $

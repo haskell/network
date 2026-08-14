@@ -13,9 +13,9 @@ module Network.Socket.SockAddr (
     annotateWithSocket,
 ) where
 
-import Control.Exception (IOException, throwIO, try)
+import qualified Control.Exception as E
 import System.Directory (removeFile)
-import System.IO.Error (isAlreadyInUseError, isDoesNotExistError)
+import qualified System.IO.Error as E
 
 import qualified Network.Socket.Buffer as G
 import Network.Socket.Flag
@@ -61,19 +61,19 @@ bind' s sa = case sa of
     SockAddrUnix p -> do
         -- gracefully handle the fact that UNIX systems don't clean up closed UNIX
         -- domain sockets, inspired by https://stackoverflow.com/a/13719866
-        res <- try (G.bind s sa)
+        res <- E.tryIOError $ G.bind s sa
         case res of
             Right () -> return ()
-            Left e | not (isAlreadyInUseError e) -> throwIO (e :: IOException)
+            Left e | not (E.isAlreadyInUseError e) -> E.throwIO e
             Left e | otherwise -> do
                 -- socket might be in use, try to connect
-                res2 <- try (G.connect s sa)
+                res2 <- E.tryIOError $ G.connect s sa
                 case res2 of
-                    Right () -> close s >> throwIO e
-                    Left e2 | not (isDoesNotExistError e2) -> throwIO (e2 :: IOException)
+                    Right () -> close s >> E.throwIO e
+                    Left e2 | not (E.isDoesNotExistError e2) -> E.throwIO e2
                     _ -> do
                         -- socket not actually in use, remove it and retry bind
-                        void (try $ removeFile p :: IO (Either IOError ()))
+                        void $ E.tryIOError $ removeFile p
                         G.bind s sa
     _ -> do
         G.bind s sa
