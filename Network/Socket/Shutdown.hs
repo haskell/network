@@ -12,6 +12,7 @@ module Network.Socket.Shutdown (
 import Control.Concurrent (yield)
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
+import qualified System.IO.Error as E
 import System.Timeout
 
 #if !defined(mingw32_HOST_OS)
@@ -61,10 +62,10 @@ gracefulClose s tmout0 = (sendRecvFIN `E.finally` close s) `annotateIOException`
   where
     sendRecvFIN = do
         -- Sending TCP FIN.
-        ex <- E.try $ shutdown s ShutdownSend
+        ex <- E.tryIOError $ shutdown s ShutdownSend
         case ex of
           -- Don't catch asynchronous exceptions
-          Left (_ :: E.IOException) -> return ()
+          Left _ -> return ()
           Right () -> do
               -- Giving CPU time to other threads hoping that
               -- FIN arrives meanwhile.
