@@ -73,5 +73,16 @@ gracefulClose s tmout0 =
 bufSize :: Int
 bufSize = 1024
 
+-- Maximum number of bytes to drain while waiting for the peer's FIN.
+drainLimit :: Int
+drainLimit = 128 * 1024
+
 recvEOFtimeout :: Socket -> Int -> Ptr Word8 -> IO ()
-recvEOFtimeout s tmout0 buf = void $ timeout (tmout0 * 1000) $ recvBuf s buf bufSize
+recvEOFtimeout s tmout0 buf =
+    void $ timeout (tmout0 * 1000) $ loop 0
+  where
+    loop n0 = do
+        n1 <- recvBuf s buf bufSize
+        when (n1 > 0) $ do
+            let n = n0 + n1
+            when (n < drainLimit) $ loop n
