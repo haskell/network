@@ -9,11 +9,10 @@ module Network.Socket.Shutdown (
   , gracefulClose
   ) where
 
-import Control.Concurrent (yield)
+import Control.Concurrent (forkIO, killThread, threadDelay, yield)
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
 import qualified System.IO.Error as E
-import System.Timeout
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
@@ -66,7 +65,7 @@ gracefulClose s tmout0 =
               -- FIN arrives meanwhile.
               yield
               -- Waiting TCP FIN.
-              E.bracket (mallocBytes bufSize) free (recvEOFtimeout s tmout0)
+              E.bracket (mallocBytes bufSize) free (recvEOFloop s tmout0)
 
 -- Don't use 4092 here. The GHC runtime takes the global lock
 -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
@@ -77,12 +76,29 @@ bufSize = 1024
 drainLimit :: Int
 drainLimit = 128 * 1024
 
-recvEOFtimeout :: Socket -> Int -> Ptr Word8 -> IO ()
-recvEOFtimeout s tmout0 buf =
-    void $ timeout (tmout0 * 1000) $ loop 0
+-- Draining the receive queue until EOF, bounded by 'drainLimit' bytes
+-- and by the millisecond deadline in the second argument.
+--
+-- The deadline is enforced by a watchdog thread that shuts the socket
+-- down, rather than by 'System.Timeout.timeout': with the MIO manager
+-- on Windows, 'recvBuf' blocks in a foreign 'recv' call, which the
+-- asynchronous exception thrown by 'timeout' cannot interrupt.
+-- 'shutdown' aborts a blocked 'recv' while leaving the descriptor
+-- valid, so unlike 'close' it does not race with a 'recvBuf' that has
+-- not yet entered the kernel: whichever side wins, 'recvBuf' returns
+-- EOF or fails, both of which end the loop.  The watchdog itself only
+-- ever blocks in 'threadDelay', which is always interruptible, so
+-- 'killThread' reliably reaps it once EOF is reached.
+recvEOFloop :: Socket -> Int -> Ptr Word8 -> IO ()
+recvEOFloop s tmout0 buf = E.bracket watchdog killThread $ \_ -> loop 0
   where
+    watchdog = forkIO $ do
+        threadDelay (tmout0 * 1000)
+        void $ E.tryIOError $ shutdown s ShutdownBoth
     loop n0 = do
-        n1 <- recvBuf s buf bufSize
-        when (n1 > 0) $ do
-            let n = n0 + n1
-            when (n < drainLimit) $ loop n
+        ex <- E.tryIOError $ recvBuf s buf bufSize
+        case ex of
+            Left _   -> return ()
+            Right n1 -> when (n1 > 0) $ do
+                let n = n0 + n1
+                when (n < drainLimit) $ loop n
