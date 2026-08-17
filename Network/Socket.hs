@@ -351,6 +351,7 @@ module Network.Socket (
     -- ** Sending and receiving data
     sendBuf,
     recvBuf,
+    recvBufNoWait,
     sendBufTo,
     recvBufFrom,
 
