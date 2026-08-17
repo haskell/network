@@ -4,6 +4,10 @@
 
 * Basic support for WINIO
   [#509](https://github.com/haskell/network/pull/509)
+* Multicast support
+  [#614](https://github.com/haskell/network/pull/614)
+* Watchdog scheme for gracefulClose.
+  [#620](https://github.com/haskell/network/pull/620)
 
 ## Version 3.2.8.0
 
