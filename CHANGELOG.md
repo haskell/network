@@ -8,6 +8,7 @@
   [#614](https://github.com/haskell/network/pull/614)
 * Watchdog scheme for gracefulClose.
   [#620](https://github.com/haskell/network/pull/620)
+* Exporting recvBufNoWait.
 
 ## Version 3.2.8.0
 
