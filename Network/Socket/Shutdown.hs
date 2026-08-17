@@ -9,11 +9,10 @@ module Network.Socket.Shutdown (
   , gracefulClose
   ) where
 
-import Control.Concurrent (yield)
+import Control.Concurrent (forkIO, killThread, threadDelay, yield)
 import qualified Control.Exception as E
 import Foreign.Marshal.Alloc (mallocBytes, free)
 import qualified System.IO.Error as E
-import System.Timeout
 
 import Network.Socket.Buffer
 import Network.Socket.Imports
@@ -66,12 +65,66 @@ gracefulClose s tmout0 =
               -- FIN arrives meanwhile.
               yield
               -- Waiting TCP FIN.
-              E.bracket (mallocBytes bufSize) free (recvEOFtimeout s tmout0)
+              E.bracket (mallocBytes bufSize) free (recvEOFloop s tmout0)
 
 -- Don't use 4092 here. The GHC runtime takes the global lock
 -- if the length is over 3276 bytes in 32bit or 3272 bytes in 64bit.
 bufSize :: Int
 bufSize = 1024
 
-recvEOFtimeout :: Socket -> Int -> Ptr Word8 -> IO ()
-recvEOFtimeout s tmout0 buf = void $ timeout (tmout0 * 1000) $ recvBuf s buf bufSize
+-- Maximum number of bytes to drain while waiting for the peer's FIN.
+drainLimit :: Int
+drainLimit = 128 * 1024
+
+-- Draining the receive queue until EOF, bounded by 'drainLimit' bytes
+-- and by the millisecond deadline in the second argument.
+--
+-- The deadline is enforced by a watchdog thread calling 'abortRecv',
+-- rather than by 'System.Timeout.timeout': with the MIO manager on
+-- Windows, 'recvBuf' blocks in a foreign 'recv' call, which the
+-- asynchronous exception thrown by 'timeout' cannot interrupt.  The
+-- watchdog itself only ever blocks in 'threadDelay', which is always
+-- interruptible, so 'killThread' reliably reaps it once EOF is
+-- reached.
+recvEOFloop :: Socket -> Int -> Ptr Word8 -> IO ()
+recvEOFloop s tmout0 buf = E.bracket watchdog killThread $ \_ -> loop 0
+  where
+    watchdog = forkIO $ do
+        threadDelay (tmout0 * 1000)
+        abortRecv s
+    loop n0 = do
+        ex <- E.tryIOError $ recvBuf s buf bufSize
+        case ex of
+            Left _   -> return ()
+            Right n1 -> when (n1 > 0) $ do
+                let n = n0 + n1
+                when (n < drainLimit) $ loop n
+
+-- Aborting the drain loop's 'recvBuf' while leaving the descriptor
+-- valid, so that, unlike 'close', nothing here can race with
+-- descriptor reuse.
+--
+-- 'shutdown' makes every recv issued from now on fail (POSIX: EOF;
+-- Windows: WSAESHUTDOWN) and on POSIX it also wakes a recv that is
+-- already blocked in the kernel.  On Windows it does not, so a
+-- blocked recv is aborted with CancelIoEx: sockets are created with
+-- WSA_FLAG_OVERLAPPED, hence even a "blocking" recv is an overlapped
+-- operation internally, waited on inside ws2_32, and cancellation
+-- makes it fail with WSA_OPERATION_ABORTED.  Shutting down first
+-- closes the race with a recv that has not yet entered the kernel:
+-- in every interleaving the recv returns EOF, fails, or is
+-- cancelled, and each of these ends the drain loop.
+abortRecv :: Socket -> IO ()
+abortRecv s = do
+    void $ E.tryIOError $ shutdown s ShutdownBoth
+#if defined(mingw32_HOST_OS)
+    void $ withFdSocket s $ \fd -> c_CancelIoEx fd nullPtr
+#endif
+
+#if defined(mingw32_HOST_OS)
+-- BOOL CancelIoEx(HANDLE hFile, LPOVERLAPPED lpOverlapped)
+-- A SOCKET is a kernel HANDLE.  A NULL lpOverlapped cancels all
+-- pending I/O on the handle, whichever thread issued it.
+foreign import CALLCONV unsafe "CancelIoEx"
+  c_CancelIoEx :: CSocket -> Ptr () -> IO CInt
+#endif

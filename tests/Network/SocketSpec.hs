@@ -254,7 +254,7 @@ spec = do
         it "does not send TCP RST back" $ do
             let server sock = do
                     void $ recv sock 1024 -- receiving "GOAWAY"
-                    gracefulClose sock 3000
+                    gracefulClose sock 300
                 client sock = do
                     sendAll sock "GOAWAY"
                     threadDelay 10000
