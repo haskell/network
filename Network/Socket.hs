@@ -112,7 +112,6 @@ module Network.Socket (
     getAddrInfo,
 
     -- ** Types
-    HostName,
     ServiceName,
     AddrInfo (..),
     defaultHints,
@@ -338,6 +337,10 @@ module Network.Socket (
     getNameInfo,
     NameInfoFlag (..),
 
+    -- * Host name information
+    getHostName,
+    HostName,
+
     -- * Low level
 
     -- ** socket operations
@@ -407,7 +410,8 @@ module Network.Socket (
 
     -- * Multicast Group
     MulticastGroup (..),
-) where
+)
+where
 
 import Network.Socket.Buffer hiding (
     recvBufFrom,
@@ -421,6 +425,11 @@ import Network.Socket.Flag
 import Network.Socket.Handle
 import Network.Socket.If
 import Network.Socket.Info
+#if !defined(mingw32_HOST_OS)
+import Network.Socket.Posix.HostName(getHostName)
+#else
+import Network.Socket.Win32.HostName(getHostName)
+#endif
 import Network.Socket.Internal
 import Network.Socket.Name hiding (getPeerName, getSocketName)
 import Network.Socket.Options

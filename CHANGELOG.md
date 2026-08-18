@@ -3,6 +3,8 @@
 ## Version 3.2.9.0
 
 * Exporting recvBufNoWait.
+* Support for getHostName
+  [#621](https://github.com/haskell/network/pull/621)
 
 ## Version 3.2.8.0
 

@@ -141,6 +141,7 @@ library
             Network.Socket.ByteString.Lazy.Posix
             Network.Socket.Posix.Cmsg
             Network.Socket.Posix.CmsgHdr
+            Network.Socket.Posix.HostName
             Network.Socket.Posix.IOVec
             Network.Socket.Posix.MsgHdr
 
@@ -161,6 +162,7 @@ library
             Network.Socket.ByteString.Lazy.Windows
             Network.Socket.Win32.Cmsg
             Network.Socket.Win32.CmsgHdr
+            Network.Socket.Win32.HostName
             Network.Socket.Win32.WSABuf
             Network.Socket.Win32.MsgHdr
 
@@ -174,7 +176,8 @@ library
             cc-options:  -D_WIN32_WINNT=0x0600
 
         build-depends:
-            temporary
+            temporary,
+            Win32 >=2.12.0.1
 
     if impl(ghc >=8)
         default-extensions: Strict StrictData
