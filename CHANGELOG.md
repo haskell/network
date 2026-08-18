@@ -9,6 +9,8 @@
 * Watchdog scheme for gracefulClose.
   [#620](https://github.com/haskell/network/pull/620)
 * Exporting recvBufNoWait.
+* Support for getHostName
+  [#621](https://github.com/haskell/network/pull/621)
 
 ## Version 3.2.8.0
 
