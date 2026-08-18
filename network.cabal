@@ -140,6 +140,7 @@ library
             Network.Socket.ByteString.Lazy.Posix
             Network.Socket.Posix.Cmsg
             Network.Socket.Posix.CmsgHdr
+            Network.Socket.Posix.HostName
             Network.Socket.Posix.IOVec
             Network.Socket.Posix.MsgHdr
 
@@ -160,6 +161,7 @@ library
             Network.Socket.ByteString.Lazy.Windows
             Network.Socket.Win32.Cmsg
             Network.Socket.Win32.CmsgHdr
+            Network.Socket.Win32.HostName
             Network.Socket.Win32.WSABuf
             Network.Socket.Win32.MsgHdr
 

@@ -409,6 +409,10 @@ spec = do
         it "holds for CmsgId" $ forAll cmsgidGen $
             \x -> (read . show $ x) == (x :: CmsgId)
 
+    describe "hostname" $ do
+        it "is not empty" $ do
+          hostname <- getHostName
+          hostname `shouldSatisfy` (not . null)
 
 -- Type-specific generators with strong bias towards pattern synonyms
 
