@@ -14,7 +14,7 @@ getWSErrorDescr(int err)
   switch (err) {
   case WSAEINTR:  return "Interrupted function call (WSAEINTR)";
   case WSAEBADF:  return "bad socket descriptor (WSAEBADF)";
-  case WSAEACCES: return "Permission denied (WSAEACCESS)";
+  case WSAEACCES: return "Permission denied (WSAEACCES)";
   case WSAEFAULT: return "Bad address (WSAEFAULT)";
   case WSAEINVAL: return "Invalid argument (WSAEINVAL)";
   case WSAEMFILE: return "Too many open files (WSAEMFILE)";
