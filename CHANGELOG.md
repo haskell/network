@@ -1,5 +1,9 @@
 # CHANGELOG for network
 
+## Version 3.2.9.0
+
+* Exporting recvBufNoWait.
+
 ## Version 3.2.8.0
 
 * sockopt: add IP_DONTFRAG/IP_MTU_DISCOVER option.
