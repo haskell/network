@@ -89,6 +89,14 @@ sendBufTo :: SocketAddress sa =>
           -> sa
           -> IO Int      -- Number of Bytes sent
 sendBufTo s ptr nbytes sa =
+##if __IO_MANAGER_WINIO__ >= 2
+    sendBufToMIO s ptr nbytes sa <!> sendBufToWinIO s ptr nbytes sa
+##else
+    sendBufToMIO s ptr nbytes sa
+##endif
+
+sendBufToMIO :: SocketAddress sa => Socket -> Ptr a -> Int -> sa -> IO Int
+sendBufToMIO s ptr nbytes sa =
   withSocketAddress sa $ \p_sa siz -> fromIntegral <$> do
     withFdSocket s $ \fd -> do
         let sz = fromIntegral siz
@@ -96,6 +104,28 @@ sendBufTo s ptr nbytes sa =
             flags = 0
         throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
           c_sendto fd ptr n flags p_sa sz
+
+##if __IO_MANAGER_WINIO__ >= 2
+sendBufToWinIO :: SocketAddress sa => Socket -> Ptr a -> Int -> sa -> IO Int
+sendBufToWinIO s ptr nbytes sa =
+  withSocketAddress sa $ \p_sa siz ->
+    withFdSocket s $ \sock ->
+      with (WSABuf (castPtr ptr) (fromIntegral nbytes)) $ \wbuf ->
+        fmap fromIntegral $ Mgr.withException "sendBufTo" $
+          Mgr.withOverlapped "sendBufTo" (wordPtrToPtr $ fromIntegral sock) 0
+            (\lpOverlapped -> do
+              ret <- c_WSASendTo sock wbuf 1 nullPtr 0 p_sa
+                       (fromIntegral siz) (castPtr lpOverlapped) nullPtr
+              if ret == 0
+                then return Mgr.CbPending
+                else c_WSAGetLastError >>= \err ->
+                  return $ if err == _ERROR_IO_PENDING
+                    then Mgr.CbPending
+                    else Mgr.CbError (fromIntegral err))
+            (\err bytes -> if err == _ERROR_SUCCESS
+              then Mgr.ioSuccess $ fromIntegral bytes
+              else Mgr.ioFailed err)
+##endif
 
 #if defined(mingw32_HOST_OS)
 socket2FD :: Socket -> IO FD
@@ -113,8 +143,24 @@ sendBuf :: Socket    -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf s str len = fromIntegral <$> do
+sendBuf s str len =
 #if defined(mingw32_HOST_OS)
+## if __IO_MANAGER_WINIO__ >= 2
+    sendBufMIO s str len <!> sendBufWinIO s str len
+## else
+    sendBufMIO s str len
+## endif
+#else
+    fromIntegral <$> withFdSocket s (\fd -> do
+        let flags = 0
+            clen = fromIntegral len
+        throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
+          c_send fd str clen flags)
+#endif
+
+#if defined(mingw32_HOST_OS)
+sendBufMIO :: Socket -> Ptr Word8 -> Int -> IO Int
+sendBufMIO s str len = fromIntegral <$> do
 -- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
 -- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
 -- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
@@ -123,12 +169,25 @@ sendBuf s str len = fromIntegral <$> do
     let clen = fromIntegral len
     throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $
       writeRawBufferPtr "Network.Socket.sendBuf" fd (castPtr str) 0 clen
-#else
-    withFdSocket s $ \fd -> do
-        let flags = 0
-            clen = fromIntegral len
-        throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
-          c_send fd str clen flags
+
+## if __IO_MANAGER_WINIO__ >= 2
+sendBufWinIO :: Socket -> Ptr Word8 -> Int -> IO Int
+sendBufWinIO s ptr len = withFdSocket s $ \sock ->
+  with (WSABuf ptr (fromIntegral len)) $ \wbuf ->
+    fmap fromIntegral $ Mgr.withException "sendBuf" $
+      Mgr.withOverlapped "sendBuf" (wordPtrToPtr $ fromIntegral sock) 0
+        (\lpOverlapped -> do
+          ret <- c_WSASend sock wbuf 1 nullPtr 0 (castPtr lpOverlapped) nullPtr
+          if ret == 0
+            then return Mgr.CbPending
+            else c_WSAGetLastError >>= \err ->
+              return $ if err == _ERROR_IO_PENDING
+                then Mgr.CbPending
+                else Mgr.CbError (fromIntegral err))
+        (\err bytes -> if err == _ERROR_SUCCESS
+          then Mgr.ioSuccess $ fromIntegral bytes
+          else Mgr.ioFailed err)
+## endif
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -364,12 +423,16 @@ sendBufMsg s sa bufsizs cmsgs flags = do
             cflags = fromMsgFlag flags
         withFdSocket s $ \fd ->
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
-#if !defined(mingw32_HOST_OS)
-              c_sendmsg fd msgHdrPtr cflags
+#if defined(mingw32_HOST_OS)
+## if __IO_MANAGER_WINIO__ >= 2
+            sendBufMsgMIO s fd msgHdrPtr cflags <!>
+              sendBufMsgWinIO fd msgHdrPtr cflags
+## else
+            sendBufMsgMIO s fd msgHdrPtr cflags
+## endif
 #else
-              alloca $ \send_ptr ->
-                c_sendmsg fd msgHdrPtr (fromIntegral cflags) send_ptr nullPtr nullPtr
+            throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
+              c_sendmsg fd msgHdrPtr cflags
 #endif
   return $ fromIntegral sz
 
@@ -459,6 +522,10 @@ foreign import CALLCONV SAFE_ON_WIN "WSAGetLastError"
 foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
   -- fixme Handle for SOCKET, see #426
   c_sendmsg :: CSocket -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
+foreign import CALLCONV unsafe "WSASend"
+  c_WSASend :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
+foreign import CALLCONV unsafe "WSASendTo"
+  c_WSASendTo :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr sa -> CInt -> Ptr () -> Ptr () -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
   c_recvmsg_mio :: CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
 foreign import CALLCONV unsafe "WSARecv"
@@ -468,6 +535,31 @@ foreign import CALLCONV unsafe "WSARecvFrom"
 ## if __IO_MANAGER_WINIO__ >= 2
 foreign import CALLCONV unsafe "WSARecvMsg"
   c_recvmsg_winio :: CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> Ptr () -> IO CInt
+## endif
+
+sendBufMsgMIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
+sendBufMsgMIO s fd msgHdrPtr cflags =
+  throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
+    alloca $ \send_ptr ->
+      c_sendmsg fd msgHdrPtr (fromIntegral cflags) send_ptr nullPtr nullPtr
+
+## if __IO_MANAGER_WINIO__ >= 2
+sendBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
+sendBufMsgWinIO fd msgHdrPtr cflags =
+  fmap fromIntegral $ Mgr.withException "sendBufMsg" $
+    Mgr.withOverlapped "sendBufMsg" (wordPtrToPtr $ fromIntegral fd) 0
+      (\lpOverlapped -> do
+        ret <- c_sendmsg fd msgHdrPtr (fromIntegral cflags) nullPtr
+                 (castPtr lpOverlapped) nullPtr
+        if ret == 0
+          then return Mgr.CbPending
+          else c_WSAGetLastError >>= \err ->
+            return $ if err == _ERROR_IO_PENDING
+              then Mgr.CbPending
+              else Mgr.CbError (fromIntegral err))
+      (\err bytes -> if err == _ERROR_SUCCESS
+        then Mgr.ioSuccess $ fromIntegral bytes
+        else Mgr.ioFailed err)
 ## endif
 
 -- Helper functions for recvBufMsg on Windows
