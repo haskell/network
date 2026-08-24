@@ -11,6 +11,8 @@
 * Exporting recvBufNoWait.
 * Support for getHostName
   [#621](https://github.com/haskell/network/pull/621)
+* Fixing the misspelled WSAEACCES error description on Windows.
+  [#622](https://github.com/haskell/network/pull/622)
 
 ## Version 3.2.8.0
 
