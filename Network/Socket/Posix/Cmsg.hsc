@@ -66,7 +66,11 @@ pattern CmsgIdIPv4TOS = CmsgId (#const IPPROTO_IP) (#const IP_TOS)
 
 -- | The identifier for 'IPv6TClass'.
 pattern CmsgIdIPv6TClass :: CmsgId
+#if defined(IPV6_TCLASS)
 pattern CmsgIdIPv6TClass = CmsgId (#const IPPROTO_IPV6) (#const IPV6_TCLASS)
+#else
+pattern CmsgIdIPv6TClass = CmsgId (-1) (-1)
+#endif
 
 -- | The identifier for 'IPv4PktInfo'.
 pattern CmsgIdIPv4PktInfo :: CmsgId

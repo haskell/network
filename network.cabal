@@ -181,6 +181,13 @@ library
             cc-options:    -D_WIN32_WINNT=0x0601
             build-depends: Win32 >=2.12.0.1
 
+    if os(haiku)
+        c-sources:
+            cbits/swap.c
+
+        extra-libraries:
+            network
+
     if impl(ghc >=8)
         default-extensions: Strict StrictData
 
