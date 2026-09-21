@@ -70,6 +70,9 @@ AC_ARG_WITH([cc],
             [CC=$withval])
 AC_PROG_CC()
 
+dnl cabal passes --with-compiler, so keep accepting it even though nothing
+dnl here uses $HC any more; otherwise autoconf warns about an unrecognized
+dnl option on every configure run.
 AC_ARG_WITH([compiler],
             [Haskell compiler],
             [HC=$withval])
@@ -104,41 +107,5 @@ AC_CHECK_MEMBERS([struct sockaddr.sa_len])
 dnl This is a necessary hack
 AC_MSG_NOTICE([creating ./network.buildinfo])
 echo "install-includes: HsNetworkConfig.h" > network.buildinfo
-
-WINIO_GHC_OPTIONS=
-AC_MSG_CHECKING([whether to use native Windows I/O manager RTS option])
-case "$host_os" in
-mingw*)
-    cat > conftest_ghc_cpp.hs <<EOF
-#if !defined(__IO_MANAGER_WINIO__) || __IO_MANAGER_WINIO__ < 2
-#error __IO_MANAGER_WINIO__ < 2
-#endif
-module Main where
-main :: IO ()
-main = return ()
-EOF
-    if "$HC" -c -cpp -fforce-recomp conftest_ghc_cpp.hs >/dev/null 2>&1; then
-        AC_MSG_RESULT([yes])
-        WINIO_GHC_OPTIONS="-with-rtsopts=--io-manager=native"
-    else
-        AC_MSG_RESULT([no, $HC does not define __IO_MANAGER_WINIO__ >= 2])
-    fi
-    rm -f conftest_ghc_cpp.hi conftest_ghc_cpp.hs conftest_ghc_cpp.o
-    ;;
-*)
-    AC_MSG_RESULT([no, not Windows])
-    ;;
-esac
-
-dnl This is an overlay for the existing test-suite in network.cabal. Cabal
-dnl conditionals cannot read values produced by configure, so the probe result
-dnl has to be expressed as generated build info.
-AS_IF([test -n "$WINIO_GHC_OPTIONS"],
-      [cat >> network.buildinfo <<EOF
-
-test-suite spec
-  ghc-options: $WINIO_GHC_OPTIONS
-EOF
-      ])
 
 AC_OUTPUT
