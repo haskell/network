@@ -204,6 +204,7 @@ test-suite spec
         directory,
         HUnit,
         network,
+        stm,
         temporary,
         hspec >=2.6,
         QuickCheck

@@ -32,6 +32,8 @@ module Network.Socket.ByteString (
     -- * Receive data from a socket
     recv,
     recvFrom,
+    recvSTM,
+    recvFromSTM,
 
     -- * Advanced send and recv
     sendMsg,

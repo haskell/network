@@ -17,6 +17,10 @@
   [#626](https://github.com/haskell/network/pull/626)
 * WINIO: fixing a spurious EOF when a recv completes synchronously.
   [#626](https://github.com/haskell/network/pull/626)
+* Adding recvSTM, recvFromSTM, recvBufSTM and recvBufFromSTM, which
+  deliver a receive through STM and work on Windows too.  The readiness
+  based waitReadSocketSTM and waitWriteSocketSTM cannot work there and
+  now say so instead of blocking forever.
 
 ## Version 3.2.9.0
 

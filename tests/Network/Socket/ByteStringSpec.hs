@@ -1,8 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.Socket.ByteStringSpec (main, spec) where
 
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent.STM (atomically)
 import Control.Monad
 import Data.Bits
 import qualified Data.ByteString as S
@@ -21,6 +24,40 @@ main = hspec spec
 
 spec :: Spec
 spec = do
+    describe "recvSTM" $ do
+        it "delivers the data through STM" $ do
+            let server sock = do
+                    (wait, _cancel) <- recvSTM sock 1024
+                    atomically wait `shouldReturn` testMsg
+                client sock = send sock testMsg
+            tcpTest client server
+
+#if !defined(mingw32_HOST_OS)
+        -- Cancelling needs the underlying receive to be interruptible.
+        -- It is on POSIX and under WinIO, but not under the old Windows
+        -- I/O manager, where the receive blocks in a foreign call that
+        -- killThread cannot reach.
+        it "can be cancelled" $ do
+            let server sock = do
+                    (_wait, cancel) <- recvSTM sock 1024
+                    cancel
+                    -- the socket is still usable afterwards
+                    recv sock 1024 `shouldReturn` testMsg
+                client sock = do
+                    threadDelay 100000
+                    void $ send sock testMsg
+            tcpTest client server
+#endif
+
+    describe "recvFromSTM" $ do
+        it "delivers the datagram and the peer address through STM" $ do
+            let server sock = do
+                    (wait, _cancel) <- recvFromSTM sock 1024
+                    (bs, _) <- atomically wait
+                    bs `shouldBe` testMsg
+                client sock serverAddr' = void $ sendTo sock testMsg serverAddr'
+            udpTest client server
+
     describe "send" $ do
         it "works well" $ do
             let server sock = recv sock 1024 `shouldReturn` testMsg

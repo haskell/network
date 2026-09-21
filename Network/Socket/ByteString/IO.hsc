@@ -29,6 +29,8 @@ module Network.Socket.ByteString.IO
     -- * Receive data from a socket
     , recv
     , recvFrom
+    , recvSTM
+    , recvFromSTM
     , waitWhen0
 
     -- * Advanced send and recv
@@ -58,6 +60,8 @@ import System.Posix.Types (Fd(..))
 
 import Network.Socket.Flag
 import Network.Socket.SockAddr (annotateWithSocket)
+import Network.Socket.STM (viaSTM)
+import Control.Concurrent.STM (STM)
 #if defined(mingw32_HOST_OS)
 import Network.Socket.Win32.Load
 #endif
@@ -356,3 +360,20 @@ recvMsg s siz clen flags = recvMsg' `annotateWithSocket` (s, Nothing)
             let bs' | len < siz = PS fptr 0 len
                     | otherwise = bs
             return (addr, bs', cmsgs, flags')
+
+-- | Start receiving and return an 'STM' action delivering the data,
+--   together with an action cancelling the receive.  Unlike
+--   'Network.Socket.waitReadSocketSTM' this works on Windows too,
+--   because it waits for the receive to complete rather than for the
+--   socket to become readable.
+--
+--   Cancelling can lose data: the receive may already have taken a
+--   datagram out of the kernel queue.  Only abandon the 'STM' action
+--   where losing it is acceptable, such as on shutdown.
+recvSTM :: Socket -> Int -> IO (STM ByteString, IO ())
+recvSTM s nbytes = viaSTM $ recv s nbytes
+
+-- | 'recvSTM' for unconnected sockets, also returning the peer address.
+--   The same caveat about cancelling applies.
+recvFromSTM :: Socket -> Int -> IO (STM (ByteString, SockAddr), IO ())
+recvFromSTM s nbytes = viaSTM $ recvFrom s nbytes
