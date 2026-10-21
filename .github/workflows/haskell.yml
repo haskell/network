@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ 'master' ]
 
+# A newer push supersedes a run still in progress, except on master, which is
+# where the cache is written.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   autoconf:
     runs-on: ubuntu-latest
@@ -36,6 +42,18 @@ jobs:
       matrix:
         os:  [ 'ubuntu-latest', 'macOS-latest', 'windows-latest' ]
         ghc: [ '9.4', '9.6', '9.8', '9.10', '9.12', '9.14' ]
+        # GitHub runs at most five macOS jobs at once.  What is OS-specific
+        # here does not vary by compiler, so keep the oldest and newest off
+        # Linux and let Linux cover the range in between.
+        exclude:
+          - { os: macOS-latest,   ghc: '9.6'  }
+          - { os: macOS-latest,   ghc: '9.8'  }
+          - { os: macOS-latest,   ghc: '9.10' }
+          - { os: macOS-latest,   ghc: '9.12' }
+          - { os: windows-latest, ghc: '9.6'  }
+          - { os: windows-latest, ghc: '9.8'  }
+          - { os: windows-latest, ghc: '9.10' }
+          - { os: windows-latest, ghc: '9.12' }
 
     steps:
     - uses: actions/checkout@v4
@@ -78,9 +96,11 @@ jobs:
       run: |
         cabal build --only-dependencies
 
+    # Only from master: a cache written on a branch is visible to that branch
+    # alone, and every PR writing one crowds out master's under the cap.
     - name: Cache (save)
       uses: actions/cache/save@v4
-      if:   always()
+      if:   ${{ !cancelled() && github.event_name == 'push' && github.ref_name == 'master' }}
       with:
         path: ${{ steps.setup.outputs.cabal-store }}
         key:  ${{ steps.cache.outputs.cache-primary-key }}
