@@ -198,6 +198,15 @@ test-suite spec
 
     default-language: Haskell2010
     ghc-options:      -Wall -threaded
+
+    -- Run the test suite under WinIO wherever the compiler supports it, that
+    -- is wherever __IO_MANAGER_WINIO__ >= 2.  That landed on the 9.12 and
+    -- 9.14 branches in April 2026, after 9.12.4 and 9.14.1 had been released.
+    -- The lower bounds are exclusive so that release candidates and snapshots
+    -- of those branches, such as 9.12.4.20260713, are covered as well.
+    if os(windows) && (impl(ghc > 9.12.4 && < 9.13) || impl(ghc > 9.14.1))
+        ghc-options: -with-rtsopts=--io-manager=native
+
     build-depends:
         base,
         bytestring,
