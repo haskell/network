@@ -6,6 +6,7 @@ module Network.Socket.SockAddr (
     connect,
     bind,
     accept,
+    acceptWith,
     sendBufTo,
     recvBufFrom,
     sendBufMsg,
@@ -13,6 +14,7 @@ module Network.Socket.SockAddr (
     annotateWithSocket,
 ) where
 
+import Control.Concurrent.STM (STM)
 import qualified Control.Exception as E
 import System.Directory (removeFile)
 import qualified System.IO.Error as E
@@ -23,6 +25,7 @@ import Network.Socket.Imports
 import Network.Socket.Internal
 import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
+import qualified Network.Socket.Wait as G
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 #else
@@ -93,6 +96,23 @@ accept s = accept' `annotateWithSocket` (s, Nothing)
         label <- socketLabel s
         labelSocket news (\_ -> label ++ " " ++ show sa)
         return r
+
+-- | 'accept' which the caller can give up on.  Whichever settles
+-- first decides: 'Left' when the 'STM' action fires, 'Right' when a
+-- connection arrives.
+--
+-- @since 3.2.10.0
+acceptWith :: Socket -> STM a -> IO (Either a (Socket, SockAddr))
+acceptWith s giveUp = acceptWith' `annotateWithSocket` (s, Nothing)
+  where
+    acceptWith' = do
+        r <- G.acceptWith s giveUp
+        case r of
+            Left a -> return $ Left a
+            Right res@(news, sa) -> do
+                label <- socketLabel s
+                labelSocket news (\_ -> label ++ " " ++ show sa)
+                return $ Right res
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.

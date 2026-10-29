@@ -17,6 +17,23 @@
   [#626](https://github.com/haskell/network/pull/626)
 * WINIO: fixing a spurious EOF when a recv completes synchronously.
   [#626](https://github.com/haskell/network/pull/626)
+* Adding acceptWith, recvWith, recvFromWith, recvBufWith and recvBufFromWith, which take an STM action
+  beside the operation and let the caller give up on it without closing
+  the socket or interrupting the thread, and withReadable, which they are
+  built from.
+* Adding isClosedSocketError and isTransientAcceptError, which name what
+  an accept loop has to tell apart: a socket closed under it, one queued
+  connection which failed, and the rest.
+* On Windows, the Winsock error code is kept in ioe_errno rather than
+  dropped.  Winsock reports every error as OtherError, so the code was
+  the only thing telling them apart and it was only in the description.
+  isClosedSocketError and isTransientAcceptError read it, so an accept
+  loop there now stops when its socket is closed and retries a
+  connection the peer gave up on.
+* The readiness based waitReadSocketSTM and waitWriteSocketSTM cannot
+  work on Windows, where completion ports report that an operation has
+  finished rather than that one could be started, and now say so
+  instead of blocking forever.
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 
