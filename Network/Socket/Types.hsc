@@ -23,6 +23,7 @@ module Network.Socket.Types (
     , invalidateSocket
     , close
     , close'
+    , unsafeClose
     , c_close
     -- * Types of socket
     , SocketType(GeneralSocketType, UnsupportedSocketType, NoSocketType
@@ -273,6 +274,23 @@ close' s = invalidateSocket s (\_ -> return ()) $ \oldfd -> do
     closeFd fd = do
         ret <- c_close $ fromIntegral fd
         when (ret == -1) $ throwErrno "Network.Socket.close'"
+
+-- | Closing a socket which no thread is waiting on, with @close(2)@
+--   itself.  Exceptions are not thrown, as in 'close'.
+--
+--   'close' goes through the IO manager so that a thread waiting on the
+--   socket is told.  On a threaded POSIX RTS that takes a lock on every
+--   capability, and does nothing at all when there is no such thread.
+--   This skips it, and is for a caller which knows there is none.  Where
+--   one might be, the warning on 'unsafeFdSocket' applies in full.
+--
+--   There is nothing to skip on Windows, where the IO manager is not in
+--   the way of a close, and this is 'close'.
+--
+--   @since 3.2.11.0
+unsafeClose :: Socket -> IO ()
+unsafeClose s = invalidateSocket s (\_ -> return ()) $ \oldfd ->
+    void $ c_close oldfd
 
 #if defined(mingw32_HOST_OS)
 foreign import CALLCONV unsafe "closesocket"
