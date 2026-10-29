@@ -9,11 +9,14 @@ module Network.Socket.Address (
     connect,
     bind,
     accept,
+    acceptWith,
 
     -- * Sending and receiving ByteString
     sendTo,
     sendAllTo,
     recvFrom,
+    recvWith,
+    recvFromWith,
 
     -- * Sending and receiving data from a buffer
     sendBufTo,
@@ -29,3 +32,4 @@ import Network.Socket.ByteString.IO
 import Network.Socket.Name
 import Network.Socket.Syscall
 import Network.Socket.Types
+import Network.Socket.Wait

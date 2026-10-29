@@ -6,12 +6,14 @@ module Network.Socket.SockAddr (
     connect,
     bind,
     accept,
+    acceptWith,
     sendBufTo,
     recvBufFrom,
     sendBufMsg,
     recvBufMsg,
 ) where
 
+import Control.Concurrent.STM (STM)
 import Control.Exception (IOException, throwIO, try)
 import System.Directory (removeFile)
 import System.IO.Error (isAlreadyInUseError, isDoesNotExistError)
@@ -21,6 +23,7 @@ import Network.Socket.Flag
 import Network.Socket.Imports
 import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
+import qualified Network.Socket.Wait as G
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 #else
@@ -74,6 +77,14 @@ bind s sa = case sa of
 -- On Unix, FD_CLOEXEC is set to the new 'Socket'.
 accept :: Socket -> IO (Socket, SockAddr)
 accept = G.accept
+
+-- | 'accept' which the caller can give up on.  Whichever settles
+-- first decides: 'Left' when the 'STM' action fires, 'Right' when a
+-- connection arrives.
+--
+-- @since 3.2.10.0
+acceptWith :: Socket -> STM a -> IO (Either a (Socket, SockAddr))
+acceptWith = G.acceptWith
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.

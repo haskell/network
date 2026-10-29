@@ -121,6 +121,7 @@ library
         Network.Socket.Syscall
         Network.Socket.Types
         Network.Socket.Unix
+        Network.Socket.Wait
 
     default-language: Haskell2010
     include-dirs:     include
@@ -160,6 +161,7 @@ library
 
         other-modules:
             Network.Socket.ByteString.Lazy.Windows
+            Network.Socket.Win32.Cancel
             Network.Socket.Win32.Cmsg
             Network.Socket.Win32.CmsgHdr
             Network.Socket.Win32.HostName
@@ -201,6 +203,7 @@ test-suite spec
         directory,
         HUnit,
         network,
+        stm,
         temporary,
         hspec >=2.6,
         QuickCheck

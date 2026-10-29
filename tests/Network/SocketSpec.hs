@@ -4,7 +4,9 @@
 module Network.SocketSpec (main, spec) where
 
 import Control.Concurrent (threadDelay, forkIO)
-import Control.Concurrent.MVar (readMVar)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
+import Control.Exception (bracket)
+import Control.Concurrent.STM
 import Control.Monad
 import Data.Maybe (fromJust)
 import Data.List (nub)
@@ -254,7 +256,7 @@ spec = do
         it "does not send TCP RST back" $ do
             let server sock = do
                     void $ recv sock 1024 -- receiving "GOAWAY"
-                    gracefulClose sock 3000
+                    gracefulClose sock 300
                 client sock = do
                     sendAll sock "GOAWAY"
                     threadDelay 10000
@@ -262,6 +264,62 @@ spec = do
                     threadDelay 10000
                     void $ recv sock 1024
             tcpTest client server
+
+    describe "giving up" $ do
+        it "ends a receive which is told to stop, leaving the socket usable" $ do
+            let server sock = do
+                    stop <- newTVarIO False
+                    done <- newEmptyMVar
+                    void $ forkIO $ do
+                        r <- recvWith sock 1024 (check =<< readTVar stop)
+                        putMVar done r
+                    threadDelay 100000
+                    atomically $ writeTVar stop True
+                    takeMVar done `shouldReturn` Left ()
+                    -- Nothing was closed, so the socket is still the
+                    -- caller's to read.
+                    recv sock 1024 `shouldReturn` testMsg
+                client sock = do
+                    threadDelay 300000
+                    void $ send sock testMsg
+            tcpTest client server
+
+        -- A tie goes to the data: answering Left would leave bytes
+        -- already received unread, which for a stream loses them.
+        it "takes what is there even once the caller has given up" $ do
+            let server sock = do
+                    threadDelay 100000
+                    gone <- newTVarIO True
+                    recvWith sock 1024 (check =<< readTVar gone)
+                        `shouldReturn` Right testMsg
+                client sock = void $ send sock testMsg
+            tcpTest client server
+
+        it "ends an accept which is told to stop, leaving the socket usable" $
+            withListener $ \sock port -> do
+                stop <- newTVarIO False
+                done <- newEmptyMVar
+                void $ forkIO $ do
+                    r <- acceptWith sock (check =<< readTVar stop)
+                    putMVar done $
+                        either (const True) (const False)
+                            (r :: Either () (Socket, SockAddr))
+                threadDelay 100000
+                atomically $ writeTVar stop True
+                takeMVar done `shouldReturn` True
+                -- The listening socket was not closed to end that
+                -- accept, so it still accepts.
+                bracket (socket AF_INET Stream defaultProtocol) close $ \cli -> do
+                    connect cli $ SockAddrInet port $ tupleToHostAddress (127, 0, 0, 1)
+                    bracket (fst <$> accept sock) close $ \_ -> return ()
+
+        it "tells a socket closed under an accept from other errors" $ do
+            sock <- socket AF_INET Stream defaultProtocol
+            bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+            listen sock 1
+            close sock
+            r <- tryIOError $ accept sock
+            either isClosedSocketError (const False) r `shouldBe` True
 
     describe "socketToFd" $ do
         it "socketToFd can send using fd" $ do
@@ -489,3 +547,13 @@ cmsgidPatterns = nub
     , CmsgIdIPv6PktInfo
     , CmsgIdFds
     ]
+
+-- A listening socket on the loopback, and the port it got.
+withListener :: (Socket -> PortNumber -> IO a) -> IO a
+withListener action =
+    bracket (socket AF_INET Stream defaultProtocol) close $ \sock -> do
+        setSocketOption sock ReuseAddr 1
+        bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+        listen sock 1
+        port <- socketPort sock
+        action sock port

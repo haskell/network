@@ -61,9 +61,9 @@ import GHC.Conc (threadWaitRead, threadWaitWrite)
 import Control.Exception (evaluate)
 import System.IO.Unsafe (unsafePerformIO)
 # if __GLASGOW_HASKELL__ >= 707
-import GHC.IO.Exception (IOErrorType(..))
+import GHC.IO.Exception (IOErrorType(..), IOException(..))
 # else
-import GHC.IOBase (IOErrorType(..))
+import GHC.IOBase (IOErrorType(..), IOException(..))
 # endif
 import System.IO.Error (ioeSetErrorString, mkIOError)
 #else
@@ -93,13 +93,16 @@ throwSocketError = throwErrno
 
 -- | Like 'throwSocketError', but the error code is supplied as an argument.
 --
--- On Windows, do not use errno.  Use a system error code instead.
+-- On Windows the code is a Winsock error code rather than an errno.  It
+-- is kept in 'ioe_errno' all the same: Winsock reports every error as
+-- 'OtherError', so the code is the only thing which tells them apart.
 throwSocketErrorCode :: String -> CInt -> IO a
 #if defined(mingw32_HOST_OS)
 throwSocketErrorCode name rc = do
     pstr <- c_getWSError rc
     str  <- peekCString pstr
-    ioError (ioeSetErrorString (mkIOError OtherError name Nothing Nothing) str)
+    let ioe = (mkIOError OtherError name Nothing Nothing){ioe_errno = Just rc}
+    ioError (ioeSetErrorString ioe str)
 #else
 throwSocketErrorCode loc errno =
     ioError (errnoToIOError loc (Errno errno) Nothing Nothing)

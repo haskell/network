@@ -29,6 +29,8 @@ module Network.Socket.ByteString.IO
     -- * Receive data from a socket
     , recv
     , recvFrom
+    , recvWith
+    , recvFromWith
     , waitWhen0
 
     -- * Advanced send and recv
@@ -45,10 +47,13 @@ import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Alloc (allocaBytes)
 
+import Control.Concurrent.STM (STM, atomically, orElse)
+
 import Network.Socket.Buffer
 import Network.Socket.ByteString.Internal
 import Network.Socket.Imports
 import Network.Socket.Types
+import Network.Socket.Wait
 
 import Data.ByteString.Internal (create, ByteString(..))
 import Foreign.ForeignPtr (withForeignPtr)
@@ -276,6 +281,47 @@ recvFrom sock nbytes =
         str <- B.packCStringLen (ptr, len)
         return (str, sockaddr)
 
+-- | 'recv' which the caller can give up on.  Whichever settles first
+--   decides: 'Left' when the 'STM' action fires, 'Right' when data
+--   arrives.  Data already waiting is taken without blocking at all and
+--   so wins over a caller which has given up, as a completed operation
+--   does in 'Network.Socket.withReadable'; the give-up is read there
+--   and nowhere else.
+--
+--   @since 3.2.10.0
+recvWith :: Socket -> Int -> STM a -> IO (Either a ByteString)
+recvWith s nbytes giveUp
+    | nbytes < 0 =
+        ioError $ mkInvalidRecvArgError "Network.Socket.ByteString.recvWith"
+    | otherwise = do
+        bs <- createAndTrim' nbytes $ \ptr -> recvBufNoWait s ptr nbytes
+        case bs of
+            Just b -> return $ Right b
+            Nothing -> withReadable s giveUp $ recv s nbytes
+
+-- | 'recvFrom' which the caller can give up on.
+--
+--   @since 3.2.10.0
+recvFromWith
+    :: SocketAddress sa
+    => Socket
+    -> Int
+    -> STM a
+    -> IO (Either a (ByteString, sa))
+recvFromWith s nbytes giveUp = withReadable s giveUp $ recvFrom s nbytes
+
+-- A read which never waits: 'Nothing' when nothing is there yet.
+createAndTrim' :: Int -> (Ptr Word8 -> IO Int) -> IO (Maybe ByteString)
+createAndTrim' nbytes f = do
+    (len, bs) <- allocaBytes nbytes $ \ptr -> do
+        len <- f ptr
+        if len > 0
+            then do
+                b <- B.packCStringLen (castPtr ptr, len)
+                return (len, b)
+            else return (len, B.empty)
+    return $ if len >= 0 then Just bs else Nothing
+
 -- ----------------------------------------------------------------------------
 -- Not exported
 
@@ -343,3 +389,4 @@ recvMsg s siz clen flags = do
         let bs' | len < siz = PS fptr 0 len
                 | otherwise = bs
         return (addr, bs', cmsgs, flags')
+

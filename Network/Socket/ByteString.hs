@@ -32,15 +32,23 @@ module Network.Socket.ByteString (
     -- * Receive data from a socket
     recv,
     recvFrom,
+    recvWith,
+    recvFromWith,
 
     -- * Advanced send and recv
     sendMsg,
     recvMsg,
 ) where
 
+import Control.Concurrent.STM (STM)
 import Data.ByteString (ByteString)
 
-import Network.Socket.ByteString.IO hiding (recvFrom, sendAllTo, sendTo)
+import Network.Socket.ByteString.IO hiding (
+    recvFrom,
+    recvFromWith,
+    sendAllTo,
+    sendTo,
+ )
 import qualified Network.Socket.ByteString.IO as G
 import Network.Socket.Types
 
@@ -89,3 +97,10 @@ sendAllTo = G.sendAllTo
 -- 'SockAddr' representing the address of the sending socket.
 recvFrom :: Socket -> Int -> IO (ByteString, SockAddr)
 recvFrom = G.recvFrom
+
+-- | 'recvFrom' which the caller can give up on.
+--
+--   @since 3.2.10.0
+recvFromWith
+    :: Socket -> Int -> STM a -> IO (Either a (ByteString, SockAddr))
+recvFromWith = G.recvFromWith

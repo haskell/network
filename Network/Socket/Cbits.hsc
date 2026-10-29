@@ -13,6 +13,30 @@ maxListenQueue = #const SOMAXCONN
 #if defined(mingw32_HOST_OS)
 wsaNotInitialized :: CInt
 wsaNotInitialized = #const WSANOTINITIALISED
+-- | What closesocket gives a call already blocked on the socket.
+wsaEINTR :: CInt
+wsaEINTR = #const WSAEINTR
+-- | What a socket operation gives once the socket has been closed.
+wsaENOTSOCK :: CInt
+wsaENOTSOCK = #const WSAENOTSOCK
+-- | What accept() gives for a connection the peer gave up on.  Winsock
+--   names WSAECONNRESET where accept(2) names ECONNABORTED.
+wsaECONNABORTED :: CInt
+wsaECONNABORTED = #const WSAECONNABORTED
+wsaECONNRESET :: CInt
+wsaECONNRESET = #const WSAECONNRESET
+wsaENETDOWN :: CInt
+wsaENETDOWN = #const WSAENETDOWN
+wsaENETRESET :: CInt
+wsaENETRESET = #const WSAENETRESET
+wsaENETUNREACH :: CInt
+wsaENETUNREACH = #const WSAENETUNREACH
+wsaEHOSTDOWN :: CInt
+wsaEHOSTDOWN = #const WSAEHOSTDOWN
+wsaEHOSTUNREACH :: CInt
+wsaEHOSTUNREACH = #const WSAEHOSTUNREACH
+wsaENOPROTOOPT :: CInt
+wsaENOPROTOOPT = #const WSAENOPROTOOPT
 #else
 fGetFd :: CInt
 fGetFd = #const F_GETFD
