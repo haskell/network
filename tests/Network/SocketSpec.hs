@@ -8,6 +8,7 @@ import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
 import Control.Exception (bracket)
 import Control.Concurrent.STM
 import Control.Monad
+import Data.ByteString (ByteString)
 import Data.Maybe (fromJust)
 import Data.List (nub)
 import Network.Socket
@@ -24,6 +25,33 @@ import Test.QuickCheck
 
 main :: IO ()
 main = hspec spec
+
+-- Send through the given action to a port nobody has bound, then receive
+-- on the same socket.  'Nothing' if the receive heard nothing in time.
+bounce :: (Socket -> SockAddr -> IO ()) -> IO (Maybe ByteString)
+bounce send' = do
+    dead <- deadPort
+    sock <- socket AF_INET Datagram defaultProtocol
+    bind sock $ SockAddrInet 0 localhost
+    send' sock dead
+    -- Long enough for the unreachable to come back before the receive.
+    waitFor 300000
+    late <- registerDelay 300000
+    r <- recvFromWith sock 2048 $ check =<< readTVar late
+    close sock
+    return $ either (const Nothing) (Just . fst) r
+  where
+    localhost = tupleToHostAddress (127, 0, 0, 1)
+    waitFor us = do
+        late <- registerDelay us
+        atomically $ check =<< readTVar late
+    -- Bind a port, read it, and let it go again.
+    deadPort = do
+        s <- socket AF_INET Datagram defaultProtocol
+        bind s $ SockAddrInet 0 localhost
+        sa <- getSocketName s
+        close s
+        return sa
 
 spec :: Spec
 spec = do
@@ -251,6 +279,18 @@ spec = do
                     cred1 `shouldBe` (Nothing,Nothing,Nothing)
             -}
 #endif
+
+    -- A send to a port nobody has bound brings an ICMP unreachable back.
+    -- POSIX hands it to the sender only once the socket is connected, and
+    -- Winsock hands it to every datagram socket; a reply bouncing off a
+    -- client which has gone would then end a server's receive loop.
+    describe "an ICMP unreachable from a send of one's own" $ do
+        it "is not heard by a socket which was never connected" $
+            bounce (\sock dead -> void $ sendTo sock "bounce" dead)
+                `shouldReturn` Nothing
+        it "is heard by a connected one" $
+            bounce (\sock dead -> connect sock dead >> void (send sock "bounce"))
+                `shouldThrow` anyIOException
 
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do

@@ -13,7 +13,9 @@ import System.IO.Error (catchIOError)
 #if defined(mingw32_HOST_OS)
 import Control.Exception (bracket)
 import Foreign (FunPtr)
+import Foreign.Marshal.Alloc (alloca)
 import GHC.Conc (asyncDoProc)
+import Network.Socket.Cbits
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 import GHC.Conc (threadWaitWrite)
@@ -84,6 +86,7 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
     -- So, we don't have to call "close" which uses "closeFdWith".
     unsetIPv6Only s
     setDontFragment s
+    unsetConnReset s
     return s
   where
     create = do
@@ -129,6 +132,27 @@ socket family stype protocol = E.bracketOnError create c_close $ \fd -> do
       return ()
 #endif
 
+    unsetConnReset s = when (stype == Datagram) $ reportConnReset s False
+
+-- Whether the socket reports the ICMP unreachable an earlier send of its
+-- own caused.  Winsock reports it to the next receive even on a socket
+-- which was never connected, where POSIX says nothing of it at all: one
+-- reply bouncing off a client which has gone ends a server's receive
+-- loop.  'socket' therefore turns it off and 'connect' turns it back on,
+-- which is the ECONNREFUSED POSIX gives a connected datagram socket.
+--
+-- It is advice for datagrams alone and does nothing to any other socket,
+-- so the result is not worth looking at.
+reportConnReset :: Socket -> Bool -> IO ()
+#if defined(mingw32_HOST_OS)
+reportConnReset s report =
+    with (if report then 1 else 0 :: Word32) $ \val ->
+    alloca $ \ret ->
+      void $ withFdSocket s $ \fd ->
+        c_WSAIoctl fd sioUDPConnReset val 4 nullPtr 0 ret nullPtr nullPtr
+#else
+reportConnReset _ _ = return ()
+#endif
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -148,8 +172,9 @@ bind s sa = withSocketAddress sa $ \p_sa siz -> void $ withFdSocket s $ \fd -> d
 
 -- | Connect to a remote socket at address.
 connect :: SocketAddress sa => Socket -> sa -> IO ()
-connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz ->
+connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz -> do
     connectLoop s p_sa (fromIntegral sz)
+    reportConnReset s True
 
 connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
 connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
@@ -251,6 +276,11 @@ foreign import CALLCONV unsafe "accept"
 #endif
 
 #if defined(mingw32_HOST_OS)
+-- int WSAIoctl(SOCKET, DWORD, LPVOID, DWORD, LPVOID, DWORD, LPDWORD,
+--              LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+foreign import CALLCONV unsafe "WSAIoctl"
+  c_WSAIoctl :: CInt -> Word32 -> Ptr Word32 -> Word32 -> Ptr () -> Word32
+             -> Ptr Word32 -> Ptr () -> Ptr () -> IO CInt
 foreign import CALLCONV safe "accept"
   c_accept_safe :: CInt -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CInt
 foreign import ccall unsafe "rtsSupportsBoundThreads"

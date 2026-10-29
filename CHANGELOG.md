@@ -27,6 +27,11 @@
 * gracefulClose reads its timeout as the milliseconds it is documented
   to be without an event manager.  System.Timeout takes microseconds, so
   it was a thousandth of what was asked for.
+* On Windows, a datagram socket hears an ICMP unreachable which a send
+  of its own caused only once it is connected, as on POSIX.  Winsock
+  reports it to every datagram socket, so one reply bouncing off a
+  client which had gone ended a server's receive loop; socket turns that
+  off and connect turns it back on.
 * The readiness based waitReadSocketSTM and waitWriteSocketSTM cannot
   work on Windows, where completion ports report that an operation has
   finished rather than that one could be started, and now say so
