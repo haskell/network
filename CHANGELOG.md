@@ -1,8 +1,9 @@
 # CHANGELOG for network
 
-## Version 3.2.9.0
+## Version 3.2.10.0
 
-* Exporting recvBufNoWait.
+* Multicast support
+  [#614](https://github.com/haskell/network/pull/614)
 * Support for getHostName
   [#621](https://github.com/haskell/network/pull/621)
 * Adding acceptWith, recvWith, recvFromWith, recvBufWith and recvBufFromWith, which take an STM action
@@ -36,6 +37,10 @@
   work on Windows, where completion ports report that an operation has
   finished rather than that one could be started, and now say so
   instead of blocking forever.
+
+## Version 3.2.9.0
+
+* Exporting recvBufNoWait.
 
 ## Version 3.2.8.0
 
