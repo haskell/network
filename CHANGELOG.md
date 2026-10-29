@@ -18,6 +18,15 @@
   isClosedSocketError and isTransientAcceptError read it, so an accept
   loop there now stops when its socket is closed and retries a
   connection the peer gave up on.
+* gracefulClose waits for the peer's FIN through recvBufWith, which is
+  one code path on every platform, and drains what arrived before it up
+  to 128 KiB rather than reading once: data left unread makes close send
+  RST.  It therefore keeps to its timeout on Windows, where
+  System.Timeout cannot cut a receive short and a peer which stayed open
+  and silent used to hold the caller for as long as it did.
+* gracefulClose reads its timeout as the milliseconds it is documented
+  to be without an event manager.  System.Timeout takes microseconds, so
+  it was a thousandth of what was asked for.
 * The readiness based waitReadSocketSTM and waitWriteSocketSTM cannot
   work on Windows, where completion ports report that an operation has
   finished rather than that one could be started, and now say so
