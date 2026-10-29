@@ -6,8 +6,14 @@
   [#509](https://github.com/haskell/network/pull/509)
 * Multicast support
   [#614](https://github.com/haskell/network/pull/614)
-* Watchdog scheme for gracefulClose.
-  [#620](https://github.com/haskell/network/pull/620)
+* gracefulClose waits for the peer's FIN through recvBufWith, which is
+  one code path on every platform, and drains what arrived before it up
+  to 128 KiB rather than reading once: data left unread makes close send
+  RST.  It therefore keeps to its timeout on Windows, where
+  System.Timeout cannot cut a receive short and a peer which stayed open
+  and silent used to hold the caller for as long as it did.  This
+  replaces the watchdog scheme of
+  [#620](https://github.com/haskell/network/pull/620).
 * Support for getHostName
   [#621](https://github.com/haskell/network/pull/621)
 * Fixing the misspelled WSAEACCES error description on Windows.
