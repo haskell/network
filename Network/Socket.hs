@@ -131,6 +131,7 @@ module Network.Socket (
     close',
     unsafeClose,
     gracefulClose,
+    unsafeGracefulClose,
     shutdown,
     ShutdownCmd (..),
 

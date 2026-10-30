@@ -38,6 +38,7 @@ module Network.Socket.ByteString (
     -- * Advanced send and recv
     sendMsg,
     recvMsg,
+    recvMsgWith,
 ) where
 
 import Control.Concurrent.STM (STM)

@@ -305,6 +305,19 @@ spec = do
                     void $ recv sock 1024
             tcpTest client server
 
+    describe "unsafeGracefulClose" $ do
+        it "does not send TCP RST back" $ do
+            let server sock = do
+                    void $ recv sock 1024 -- receiving "GOAWAY"
+                    unsafeGracefulClose sock 300
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 10000
+                    sendAll sock "PING"
+                    threadDelay 10000
+                    void $ recv sock 1024
+            tcpTest client server
+
     describe "giving up" $ do
         it "ends a receive which is told to stop, leaving the socket usable" $ do
             let server sock = do

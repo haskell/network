@@ -1,5 +1,9 @@
 # CHANGELOG for network
 
+## Version 3.2.12.0
+
+* Add unsafeGracefulClose and recvMsgWith
+
 ## Version 3.2.11.0
 
 * Add unsafeClose
