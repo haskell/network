@@ -45,6 +45,8 @@
   work on Windows, where completion ports report that an operation has
   finished rather than that one could be started, and now say so
   instead of blocking forever.
+* Add unsafeClose
+  [#629](https://github.com/haskell/network/pull/629)
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 
