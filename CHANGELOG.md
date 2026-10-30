@@ -2,8 +2,8 @@
 
 ## Version 3.2.11.0
 
-* Adding unsafeClose, which closes a socket with close(2) itself, for a
-  caller which knows that no thread is waiting on it.
+* Add unsafeClose
+  [#629](https://github.com/haskell/network/pull/629)
 
 ## Version 3.2.10.0
 
