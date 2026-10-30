@@ -47,6 +47,7 @@
   instead of blocking forever.
 * Add unsafeClose
   [#629](https://github.com/haskell/network/pull/629)
+* Add unsafeGracefulClose and recvMsgWith
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 * Pick the WinIO test option in the cabal file, not in configure

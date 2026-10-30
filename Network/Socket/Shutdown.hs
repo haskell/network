@@ -7,6 +7,7 @@ module Network.Socket.Shutdown (
     ShutdownCmd(..)
   , shutdown
   , gracefulClose
+  , unsafeGracefulClose
   ) where
 
 import Control.Concurrent (rtsSupportsBoundThreads, yield)
@@ -54,8 +55,19 @@ foreign import CALLCONV unsafe "shutdown"
 --
 --   Since: 3.1.1.0
 gracefulClose :: Socket -> Int -> IO ()
-gracefulClose s tmout0 =
-    (sendRecvFIN `E.finally` close s) `annotateIOException` show s
+gracefulClose = gracefulCloseWith close
+
+-- | 'gracefulClose' which ends with 'unsafeClose' rather than 'close',
+--   for a caller which knows that no other thread is waiting on the
+--   socket.  The wait for the peer's FIN is this thread's own.
+--
+--   @since 3.2.12.0
+unsafeGracefulClose :: Socket -> Int -> IO ()
+unsafeGracefulClose = gracefulCloseWith unsafeClose
+
+gracefulCloseWith :: (Socket -> IO ()) -> Socket -> Int -> IO ()
+gracefulCloseWith closer s tmout0 =
+    (sendRecvFIN `E.finally` closer s) `annotateIOException` show s
   where
     sendRecvFIN = do
         -- Sending TCP FIN.

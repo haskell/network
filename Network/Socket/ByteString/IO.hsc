@@ -31,6 +31,7 @@ module Network.Socket.ByteString.IO
     , recvFrom
     , recvWith
     , recvFromWith
+    , recvMsgWith
     , waitWhen0
 
     -- * Advanced send and recv
@@ -403,4 +404,17 @@ recvMsg s siz clen flags = recvMsg' `annotateWithSocket` (s, Nothing)
             let bs' | len < siz = PS fptr 0 len
                     | otherwise = bs
             return (addr, bs', cmsgs, flags')
+
+-- | 'recvMsg' which the caller can give up on.
+--
+--   @since 3.2.12.0
+recvMsgWith
+    :: Socket
+    -> Int
+    -> Int
+    -> MsgFlag
+    -> STM a
+    -> IO (Either a (SockAddr, ByteString, [Cmsg], MsgFlag))
+recvMsgWith s siz clen flags giveUp =
+    withReadable s giveUp $ recvMsg s siz clen flags
 

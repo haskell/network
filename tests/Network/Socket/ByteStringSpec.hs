@@ -3,6 +3,7 @@
 module Network.Socket.ByteStringSpec (main, spec) where
 
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent.STM (check, readTVar, registerDelay, retry)
 import Control.Monad
 import Data.Bits
 import qualified Data.ByteString as S
@@ -199,6 +200,26 @@ spec = do
                 seg1 = C.pack "This is a "
                 seg2 = C.pack "test message."
             udpTest client server
+
+    describe "recvMsgWith" $ do
+        it "receives as recvMsg does" $ do
+            let server sock = do
+                    r <- recvMsgWith sock 1024 0 mempty retry
+                    case r of
+                        Right (_, msg, _, _) -> msg `shouldBe` seg
+                        Left () -> expectationFailure "gave up without being told"
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "gives up when told to, with nothing to receive" $ do
+            sock <- socket AF_INET Datagram defaultProtocol
+            bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+            late <- registerDelay 100000
+            r <- recvMsgWith sock 1024 0 mempty $ check =<< readTVar late
+            close sock
+            either (const True) (const False) r `shouldBe` True
 
     describe "recvMsg" $ do
         it "works well" $ do
