@@ -47,7 +47,7 @@ import Data.ByteString.Internal (createAndTrim)
 import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Alloc (allocaBytes)
 
-import Control.Concurrent.STM (STM, atomically, orElse)
+import Control.Concurrent.STM (STM)
 
 import Network.Socket.Buffer
 import Network.Socket.ByteString.Internal
