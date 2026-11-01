@@ -415,6 +415,8 @@ module Network.Socket (
     recvBufFromWith,
     sendBufWith,
     sendBufToWith,
+    sendBufMsgWith,
+    recvBufMsgWith,
 
     -- ** What a given-up operation can fail with
     isClosedSocketError,

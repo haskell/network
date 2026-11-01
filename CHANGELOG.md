@@ -53,6 +53,7 @@
 * Return the bytes sent from sendMsg on Windows
 * Add withWritable, connectWith and the send functions which the caller can give up on
 * Raise the error which the first read of recvWith meets, rather than dropping it and waiting
+* Add recvBufMsgWith, sendBufMsgWith, the give-up functions of Network.Socket.Address and of Network.Socket.ByteString.Lazy
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 * Pick the WinIO test option in the cabal file, not in configure

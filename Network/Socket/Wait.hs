@@ -24,6 +24,8 @@ module Network.Socket.Wait (
     recvBufFromWith,
     sendBufWith,
     sendBufToWith,
+    recvBufMsgWith,
+    sendBufMsgWith,
     connectWith,
     isClosedSocketError,
     isTransientAcceptError,
@@ -52,9 +54,15 @@ import Network.Socket.Win32.Cancel
 #else
 import Network.Socket.STM
 #endif
+import Network.Socket.Flag
 import Network.Socket.Imports
 import Network.Socket.Syscall
 import Network.Socket.Types
+#if !defined(mingw32_HOST_OS)
+import Network.Socket.Posix.Cmsg
+#else
+import Network.Socket.Win32.Cmsg
+#endif
 
 -- | Running an action once the socket is readable, unless the 'STM'
 --   action fires first.  The 'STM' action is also looked at before
@@ -183,6 +191,35 @@ sendBufToWith
     => Socket -> Ptr a -> Int -> sa -> STM b -> IO (Either b Int)
 sendBufToWith s ptr nbytes sa giveUp =
     withWritable s giveUp $ sendBufTo s ptr nbytes sa
+
+-- | 'recvBufMsg' which the caller can give up on.
+--
+--   @since 3.2.12.0
+recvBufMsgWith
+    :: SocketAddress sa
+    => Socket
+    -> [(Ptr Word8, Int)]
+    -> Int
+    -> MsgFlag
+    -> STM a
+    -> IO (Either a (sa, Int, [Cmsg], MsgFlag))
+recvBufMsgWith s bufsizs clen flags giveUp =
+    withReadable s giveUp $ recvBufMsg s bufsizs clen flags
+
+-- | 'sendBufMsg' which the caller can give up on.
+--
+--   @since 3.2.12.0
+sendBufMsgWith
+    :: SocketAddress sa
+    => Socket
+    -> sa
+    -> [(Ptr Word8, Int)]
+    -> [Cmsg]
+    -> MsgFlag
+    -> STM a
+    -> IO (Either a Int)
+sendBufMsgWith s sa bufsizs cmsgs flags giveUp =
+    withWritable s giveUp $ sendBufMsg s sa bufsizs cmsgs flags
 
 -- | 'connect' which the caller can give up on.  A socket given up on
 --   may still be connecting, so it is to be closed.

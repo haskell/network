@@ -14,6 +14,8 @@ module Network.Socket.SockAddr (
     sendBufMsg,
     recvBufMsg,
     annotateWithSocket,
+    sendBufMsgWith,
+    recvBufMsgWith,
 ) where
 
 import Control.Concurrent.STM (STM)
@@ -187,6 +189,24 @@ recvBufMsg
     -> IO (SockAddr, Int, [Cmsg], MsgFlag)
     -- ^ Source address, received data, control messages and message flags
 recvBufMsg s bufs len flag = G.recvBufMsg s bufs len flag `annotateWithSocket` (s, Nothing)
+
+-- | 'sendBufMsg' which the caller can give up on.
+--
+-- @since 3.2.12.0
+sendBufMsgWith
+    :: Socket -> SockAddr -> [(Ptr Word8, Int)] -> [Cmsg] -> MsgFlag -> STM a
+    -> IO (Either a Int)
+sendBufMsgWith s sa bufs cmsgs flag giveUp =
+    G.sendBufMsgWith s sa bufs cmsgs flag giveUp `annotateWithSocket` (s, Just sa)
+
+-- | 'recvBufMsg' which the caller can give up on.
+--
+-- @since 3.2.12.0
+recvBufMsgWith
+    :: Socket -> [(Ptr Word8, Int)] -> Int -> MsgFlag -> STM a
+    -> IO (Either a (SockAddr, Int, [Cmsg], MsgFlag))
+recvBufMsgWith s bufs len flag giveUp =
+    G.recvBufMsgWith s bufs len flag giveUp `annotateWithSocket` (s, Nothing)
 
 ------------------------------------------------------------------------
 
