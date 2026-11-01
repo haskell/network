@@ -29,7 +29,13 @@ main = hspec spec
 -- Send through the given action to a port nobody has bound, then receive
 -- on the same socket.  'Nothing' if the receive heard nothing in time.
 bounce :: (Socket -> SockAddr -> IO ()) -> IO (Maybe ByteString)
-bounce send' = do
+bounce = bounceWith $ \sock giveUp -> fmap fst <$> recvFromWith sock 2048 giveUp
+
+bounceWith
+    :: (Socket -> STM () -> IO (Either () ByteString))
+    -> (Socket -> SockAddr -> IO ())
+    -> IO (Maybe ByteString)
+bounceWith receive send' = do
     dead <- deadPort
     sock <- socket AF_INET Datagram defaultProtocol
     bind sock $ SockAddrInet 0 localhost
@@ -37,9 +43,9 @@ bounce send' = do
     -- Long enough for the unreachable to come back before the receive.
     waitFor 300000
     late <- registerDelay 300000
-    r <- recvFromWith sock 2048 $ check =<< readTVar late
+    r <- receive sock $ check =<< readTVar late
     close sock
-    return $ either (const Nothing) (Just . fst) r
+    return $ either (const Nothing) Just r
   where
     localhost = tupleToHostAddress (127, 0, 0, 1)
     waitFor us = do
@@ -320,12 +326,19 @@ spec = do
     -- Winsock hands it to every datagram socket; a reply bouncing off a
     -- client which has gone would then end a server's receive loop.
     describe "an ICMP unreachable from a send of one's own" $ do
+        let connectSend sock dead = connect sock dead >> void (send sock "bounce")
+            recvMsg' sock giveUp =
+                fmap (\(_, bs, _, _) -> bs) <$> recvMsgWith sock 2048 0 mempty giveUp
         it "is not heard by a socket which was never connected" $
             bounce (\sock dead -> void $ sendTo sock "bounce" dead)
                 `shouldReturn` Nothing
         it "is heard by a connected one" $
-            bounce (\sock dead -> connect sock dead >> void (send sock "bounce"))
+            bounce connectSend `shouldThrow` anyIOException
+        it "is heard by a connected one through recv" $
+            bounceWith (\sock -> recvWith sock 2048) connectSend
                 `shouldThrow` anyIOException
+        it "is heard by a connected one through recvMsg" $
+            bounceWith recvMsg' connectSend `shouldThrow` anyIOException
 
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do

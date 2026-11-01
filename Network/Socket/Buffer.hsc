@@ -11,6 +11,7 @@ module Network.Socket.Buffer (
   , recvBufFrom
   , recvBuf
   , recvBufNoWait
+  , recvBufNoWaitOr
   , sendBufMsg
   , recvBufMsg
   ) where
@@ -162,23 +163,34 @@ recvBuf s ptr nbytes
 --
 -- @since 3.2.9.0
 recvBufNoWait :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBufNoWait s ptr nbytes = withFdSocket s $ \fd -> do
+recvBufNoWait = recvBufNoWaitOr $ return (-2)
+
+-- | 'recvBufNoWait' which runs the action on an error, in place of
+--   answering -2.  The error is gone from the socket once read, so this
+--   is where to raise it.
+recvBufNoWaitOr :: IO CInt -> Socket -> Ptr Word8 -> Int -> IO Int
+recvBufNoWaitOr onError s ptr nbytes = withFdSocket s $ \fd -> do
 #if defined(mingw32_HOST_OS)
     alloca $ \ptr_bytes -> do
       res <- c_ioctlsocket fd #{const FIONREAD} ptr_bytes
       avail <- peek ptr_bytes
-      r <- if res == #{const NO_ERROR} && avail > 0 then
-               c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+      let failed = do
+              err <- c_WSAGetLastError
+              if err == #{const WSAEWOULDBLOCK}
+                  || err == #{const WSAEINPROGRESS} then
+                  return (-1)
+                else
+                  onError
+      r <- if res == #{const NO_ERROR} && avail > 0 then do
+               -- A pending error, such as an ICMP unreachable, counts as
+               -- something to read, and recv takes it.
+               n <- c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+               if n == -1 then failed else return n
            else if avail == 0 then
                -- Socket would block, could also mean socket is closed but
                -- can't distinguish
                return (-1)
-           else do err <- c_WSAGetLastError
-                   if err == #{const WSAEWOULDBLOCK}
-                       || err == #{const WSAEINPROGRESS} then
-                       return (-1)
-                     else
-                        return (-2)
+           else failed
       return $ fromIntegral r
 
 #else
@@ -190,7 +202,7 @@ recvBufNoWait s ptr nbytes = withFdSocket s $ \fd -> do
         if err == eAGAIN || err == eWOULDBLOCK then
             return (-1)
           else
-            return (-2)
+            fromIntegral <$> onError
 #endif
 
 mkInvalidRecvArgError :: String -> IOError

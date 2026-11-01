@@ -343,7 +343,8 @@ recvWith s nbytes giveUp
     | nbytes < 0 =
         ioError $ mkInvalidRecvArgError "Network.Socket.ByteString.recvWith"
     | otherwise = do
-        bs <- createAndTrim' nbytes $ \ptr -> recvBufNoWait s ptr nbytes
+        bs <- createAndTrim' nbytes $ \ptr ->
+            recvBufNoWaitOr (throwSocketError "Network.Socket.ByteString.recvWith") s ptr nbytes
         case bs of
             Just b -> return $ Right b
             Nothing -> withReadable s giveUp $ recv s nbytes
