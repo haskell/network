@@ -24,12 +24,16 @@ module Network.Socket.ByteString.Lazy (
     send,
     sendAll,
     sendWithFds,
+    sendWith,
+    sendAllWith,
 
     -- * Receive data from a socket
     getContents,
     recv,
+    recvWith,
 ) where
 
+import Control.Concurrent.STM (STM)
 import Data.ByteString.Lazy.Internal (
     ByteString (..),
     defaultChunkSize,
@@ -51,6 +55,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Network.Socket.ByteString as N
 import Network.Socket.Imports
 import Network.Socket.Types
+import Network.Socket.Wait (withWritable)
 
 -- | Send data and file descriptors over a UNIX-domain socket in
 --   a single system call. This function does not work on Windows.
@@ -63,6 +68,22 @@ sendWithFds
     -- ^ File descriptors
     -> IO ()
 sendWithFds s lbs fds = N.sendManyWithFds s (L.toChunks lbs) fds
+
+-- | 'send' which the caller can give up on.  See
+--   'Network.Socket.withWritable' for what is left of the stream after
+--   giving up.
+--
+--   @since 3.2.12.0
+sendWith :: Socket -> ByteString -> STM a -> IO (Either a Int64)
+sendWith s lbs giveUp = withWritable s giveUp $ send s lbs
+
+-- | 'sendAll' which the caller can give up on.  Part of the data may
+--   have been sent before it gives up, so a stream given up on is to be
+--   closed.
+--
+--   @since 3.2.12.0
+sendAllWith :: Socket -> ByteString -> STM a -> IO (Either a ())
+sendAllWith s lbs = N.sendManyWith s (L.toChunks lbs)
 
 -- -----------------------------------------------------------------------------
 -- Receiving
@@ -106,6 +127,16 @@ recv
     -> IO ByteString
     -- ^ Data received
 recv s nbytes = chunk <$> N.recv s (fromIntegral nbytes)
+  where
+    chunk k
+        | S.null k = Empty
+        | otherwise = Chunk k Empty
+
+-- | 'recv' which the caller can give up on.
+--
+--   @since 3.2.12.0
+recvWith :: Socket -> Int64 -> STM a -> IO (Either a ByteString)
+recvWith s nbytes giveUp = fmap chunk <$> N.recvWith s (fromIntegral nbytes) giveUp
   where
     chunk k
         | S.null k = Empty

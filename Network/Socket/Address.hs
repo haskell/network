@@ -7,6 +7,7 @@ module Network.Socket.Address (
 
     -- * Socket operations
     connect,
+    connectWith,
     bind,
     accept,
     acceptWith,
@@ -14,17 +15,22 @@ module Network.Socket.Address (
     -- * Sending and receiving ByteString
     sendTo,
     sendAllTo,
+    sendToWith,
     recvFrom,
     recvWith,
     recvFromWith,
 
     -- * Sending and receiving data from a buffer
     sendBufTo,
+    sendBufToWith,
     recvBufFrom,
+    recvBufFromWith,
 
     -- * Advanced IO
     sendBufMsg,
+    sendBufMsgWith,
     recvBufMsg,
+    recvBufMsgWith,
 ) where
 
 import Network.Socket.Buffer
