@@ -552,9 +552,11 @@ clearCtrlOnTruncation msgHdrPtr ret = when (ret == -1) $ do
 sendBufMsgMIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
 sendBufMsgMIO s fd msgHdrPtr cflags = do
   sendMsg <- mkSendMsgSafe <$> getWSASendMsg fd
-  throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
-    alloca $ \send_ptr ->
+  -- WSASendMsg returns 0 and puts the bytes sent here.
+  alloca $ \send_ptr -> do
+    _ <- throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
       sendMsg fd (castPtr msgHdrPtr) (fromIntegral cflags) send_ptr nullPtr nullPtr
+    fromIntegral <$> peek send_ptr
 
 ## if __IO_MANAGER_WINIO__ >= 2
 sendBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
