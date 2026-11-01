@@ -48,6 +48,8 @@
 * Add unsafeClose
   [#629](https://github.com/haskell/network/pull/629)
 * Add unsafeGracefulClose and recvMsgWith
+* Return the bytes sent from sendMsg on Windows
+* Add withWritable, connectWith and the send functions which the caller can give up on
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 
