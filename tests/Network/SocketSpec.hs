@@ -9,6 +9,10 @@ import Control.Exception (bracket)
 import Control.Concurrent.STM
 import Control.Monad
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Unsafe as BU
+import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Ptr (castPtr)
 import Data.Maybe (fromJust)
 import Data.List (nub)
 import Network.Socket
@@ -112,6 +116,28 @@ spec = do
                 check =<< readTVar late
             close sock
             r `shouldSatisfy` either (const True) (== Left ())
+
+    describe "sendBufMsgWith and recvBufMsgWith" $ do
+        it "send and receive as sendBufMsg and recvBufMsg do" $ do
+            let server sock = allocaBytes 1024 $ \buf -> do
+                    r <- recvBufMsgWith sock [(buf, 1024)] 0 mempty (retry :: STM ())
+                    case r of
+                        Right (_, n, _, _) ->
+                            BS.packCStringLen (castPtr buf, n) `shouldReturn` testMsg
+                        Left () -> expectationFailure "gave up without being told"
+                client sock addr = BU.unsafeUseAsCStringLen testMsg $ \(p, n) ->
+                    sendBufMsgWith sock addr [(castPtr p, n)] [] mempty (retry :: STM ())
+                        `shouldReturn` Right n
+            udpTest client server
+
+        it "recvBufMsgWith gives up when told to" $ do
+            sock <- socket AF_INET Datagram defaultProtocol
+            bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+            late <- registerDelay 100000
+            r <- allocaBytes 1024 $ \buf ->
+                recvBufMsgWith sock [(buf, 1024)] 0 mempty $ check =<< readTVar late
+            close sock
+            either (const True) (const False) r `shouldBe` True
 
     describe "bind" $ do
         let hints = defaultHints
