@@ -231,12 +231,15 @@ sendBufMsg s sa bufsizs cmsgs flags = do
             cflags = fromMsgFlag flags
         withFdSocket s $ \fd ->
           with msgHdr $ \msgHdrPtr ->
-            throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
 #if !defined(mingw32_HOST_OS)
+            throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
               c_sendmsg fd msgHdrPtr cflags
 #else
-              alloca $ \send_ptr ->
+            -- WSASendMsg returns 0 and puts the bytes sent here.
+            alloca $ \send_ptr -> do
+              _ <- throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
                 c_sendmsg fd msgHdrPtr (fromIntegral cflags) send_ptr nullPtr nullPtr
+              peek send_ptr
 #endif
   return $ fromIntegral sz
 
