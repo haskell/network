@@ -4,6 +4,7 @@
 
 module Network.Socket.Syscall where
 
+import Data.Either (isRight)
 import qualified Control.Exception as E
 import Foreign.Marshal.Utils (with)
 
@@ -179,29 +180,51 @@ bind s sa = withSocketAddress sa $ \p_sa siz -> void $ withFdSocket s $ \fd -> d
 
 -- | Connect to a remote socket at address.
 connect :: SocketAddress sa => Socket -> sa -> IO ()
-connect s sa = withSocketsDo $ withSocketAddress sa $ \p_sa sz -> do
-    connectLoop s p_sa (fromIntegral sz)
-    reportConnReset s True
+connect s sa = void (connectWhenWritable s sa waitWrite :: IO (Either () ()))
+  where
+#if defined(mingw32_HOST_OS)
+    waitWrite act = Right <$> act
+#else
+    waitWrite act = do
+        withFdSocket s $ threadWaitWrite . fromIntegral
+        Right <$> act
+#endif
 
-connectLoop :: SocketAddress sa => Socket -> Ptr sa -> CInt -> IO ()
-connectLoop s p_sa sz = withFdSocket s $ \fd -> loop fd
+-- | 'connect' which leaves the wait for a connection in progress to
+--   the caller: the argument runs the action once the socket is writable.
+connectWhenWritable
+    :: SocketAddress sa
+    => Socket -> sa -> (IO () -> IO (Either a ())) -> IO (Either a ())
+connectWhenWritable s sa whenWritable =
+    withSocketsDo $ withSocketAddress sa $ \p_sa sz -> do
+        r <- connectLoop s p_sa (fromIntegral sz) whenWritable
+        when (isRight r) $ reportConnReset s True
+        return r
+
+connectLoop
+    :: SocketAddress sa
+    => Socket -> Ptr sa -> CInt -> (IO () -> IO (Either a ())) -> IO (Either a ())
+#if defined(mingw32_HOST_OS)
+connectLoop s p_sa sz _ = withFdSocket s $ \fd -> loop fd
+#else
+connectLoop s p_sa sz whenWritable = withFdSocket s $ \fd -> loop fd
+#endif
   where
     errLoc = "Network.Socket.connect: " ++ show s
     loop fd = do
        r <- c_connect fd p_sa sz
-       when (r == -1) $ do
+       if r /= -1 then return (Right ()) else do
 #if defined(mingw32_HOST_OS)
            throwSocketError errLoc
 #else
            err <- getErrno
            case () of
              _ | err == eINTR       -> loop fd
-             _ | err == eINPROGRESS -> connectBlocked
---           _ | err == eAGAIN      -> connectBlocked
+             _ | err == eINPROGRESS -> whenWritable connected
+--           _ | err == eAGAIN      -> whenWritable connected
              _otherwise             -> throwSocketError errLoc
 
-    connectBlocked = do
-       withFdSocket s $ threadWaitWrite . fromIntegral
+    connected = do
        err <- getSocketOption s SoError
        when (err /= 0) $ throwSocketErrorCode errLoc (fromIntegral err)
 #endif

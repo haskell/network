@@ -4,10 +4,12 @@ module Network.Socket.SockAddr (
     getPeerName,
     getSocketName,
     connect,
+    connectWith,
     bind,
     accept,
     acceptWith,
     sendBufTo,
+    sendBufToWith,
     recvBufFrom,
     sendBufMsg,
     recvBufMsg,
@@ -50,6 +52,14 @@ connect s sa = connect' `annotateWithSocket` (s, Just sa)
     connect' = do
         G.connect s sa
         labelSocket s (\label -> label ++ " " ++ show sa)
+
+-- | 'connect' which the caller can give up on.  Whichever settles
+-- first decides: 'Left' when the 'STM' action fires, 'Right' when the
+-- connection is made.  A socket given up on is to be closed.
+--
+-- @since 3.2.12.0
+connectWith :: Socket -> SockAddr -> STM a -> IO (Either a ())
+connectWith s sa giveUp = G.connectWith s sa giveUp `annotateWithSocket` (s, Just sa)
 
 -- | Bind the socket to an address. The socket must not already be
 -- bound.  The 'Family' passed to @bind@ must be the
@@ -120,6 +130,13 @@ acceptWith s giveUp = acceptWith' `annotateWithSocket` (s, Nothing)
 -- ensuring that all data has been sent.
 sendBufTo :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
 sendBufTo s ptr len sa = G.sendBufTo s ptr len sa `annotateWithSocket` (s, Just sa)
+
+-- | 'sendBufTo' which the caller can give up on.
+--
+-- @since 3.2.12.0
+sendBufToWith :: Socket -> Ptr a -> Int -> SockAddr -> STM b -> IO (Either b Int)
+sendBufToWith s ptr len sa giveUp =
+    G.sendBufToWith s ptr len sa giveUp `annotateWithSocket` (s, Just sa)
 
 -- | Receive data from the socket, writing it into buffer instead of
 -- creating a new string.  The socket need not be in a connected

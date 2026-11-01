@@ -22,12 +22,16 @@ module Network.Socket.ByteString (
     sendAll,
     sendTo,
     sendAllTo,
+    sendWith,
+    sendAllWith,
+    sendToWith,
 
     -- ** Vectored I/O
     -- $vectored
     sendMany,
     sendManyTo,
     sendManyWithFds,
+    sendManyWith,
 
     -- * Receive data from a socket
     recv,
@@ -37,6 +41,7 @@ module Network.Socket.ByteString (
 
     -- * Advanced send and recv
     sendMsg,
+    sendMsgWith,
     recvMsg,
     recvMsgWith,
 ) where
@@ -49,6 +54,7 @@ import Network.Socket.ByteString.IO hiding (
     recvFromWith,
     sendAllTo,
     sendTo,
+    sendToWith,
  )
 import qualified Network.Socket.ByteString.IO as G
 import Network.Socket.SockAddr (annotateWithSocket)
@@ -107,3 +113,10 @@ recvFromWith
     :: Socket -> Int -> STM a -> IO (Either a (ByteString, SockAddr))
 recvFromWith s len giveUp =
     G.recvFromWith s len giveUp `annotateWithSocket` (s, Nothing)
+
+-- | 'sendTo' which the caller can give up on.
+--
+--   @since 3.2.12.0
+sendToWith :: Socket -> ByteString -> SockAddr -> STM a -> IO (Either a Int)
+sendToWith s bs sa giveUp =
+    G.sendToWith s bs sa giveUp `annotateWithSocket` (s, Just sa)
