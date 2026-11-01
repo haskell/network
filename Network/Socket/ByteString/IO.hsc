@@ -19,12 +19,16 @@ module Network.Socket.ByteString.IO
     , sendAll
     , sendTo
     , sendAllTo
+    , sendWith
+    , sendAllWith
+    , sendToWith
 
     -- ** Vectored I/O
     -- $vectored
     , sendMany
     , sendManyTo
     , sendManyWithFds
+    , sendManyWith
 
     -- * Receive data from a socket
     , recv
@@ -36,6 +40,7 @@ module Network.Socket.ByteString.IO
 
     -- * Advanced send and recv
     , sendMsg
+    , sendMsgWith
     , recvMsg
     , MsgFlag(..)
     , Cmsg(..)
@@ -109,6 +114,35 @@ sendAll s bs0 = loop bs0
         waitWhen0 sent s
         when (sent /= B.length bs) $ loop $ B.drop sent bs
 
+-- | 'send' which the caller can give up on.  See
+--   'Network.Socket.withWritable' for what is left of the stream after
+--   giving up.
+--
+--   @since 3.2.12.0
+sendWith :: Socket -> ByteString -> STM a -> IO (Either a Int)
+sendWith s xs giveUp = withWritable s giveUp $ send s xs
+
+-- | 'sendAll' which the caller can give up on.  Part of the data may
+--   have been sent before it gives up, so a stream given up on is to be
+--   closed.
+--
+--   @since 3.2.12.0
+sendAllWith :: Socket -> ByteString -> STM a -> IO (Either a ())
+sendAllWith _ "" _ = return $ Right ()
+sendAllWith s bs giveUp = do
+    r <- sendWith s bs giveUp
+    case r of
+        Left a -> return $ Left a
+        Right sent -> sendAllWith s (B.drop sent bs) giveUp
+
+-- | 'sendTo' which the caller can give up on.
+--
+--   @since 3.2.12.0
+sendToWith
+    :: SocketAddress sa
+    => Socket -> ByteString -> sa -> STM a -> IO (Either a Int)
+sendToWith s xs sa giveUp = withWritable s giveUp $ sendTo s xs sa
+
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent. Applications are responsible for
@@ -152,11 +186,13 @@ sendMany :: Socket       -- ^ Connected socket
          -> IO ()
 sendMany _ [] = return ()
 sendMany s cs = do
-    sent <- sendManyInner
+    sent <- sendManyOnce s cs
     waitWhen0 sent s
     when (sent >= 0) $ sendMany s $ remainingChunks sent cs
-  where
-    sendManyInner =
+
+-- One gathering write, which may send only part of the data.
+sendManyOnce :: Socket -> [ByteString] -> IO Int
+sendManyOnce s cs =
 #if !defined(mingw32_HOST_OS)
       fmap fromIntegral . withIOVecfromBS cs $ \(iovsPtr, iovsLen) ->
           withFdSocket s $ \fd -> do
@@ -172,6 +208,18 @@ sendMany s cs = do
                        c_wsasend fd wsabsPtr len send_ptr  0 nullPtr nullPtr
                 peek send_ptr
 #endif
+
+-- | 'sendMany' which the caller can give up on.  Parts may have been
+--   sent before it gives up, so a stream given up on is to be closed.
+--
+--   @since 3.2.12.0
+sendManyWith :: Socket -> [ByteString] -> STM a -> IO (Either a ())
+sendManyWith _ [] _ = return $ Right ()
+sendManyWith s cs giveUp = do
+    r <- withWritable s giveUp $ sendManyOnce s cs
+    case r of
+        Left a -> return $ Left a
+        Right sent -> sendManyWith s (remainingChunks sent cs) giveUp
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  The
@@ -372,6 +420,20 @@ sendMsg :: Socket       -- ^ Socket
 sendMsg _ _    []  _ _ = return 0
 sendMsg s addr bss cmsgs flags = withBufSizs bss $ \bufsizs ->
     sendBufMsg s addr bufsizs cmsgs flags
+
+-- | 'sendMsg' which the caller can give up on.
+--
+--   @since 3.2.12.0
+sendMsgWith
+    :: Socket
+    -> SockAddr
+    -> [ByteString]
+    -> [Cmsg]
+    -> MsgFlag
+    -> STM a
+    -> IO (Either a Int)
+sendMsgWith s addr bss cmsgs flags giveUp =
+    withWritable s giveUp $ sendMsg s addr bss cmsgs flags
 
 -- | Receive data from the socket using recvmsg(2).
 recvMsg :: Socket  -- ^ Socket

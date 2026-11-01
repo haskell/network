@@ -72,6 +72,41 @@ spec = do
                 { clientSetup = readMVar portVar >>= connect'
                 }
 
+    describe "connectWith" $ do
+        let
+          hints = defaultHints { addrSocketType = Stream }
+          connectWith' serverPort giveUp = do
+              addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+              sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+              r <- connectWith sock (addrAddress addr) giveUp
+              return (sock, r)
+
+        it "connects as connect does" $ do
+            withPort $ \portVar -> test (tcp serverAddr return portVar)
+                { clientSetup = do
+                    (sock, r) <- readMVar portVar >>= \p -> connectWith' p (retry :: STM ())
+                    r `shouldBe` Right ()
+                    return sock
+                }
+
+        it "throws as connect does" $ do
+            connectWith' (8003 :: Int) (retry :: STM ()) `shouldThrow` anyIOException
+
+        it "gives up when already told to" $ do
+            (sock, r) <- connectWith' (8003 :: Int) (return ())
+            close sock
+            r `shouldBe` Left ()
+
+        it "gives up on a connection which does not come" $ do
+            -- Nothing answers here, unless the network says it is
+            -- unreachable at once, which is not giving up but is fine.
+            sock <- socket AF_INET Stream defaultProtocol
+            late <- registerDelay 300000
+            r <- tryIOError $ connectWith sock (SockAddrInet 9 $ tupleToHostAddress (10, 255, 255, 1)) $
+                check =<< readTVar late
+            close sock
+            r `shouldSatisfy` either (const True) (== Left ())
+
     describe "bind" $ do
         let hints = defaultHints
                 { addrFlags = [AI_PASSIVE]

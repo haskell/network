@@ -18,9 +18,13 @@
 --   the one which would have given up, and nothing returns at all.
 module Network.Socket.Wait (
     withReadable,
+    withWritable,
     acceptWith,
     recvBufWith,
     recvBufFromWith,
+    sendBufWith,
+    sendBufToWith,
+    connectWith,
     isClosedSocketError,
     isTransientAcceptError,
 ) where
@@ -79,7 +83,25 @@ import Network.Socket.Types
 --   looks at it once more before a read which would not block.  Reading
 --   a 'TVar' is what it is for.
 withReadable :: Socket -> STM a -> IO b -> IO (Either a b)
-withReadable s giveUp act = do
+withReadable = withReady Read
+
+-- | 'withReadable' for writing: running an action once the socket is
+--   writable, unless the 'STM' action fires first.  The same conditions
+--   hold, with one writer at a time in place of one reader.
+--
+--   A send which is given up on may have sent part of its data on
+--   Windows, where it is cancelled rather than never started, and the
+--   socket cannot be sent on after that.  So a stream given up on in
+--   the middle of a send is to be closed.
+--
+--   @since 3.2.12.0
+withWritable :: Socket -> STM a -> IO b -> IO (Either a b)
+withWritable = withReady Write
+
+data Ready = Read | Write
+
+withReady :: Ready -> Socket -> STM a -> IO b -> IO (Either a b)
+withReady _ready s giveUp act = do
     -- Looking at the give-up first: on Windows 'wait' starts the
     -- operation before it looks at any STM, and on POSIX this keeps a
     -- caller which has given up off a descriptor close may have freed.
@@ -90,9 +112,11 @@ withReadable s giveUp act = do
   where
 #if !defined(mingw32_HOST_OS)
     wait = do
-        (readable, cancelWait) <- waitAndCancelReadSocketSTM s
+        (ready, cancelWait) <- case _ready of
+            Read -> waitAndCancelReadSocketSTM s
+            Write -> waitAndCancelWriteSocketSTM s
         ev <-
-            atomically ((Left <$> giveUp) `orElse` (Right <$> readable))
+            atomically ((Left <$> giveUp) `orElse` (Right <$> ready))
                 `E.finally` (cancelWait `E.catch` gone)
         either (return . Left) (const $ Right <$> act) ev
 
@@ -143,6 +167,37 @@ recvBufFromWith
     => Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a (Int, sa))
 recvBufFromWith s ptr nbytes giveUp =
     withReadable s giveUp $ recvBufFrom s ptr nbytes
+
+-- | 'sendBuf' which the caller can give up on.  See 'withWritable' for
+--   what is left of the stream after giving up.
+--
+--   @since 3.2.12.0
+sendBufWith :: Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a Int)
+sendBufWith s ptr nbytes giveUp = withWritable s giveUp $ sendBuf s ptr nbytes
+
+-- | 'sendBufTo' which the caller can give up on.
+--
+--   @since 3.2.12.0
+sendBufToWith
+    :: SocketAddress sa
+    => Socket -> Ptr a -> Int -> sa -> STM b -> IO (Either b Int)
+sendBufToWith s ptr nbytes sa giveUp =
+    withWritable s giveUp $ sendBufTo s ptr nbytes sa
+
+-- | 'connect' which the caller can give up on.  A socket given up on
+--   may still be connecting, so it is to be closed.
+--
+--   @since 3.2.12.0
+connectWith :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
+#if !defined(mingw32_HOST_OS)
+connectWith s sa giveUp = do
+    gaveUp <- atomically $ (Just <$> giveUp) `orElse` return Nothing
+    case gaveUp of
+        Just a -> return $ Left a
+        Nothing -> connectWhenWritable s sa $ withWritable s giveUp
+#else
+connectWith s sa giveUp = withWritable s giveUp $ connect s sa
+#endif
 
 -- | Whether this is the error a socket operation gives once the socket has
 --   been closed under it.

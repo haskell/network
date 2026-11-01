@@ -4,10 +4,12 @@ module Network.Socket.SockAddr (
     getPeerName,
     getSocketName,
     connect,
+    connectWith,
     bind,
     accept,
     acceptWith,
     sendBufTo,
+    sendBufToWith,
     recvBufFrom,
     sendBufMsg,
     recvBufMsg,
@@ -42,6 +44,14 @@ getSocketName = G.getSocketName
 -- | Connect to a remote socket at address.
 connect :: Socket -> SockAddr -> IO ()
 connect = G.connect
+
+-- | 'connect' which the caller can give up on.  Whichever settles
+-- first decides: 'Left' when the 'STM' action fires, 'Right' when the
+-- connection is made.  A socket given up on is to be closed.
+--
+-- @since 3.2.12.0
+connectWith :: Socket -> SockAddr -> STM a -> IO (Either a ())
+connectWith = G.connectWith
 
 -- | Bind the socket to an address. The socket must not already be
 -- bound.  The 'Family' passed to @bind@ must be the
@@ -92,6 +102,12 @@ acceptWith = G.acceptWith
 -- ensuring that all data has been sent.
 sendBufTo :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
 sendBufTo = G.sendBufTo
+
+-- | 'sendBufTo' which the caller can give up on.
+--
+-- @since 3.2.12.0
+sendBufToWith :: Socket -> Ptr a -> Int -> SockAddr -> STM b -> IO (Either b Int)
+sendBufToWith = G.sendBufToWith
 
 -- | Receive data from the socket, writing it into buffer instead of
 -- creating a new string.  The socket need not be in a connected

@@ -3,6 +3,8 @@
 ## Version 3.2.12.0
 
 * Add unsafeGracefulClose and recvMsgWith
+* Return the bytes sent from sendMsg on Windows
+* Add withWritable, connectWith and the send functions which the caller can give up on
 
 ## Version 3.2.11.0
 

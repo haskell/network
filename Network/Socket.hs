@@ -406,9 +406,13 @@ module Network.Socket (
 
     -- ** Giving up on a blocked operation
     withReadable,
+    withWritable,
     acceptWith,
+    connectWith,
     recvBufWith,
     recvBufFromWith,
+    sendBufWith,
+    sendBufToWith,
 
     -- ** What a given-up operation can fail with
     isClosedSocketError,
@@ -459,7 +463,9 @@ import Network.Socket.Wait (
     isClosedSocketError,
     isTransientAcceptError,
     recvBufWith,
+    sendBufWith,
     withReadable,
+    withWritable,
  )
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
@@ -477,6 +483,9 @@ import Network.Socket.Win32.Cmsg
 -- caller gave up and 'Right' when the operation completed, and an
 -- operation which has completed wins a tie.  They are for one reader at
 -- a time, and 'withReadable' says what else they ask of the caller.
+-- 'withWritable', 'connectWith', 'sendBufWith' and 'sendBufToWith' do the
+-- same for writing, one writer at a time; a stream given up on in the
+-- middle of a send is to be closed.
 --
 -- The other two ways are going away or gone.  A close ends a wait only
 -- because the event manager tells the waiter so, which 'GHC.Conc.closeFdWith'
