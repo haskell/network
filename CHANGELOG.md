@@ -50,6 +50,7 @@
 * Add unsafeGracefulClose and recvMsgWith
 * Return the bytes sent from sendMsg on Windows
 * Add withWritable, connectWith and the send functions which the caller can give up on
+* Raise the error which the first read of recvWith meets, rather than dropping it and waiting
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 
