@@ -38,6 +38,7 @@ import Network.Socket.Win32.MsgHdr
 import Network.Socket.Win32.WSABuf
 ## if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
+import Network.Socket.Options (getSocketType)
 import GHC.IO.SubSystem ((<!>))
 import Foreign.Ptr (wordPtrToPtr)
 ## endif
@@ -266,7 +267,7 @@ recvBufFromWinIO s ptr nbytes =
     completionCB err dwBytes
         | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
         | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
-        | err == _WSAECONNRESET           = Mgr.ioSuccess 0
+        | err == _WSAECONNRESET           = connResetWinIO s (Mgr.ioFailed err)
         | err == _WSAEDISCON              = Mgr.ioSuccess 0
         | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
         | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
@@ -349,7 +350,7 @@ recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
     completionCB err dwBytes
         | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
         | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
-        | err == _WSAECONNRESET           = Mgr.ioSuccess 0
+        | err == _WSAECONNRESET           = connResetWinIO s (Mgr.ioFailed err)
         | err == _WSAEDISCON              = Mgr.ioSuccess 0
         | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
         | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
@@ -357,6 +358,13 @@ recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
         | err == _ERROR_OPERATION_ABORTED = Mgr.ioSuccess 0
         | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
         | otherwise                       = Mgr.ioFailed err
+
+-- WSAECONNRESET on a datagram socket reports an ICMP unreachable, which
+-- POSIX gives as ECONNREFUSED: an error to raise, not the end of a stream.
+connResetWinIO :: Num a => Socket -> IO (Mgr.IOResult a) -> IO (Mgr.IOResult a)
+connResetWinIO s failed = do
+    stype <- getSocketType s
+    if stype == Datagram then failed else Mgr.ioSuccess 0
 ## endif /* __IO_MANAGER_WINIO__ */
 #endif /* mingw32_HOST_OS */
 
@@ -508,7 +516,7 @@ recvBufMsg s bufsizs clen flags = do
                       c_recvmsg fd msgHdrPtr _cflags
 #else
 ## if __IO_MANAGER_WINIO__ >= 2
-                recvBufMsgMIO s fd msgHdrPtr <!> recvBufMsgWinIO fd msgHdrPtr
+                recvBufMsgMIO s fd msgHdrPtr <!> recvBufMsgWinIO s fd msgHdrPtr
 ## else
                 recvBufMsgMIO s fd msgHdrPtr
 ## endif
@@ -602,8 +610,8 @@ recvBufMsgMIO s fd msgHdrPtr = do
       fromIntegral <$> peek len_ptr
 
 ## if __IO_MANAGER_WINIO__ >= 2
-recvBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> IO Int
-recvBufMsgWinIO fd msgHdrPtr = do
+recvBufMsgWinIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> IO Int
+recvBufMsgWinIO s fd msgHdrPtr = do
     -- Perform async WSARecvMsg using withOverlapped
     -- (socket already associated in socket creation)
     recvMsg <- mkRecvMsgUnsafe <$> getWSARecvMsg fd
@@ -635,7 +643,7 @@ recvBufMsgWinIO fd msgHdrPtr = do
       | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
       | err == _WSAEMSGSIZE             = Mgr.ioSuccess $ fromIntegral dwBytes
       | err == _STATUS_BUFFER_OVERFLOW  = Mgr.ioSuccess $ fromIntegral dwBytes  -- truncated msg
-      | err == _WSAECONNRESET           = Mgr.ioSuccess 0
+      | err == _WSAECONNRESET           = connResetWinIO s (Mgr.ioFailed err)
       | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
       | err == _WSAESHUTDOWN            = Mgr.ioSuccess 0
       | err == _WSAEDISCON              = Mgr.ioSuccess 0

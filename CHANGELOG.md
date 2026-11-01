@@ -23,6 +23,8 @@
   [#626](https://github.com/haskell/network/pull/626)
 * WINIO: fixing a spurious EOF when a recv completes synchronously.
   [#626](https://github.com/haskell/network/pull/626)
+* WINIO: raising the ICMP unreachable of a connected datagram socket
+  rather than taking it as an empty datagram.
 * Adding acceptWith, recvWith, recvFromWith, recvBufWith and recvBufFromWith, which take an STM action
   beside the operation and let the caller give up on it without closing
   the socket or interrupting the thread, and withReadable, which they are
