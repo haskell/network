@@ -119,7 +119,16 @@ withReady _ready s giveUp act = do
         Nothing -> wait
   where
 #if !defined(mingw32_HOST_OS)
+    -- A socket which is ready already skips the IO manager, whose round
+    -- trip costs several times the operation: a send usually finds room.
     wait = do
+        now <- withFdSocket s $ \fd ->
+            c_ready_now fd $ case _ready of
+                Read -> 0
+                Write -> 1
+        if now /= 0 then Right <$> act else waitIO
+
+    waitIO = do
         (ready, cancelWait) <- case _ready of
             Read -> waitAndCancelReadSocketSTM s
             Write -> waitAndCancelWriteSocketSTM s
@@ -153,6 +162,11 @@ withReady _ready s giveUp act = do
             Left a -> do
                 cancelAct
                 return $ Left a
+#endif
+
+#if !defined(mingw32_HOST_OS)
+foreign import ccall unsafe "hsnet_ready_now"
+    c_ready_now :: CInt -> CInt -> IO CInt
 #endif
 
 -- | 'accept' which the caller can give up on.
