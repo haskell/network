@@ -55,6 +55,7 @@
 * Raise the error which the first read of recvWith meets, rather than dropping it and waiting
 * Add recvBufMsgWith, sendBufMsgWith, the give-up functions of Network.Socket.Address and of Network.Socket.ByteString.Lazy
 * On Windows, giving up on an operation no longer cancels other threads' operations on the socket
+* recvBufFromWith takes Ptr a, as recvBufFrom does
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 * Pick the WinIO test option in the cabal file, not in configure
