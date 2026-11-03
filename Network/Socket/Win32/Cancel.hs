@@ -17,12 +17,14 @@
 module Network.Socket.Win32.Cancel (
     windowsViaSTM,
     windowsCancelPendingIo,
+    withOverlapped,
 ) where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
 import qualified Control.Exception as E
-import Foreign.Ptr (nullPtr)
+import Foreign.Marshal.Alloc (allocaBytes)
+import System.IO.Unsafe (unsafePerformIO)
 import System.IO (hPutStrLn, stderr)
 
 import Network.Socket.Imports
@@ -36,8 +38,12 @@ import Network.Socket.Types
 --   Cancelling waits for the operation to end, so a buffer it reads
 --   into has to stay alive until either the 'STM' action completes or
 --   the cancel returns.
-windowsViaSTM :: Socket -> IO a -> IO (STM a, IO ())
-windowsViaSTM s act = do
+--
+--   The cancel reaches the operation issued with the given OVERLAPPED
+--   (see 'withOverlapped') and nothing else.  With 'nullPtr' it reaches
+--   every operation pending on the socket, whichever thread issued it.
+windowsViaSTM :: Socket -> Ptr () -> IO a -> IO (STM a, IO ())
+windowsViaSTM s ov act = do
     var <- newTVarIO Nothing
     -- Masked so that the var is written whatever happens: a thread
     -- which died between the call returning and the write would leave
@@ -65,7 +71,7 @@ windowsViaSTM s act = do
     cancel sock ended _tid = E.uninterruptibleMask_ $ loop sayAfter
       where
         loop n = do
-            windowsCancelPendingIo sock
+            void $ withFdSocket sock $ \fd -> c_CancelIoEx fd ov
             over <- endedWithin 1000
             unless over $ do
                 when (n == 1) say
@@ -101,6 +107,19 @@ windowsViaSTM s act = do
 --   again.
 windowsCancelPendingIo :: Socket -> IO ()
 windowsCancelPendingIo s = void $ withFdSocket s $ \fd -> c_CancelIoEx fd nullPtr
+
+-- | Running an action with an OVERLAPPED of its own, to issue an
+--   operation which 'windowsViaSTM' can then cancel alone.  It stays
+--   alive until the action returns, so the operation must end first.
+withOverlapped :: (Ptr () -> IO a) -> IO a
+withOverlapped = allocaBytes overlappedSize
+
+overlappedSize :: Int
+overlappedSize = fromIntegral $ unsafePerformIO c_ovl_size
+{-# NOINLINE overlappedSize #-}
+
+foreign import ccall unsafe "hsnet_ovl_size"
+  c_ovl_size :: IO CInt
 
 -- BOOL CancelIoEx(HANDLE hFile, LPOVERLAPPED lpOverlapped)
 -- A SOCKET is a kernel HANDLE.  A NULL lpOverlapped cancels all

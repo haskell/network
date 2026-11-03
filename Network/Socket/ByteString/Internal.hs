@@ -16,6 +16,7 @@ module Network.Socket.ByteString.Internal
     , c_writev
 #else
     , c_wsasend
+    , c_ovl_sendv
 #endif
     , c_sendmsg
     , c_recvmsg
@@ -64,6 +65,9 @@ foreign import ccall unsafe "recvmsg"
   -- fixme Handle for SOCKET, see #426
 foreign import CALLCONV SAFE_ON_WIN "WSASend"
   c_wsasend :: CInt -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
+-- WSASend with an OVERLAPPED of the caller's, waited for in the call.
+foreign import ccall safe "hsnet_ovl_sendv"
+  c_ovl_sendv :: CInt -> Ptr WSABuf -> DWORD -> Ptr () -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSASendMsg"
   c_sendmsg :: CInt -> Ptr (MsgHdr SockAddr) -> DWORD -> LPDWORD -> Ptr () -> Ptr ()  -> IO CInt
 foreign import CALLCONV SAFE_ON_WIN "WSARecvMsg"
