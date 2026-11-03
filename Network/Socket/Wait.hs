@@ -208,7 +208,7 @@ recvBufWith s ptr nbytes giveUp =
 --   @since 3.2.10.0
 recvBufFromWith
     :: SocketAddress sa
-    => Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a (Int, sa))
+    => Socket -> Ptr a -> Int -> STM b -> IO (Either b (Int, sa))
 recvBufFromWith s ptr nbytes giveUp =
     withReadableOv s giveUp $ \ov -> recvBufFromOv ov s ptr nbytes
 
