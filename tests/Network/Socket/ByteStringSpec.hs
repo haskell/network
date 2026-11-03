@@ -2,9 +2,10 @@
 
 module Network.Socket.ByteStringSpec (main, spec) where
 
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, tryReadMVar)
 import Control.Concurrent.STM (STM, check, readTVar, registerDelay, retry)
-import Control.Exception (finally)
+import Control.Exception (SomeException, finally, try)
 import Control.Monad
 import Data.Bits
 import qualified Data.ByteString as S
@@ -238,6 +239,33 @@ spec = do
             late <- registerDelay 200000
             gaveUp (sendAllWith sock chunk $ check =<< readTVar late)
                 `shouldReturn` True
+
+    describe "giving up" $ do
+        -- On Windows a give-up cancels the operation; that must not
+        -- reach another thread's operation on the same socket.
+        it "leaves another thread's send alone" $ withStalledPeer $ \sock -> do
+            ended <- newEmptyMVar
+            _ <- forkIO $ do
+                r <- try $ forever $ sendAll sock chunk
+                putMVar ended (r :: Either SomeException ())
+            threadDelay 300000
+            late <- registerDelay 200000
+            r <- recvWith sock 4096 $ check =<< readTVar late
+            either (const True) (const False) r `shouldBe` True
+            threadDelay 300000
+            isNothing <$> tryReadMVar ended `shouldReturn` True
+
+        it "leaves another thread's recv alone" $ withStalledPeer $ \sock -> do
+            ended <- newEmptyMVar
+            _ <- forkIO $ do
+                r <- try $ recv sock 4096
+                putMVar ended (r :: Either SomeException S.ByteString)
+            threadDelay 100000
+            late <- registerDelay 200000
+            gaveUp (sendAllWith sock chunk $ check =<< readTVar late)
+                `shouldReturn` True
+            threadDelay 300000
+            isNothing <$> tryReadMVar ended `shouldReturn` True
 
     describe "sendManyWith" $ do
         it "sends as sendMany does" $ do

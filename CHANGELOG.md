@@ -54,6 +54,7 @@
 * Add withWritable, connectWith and the send functions which the caller can give up on
 * Raise the error which the first read of recvWith meets, rather than dropping it and waiting
 * Add recvBufMsgWith, sendBufMsgWith, the give-up functions of Network.Socket.Address and of Network.Socket.ByteString.Lazy
+* On Windows, giving up on an operation no longer cancels other threads' operations on the socket
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 

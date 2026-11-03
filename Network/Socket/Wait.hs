@@ -19,6 +19,8 @@
 module Network.Socket.Wait (
     withReadable,
     withWritable,
+    withReadableOv,
+    withWritableOv,
     acceptWith,
     recvBufWith,
     recvBufFromWith,
@@ -78,7 +80,11 @@ import Network.Socket.Win32.Cmsg
 --   readiness to wait for, so the action is started at once on a thread
 --   of its own and the give-up cancels it with @CancelIoEx@ on this
 --   socket, which reaches nothing else -- an action blocked on anything
---   else would never end.
+--   else would never end.  The cancel cannot tell the action from other
+--   operations pending on the socket, so it ends those too, whichever
+--   thread issued them.  The give-ups for particular operations, such as
+--   'recvBufWith' and 'Network.Socket.ByteString.sendAllWith', cancel
+--   their own and leave the rest alone.
 --
 --   __One reader at a time__ is what keeps that condition.  A second
 --   thread taking the data between the readiness and the action leaves
@@ -91,7 +97,7 @@ import Network.Socket.Win32.Cmsg
 --   looks at it once more before a read which would not block.  Reading
 --   a 'TVar' is what it is for.
 withReadable :: Socket -> STM a -> IO b -> IO (Either a b)
-withReadable = withReady Read
+withReadable s giveUp act = withReady Read False s giveUp $ const act
 
 -- | 'withReadable' for writing: running an action once the socket is
 --   writable, unless the 'STM' action fires first.  The same conditions
@@ -104,12 +110,22 @@ withReadable = withReady Read
 --
 --   @since 3.2.12.0
 withWritable :: Socket -> STM a -> IO b -> IO (Either a b)
-withWritable = withReady Write
+withWritable s giveUp act = withReady Write False s giveUp $ const act
+
+-- | 'withReadable' for an operation which takes an OVERLAPPED: on
+--   Windows it is issued with one of its own and the give-up cancels it
+--   alone.  'nullPtr' is passed elsewhere.
+withReadableOv :: Socket -> STM a -> (Ptr () -> IO b) -> IO (Either a b)
+withReadableOv = withReady Read True
+
+-- | 'withWritable' for an operation which takes an OVERLAPPED.
+withWritableOv :: Socket -> STM a -> (Ptr () -> IO b) -> IO (Either a b)
+withWritableOv = withReady Write True
 
 data Ready = Read | Write
 
-withReady :: Ready -> Socket -> STM a -> IO b -> IO (Either a b)
-withReady _ready s giveUp act = do
+withReady :: Ready -> Bool -> Socket -> STM a -> (Ptr () -> IO b) -> IO (Either a b)
+withReady _ready _own s giveUp act = do
     -- Looking at the give-up first: on Windows 'wait' starts the
     -- operation before it looks at any STM, and on POSIX this keeps a
     -- caller which has given up off a descriptor close may have freed.
@@ -126,7 +142,7 @@ withReady _ready s giveUp act = do
             c_ready_now fd $ case _ready of
                 Read -> 0
                 Write -> 1
-        if now /= 0 then Right <$> act else waitIO
+        if now /= 0 then Right <$> act nullPtr else waitIO
 
     waitIO = do
         (ready, cancelWait) <- case _ready of
@@ -135,7 +151,7 @@ withReady _ready s giveUp act = do
         ev <-
             atomically ((Left <$> giveUp) `orElse` (Right <$> ready))
                 `E.finally` (cancelWait `E.catch` gone)
-        either (return . Left) (const $ Right <$> act) ev
+        either (return . Left) (const $ Right <$> act nullPtr) ev
 
     -- The cancel can throw, and from a finally that would replace the
     -- exception which ended the wait -- the timeout the caller is waiting
@@ -144,8 +160,13 @@ withReady _ready s giveUp act = do
     gone :: E.IOException -> IO ()
     gone _ = return ()
 #else
-    wait = do
-        (completed, cancelAct) <- windowsViaSTM s act
+    -- Only an operation issued with an OVERLAPPED of its own can be
+    -- cancelled alone; any other cancel reaches the whole socket.
+    wait
+        | _own = withOverlapped waitOn
+        | otherwise = waitOn nullPtr
+    waitOn ov = do
+        (completed, cancelAct) <- windowsViaSTM s ov (act ov)
         -- The operation wins a tie.  It has already read into the
         -- caller's buffer by then, and answering Left would throw those
         -- bytes away -- which for a stream loses them for good.
@@ -179,7 +200,8 @@ acceptWith s giveUp = withReadable s giveUp $ accept s
 --
 --   @since 3.2.10.0
 recvBufWith :: Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a Int)
-recvBufWith s ptr nbytes giveUp = withReadable s giveUp $ recvBuf s ptr nbytes
+recvBufWith s ptr nbytes giveUp =
+    withReadableOv s giveUp $ \ov -> recvBufOv ov s ptr nbytes
 
 -- | 'recvBufFrom' which the caller can give up on.
 --
@@ -188,14 +210,15 @@ recvBufFromWith
     :: SocketAddress sa
     => Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a (Int, sa))
 recvBufFromWith s ptr nbytes giveUp =
-    withReadable s giveUp $ recvBufFrom s ptr nbytes
+    withReadableOv s giveUp $ \ov -> recvBufFromOv ov s ptr nbytes
 
 -- | 'sendBuf' which the caller can give up on.  See 'withWritable' for
 --   what is left of the stream after giving up.
 --
 --   @since 3.2.12.0
 sendBufWith :: Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a Int)
-sendBufWith s ptr nbytes giveUp = withWritable s giveUp $ sendBuf s ptr nbytes
+sendBufWith s ptr nbytes giveUp =
+    withWritableOv s giveUp $ \ov -> sendBufOv ov s ptr nbytes
 
 -- | 'sendBufTo' which the caller can give up on.
 --
@@ -204,7 +227,7 @@ sendBufToWith
     :: SocketAddress sa
     => Socket -> Ptr a -> Int -> sa -> STM b -> IO (Either b Int)
 sendBufToWith s ptr nbytes sa giveUp =
-    withWritable s giveUp $ sendBufTo s ptr nbytes sa
+    withWritableOv s giveUp $ \ov -> sendBufToOv ov s ptr nbytes sa
 
 -- | 'recvBufMsg' which the caller can give up on.
 --
@@ -218,7 +241,7 @@ recvBufMsgWith
     -> STM a
     -> IO (Either a (sa, Int, [Cmsg], MsgFlag))
 recvBufMsgWith s bufsizs clen flags giveUp =
-    withReadable s giveUp $ recvBufMsg s bufsizs clen flags
+    withReadableOv s giveUp $ \ov -> recvBufMsgOv ov s bufsizs clen flags
 
 -- | 'sendBufMsg' which the caller can give up on.
 --
@@ -233,7 +256,7 @@ sendBufMsgWith
     -> STM a
     -> IO (Either a Int)
 sendBufMsgWith s sa bufsizs cmsgs flags giveUp =
-    withWritable s giveUp $ sendBufMsg s sa bufsizs cmsgs flags
+    withWritableOv s giveUp $ \ov -> sendBufMsgOv ov s sa bufsizs cmsgs flags
 
 -- | 'connect' which the caller can give up on.  A socket given up on
 --   may still be connecting, so it is to be closed.

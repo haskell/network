@@ -520,5 +520,9 @@ import Network.Socket.Win32.Cmsg
 -- one could be started.  The four readiness functions say so rather than
 -- blocking for good, and what runs there instead is the operation itself,
 -- on a thread of its own, cancelled with @CancelIoEx@ when the caller
--- gives up.  "Network.Socket.ByteString" has @recvWith@ and
--- @recvFromWith@ for 'Data.ByteString.ByteString'.
+-- gives up.  Those for particular operations cancel their own alone,
+-- and another thread's operation on the socket carries on; the action
+-- given to 'withReadable' or 'withWritable' cannot be told apart, so its
+-- cancel ends every operation pending on the socket.
+-- "Network.Socket.ByteString" has @recvWith@ and @recvFromWith@ for
+-- 'Data.ByteString.ByteString'.
