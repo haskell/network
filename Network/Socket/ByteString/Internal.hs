@@ -18,6 +18,7 @@ module Network.Socket.ByteString.Internal
     , c_recvmsg
 #else
     , c_wsasend
+    , c_ovl_sendv
 #endif
     ) where
 
@@ -63,6 +64,9 @@ foreign import ccall unsafe "recvmsg"
   -- fixme Handle for SOCKET, see #426
 foreign import CALLCONV SAFE_ON_WIN "WSASend"
   c_wsasend :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
+-- WSASend with an OVERLAPPED of the caller's, waited for in the call.
+foreign import ccall safe "hsnet_ovl_sendv"
+  c_ovl_sendv :: CSocket -> Ptr WSABuf -> DWORD -> Ptr () -> IO CInt
 -- WSASendMsg and WSARecvMsg are extension functions and cannot be
 -- imported by name; see Network.Socket.Win32.Load.
 #endif

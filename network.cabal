@@ -68,6 +68,7 @@ extra-source-files:
     include/HsNetDef.h
     include/afunix_compat.h
     cbits/asyncAccept.c
+    cbits/overlapped.c
     cbits/initWinSock.c
     cbits/winSockErr.c
     cbits/cmsg.c
@@ -157,6 +158,7 @@ library
             cbits/initWinSock.c
             cbits/winSockErr.c
             cbits/asyncAccept.c
+            cbits/overlapped.c
 
         other-modules:
             Network.Socket.ByteString.Lazy.Windows

@@ -55,7 +55,9 @@ import qualified Data.ByteString.Lazy as L
 import qualified Network.Socket.ByteString as N
 import Network.Socket.Imports
 import Network.Socket.Types
+#if !defined(mingw32_HOST_OS)
 import Network.Socket.Wait (withWritable)
+#endif
 
 -- | Send data and file descriptors over a UNIX-domain socket in
 --   a single system call. This function does not work on Windows.
@@ -75,7 +77,17 @@ sendWithFds s lbs fds = N.sendManyWithFds s (L.toChunks lbs) fds
 --
 --   @since 3.2.12.0
 sendWith :: Socket -> ByteString -> STM a -> IO (Either a Int64)
+#if defined(mingw32_HOST_OS)
+-- 'send' sends the first chunk here, and so does this, through the
+-- strict one, whose give-up cancels its own operation alone.
+sendWith s lbs giveUp = fmap fromIntegral <$> N.sendWith s chunk giveUp
+  where
+    chunk = case L.toChunks lbs of
+        [] -> S.empty
+        x : _ -> x
+#else
 sendWith s lbs giveUp = withWritable s giveUp $ send s lbs
+#endif
 
 -- | 'sendAll' which the caller can give up on.  Part of the data may
 --   have been sent before it gives up, so a stream given up on is to be
