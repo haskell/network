@@ -180,7 +180,6 @@ library
             cc-options:  -D_WIN32_WINNT=0x0600
 
         build-depends:
-            temporary,
             Win32 >=2.12.0.1
 
     if impl(ghc >=8)

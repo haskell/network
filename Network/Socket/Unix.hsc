@@ -22,11 +22,11 @@ import Network.Socket.Types
 import System.Posix.Types (Fd(..))
 
 #if defined(mingw32_HOST_OS)
+import qualified Control.Exception as E
+import Network.Socket.Name (getSocketName)
+import Network.Socket.Options
 import Network.Socket.Syscall
 import Network.Socket.Win32.Cmsg
-import System.Directory
-import System.IO
-import System.IO.Temp
 #else
 import Foreign.Marshal.Array (peekArray)
 import Network.Socket.Internal
@@ -156,26 +156,35 @@ recvFd s = allocaBytes dummyBufSize $ \buf -> do
     dummyBufSize = 16
 
 -- | Build a pair of connected socket objects.
---   On Windows, this function emulates socketpair() using
---   'AF_UNIX' and a temporary file will remain.
+--   On Windows, this function emulates socketpair() with a TCP connection
+--   over the loopback interface, whatever the arguments are: there an
+--   'AF_UNIX' recv may miss the peer's close and wait for ever.
 socketPair :: Family              -- Family Name (usually AF_UNIX)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
 #if defined(mingw32_HOST_OS)
-socketPair _ _ _ = withSystemTempFile "temp-for-pair" $ \file hdl -> do
-    hClose hdl
-    removeFile file
-    listenSock <- socket AF_UNIX Stream defaultProtocol
-    bind listenSock $ SockAddrUnix file
-    listen listenSock 10
-    clientSock <- socket AF_UNIX Stream defaultProtocol
-    connect clientSock $ SockAddrUnix file
-    (serverSock, _ :: SockAddr) <- accept listenSock
-    close listenSock
-    withFdSocket clientSock setNonBlockIfNeeded
-    withFdSocket serverSock setNonBlockIfNeeded
-    return (clientSock, serverSock)
+socketPair _ _ _ =
+    E.bracket (socket AF_INET Stream defaultProtocol) close $ \listenSock -> do
+        bind listenSock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+        listen listenSock 10
+        addr :: SockAddr <- getSocketName listenSock
+        E.bracketOnError (socket AF_INET Stream defaultProtocol) close $ \clientSock -> do
+            connect clientSock addr
+            me :: SockAddr <- getSocketName clientSock
+            serverSock <- acceptFrom listenSock me
+            mapM_ prepare [clientSock, serverSock]
+            return (clientSock, serverSock)
+  where
+    -- Another process may connect to the port first; it is not our peer.
+    acceptFrom listenSock me = do
+        (sock, peer) <- accept listenSock
+        if peer == me
+            then return sock
+            else close sock >> acceptFrom listenSock me
+    prepare sock = do
+        setSocketOption sock NoDelay 1
+        withFdSocket sock setNonBlockIfNeeded
 #else
 socketPair family stype protocol =
     allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
