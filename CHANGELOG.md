@@ -60,6 +60,7 @@
   [#630](https://github.com/haskell/network/pull/630)
 * Pick the WinIO test option in the cabal file, not in configure
   [#628](https://github.com/haskell/network/pull/628)
+* Add isPortUnreachableError
 
 ## Version 3.2.9.0
 
