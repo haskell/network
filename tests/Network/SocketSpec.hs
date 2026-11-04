@@ -4,7 +4,7 @@
 module Network.SocketSpec (main, spec) where
 
 import Control.Concurrent (threadDelay, forkIO)
-import Control.Concurrent.MVar (readMVar)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
 import Control.Monad
 import Data.List (nub)
 import Data.Maybe (fromJust)
@@ -16,6 +16,7 @@ import System.IO.Error (tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performGC)
 import System.Posix.Types (Fd(..))
+import System.Timeout (timeout)
 
 import Test.Hspec
 import Test.QuickCheck
@@ -161,6 +162,25 @@ spec = do
             -- check if an exception is not thrown.
             isSupportedSockAddr addr `shouldBe` True
 
+    describe "socketPair" $ do
+        it "can send and recieve bi-directionally" $ do
+            (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
+            void $ send s1 testMsg
+            recv s2 1024 `shouldReturn` testMsg
+            void $ send s2 testMsg
+            recv s1 1024 `shouldReturn` testMsg
+
+        -- Windows' AF_UNIX pair now and then missed a close racing the
+        -- recv (seen in C and the non-threaded RTS, rarely here).
+        it "tells a waiting recv that the peer has closed" $
+            replicateM_ 100 $ do
+                (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
+                got <- newEmptyMVar
+                _ <- forkIO $ recv s2 1024 >>= putMVar got
+                _ <- forkIO $ close s1
+                timeout 5000000 (takeMVar got) `shouldReturn` Just ""
+                close s2
+
 #if !defined(mingw32_HOST_OS)
     when isUnixDomainSocketAvailable $ do
         context "unix sockets" $ do
@@ -192,14 +212,6 @@ spec = do
 #endif
 
 #if !defined(mingw32_HOST_OS)
-            describe "socketPair" $ do
-                it "can send and recieve bi-directionally" $ do
-                    (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
-                    void $ send s1 testMsg
-                    recv s2 1024 `shouldReturn` testMsg
-                    void $ send s2 testMsg
-                    recv s1 1024 `shouldReturn` testMsg
-
             describe "sendFd/recvFd" $ do
                 it "can send and recieve a file descriptor" $ do
                     (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
