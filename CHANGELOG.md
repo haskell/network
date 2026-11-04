@@ -11,6 +11,7 @@
 * recvBufFromWith takes Ptr a, as recvBufFrom does
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
+* Add isPortUnreachableError
 
 ## Version 3.2.11.0
 

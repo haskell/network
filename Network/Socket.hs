@@ -419,6 +419,7 @@ module Network.Socket (
     -- ** What a given-up operation can fail with
     isClosedSocketError,
     isTransientAcceptError,
+    isPortUnreachableError,
 
     -- ** Waiting for readiness (POSIX only)
     waitReadSocketSTM,
@@ -464,6 +465,7 @@ import Network.Socket.Wait (
     recvBufFromWith,
     isClosedSocketError,
     isTransientAcceptError,
+    isPortUnreachableError,
     recvBufWith,
     sendBufWith,
     withReadable,

@@ -31,6 +31,7 @@ module Network.Socket.Wait (
     connectWith,
     isClosedSocketError,
     isTransientAcceptError,
+    isPortUnreachableError,
 ) where
 
 import Control.Concurrent.STM
@@ -38,6 +39,9 @@ import qualified Control.Exception as E
 import Foreign.C.Error (
     Errno (..),
     eCONNABORTED,
+#if !defined(mingw32_HOST_OS)
+    eCONNREFUSED,
+#endif
     eHOSTDOWN,
     eHOSTUNREACH,
     eNETDOWN,
@@ -353,4 +357,21 @@ isTransientAcceptError e =
         ]
 #else
     isWinsock _ = False
+#endif
+
+-- | Whether a receive on a connected datagram socket failed because an
+--   earlier send of its own came back as an ICMP port unreachable.
+--
+--   POSIX gives it as @ECONNREFUSED@ and Winsock as @WSAECONNRESET@, so
+--   the error type differs (@NoSuchThing@ and @OtherError@); this reads
+--   the code instead.  Only a connected socket hears it on any platform.
+--
+--   @since 3.2.12.0
+isPortUnreachableError :: E.IOException -> Bool
+isPortUnreachableError e = ioe_errno e == Just code
+  where
+#if defined(mingw32_HOST_OS)
+    code = wsaECONNRESET
+#else
+    Errno code = eCONNREFUSED
 #endif
