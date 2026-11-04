@@ -17,6 +17,8 @@
   [#626](https://github.com/haskell/network/pull/626)
 * WINIO: fixing a spurious EOF when a recv completes synchronously.
   [#626](https://github.com/haskell/network/pull/626)
+* Emulate socketPair with TCP over loopback on Windows
+  [#630](https://github.com/haskell/network/pull/630)
 
 ## Version 3.2.9.0
 

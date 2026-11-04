@@ -171,8 +171,6 @@ library
             iphlpapi
             mswsock
 
-        build-depends:   temporary
-
         if impl(ghc >=7.10 && <9.0)
             cpp-options: -D_WIN32_WINNT=0x0600
             cc-options:  -D_WIN32_WINNT=0x0600
