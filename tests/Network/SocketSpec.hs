@@ -371,12 +371,12 @@ spec = do
             bounce (\sock dead -> void $ sendTo sock "bounce" dead)
                 `shouldReturn` Nothing
         it "is heard by a connected one" $
-            bounce connectSend `shouldThrow` anyIOException
+            bounce connectSend `shouldThrow` isPortUnreachableError
         it "is heard by a connected one through recv" $
             bounceWith (\sock -> recvWith sock 2048) connectSend
-                `shouldThrow` anyIOException
+                `shouldThrow` isPortUnreachableError
         it "is heard by a connected one through recvMsg" $
-            bounceWith recvMsg' connectSend `shouldThrow` anyIOException
+            bounceWith recvMsg' connectSend `shouldThrow` isPortUnreachableError
 
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do
