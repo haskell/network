@@ -2,7 +2,10 @@
 
 module Network.Socket.ByteStringSpec (main, spec) where
 
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, tryReadMVar)
+import Control.Concurrent.STM (STM, check, readTVar, registerDelay, retry)
+import Control.Exception (SomeException, finally, try)
 import Control.Monad
 import Data.Bits
 import qualified Data.ByteString as S
@@ -200,6 +203,98 @@ spec = do
                 seg2 = C.pack "test message."
             udpTest client server
 
+    describe "recvMsgWith" $ do
+        it "receives as recvMsg does" $ do
+            let server sock = do
+                    r <- recvMsgWith sock 1024 0 mempty retry
+                    case r of
+                        Right (_, msg, _, _) -> msg `shouldBe` seg
+                        Left () -> expectationFailure "gave up without being told"
+                client sock addr = sendTo sock seg addr
+
+                seg = C.pack "This is a test message"
+            udpTest client server
+
+        it "gives up when told to, with nothing to receive" $ do
+            sock <- socket AF_INET Datagram defaultProtocol
+            bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+            late <- registerDelay 100000
+            r <- recvMsgWith sock 1024 0 mempty $ check =<< readTVar late
+            close sock
+            either (const True) (const False) r `shouldBe` True
+
+    describe "sendWith" $ do
+        it "sends as send does" $ do
+            let server sock = recv sock 1024 `shouldReturn` testMsg
+                client sock = sendWith sock testMsg never `shouldReturn` Right (S.length testMsg)
+            tcpTest client server
+
+    describe "sendAllWith" $ do
+        it "sends as sendAll does" $ do
+            let server sock = recv sock 1024 `shouldReturn` testMsg
+                client sock = sendAllWith sock testMsg never `shouldReturn` Right ()
+            tcpTest client server
+
+        it "gives up when the peer does not read" $ withStalledPeer $ \sock -> do
+            late <- registerDelay 200000
+            gaveUp (sendAllWith sock chunk $ check =<< readTVar late)
+                `shouldReturn` True
+
+    describe "giving up" $ do
+        -- On Windows a give-up cancels the operation; that must not
+        -- reach another thread's operation on the same socket.
+        it "leaves another thread's send alone" $ withStalledPeer $ \sock -> do
+            ended <- newEmptyMVar
+            _ <- forkIO $ do
+                r <- try $ forever $ sendAll sock chunk
+                putMVar ended (r :: Either SomeException ())
+            threadDelay 300000
+            late <- registerDelay 200000
+            r <- recvWith sock 4096 $ check =<< readTVar late
+            either (const True) (const False) r `shouldBe` True
+            threadDelay 300000
+            isNothing <$> tryReadMVar ended `shouldReturn` True
+
+        it "leaves another thread's recv alone" $ withStalledPeer $ \sock -> do
+            ended <- newEmptyMVar
+            _ <- forkIO $ do
+                r <- try $ recv sock 4096
+                putMVar ended (r :: Either SomeException S.ByteString)
+            threadDelay 100000
+            late <- registerDelay 200000
+            gaveUp (sendAllWith sock chunk $ check =<< readTVar late)
+                `shouldReturn` True
+            threadDelay 300000
+            isNothing <$> tryReadMVar ended `shouldReturn` True
+
+    describe "sendManyWith" $ do
+        it "sends as sendMany does" $ do
+            let server sock = recv sock 1024 `shouldReturn` S.append seg1 seg2
+                client sock = sendManyWith sock [seg1, seg2] never `shouldReturn` Right ()
+                seg1 = C.pack "This is a "
+                seg2 = C.pack "test message."
+            tcpTest client server
+
+        it "gives up when the peer does not read" $ withStalledPeer $ \sock -> do
+            late <- registerDelay 200000
+            gaveUp (sendManyWith sock [chunk, chunk] $ check =<< readTVar late)
+                `shouldReturn` True
+
+    describe "sendToWith" $ do
+        it "sends as sendTo does" $ do
+            let server sock = recv sock 1024 `shouldReturn` testMsg
+                client sock addr =
+                    sendToWith sock testMsg addr never `shouldReturn` Right (S.length testMsg)
+            udpTest client server
+
+    describe "sendMsgWith" $ do
+        it "sends as sendMsg does" $ do
+            let server sock = recv sock 1024 `shouldReturn` testMsg
+                client sock addr =
+                    sendMsgWith sock addr [testMsg] [] mempty never
+                        `shouldReturn` Right (S.length testMsg)
+            udpTest client server
+
     describe "recvMsg" $ do
         it "works well" $ do
             let server sock = do
@@ -312,3 +407,32 @@ spec = do
 
                 seg = C.pack "This is a test message"
             udpTest client server
+
+-- A connection whose other end never reads, with small buffers, so that
+-- sending blocks once they are full.
+withStalledPeer :: (Socket -> IO a) -> IO a
+withStalledPeer body = do
+    let localhost = tupleToHostAddress (127, 0, 0, 1)
+    listener <- socket AF_INET Stream defaultProtocol
+    setSocketOption listener RecvBuffer 4096
+    bind listener $ SockAddrInet 0 localhost
+    listen listener 1
+    port <- socketPort listener
+    sock <- socket AF_INET Stream defaultProtocol
+    setSocketOption sock SendBuffer 4096
+    connect sock $ SockAddrInet port localhost
+    (peer, _) <- accept listener
+    body sock `finally` mapM_ close [sock, peer, listener]
+
+-- Sending until the action gives up, and whether it did within 1 GiB.
+gaveUp :: IO (Either () ()) -> IO Bool
+gaveUp send1 = loop (1024 :: Int)
+  where
+    loop 0 = return False
+    loop n = send1 >>= either (const $ return True) (const $ loop (n - 1))
+
+chunk :: S.ByteString
+chunk = S.replicate (1024 * 1024) 0x41
+
+never :: STM ()
+never = retry

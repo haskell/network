@@ -4,15 +4,21 @@ module Network.Socket.SockAddr (
     getPeerName,
     getSocketName,
     connect,
+    connectWith,
     bind,
     accept,
+    acceptWith,
     sendBufTo,
+    sendBufToWith,
     recvBufFrom,
     sendBufMsg,
     recvBufMsg,
     annotateWithSocket,
+    sendBufMsgWith,
+    recvBufMsgWith,
 ) where
 
+import Control.Concurrent.STM (STM)
 import qualified Control.Exception as E
 import System.Directory (removeFile)
 import qualified System.IO.Error as E
@@ -23,6 +29,7 @@ import Network.Socket.Imports
 import Network.Socket.Internal
 import qualified Network.Socket.Name as G
 import qualified Network.Socket.Syscall as G
+import qualified Network.Socket.Wait as G
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 #else
@@ -47,6 +54,14 @@ connect s sa = connect' `annotateWithSocket` (s, Just sa)
     connect' = do
         G.connect s sa
         labelSocket s (\label -> label ++ " " ++ show sa)
+
+-- | 'connect' which the caller can give up on.  Whichever settles
+-- first decides: 'Left' when the 'STM' action fires, 'Right' when the
+-- connection is made.  A socket given up on is to be closed.
+--
+-- @since 3.2.12.0
+connectWith :: Socket -> SockAddr -> STM a -> IO (Either a ())
+connectWith s sa giveUp = G.connectWith s sa giveUp `annotateWithSocket` (s, Just sa)
 
 -- | Bind the socket to an address. The socket must not already be
 -- bound.  The 'Family' passed to @bind@ must be the
@@ -94,12 +109,36 @@ accept s = accept' `annotateWithSocket` (s, Nothing)
         labelSocket news (\_ -> label ++ " " ++ show sa)
         return r
 
+-- | 'accept' which the caller can give up on.  Whichever settles
+-- first decides: 'Left' when the 'STM' action fires, 'Right' when a
+-- connection arrives.
+--
+-- @since 3.2.10.0
+acceptWith :: Socket -> STM a -> IO (Either a (Socket, SockAddr))
+acceptWith s giveUp = acceptWith' `annotateWithSocket` (s, Nothing)
+  where
+    acceptWith' = do
+        r <- G.acceptWith s giveUp
+        case r of
+            Left a -> return $ Left a
+            Right res@(news, sa) -> do
+                label <- socketLabel s
+                labelSocket news (\_ -> label ++ " " ++ show sa)
+                return $ Right res
+
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
 -- Returns the number of bytes sent.  Applications are responsible for
 -- ensuring that all data has been sent.
 sendBufTo :: Socket -> Ptr a -> Int -> SockAddr -> IO Int
 sendBufTo s ptr len sa = G.sendBufTo s ptr len sa `annotateWithSocket` (s, Just sa)
+
+-- | 'sendBufTo' which the caller can give up on.
+--
+-- @since 3.2.12.0
+sendBufToWith :: Socket -> Ptr a -> Int -> SockAddr -> STM b -> IO (Either b Int)
+sendBufToWith s ptr len sa giveUp =
+    G.sendBufToWith s ptr len sa giveUp `annotateWithSocket` (s, Just sa)
 
 -- | Receive data from the socket, writing it into buffer instead of
 -- creating a new string.  The socket need not be in a connected
@@ -150,6 +189,24 @@ recvBufMsg
     -> IO (SockAddr, Int, [Cmsg], MsgFlag)
     -- ^ Source address, received data, control messages and message flags
 recvBufMsg s bufs len flag = G.recvBufMsg s bufs len flag `annotateWithSocket` (s, Nothing)
+
+-- | 'sendBufMsg' which the caller can give up on.
+--
+-- @since 3.2.12.0
+sendBufMsgWith
+    :: Socket -> SockAddr -> [(Ptr Word8, Int)] -> [Cmsg] -> MsgFlag -> STM a
+    -> IO (Either a Int)
+sendBufMsgWith s sa bufs cmsgs flag giveUp =
+    G.sendBufMsgWith s sa bufs cmsgs flag giveUp `annotateWithSocket` (s, Just sa)
+
+-- | 'recvBufMsg' which the caller can give up on.
+--
+-- @since 3.2.12.0
+recvBufMsgWith
+    :: Socket -> [(Ptr Word8, Int)] -> Int -> MsgFlag -> STM a
+    -> IO (Either a (SockAddr, Int, [Cmsg], MsgFlag))
+recvBufMsgWith s bufs len flag giveUp =
+    G.recvBufMsgWith s bufs len flag giveUp `annotateWithSocket` (s, Nothing)
 
 ------------------------------------------------------------------------
 

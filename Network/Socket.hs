@@ -129,7 +129,9 @@ module Network.Socket (
     -- ** Closing
     close,
     close',
+    unsafeClose,
     gracefulClose,
+    unsafeGracefulClose,
     shutdown,
     ShutdownCmd (..),
 
@@ -401,7 +403,27 @@ module Network.Socket (
     -- * Special constants
     maxListenQueue,
 
-    -- * STM to check read and write
+    -- * Event polling
+    -- $eventpolling
+
+    -- ** Giving up on a blocked operation
+    withReadable,
+    withWritable,
+    acceptWith,
+    connectWith,
+    recvBufWith,
+    recvBufFromWith,
+    sendBufWith,
+    sendBufToWith,
+    sendBufMsgWith,
+    recvBufMsgWith,
+
+    -- ** What a given-up operation can fail with
+    isClosedSocketError,
+    isTransientAcceptError,
+    isPortUnreachableError,
+
+    -- ** Waiting for readiness (POSIX only)
     waitReadSocketSTM,
     waitAndCancelReadSocketSTM,
     waitWriteSocketSTM,
@@ -441,8 +463,68 @@ import Network.Socket.SockAddr
 import Network.Socket.Syscall hiding (accept, bind, connect)
 import Network.Socket.Types
 import Network.Socket.Unix
+import Network.Socket.Wait (
+    recvBufFromWith,
+    isClosedSocketError,
+    isTransientAcceptError,
+    isPortUnreachableError,
+    recvBufWith,
+    sendBufWith,
+    withReadable,
+    withWritable,
+ )
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 #else
 import Network.Socket.Win32.Cmsg
 #endif
+
+-- $eventpolling
+--
+-- A thread blocked on a socket is stopped here by being told, not by
+-- having the socket closed under it and not by an asynchronous exception
+-- thrown into it.  Each of 'withReadable', 'acceptWith', 'recvBufWith'
+-- and 'recvBufFromWith' takes an 'Control.Concurrent.STM.STM' action
+-- beside the operation; whichever settles first decides, 'Left' when the
+-- caller gave up and 'Right' when the operation completed, and an
+-- operation which has completed wins a tie.  They are for one reader at
+-- a time, and 'withReadable' says what else they ask of the caller.
+-- 'withWritable', 'connectWith', 'sendBufWith' and 'sendBufToWith' do the
+-- same for writing, one writer at a time; a stream given up on in the
+-- middle of a send is to be closed.
+--
+-- The other two ways are going away or gone.  A close ends a wait only
+-- because the event manager tells the waiter so, which 'GHC.Conc.closeFdWith'
+-- is to stop doing, and a descriptor number is reused; an asynchronous
+-- exception does not reach a thread blocked in a socket call on Windows
+-- at all.
+--
+-- A server loop which is told to stop, rather than having its listening
+-- socket closed under it:
+--
+-- > stopping <- newTVarIO False
+-- > -- the shutdown handler runs: atomically $ writeTVar stopping True
+-- > let loop = acceptWith sock (check =<< readTVar stopping) >>= \case
+-- >         Left () -> return ()
+-- >         Right (conn, _) -> forkIO (serve conn) >> loop
+--
+-- A receive which gives up on a deadline, where 'System.Timeout.timeout'
+-- cannot cut one short:
+--
+-- > late <- registerDelay (milliseconds * 1000)
+-- > r <- recvBufWith s buf size (check =<< readTVar late)
+--
+-- The 'Control.Concurrent.STM.STM' action is run more than once, so it
+-- has to be a test rather than something which takes what it reads.
+--
+-- Readiness, which these are built from on POSIX, is not available on
+-- Windows: completion ports report that an operation finished, not that
+-- one could be started.  The four readiness functions say so rather than
+-- blocking for good, and what runs there instead is the operation itself,
+-- on a thread of its own, cancelled with @CancelIoEx@ when the caller
+-- gives up.  Those for particular operations cancel their own alone,
+-- and another thread's operation on the socket carries on; the action
+-- given to 'withReadable' or 'withWritable' cannot be told apart, so its
+-- cancel ends every operation pending on the socket.
+-- "Network.Socket.ByteString" has @recvWith@ and @recvFromWith@ for
+-- 'Data.ByteString.ByteString'.
