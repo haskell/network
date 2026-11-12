@@ -1,5 +1,13 @@
 # CHANGELOG for network
 
+## Version 3.2.13.0
+
+* Give Winsock errors the IOErrorType of their errno
+  [#632](https://github.com/haskell/network/pull/632)
+* Regenerate configure, which 3.2.12.0 shipped stale, producing an invalid
+  network.buildinfo on Windows with GHC 9.14.2
+  [#633](https://github.com/haskell/network/issues/633)
+
 ## Version 3.2.12.0
 
 * Add unsafeGracefulClose and recvMsgWith
