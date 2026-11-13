@@ -102,11 +102,17 @@
 -- >         connect sock $ addrAddress addr
 -- >         return sock
 --
--- The proper programming model is that one 'Socket' is handled by
--- a single thread. If multiple threads use one 'Socket' concurrently,
--- unexpected things would happen. There is one exception for multiple
--- threads vs a single 'Socket': one thread reads data from a 'Socket'
--- only and the other thread writes data to the 'Socket' only.
+-- A 'Socket' is meant to be used by one thread at a time, with one
+-- exception: one thread may only read from it while another only writes
+-- to it.  Two threads reading, or two writing, at once interleave their
+-- data unpredictably, and closing a 'Socket' which another thread still
+-- uses can hit a new socket that has been given the same descriptor.
+--
+-- To stop a thread blocked on a 'Socket' from another thread, for
+-- instance the other direction of a proxy when one peer has gone, tell it
+-- through an 'Control.Concurrent.STM.STM' action given to 'recvBufWith',
+-- 'acceptWith' and the like, described under \"Event polling\" below,
+-- rather than closing the 'Socket' under it.
 module Network.Socket (
     -- * Address information
     getAddrInfo,
