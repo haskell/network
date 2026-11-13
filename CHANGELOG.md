@@ -76,6 +76,8 @@
   [#628](https://github.com/haskell/network/pull/628)
 * Add isPortUnreachableError
   [#631](https://github.com/haskell/network/pull/631)
+* dontfrag for WINE
+  [#605](https://github.com/haskell/network/pull/605)
 
 ## Version 3.2.9.0
 
