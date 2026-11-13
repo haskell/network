@@ -34,8 +34,8 @@ setCloseOnExecIfNeeded fd = System.Posix.Internals.setCloseOnExec fd
 #endif
 
 #if !defined(mingw32_HOST_OS)
-foreign import ccall unsafe "fcntl"
-  c_fcntl_read  :: CSocket -> CInt -> CInt -> IO CInt
+foreign import ccall unsafe "hsnet_fcntl_get"
+  c_fcntl_get :: CSocket -> CInt -> IO CInt
 #endif
 
 -- | Get the close_on_exec flag.
@@ -47,7 +47,7 @@ getCloseOnExec :: CSocket -> IO Bool
 getCloseOnExec _ = return False
 #else
 getCloseOnExec fd = do
-    flags <- c_fcntl_read fd fGetFd 0
+    flags <- c_fcntl_get fd fGetFd
     let ret = flags .&. fdCloexec
     return (ret /= 0)
 #endif
@@ -69,7 +69,7 @@ getNonBlock _ = return False
 # endif
 #else
 getNonBlock fd = do
-    flags <- c_fcntl_read fd fGetFl 0
+    flags <- c_fcntl_get fd fGetFl
     let ret = flags .&. oNonBlock
     return (ret /= 0)
 #endif
