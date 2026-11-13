@@ -61,11 +61,6 @@ import GHC.Conc (threadWaitRead, threadWaitWrite)
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
 import System.IO.Unsafe (unsafePerformIO)
-# if __GLASGOW_HASKELL__ >= 707
-import GHC.IO.Exception (IOErrorType(..))
-# else
-import GHC.IOBase (IOErrorType(..))
-# endif
 import System.IO.Error (ioeSetErrorString, mkIOError)
 #else
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
