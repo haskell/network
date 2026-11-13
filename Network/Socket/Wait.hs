@@ -363,8 +363,9 @@ isTransientAcceptError e =
 --   earlier send of its own came back as an ICMP port unreachable.
 --
 --   POSIX gives it as @ECONNREFUSED@ and Winsock as @WSAECONNRESET@, so
---   the error type differs (@NoSuchThing@ and @OtherError@); this reads
---   the code instead.  Only a connected socket hears it on any platform.
+--   the error type differs (@NoSuchThing@ and @ResourceVanished@); this
+--   reads the code instead.  Only a connected socket hears it on any
+--   platform.
 --
 --   @since 3.2.12.0
 isPortUnreachableError :: E.IOException -> Bool

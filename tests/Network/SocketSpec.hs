@@ -19,7 +19,8 @@ import Foreign.C.Types ()
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
-import System.IO.Error (tryIOError)
+import GHC.IO.Exception (IOErrorType (ResourceVanished))
+import System.IO.Error (ioeGetErrorType, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performGC)
 import System.Posix.Types (Fd(..))
@@ -377,6 +378,21 @@ spec = do
                 `shouldThrow` isPortUnreachableError
         it "is heard by a connected one through recvMsg" $
             bounceWith recvMsg' connectSend `shouldThrow` isPortUnreachableError
+
+    describe "a connection the peer resets" $ do
+        it "is reported as ResourceVanished" $ do
+            -- The byte makes the reset follow the connect: an RST which
+            -- beat it would fail the connect itself on Linux.
+            let server sock = do
+                    void $ recv sock 1
+                    setSockOpt sock Linger (StructLinger 1 0)
+                -- Plain recv on Windows reads through GHC's IO manager,
+                -- which does not go by the Winsock code.
+                client sock = do
+                    sendAll sock "x"
+                    recvWith sock 1024 retry `shouldThrow` isVanished
+                isVanished e = ioeGetErrorType e == ResourceVanished
+            tcpTest client server
 
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do
