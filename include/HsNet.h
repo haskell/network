@@ -171,6 +171,13 @@ hsnet_ready_now(int fd, int write)
     p.revents = 0;
     return poll(&p, 1, 0) > 0;
 }
+
+/* fcntl is variadic, which ccall cannot call portably; this takes no arg. */
+INLINE int
+hsnet_fcntl_get(int fd, int cmd)
+{
+    return fcntl(fd, cmd);
+}
 #endif
 
 #ifndef IOV_MAX
