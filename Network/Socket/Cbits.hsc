@@ -89,6 +89,8 @@ winsockErrorType rc = case rc of
     #{const WSAETOOMANYREFS} -> ResourceExhausted
     #{const WSAEUSERS} -> ResourceExhausted
     _ -> OtherError
+fileSkipCompletionPortOnSuccess :: Word8
+fileSkipCompletionPortOnSuccess = #const FILE_SKIP_COMPLETION_PORT_ON_SUCCESS
 #else
 fGetFd :: CInt
 fGetFd = #const F_GETFD
