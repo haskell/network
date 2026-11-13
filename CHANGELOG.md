@@ -78,6 +78,8 @@
   [#631](https://github.com/haskell/network/pull/631)
 * dontfrag for WINE
   [#605](https://github.com/haskell/network/pull/605)
+* Call fcntl through a non-variadic wrapper
+  [#634](https://github.com/haskell/network/pull/634)
 
 ## Version 3.2.9.0
 
