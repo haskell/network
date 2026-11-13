@@ -41,6 +41,8 @@ wsaEHOSTUNREACH :: CInt
 wsaEHOSTUNREACH = #const WSAEHOSTUNREACH
 wsaENOPROTOOPT :: CInt
 wsaENOPROTOOPT = #const WSAENOPROTOOPT
+fileSkipCompletionPortOnSuccess :: Word8
+fileSkipCompletionPortOnSuccess = #const FILE_SKIP_COMPLETION_PORT_ON_SUCCESS
 #else
 fGetFd :: CInt
 fGetFd = #const F_GETFD

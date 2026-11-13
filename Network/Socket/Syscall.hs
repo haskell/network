@@ -89,7 +89,7 @@ socket family stype protocol =
         setNonBlock fd
 #if __IO_MANAGER_WINIO__ >= 2
         -- Associate socket with I/O manager immediately if using WinIO
-        (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
+        (return () <!> associateSocket fd)
 #endif
         s <- mkSocket fd
         -- This socket is not managed by the IO manager yet.
@@ -263,7 +263,7 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
  new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close $ \fd -> do
 #if __IO_MANAGER_WINIO__ >= 2
      -- Associate accepted socket with I/O manager if using WinIO
-     (return () <!> Mgr.associateHandle' (wordPtrToPtr $ fromIntegral fd))
+     (return () <!> associateSocket fd)
 #endif
      mkSocket fd
  new_addr <- peekSocketAddress new_sa
@@ -295,6 +295,21 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
 
+#if __IO_MANAGER_WINIO__ >= 2
+-- | Associate a socket with the I/O manager, skipping the completion port for
+--   an operation that finishes at once.
+associateSocket :: CSocket -> IO ()
+associateSocket fd = do
+    let h = wordPtrToPtr $ fromIntegral fd
+    Mgr.associateHandle' h
+    -- Not FILE_SKIP_SET_EVENT_ON_HANDLE: cancelling waits on the handle.
+    ok <- c_SetFileCompletionNotificationModes h fileSkipCompletionPortOnSuccess
+    unless ok $ ioError (userError "associateSocket: SetFileCompletionNotificationModes failed")
+
+foreign import ccall unsafe "windows.h SetFileCompletionNotificationModes"
+    c_SetFileCompletionNotificationModes :: Ptr () -> Word8 -> IO Bool
+
+#endif
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CSocket
 foreign import CALLCONV unsafe "bind"
