@@ -158,6 +158,21 @@ hsnet_freeaddrinfo(struct addrinfo *ai)
     freeaddrinfo(ai);
 }
 
+#ifndef _WIN32
+#include <poll.h>
+
+/* Whether the socket is readable (or writable) now, without waiting. */
+INLINE int
+hsnet_ready_now(int fd, int write)
+{
+    struct pollfd p;
+    p.fd = fd;
+    p.events = write ? POLLOUT : POLLIN;
+    p.revents = 0;
+    return poll(&p, 1, 0) > 0;
+}
+#endif
+
 #ifndef IOV_MAX
 # define IOV_MAX 1024
 #endif

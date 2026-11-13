@@ -5,7 +5,14 @@ module Network.SocketSpec (main, spec) where
 
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
+import Control.Exception (bracket)
+import Control.Concurrent.STM
 import Control.Monad
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Unsafe as BU
+import Foreign.Marshal.Alloc (allocaBytes)
+import Foreign.Ptr (castPtr)
 import Data.List (nub)
 import Data.Maybe (fromJust)
 import Foreign.C.Types ()
@@ -23,6 +30,39 @@ import Test.QuickCheck
 
 main :: IO ()
 main = hspec spec
+
+-- Send through the given action to a port nobody has bound, then receive
+-- on the same socket.  'Nothing' if the receive heard nothing in time.
+bounce :: (Socket -> SockAddr -> IO ()) -> IO (Maybe ByteString)
+bounce = bounceWith $ \sock giveUp -> fmap fst <$> recvFromWith sock 2048 giveUp
+
+bounceWith
+    :: (Socket -> STM () -> IO (Either () ByteString))
+    -> (Socket -> SockAddr -> IO ())
+    -> IO (Maybe ByteString)
+bounceWith receive send' = do
+    dead <- deadPort
+    sock <- socket AF_INET Datagram defaultProtocol
+    bind sock $ SockAddrInet 0 localhost
+    send' sock dead
+    -- Long enough for the unreachable to come back before the receive.
+    waitFor 300000
+    late <- registerDelay 300000
+    r <- receive sock $ check =<< readTVar late
+    close sock
+    return $ either (const Nothing) Just r
+  where
+    localhost = tupleToHostAddress (127, 0, 0, 1)
+    waitFor us = do
+        late <- registerDelay us
+        atomically $ check =<< readTVar late
+    -- Bind a port, read it, and let it go again.
+    deadPort = do
+        s <- socket AF_INET Datagram defaultProtocol
+        bind s $ SockAddrInet 0 localhost
+        sa <- getSocketName s
+        close s
+        return sa
 
 spec :: Spec
 spec = do
@@ -42,6 +82,63 @@ spec = do
             withPort $ \portVar -> test (tcp serverAddr return portVar)
                 { clientSetup = readMVar portVar >>= connect'
                 }
+
+    describe "connectWith" $ do
+        let
+          hints = defaultHints { addrSocketType = Stream }
+          connectWith' serverPort giveUp = do
+              addr:_ <- getAddrInfo (Just hints) (Just serverAddr) (Just $ show serverPort)
+              sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+              r <- connectWith sock (addrAddress addr) giveUp
+              return (sock, r)
+
+        it "connects as connect does" $ do
+            withPort $ \portVar -> test (tcp serverAddr return portVar)
+                { clientSetup = do
+                    (sock, r) <- readMVar portVar >>= \p -> connectWith' p (retry :: STM ())
+                    r `shouldBe` Right ()
+                    return sock
+                }
+
+        it "throws as connect does" $ do
+            connectWith' (8003 :: Int) (retry :: STM ()) `shouldThrow` anyIOException
+
+        it "gives up when already told to" $ do
+            (sock, r) <- connectWith' (8003 :: Int) (return ())
+            close sock
+            r `shouldBe` Left ()
+
+        it "gives up on a connection which does not come" $ do
+            -- Nothing answers here, unless the network says it is
+            -- unreachable at once, which is not giving up but is fine.
+            sock <- socket AF_INET Stream defaultProtocol
+            late <- registerDelay 300000
+            r <- tryIOError $ connectWith sock (SockAddrInet 9 $ tupleToHostAddress (10, 255, 255, 1)) $
+                check =<< readTVar late
+            close sock
+            r `shouldSatisfy` either (const True) (== Left ())
+
+    describe "sendBufMsgWith and recvBufMsgWith" $ do
+        it "send and receive as sendBufMsg and recvBufMsg do" $ do
+            let server sock = allocaBytes 1024 $ \buf -> do
+                    r <- recvBufMsgWith sock [(buf, 1024)] 0 mempty (retry :: STM ())
+                    case r of
+                        Right (_, n, _, _) ->
+                            BS.packCStringLen (castPtr buf, n) `shouldReturn` testMsg
+                        Left () -> expectationFailure "gave up without being told"
+                client sock addr = BU.unsafeUseAsCStringLen testMsg $ \(p, n) ->
+                    sendBufMsgWith sock addr [(castPtr p, n)] [] mempty (retry :: STM ())
+                        `shouldReturn` Right n
+            udpTest client server
+
+        it "recvBufMsgWith gives up when told to" $ do
+            sock <- socket AF_INET Datagram defaultProtocol
+            bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+            late <- registerDelay 100000
+            r <- allocaBytes 1024 $ \buf ->
+                recvBufMsgWith sock [(buf, 1024)] 0 mempty $ check =<< readTVar late
+            close sock
+            either (const True) (const False) r `shouldBe` True
 
     describe "bind" $ do
         let hints = defaultHints
@@ -262,6 +359,25 @@ spec = do
             -}
 #endif
 
+    -- A send to a port nobody has bound brings an ICMP unreachable back.
+    -- POSIX hands it to the sender only once the socket is connected, and
+    -- Winsock hands it to every datagram socket; a reply bouncing off a
+    -- client which has gone would then end a server's receive loop.
+    describe "an ICMP unreachable from a send of one's own" $ do
+        let connectSend sock dead = connect sock dead >> void (send sock "bounce")
+            recvMsg' sock giveUp =
+                fmap (\(_, bs, _, _) -> bs) <$> recvMsgWith sock 2048 0 mempty giveUp
+        it "is not heard by a socket which was never connected" $
+            bounce (\sock dead -> void $ sendTo sock "bounce" dead)
+                `shouldReturn` Nothing
+        it "is heard by a connected one" $
+            bounce connectSend `shouldThrow` isPortUnreachableError
+        it "is heard by a connected one through recv" $
+            bounceWith (\sock -> recvWith sock 2048) connectSend
+                `shouldThrow` isPortUnreachableError
+        it "is heard by a connected one through recvMsg" $
+            bounceWith recvMsg' connectSend `shouldThrow` isPortUnreachableError
+
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do
             let server sock = do
@@ -274,6 +390,75 @@ spec = do
                     threadDelay 10000
                     void $ recv sock 1024
             tcpTest client server
+
+    describe "unsafeGracefulClose" $ do
+        it "does not send TCP RST back" $ do
+            let server sock = do
+                    void $ recv sock 1024 -- receiving "GOAWAY"
+                    unsafeGracefulClose sock 300
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 10000
+                    sendAll sock "PING"
+                    threadDelay 10000
+                    void $ recv sock 1024
+            tcpTest client server
+
+    describe "giving up" $ do
+        it "ends a receive which is told to stop, leaving the socket usable" $ do
+            let server sock = do
+                    stop <- newTVarIO False
+                    done <- newEmptyMVar
+                    void $ forkIO $ do
+                        r <- recvWith sock 1024 (check =<< readTVar stop)
+                        putMVar done r
+                    threadDelay 100000
+                    atomically $ writeTVar stop True
+                    takeMVar done `shouldReturn` Left ()
+                    -- Nothing was closed, so the socket is still the
+                    -- caller's to read.
+                    recv sock 1024 `shouldReturn` testMsg
+                client sock = do
+                    threadDelay 300000
+                    void $ send sock testMsg
+            tcpTest client server
+
+        -- A tie goes to the data: answering Left would leave bytes
+        -- already received unread, which for a stream loses them.
+        it "takes what is there even once the caller has given up" $ do
+            let server sock = do
+                    threadDelay 100000
+                    gone <- newTVarIO True
+                    recvWith sock 1024 (check =<< readTVar gone)
+                        `shouldReturn` Right testMsg
+                client sock = void $ send sock testMsg
+            tcpTest client server
+
+        it "ends an accept which is told to stop, leaving the socket usable" $
+            withListener $ \sock port -> do
+                stop <- newTVarIO False
+                done <- newEmptyMVar
+                void $ forkIO $ do
+                    r <- acceptWith sock (check =<< readTVar stop)
+                    putMVar done $
+                        either (const True) (const False)
+                            (r :: Either () (Socket, SockAddr))
+                threadDelay 100000
+                atomically $ writeTVar stop True
+                takeMVar done `shouldReturn` True
+                -- The listening socket was not closed to end that
+                -- accept, so it still accepts.
+                bracket (socket AF_INET Stream defaultProtocol) close $ \cli -> do
+                    connect cli $ SockAddrInet port $ tupleToHostAddress (127, 0, 0, 1)
+                    bracket (fst <$> accept sock) close $ \_ -> return ()
+
+        it "tells a socket closed under an accept from other errors" $ do
+            sock <- socket AF_INET Stream defaultProtocol
+            bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+            listen sock 1
+            close sock
+            r <- tryIOError $ accept sock
+            either isClosedSocketError (const False) r `shouldBe` True
 
     describe "socketToFd" $ do
         it "socketToFd can send using fd" $ do
@@ -501,3 +686,13 @@ cmsgidPatterns = nub
     , CmsgIdIPv6PktInfo
     , CmsgIdFds
     ]
+
+-- A listening socket on the loopback, and the port it got.
+withListener :: (Socket -> PortNumber -> IO a) -> IO a
+withListener action =
+    bracket (socket AF_INET Stream defaultProtocol) close $ \sock -> do
+        setSocketOption sock ReuseAddr 1
+        bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+        listen sock 1
+        port <- socketPort sock
+        action sock port
