@@ -14,6 +14,7 @@
   and silent used to hold the caller for as long as it did.  This
   replaces the watchdog scheme of
   [#620](https://github.com/haskell/network/pull/620).
+  [#631](https://github.com/haskell/network/pull/631)
 * Support for getHostName
   [#621](https://github.com/haskell/network/pull/621)
 * Fixing the misspelled WSAEACCES error description on Windows.
@@ -25,42 +26,56 @@
   [#626](https://github.com/haskell/network/pull/626)
 * WINIO: raising the ICMP unreachable of a connected datagram socket
   rather than taking it as an empty datagram.
+  [#631](https://github.com/haskell/network/pull/631)
 * Adding acceptWith, recvWith, recvFromWith, recvBufWith and recvBufFromWith, which take an STM action
   beside the operation and let the caller give up on it without closing
   the socket or interrupting the thread, and withReadable, which they are
   built from.
+  [#631](https://github.com/haskell/network/pull/631)
 * Adding isClosedSocketError and isTransientAcceptError, which name what
   an accept loop has to tell apart: a socket closed under it, one queued
   connection which failed, and the rest.
+  [#631](https://github.com/haskell/network/pull/631)
 * On Windows, the Winsock error code is kept in ioe_errno rather than
   dropped.  Winsock reports every error as OtherError, so the code was
   the only thing telling them apart and it was only in the description.
   isClosedSocketError and isTransientAcceptError read it, so an accept
   loop there now stops when its socket is closed and retries a
   connection the peer gave up on.
+  [#631](https://github.com/haskell/network/pull/631)
 * On Windows, a datagram socket hears an ICMP unreachable which a send
   of its own caused only once it is connected, as on POSIX.  Winsock
   reports it to every datagram socket, so one reply bouncing off a
   client which had gone ended a server's receive loop; socket turns that
   off and connect turns it back on.
+  [#631](https://github.com/haskell/network/pull/631)
 * The readiness based waitReadSocketSTM and waitWriteSocketSTM cannot
   work on Windows, where completion ports report that an operation has
   finished rather than that one could be started, and now say so
   instead of blocking forever.
+  [#631](https://github.com/haskell/network/pull/631)
 * Add unsafeClose
   [#629](https://github.com/haskell/network/pull/629)
 * Add unsafeGracefulClose and recvMsgWith
+  [#631](https://github.com/haskell/network/pull/631)
 * Return the bytes sent from sendMsg on Windows
+  [#631](https://github.com/haskell/network/pull/631)
 * Add withWritable, connectWith and the send functions which the caller can give up on
+  [#631](https://github.com/haskell/network/pull/631)
 * Raise the error which the first read of recvWith meets, rather than dropping it and waiting
+  [#631](https://github.com/haskell/network/pull/631)
 * Add recvBufMsgWith, sendBufMsgWith, the give-up functions of Network.Socket.Address and of Network.Socket.ByteString.Lazy
+  [#631](https://github.com/haskell/network/pull/631)
 * On Windows, giving up on an operation no longer cancels other threads' operations on the socket
+  [#631](https://github.com/haskell/network/pull/631)
 * recvBufFromWith takes Ptr a, as recvBufFrom does
+  [#631](https://github.com/haskell/network/pull/631)
 * Emulate socketPair with TCP over loopback on Windows
   [#630](https://github.com/haskell/network/pull/630)
 * Pick the WinIO test option in the cabal file, not in configure
   [#628](https://github.com/haskell/network/pull/628)
 * Add isPortUnreachableError
+  [#631](https://github.com/haskell/network/pull/631)
 
 ## Version 3.2.9.0
 
