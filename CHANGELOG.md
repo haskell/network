@@ -84,6 +84,8 @@
   [#637](https://github.com/haskell/network/pull/637)
 * WinIO: skip the completion port when a socket request finishes at once
   [#639](https://github.com/haskell/network/pull/639)
+* Describe getaddrinfo errors on Windows with the Winsock table
+  [#640](https://github.com/haskell/network/pull/640)
 
 ## Version 3.2.9.0
 
