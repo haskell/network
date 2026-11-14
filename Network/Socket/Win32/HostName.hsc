@@ -25,7 +25,7 @@ computerNamePhysicalDnsHostname = 5
 
 -- | Get name of current host
 --
---   Since: 3.3.0.0
+--   @since 3.2.10.0
 getHostName :: IO HostName
 getHostName = with 0 $ \p_charcount -> do
     -- On the first run, determine the character count and ignore any error we get
