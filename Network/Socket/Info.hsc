@@ -11,7 +11,11 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
+#if defined(mingw32_HOST_OS)
+import GHC.IO.Exception (IOErrorType(NoSuchThing), IOException(..))
+#else
 import GHC.IO.Exception (IOErrorType(NoSuchThing))
+#endif
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
 import Network.Socket.Imports
@@ -281,11 +285,7 @@ getAddrInfoNE hints node service = alloc getaddrinfo
             ais       <- release (followAddrInfo ptr_addrs) `onException` c_freeaddrinfo ptr_addrs
             c_freeaddrinfo ptr_addrs
             return ais
-          else do
-            err <- gai_strerror ret
-            ioError $ ioeSetErrorString
-                        (mkIOError NoSuchThing message Nothing Nothing)
-                        err
+          else gaiError message ret
     message = concat [
         "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
       , maybe "Nothing" show hints
@@ -342,15 +342,31 @@ foreign import ccall safe "hsnet_getaddrinfo"
 foreign import ccall safe "hsnet_freeaddrinfo"
     c_freeaddrinfo :: Ptr AddrInfo -> IO ()
 
-gai_strerror :: CInt -> IO String
+-- | The error which getaddrinfo(3) or getnameinfo(3) reported as @rc@.
+--   On Windows the code is a Winsock code, kept in 'ioe_errno' as for
+--   other socket errors.
+gaiError :: String -> CInt -> IO a
+gaiError loc rc = do
+    err <- gai_strerror rc
+    let ioe = mkIOError NoSuchThing loc Nothing Nothing
+#if defined(mingw32_HOST_OS)
+    ioError $ ioeSetErrorString ioe{ioe_errno = Just rc} err
+#else
+    ioError $ ioeSetErrorString ioe err
+#endif
 
-#ifdef HAVE_GAI_STRERROR
+gai_strerror :: CInt -> IO String
+#if defined(mingw32_HOST_OS)
+-- gai_strerror is a macro in mingw, which the configure check misses,
+-- and it writes to a static buffer.
+gai_strerror = winsockErrorString
+#elif defined(HAVE_GAI_STRERROR)
 gai_strerror n = c_gai_strerror n >>= peekCString
 
 foreign import ccall safe "gai_strerror"
     c_gai_strerror :: CInt -> IO CString
 #else
-gai_strerror n = ioError $ userError $ "Network.Socket.gai_strerror not supported: " ++ show n
+gai_strerror n = return $ "error " ++ show n
 #endif
 
 -----------------------------------------------------------------------------
@@ -402,11 +418,7 @@ getNameInfo flags doHost doService addr = alloc getnameinfo
             host <- peekIf doHost c_host
             serv <- peekIf doService c_serv
             return (host, serv)
-          else do
-            err <- gai_strerror ret
-            ioError $ ioeSetErrorString
-                        (mkIOError NoSuchThing message Nothing Nothing)
-                        err
+          else gaiError message ret
     message = concat [
         "Network.Socket.getNameInfo (called with flags: "
       , show flags
