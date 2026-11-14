@@ -82,6 +82,8 @@
   [#634](https://github.com/haskell/network/pull/634)
 * Give Winsock errors the IOErrorType of their errno
   [#637](https://github.com/haskell/network/pull/637)
+* WinIO: skip the completion port when a socket request finishes at once
+  [#639](https://github.com/haskell/network/pull/639)
 
 ## Version 3.2.9.0
 
