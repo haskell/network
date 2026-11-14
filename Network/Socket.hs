@@ -429,7 +429,7 @@ module Network.Socket (
     isTransientAcceptError,
     isPortUnreachableError,
 
-    -- ** Waiting for readiness (POSIX only)
+    -- ** Waiting for readiness
     waitReadSocketSTM,
     waitAndCancelReadSocketSTM,
     waitWriteSocketSTM,
@@ -523,10 +523,8 @@ import Network.Socket.Win32.Cmsg
 -- The 'Control.Concurrent.STM.STM' action is run more than once, so it
 -- has to be a test rather than something which takes what it reads.
 --
--- Readiness, which these are built from on POSIX, is not available on
--- Windows: completion ports report that an operation finished, not that
--- one could be started.  The four readiness functions say so rather than
--- blocking for good, and what runs there instead is the operation itself,
+-- On Windows these are not built from readiness, which 'waitReadSocketSTM'
+-- has only under WinIO; what runs there instead is the operation itself,
 -- on a thread of its own, cancelled with @CancelIoEx@ when the caller
 -- gives up.  Those for particular operations cancel their own alone,
 -- and another thread's operation on the socket carries on; the action

@@ -486,6 +486,67 @@ spec = do
             r <- tryIOError $ accept sock
             either isClosedSocketError (const False) r `shouldBe` True
 
+    -- On Windows these need WinIO; under MIO they are pending.
+    describe "waiting for readiness" $ do
+        it "waits until data arrives, and leaves it to be read" $ readinessOr $
+            loopbackPair $ \c s -> do
+                (ready, _) <- waitAndCancelReadSocketSTM s
+                fires 100 ready `shouldReturn` False
+                sendAll c "hello"
+                fires 2000 ready `shouldReturn` True
+                recv s 64 `shouldReturn` "hello"
+
+        it "is ready at once when data is there" $ readinessOr $
+            loopbackPair $ \c s -> do
+                sendAll c "hello"
+                threadDelay 50000
+                (ready, _) <- waitAndCancelReadSocketSTM s
+                fires 2000 ready `shouldReturn` True
+
+        it "is ready at once for writing" $ readinessOr $
+            loopbackPair $ \_ s -> do
+                (ready, _) <- waitAndCancelWriteSocketSTM s
+                fires 2000 ready `shouldReturn` True
+
+        it "does not fire once cancelled, and the socket still works" $ readinessOr $
+            loopbackPair $ \c s -> do
+                (ready, cancel) <- waitAndCancelReadSocketSTM s
+                cancel
+                sendAll c "after"
+                fires 200 ready `shouldReturn` False
+                recv s 64 `shouldReturn` "after"
+
+        it "fires on a listening socket when a connection comes" $ readinessOr $
+            withListener $ \l port -> do
+                (ready, _) <- waitAndCancelReadSocketSTM l
+                fires 100 ready `shouldReturn` False
+                bracket (socket AF_INET Stream defaultProtocol) close $ \c -> do
+                    connect c $ SockAddrInet port $ tupleToHostAddress (127, 0, 0, 1)
+                    fires 2000 ready `shouldReturn` True
+                    accept l >>= close . fst
+
+        it "fires for a datagram, and leaves it to be read" $ readinessOr $
+            bracket (socket AF_INET Datagram defaultProtocol) close $ \u1 ->
+            bracket (socket AF_INET Datagram defaultProtocol) close $ \u2 -> do
+                let lo p = SockAddrInet p $ tupleToHostAddress (127, 0, 0, 1)
+                bind u1 $ lo 0
+                port <- socketPort u1
+                (ready, _) <- waitAndCancelReadSocketSTM u1
+                fires 100 ready `shouldReturn` False
+                void $ sendTo u2 "dgram" (lo port)
+                fires 2000 ready `shouldReturn` True
+                fst <$> recvFrom u1 64 `shouldReturn` "dgram"
+
+        it "survives many waits which finish at once or are cancelled" $ readinessOr $
+            loopbackPair $ \_ s -> do
+                replicateM_ 1000 $ do
+                    (ready, _) <- waitAndCancelWriteSocketSTM s
+                    atomically ready
+                    performGC
+                replicateM_ 500 $ do
+                    (_, cancel) <- waitAndCancelReadSocketSTM s
+                    cancel
+
     describe "socketToFd" $ do
         it "socketToFd can send using fd" $ do
             let server sock = do
@@ -722,3 +783,22 @@ withListener action =
         listen sock 1
         port <- socketPort sock
         action sock port
+
+-- A connected TCP pair on the loopback: the client side, then the server side.
+loopbackPair :: (Socket -> Socket -> IO a) -> IO a
+loopbackPair action = withListener $ \l port ->
+    bracket (socket AF_INET Stream defaultProtocol) close $ \c -> do
+        connect c $ SockAddrInet port $ tupleToHostAddress (127, 0, 0, 1)
+        bracket (fst <$> accept l) close $ action c
+
+-- Whether the STM action fires within the given milliseconds.
+fires :: Int -> STM () -> IO Bool
+fires ms ready = maybe False (const True) <$> timeout (ms * 1000) (atomically ready)
+
+-- Runs the test where readiness is available, and marks it pending elsewhere.
+readinessOr :: Expectation -> Expectation
+readinessOr body = do
+    available <- bracket (socket AF_INET Datagram defaultProtocol) close $ \s ->
+        either (const False) (const True)
+            <$> tryIOError (waitAndCancelWriteSocketSTM s >>= snd)
+    if available then body else pendingWith "no readiness under this I/O manager"

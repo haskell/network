@@ -2,14 +2,14 @@
 
 -- | Waiting for a socket to become ready, through STM.
 --
--- This mirrors @select@\/@epoll@ and is __POSIX only__: Windows
--- completion ports report that an operation has finished, not that one
--- could be started, so there is no readiness to wait for.  All four
--- throw there.  What runs on Windows instead is
--- "Network.Socket.Win32.Cancel", through 'Network.Socket.withReadable'.
+-- This mirrors @select@\/@epoll@.  On Windows it needs WinIO
+-- (@+RTS --io-manager=native@): the wait is an @IOCTL_AFD_POLL@ on the
+-- socket, as libuv and others use, which completes on the I/O manager's
+-- port.  Under MIO all four throw.  Sockets behind a non-IFS Layered
+-- Service Provider, deprecated since Windows 8, are not supported.
 --
 module Network.Socket.STM (
-    -- * Waiting for readiness (POSIX only)
+    -- * Waiting for readiness
     waitReadSocketSTM,
     waitAndCancelReadSocketSTM,
     waitWriteSocketSTM,
@@ -34,22 +34,20 @@ import GHC.IO.SubSystem ((<!>))
 
 -- | STM action to wait until the socket is ready for reading.
 --
---   __POSIX only.__  On Windows this throws: completion ports have no
---   notion of readiness.  Use 'Network.Socket.recvBufWith', or one of
---   the other operations which give up, instead.
+--   On Windows this needs WinIO, and throws under MIO.
 waitReadSocketSTM :: Socket -> IO (STM ())
 waitReadSocketSTM s = fst <$> waitAndCancelReadSocketSTM s
 
 -- | STM action to wait until the socket is ready for reading and STM
 --   action to cancel the waiting.
 --
---   __POSIX only.__  See 'waitReadSocketSTM'.
+--   See 'waitReadSocketSTM'.
 waitAndCancelReadSocketSTM :: Socket -> IO (STM (), IO ())
 #if defined(mingw32_HOST_OS)
-waitAndCancelReadSocketSTM s =
+waitAndCancelReadSocketSTM _s =
     noReadiness
 # if __IO_MANAGER_WINIO__ >= 2
-        <!> afdWait "waitAndCancelReadSocketSTM" afdRead s
+        <!> afdWait "waitAndCancelReadSocketSTM" afdRead _s
 # endif
   where
     noReadiness =
@@ -64,22 +62,20 @@ waitAndCancelReadSocketSTM s = withFdSocket s $ threadWaitReadSTM . Fd . fromInt
 
 -- | STM action to wait until the socket is ready for writing.
 --
---   __POSIX only.__  On Windows this throws.  Completion ports give no
---   way to ask whether a send would block, and none is needed: issue
---   the send and let it complete asynchronously.
+--   On Windows this needs WinIO, and throws under MIO.
 waitWriteSocketSTM :: Socket -> IO (STM ())
 waitWriteSocketSTM s = fst <$> waitAndCancelWriteSocketSTM s
 
 -- | STM action to wait until the socket is ready for writing and STM
 --   action to cancel the waiting.
 --
---   __POSIX only.__  See 'waitWriteSocketSTM'.
+--   See 'waitWriteSocketSTM'.
 waitAndCancelWriteSocketSTM :: Socket -> IO (STM (), IO ())
 #if defined(mingw32_HOST_OS)
-waitAndCancelWriteSocketSTM s =
+waitAndCancelWriteSocketSTM _s =
     noReadiness
 # if __IO_MANAGER_WINIO__ >= 2
-        <!> afdWait "waitAndCancelWriteSocketSTM" afdWrite s
+        <!> afdWait "waitAndCancelWriteSocketSTM" afdWrite _s
 # endif
   where
     noReadiness =
