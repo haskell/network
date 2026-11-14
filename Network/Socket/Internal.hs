@@ -27,6 +27,7 @@ module Network.Socket.Internal
     , throwSocketErrorCode
 #if defined(mingw32_HOST_OS)
     , c_getLastError
+    , winsockErrorString
 #endif
 
     -- * Guards for socket operations that may fail
@@ -99,8 +100,7 @@ throwSocketError = throwErrno
 throwSocketErrorCode :: String -> CInt -> IO a
 #if defined(mingw32_HOST_OS)
 throwSocketErrorCode name rc = do
-    pstr <- c_getWSError rc
-    str  <- peekCString pstr
+    str <- winsockErrorString rc
     let typ = winsockErrorType rc
         ioe = (mkIOError typ name Nothing Nothing){ioe_errno = Just rc}
     ioError (ioeSetErrorString ioe str)
@@ -231,6 +231,14 @@ foreign import CALLCONV unsafe "WSAGetLastError"
 
 foreign import ccall unsafe "getWSErrorDescr"
   c_getWSError :: CInt -> IO (Ptr CChar)
+
+-- | A description of a Winsock error code.
+winsockErrorString :: CInt -> IO String
+winsockErrorString rc = do
+    pstr <- c_getWSError rc
+    if pstr == nullPtr
+        then return $ "Unknown WinSock error: " ++ show rc
+        else peekCString pstr
 #endif
 
 -- ---------------------------------------------------------------------

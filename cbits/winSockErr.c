@@ -2,15 +2,14 @@
 #include "HsFFI.h"
 
 #if defined(_WIN32)
-#include <stdio.h>
 
 /* to the end */
 
+/* NULL for a code not in the table, which the caller describes itself:
+   formatting it here would need a static buffer, shared between threads. */
 const char*
 getWSErrorDescr(int err)
 {
-  static char  otherErrMsg[256];
-
   switch (err) {
   case WSAEINTR:  return "Interrupted function call (WSAEINTR)";
   case WSAEBADF:  return "bad socket descriptor (WSAEBADF)";
@@ -67,8 +66,7 @@ getWSErrorDescr(int err)
   case WSANO_RECOVERY:     return "This is a nonrecoverable error (WSANO_RECOVERY)";
   case WSANO_DATA:         return "Valid name, no data record of requested type (WSANO_DATA)";
   default:
-    sprintf(otherErrMsg, "Unknown WinSock error: %u", err);
-    return otherErrMsg;
+    return NULL;
   }
 }
 

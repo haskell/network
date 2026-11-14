@@ -19,8 +19,8 @@ import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
 import System.Mem (performGC)
-import GHC.IO.Exception (IOErrorType (ResourceVanished))
-import System.IO.Error (ioeGetErrorType, tryIOError)
+import GHC.IO.Exception (IOErrorType (NoSuchThing, ResourceVanished))
+import System.IO.Error (ioeGetErrorString, ioeGetErrorType, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Types (Fd(..))
 import Foreign.C.Types ()
@@ -213,6 +213,16 @@ spec = do
             AddrInfo{addrAddress = (SockAddrInet _ hostAddr)}:_ <-
                 getAddrInfo (Just hints) (Just "127.128.129.130") Nothing
             hostAddressToTuple hostAddr `shouldBe` (0x7f, 0x80, 0x81, 0x82)
+
+        -- On Windows this used to be a userError which lost the reason (#636).
+        it "throws NoSuchThing with a description for a name it cannot resolve" $ do
+            let hints = defaultHints { addrFlags = [AI_NUMERICHOST] }
+            r <- tryIOError $ getAddrInfo (Just hints) (Just "no-such-host.invalid") Nothing
+            case r :: Either IOError [AddrInfo] of
+                Left e -> do
+                    ioeGetErrorType e `shouldBe` NoSuchThing
+                    ioeGetErrorString e `shouldNotContain` "not supported"
+                Right _ -> expectationFailure "resolved a name which is not numeric"
 
         it "works for IPv6 address" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICHOST, AI_ADDRCONFIG] }
