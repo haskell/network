@@ -86,6 +86,8 @@
   [#639](https://github.com/haskell/network/pull/639)
 * Describe getaddrinfo errors on Windows with the Winsock table
   [#640](https://github.com/haskell/network/pull/640)
+* Wait for readiness on Windows through IOCTL_AFD_POLL under WinIO
+  [#641](https://github.com/haskell/network/pull/641)
 
 ## Version 3.2.9.0
 
