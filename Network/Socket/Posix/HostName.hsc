@@ -16,7 +16,7 @@ foreign import ccall unsafe "gethostname"
 
 -- | Get name of current host
 --
---   Since: 3.3.0.0
+--   @since 3.2.10.0
 getHostName :: IO HostName
 getHostName = allocaArray0 size $ \cstr -> do
     throwErrnoIfMinus1_ "getHostName" $ gethostname cstr (fromIntegral size)
