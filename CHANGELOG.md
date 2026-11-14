@@ -80,6 +80,8 @@
   [#605](https://github.com/haskell/network/pull/605)
 * Call fcntl through a non-variadic wrapper
   [#634](https://github.com/haskell/network/pull/634)
+* Give Winsock errors the IOErrorType of their errno
+  [#637](https://github.com/haskell/network/pull/637)
 
 ## Version 3.2.9.0
 
