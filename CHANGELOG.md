@@ -1,6 +1,6 @@
 # CHANGELOG for network
 
-## Version 3.3.0.0
+## Version 4.0.0.0
 
 * Basic support for WINIO
   [#509](https://github.com/haskell/network/pull/509)
