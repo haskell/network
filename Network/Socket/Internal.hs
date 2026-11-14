@@ -62,9 +62,9 @@ import GHC.Conc (threadWaitRead, threadWaitWrite)
 import Control.Exception (evaluate)
 import System.IO.Unsafe (unsafePerformIO)
 # if __GLASGOW_HASKELL__ >= 707
-import GHC.IO.Exception (IOErrorType(..), IOException(..))
+import GHC.IO.Exception (IOException(..))
 # else
-import GHC.IOBase (IOErrorType(..), IOException(..))
+import GHC.IOBase (IOException(..))
 # endif
 import System.IO.Error (ioeSetErrorString, mkIOError)
 #else
