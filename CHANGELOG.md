@@ -1,5 +1,14 @@
 # CHANGELOG for network
 
+## Version 3.2.14.0
+
+* dontfrag for WINE
+  [#605](https://github.com/haskell/network/pull/605)
+* Describe getaddrinfo errors on Windows with the Winsock table
+  [#640](https://github.com/haskell/network/pull/640)
+* HsNetDef.h: use ccall for aarch64 too
+  [#651](https://github.com/haskell/network/pull/651)
+
 ## Version 3.2.13.0
 
 * Give Winsock errors the IOErrorType of their errno
