@@ -2,9 +2,11 @@
 
 ## Version 4.0.0.0
 
-On Windows, sockets under WinIO are now non-blocking, as on POSIX, and a
-stream reset is raised as an error rather than taken for the end of the
-stream.
+On Windows, network now needs GHC's WinIO I/O manager (GHC 9.12.5 or
+later in 9.12, or 9.14.2 or later): link executables with
+`-with-rtsopts=--io-manager=native`.  Under MIO, use network 3.2.  Sockets
+are non-blocking, as on POSIX, and a stream reset is raised as an error
+rather than taken for the end of the stream.
 
 * Basic support for WINIO
   [#509](https://github.com/haskell/network/pull/509)
@@ -94,6 +96,8 @@ stream.
   [#641](https://github.com/haskell/network/pull/641)
 * WinIO the POSIX way: non-blocking sockets, readiness-based give-ups
   [#643](https://github.com/haskell/network/pull/643)
+* Windows needs WinIO: remove the MIO code
+  [#644](https://github.com/haskell/network/pull/644)
 
 ## Version 3.2.9.0
 
