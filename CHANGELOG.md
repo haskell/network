@@ -108,6 +108,8 @@ rather than taken for the end of the stream.
   [#648](https://github.com/haskell/network/pull/648)
 * HsNetDef.h: use ccall for aarch64 too
   [#651](https://github.com/haskell/network/pull/651)
+* Map overlapped completion statuses to Winsock codes on Windows
+  [#650](https://github.com/haskell/network/pull/650)
 
 ## Version 3.2.9.0
 
