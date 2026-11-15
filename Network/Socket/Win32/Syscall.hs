@@ -15,6 +15,7 @@ module Network.Socket.Win32.Syscall (
 import qualified GHC.Event.Windows as Mgr
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Utils (with)
+import System.Win32.Types (failIfFalse_)
 
 import Network.Socket.Cbits
 import Network.Socket.Imports
@@ -23,11 +24,11 @@ import Network.Socket.Types
 
 -- | Preparing a new socket: see 'associateSocket'.
 setupSocket :: CSocket -> IO ()
-setupSocket = associateSocket
+setupSocket = associateSocket "Network.Socket.socket"
 
 -- | Preparing an accepted socket: see 'associateSocket'.
 setupAccepted :: CSocket -> IO ()
-setupAccepted = associateSocket
+setupAccepted = associateSocket "Network.Socket.accept"
 
 -- | Accepting a connection on a non-blocking listening socket.
 acceptFd :: Socket -> CSocket -> Ptr sa -> Int -> IO CSocket
@@ -38,14 +39,16 @@ acceptFd listing_sock fd sa sz = with (fromIntegral sz) $ \ptr_len ->
 -- | Associating a socket with the I/O manager, skipping the completion
 --   port for an operation that finishes at once, and making it
 --   non-blocking, as on POSIX.
-associateSocket :: CSocket -> IO ()
-associateSocket fd = do
+--   A failure of @SetFileCompletionNotificationModes@ is a Win32 error, not
+--   a Winsock one: raised with its message by 'failIfFalse_'.
+associateSocket :: String -> CSocket -> IO ()
+associateSocket loc fd = do
     let h = wordPtrToPtr $ fromIntegral fd
     Mgr.associateHandle' h
     -- Not FILE_SKIP_SET_EVENT_ON_HANDLE: cancelling waits on the handle.
-    ok <- c_SetFileCompletionNotificationModes h fileSkipCompletionPortOnSuccess
-    unless ok $ ioError (userError "associateSocket: SetFileCompletionNotificationModes failed")
-    throwSocketErrorIfMinus1_ "associateSocket" $ c_set_nonblock fd
+    failIfFalse_ (loc ++ ": SetFileCompletionNotificationModes") $
+        c_SetFileCompletionNotificationModes h fileSkipCompletionPortOnSuccess
+    throwSocketErrorIfMinus1_ loc $ c_set_nonblock fd
 
 -- | Whether the socket reports the ICMP unreachable an earlier send of
 --   its own caused: see 'Network.Socket.Syscall.reportConnReset'.
