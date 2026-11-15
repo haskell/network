@@ -25,9 +25,6 @@ instance Sem.Semigroup MsgFlag where
 
 instance Monoid MsgFlag where
     mempty = MsgFlag 0
-#if !(MIN_VERSION_base(4,11,0))
-    mappend = (Sem.<>)
-#endif
 
 -- | Send or receive OOB(out-of-bound) data.
 pattern MSG_OOB :: MsgFlag

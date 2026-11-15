@@ -5,17 +5,12 @@ license:            BSD3
 license-file:       LICENSE
 maintainer:         Kazu Yamamoto, Tamar Christina
 tested-with:
-    GHC == 9.8.2
-    GHC == 9.6.4
+    GHC == 9.14.1
+    GHC == 9.12.4
+    GHC == 9.10.3
+    GHC == 9.8.4
+    GHC == 9.6.7
     GHC == 9.4.8
-    GHC == 9.2.8
-    GHC == 9.0.2
-    GHC == 8.10.7
-    GHC == 8.8.4
-    GHC == 8.6.5
-    GHC == 8.4.4
-    GHC == 8.2.2
-    GHC == 8.0.2
 
 homepage:           https://github.com/haskell/network
 bug-reports:        https://github.com/haskell/network/issues
@@ -138,7 +133,7 @@ library
 
     ghc-options:      -Wall -fwarn-tabs
     build-depends:
-        base >=4.9 && <5,
+        base >=4.17 && <5,
         bytestring >=0.10,
         deepseq,
         directory,
@@ -181,17 +176,11 @@ library
             iphlpapi
             mswsock
 
-        if impl(ghc >=7.10 && <9.0)
-            cpp-options: -D_WIN32_WINNT=0x0600
-            cc-options:  -D_WIN32_WINNT=0x0600
+        cpp-options:   -D_WIN32_WINNT=0x0601
+        cc-options:    -D_WIN32_WINNT=0x0601
+        build-depends: Win32 >=2.12.0.1
 
-        if impl(ghc >=9.0)
-            cpp-options:   -D_WIN32_WINNT=0x0601
-            cc-options:    -D_WIN32_WINNT=0x0601
-            build-depends: Win32 >=2.12.0.1
-
-    if impl(ghc >=8)
-        default-extensions: Strict StrictData
+    default-extensions: Strict StrictData
 
 test-suite spec
     type:             exitcode-stdio-1.0
@@ -225,8 +214,7 @@ test-suite spec
     if flag(devel)
         cpp-options: -DDEVELOPMENT
 
-    if impl(ghc >=8)
-        default-extensions: Strict StrictData
+    default-extensions: Strict StrictData
 
     if os(windows)
         cpp-options: -D_WIN32

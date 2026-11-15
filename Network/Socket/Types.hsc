@@ -374,9 +374,7 @@ isSupportedSocketType = (/= UnsupportedSocketType)
 -- | Pattern for a general socket type.
 pattern GeneralSocketType    :: CInt -> SocketType
 pattern GeneralSocketType n  =  SocketType n
-#if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE GeneralSocketType #-}
-#endif
 -- The actual constructor is not exported, which keeps the internal
 -- representation private, but for all purposes other than 'coerce' the
 -- above pattern is just as good.
@@ -462,9 +460,7 @@ unpackFamily = Family
 -- @since 3.2.0.0
 pattern GeneralFamily      :: CInt -> Family
 pattern GeneralFamily n     = Family n
-#if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE GeneralFamily #-}
-#endif
 -- The actual constructor is not exported, which keeps the internal
 -- representation private, but for all purposes other than 'coerce' the
 -- above pattern is just as good.
@@ -1402,10 +1398,6 @@ poke32 p i0 a = do
 
 -- | Private newtype proxy for the Storable instance. To avoid orphan instances.
 newtype In6Addr = In6Addr HostAddress6
-
-#if __GLASGOW_HASKELL__ < 800
-#let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
-#endif
 
 instance Storable In6Addr where
     sizeOf    ~_ = #const sizeof(struct in6_addr)
