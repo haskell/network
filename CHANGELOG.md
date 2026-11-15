@@ -102,6 +102,8 @@ rather than taken for the end of the stream.
   [#645](https://github.com/haskell/network/pull/645)
 * Make CSocket as wide as SOCKET on Windows
   [#646](https://github.com/haskell/network/pull/646)
+* Split platform code into Posix and Win32 modules
+  [#647](https://github.com/haskell/network/pull/647)
 
 ## Version 3.2.9.0
 
