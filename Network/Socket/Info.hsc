@@ -28,6 +28,14 @@ import Network.Socket.Types
 -- | Either a host name e.g., @\"haskell.org\"@ or a numeric host
 -- address string consisting of a dotted decimal IPv4 address or an
 -- IPv6 address e.g., @\"192.168.0.1\"@.
+--
+-- An internationalized domain name must be given in its IDNA A-label
+-- (Punycode) form, e.g. @\"xn--mnchen-3ya.de\"@, not @\"münchen.de\"@.
+-- Whether a name with non-ASCII characters resolves depends on the OS:
+-- macOS converts it, but glibc and Windows do not.  Converting a name to
+-- A-labels (IDNA2008 or UTS #46) is up to the application, which needs
+-- them anyway for TLS SNI and certificates.  'getNameInfo' returns
+-- A-labels.
 type HostName       = String
 -- | Either a service name e.g., @\"http\"@ or a numeric port number.
 type ServiceName    = String
