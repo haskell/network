@@ -22,9 +22,9 @@ with
 ghc-options: -threaded "-with-rtsopts=--io-manager=native"
 ```
 
-or run it with `+RTS --io-manager=native -RTS`.  Under the old I/O manager
-(MIO), use `network` 3.2.  Sockets behind a non-IFS Layered Service Provider,
-deprecated since Windows 8, are not supported.
+or run it with `+RTS --io-manager=native -RTS`.  With No IO Manager (before
+WinIO, `--io-manager=posix`), use `network` 3.2.  Sockets behind a non-IFS
+Layered Service Provider, deprecated since Windows 8, are not supported.
 
 We use MSYS to build this package on Windows.
 To use the `network` package on Cygwin, use `stack`.
