@@ -112,6 +112,8 @@ rather than taken for the end of the stream.
   [#650](https://github.com/haskell/network/pull/650)
 * Retry ICMP unreachable tests on Windows, pending if none comes
   [#652](https://github.com/haskell/network/pull/652)
+* Windows: make accepted sockets non-inheritable, as on POSIX
+  [#655](https://github.com/haskell/network/pull/655)
 
 ## Version 3.2.9.0
 
