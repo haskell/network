@@ -16,6 +16,8 @@ maxListenQueue = #const SOMAXCONN
 #if defined(mingw32_HOST_OS)
 wsaNotInitialized :: CInt
 wsaNotInitialized = #const WSANOTINITIALISED
+wsaEWOULDBLOCK :: CInt
+wsaEWOULDBLOCK = #const WSAEWOULDBLOCK
 -- | Whether a datagram socket reports an ICMP unreachable which came
 --   back from an earlier send.  Winsock turns it on by default.
 sioUDPConnReset :: Word32

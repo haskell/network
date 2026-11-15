@@ -21,7 +21,6 @@ import GHC.IO.SubSystem ((<!>))
 # endif
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
-import GHC.Conc (threadWaitWrite)
 #endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -182,13 +181,9 @@ bind s sa = withSocketAddress sa $ \p_sa siz -> void $ withFdSocket s $ \fd -> d
 connect :: SocketAddress sa => Socket -> sa -> IO ()
 connect s sa = void (connectWhenWritable s sa waitWrite :: IO (Either () ()))
   where
-#if defined(mingw32_HOST_OS)
-    waitWrite act = Right <$> act
-#else
     waitWrite act = do
-        withFdSocket s $ threadWaitWrite . fromIntegral
+        withFdSocket s $ waitWriteSocket s
         Right <$> act
-#endif
 
 -- | 'connect' which leaves the wait for a connection in progress to
 --   the caller: the argument runs the action once the socket is writable.
@@ -204,18 +199,18 @@ connectWhenWritable s sa whenWritable =
 connectLoop
     :: SocketAddress sa
     => Socket -> Ptr sa -> CInt -> (IO () -> IO (Either a ())) -> IO (Either a ())
-#if defined(mingw32_HOST_OS)
-connectLoop s p_sa sz _ = withFdSocket s $ \fd -> loop fd
-#else
 connectLoop s p_sa sz whenWritable = withFdSocket s $ \fd -> loop fd
-#endif
   where
     errLoc = "Network.Socket.connect: " ++ show s
     loop fd = do
        r <- c_connect fd p_sa sz
        if r /= -1 then return (Right ()) else do
 #if defined(mingw32_HOST_OS)
-           throwSocketError errLoc
+           -- A WinIO socket is non-blocking; one under MIO blocks.
+           rc <- c_getLastError
+           if rc == wsaEWOULDBLOCK
+               then whenWritable connected
+               else throwSocketErrorCode errLoc rc
 #else
            err <- getErrno
            case () of
@@ -223,11 +218,11 @@ connectLoop s p_sa sz whenWritable = withFdSocket s $ \fd -> loop fd
              _ | err == eINPROGRESS -> whenWritable connected
 --           _ | err == eAGAIN      -> whenWritable connected
              _otherwise             -> throwSocketError errLoc
+#endif
 
     connected = do
        err <- getSocketOption s SoError
        when (err /= 0) $ throwSocketErrorCode errLoc (fromIntegral err)
-#endif
 
 -----------------------------------------------------------------------------
 -- Listen
@@ -270,7 +265,19 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
  return (new_sock, new_addr)
   where
 #if defined(mingw32_HOST_OS)
-     callAccept fd sa sz
+     callAccept fd sa sz =
+# if __IO_MANAGER_WINIO__ >= 2
+         callAcceptMIO fd sa sz <!> callAcceptWinIO fd sa sz
+# else
+         callAcceptMIO fd sa sz
+# endif
+# if __IO_MANAGER_WINIO__ >= 2
+     -- The listening socket is non-blocking, as on POSIX.
+     callAcceptWinIO fd sa sz = with (fromIntegral sz) $ \ ptr_len ->
+       throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
+         (c_accept fd sa ptr_len)
+# endif
+     callAcceptMIO fd sa sz
        | threaded  = with (fromIntegral sz) $ \ ptr_len ->
                        throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
                          c_accept_safe fd sa ptr_len
@@ -305,6 +312,10 @@ associateSocket fd = do
     -- Not FILE_SKIP_SET_EVENT_ON_HANDLE: cancelling waits on the handle.
     ok <- c_SetFileCompletionNotificationModes h fileSkipCompletionPortOnSuccess
     unless ok $ ioError (userError "associateSocket: SetFileCompletionNotificationModes failed")
+    throwSocketErrorIfMinus1_ "associateSocket" $ c_set_nonblock fd
+
+foreign import ccall unsafe "hsnet_set_nonblock"
+    c_set_nonblock :: CSocket -> IO CInt
 
 foreign import ccall unsafe "windows.h SetFileCompletionNotificationModes"
     c_SetFileCompletionNotificationModes :: Ptr () -> Word8 -> IO Bool
