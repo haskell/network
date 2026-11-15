@@ -53,13 +53,8 @@ import Network.Socket.ReadShow
 -- The existence of a constructor does not imply that the relevant option
 -- is supported on your system: see 'isSupportedSocketOption'
 data SocketOption = SockOpt
-#if __GLASGOW_HASKELL__ >= 806
     CInt -- ^ Option Level
     CInt -- ^ Option Name
-#else
-    CInt -- Option Level
-    CInt -- Option Name
-#endif
   deriving (Eq)
 
 ----------------------------------------------------------------
@@ -534,9 +529,7 @@ getSocketType s = unpackSocketType <$> getSockOpt s Type
 
 ----------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 806
 {-# COMPLETE CustomSockOpt #-}
-#endif
 #ifdef SO_LINGER
 -- | Low level @SO_LINGER@ option value, which can be used with 'setSockOpt' or
 -- @'setSockOptValue' . 'SockOptValue'@.
