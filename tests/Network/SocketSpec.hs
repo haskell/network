@@ -69,6 +69,37 @@ bounceWith receive send' = do
         close s
         return sa
 
+-- | 'bounce', but with the receive waiting before the send: the
+--   unreachable completes a receive in progress.
+bounceWaiting :: IO (Maybe (Either IOError ByteString))
+bounceWaiting = bracket (socket AF_INET Datagram defaultProtocol) close $ \sock -> do
+    dead <- bracket (socket AF_INET Datagram defaultProtocol) close $ \s -> do
+        bind s $ SockAddrInet 0 localhost
+        getSocketName s
+    bind sock $ SockAddrInet 0 localhost
+    connect sock dead
+    var <- newEmptyMVar
+    void $ forkIO $ tryIOError (recv sock 2048) >>= putMVar var
+    threadDelay 100000
+    void $ send sock "bounce"
+    timeout 1000000 $ takeMVar var
+  where
+    localhost = tupleToHostAddress (127, 0, 0, 1)
+
+-- | Two connected datagram sockets on the loopback: the reader, and the
+--   writer.
+datagramPair :: (Socket -> Socket -> IO a) -> IO a
+datagramPair body =
+    bracket (socket AF_INET Datagram defaultProtocol) close $ \r ->
+    bracket (socket AF_INET Datagram defaultProtocol) close $ \w -> do
+        bind r $ SockAddrInet 0 localhost
+        bind w $ SockAddrInet 0 localhost
+        getSocketName w >>= connect r
+        getSocketName r >>= connect w
+        body r w
+  where
+    localhost = tupleToHostAddress (127, 0, 0, 1)
+
 spec :: Spec
 spec = do
     describe "connect" $ do
@@ -392,21 +423,48 @@ spec = do
                 `shouldThrow` isPortUnreachableError
         it "is heard by a connected one through recvMsg" $
             bounceWith recvMsg' connectSend `shouldThrow` isPortUnreachableError
+        it "is heard by a receive already waiting" $ do
+            r <- bounceWaiting
+            either isPortUnreachableError (const False) <$> r `shouldBe` Just True
+
+    -- Winsock fails such a receive, and POSIX truncates the datagram.
+    describe "a datagram too large for the buffer" $ do
+        let big = BS.replicate 4000 1
+        it "is truncated when it is already there" $
+            datagramPair $ \r w -> do
+                void $ send w big
+                void $ send w "next"
+                fst <$> recvFrom r 2048 `shouldReturn` BS.take 2048 big
+                fst <$> recvFrom r 2048 `shouldReturn` "next"
+        it "is truncated when the receive is waiting for it" $
+            datagramPair $ \r w -> do
+                var <- newEmptyMVar
+                void $ forkIO $ recv r 2048 >>= putMVar var
+                threadDelay 100000
+                void $ send w big
+                takeMVar var `shouldReturn` BS.take 2048 big
+        it "is truncated by recvMsg" $
+            datagramPair $ \r w -> do
+                void $ send w big
+                (_, bs, _, _) <- recvMsg r 2048 0 mempty
+                bs `shouldBe` BS.take 2048 big
 
     describe "a connection the peer resets" $ do
-        it "is reported as ResourceVanished" $ do
-            -- The byte makes the reset follow the connect: an RST which
-            -- beat it would fail the connect itself on Linux.
-            let server sock = do
+        -- The byte makes the reset follow the connect: an RST which beat it
+        -- would fail the connect itself on Linux.
+        let resetBy receive = tcpTest client server
+              where
+                server sock = do
                     void $ recv sock 1
                     setSockOpt sock Linger (StructLinger 1 0)
-                -- Plain recv on Windows reads through GHC's IO manager,
-                -- which does not go by the Winsock code.
                 client sock = do
                     sendAll sock "x"
-                    recvWith sock 1024 retry `shouldThrow` isVanished
+                    receive sock `shouldThrow` isVanished
                 isVanished e = ioeGetErrorType e == ResourceVanished
-            tcpTest client server
+        it "is reported as ResourceVanished" $
+            resetBy $ \sock -> recvWith sock 1024 retry
+        it "is reported as ResourceVanished by a receive already waiting" $
+            resetBy $ \sock -> recv sock 1024
 
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do

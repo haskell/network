@@ -19,7 +19,7 @@ module Network.Socket.Win32.Internal (
     c_getLastError,
     throwSocketErrorIfMinus1ButRetry,
     winsockErrorString,
-    throwWinIOError,
+    withOverlappedSocket,
 ) where
 
 import qualified Control.Exception as E
@@ -103,14 +103,42 @@ winsockErrorString rc = do
         then return $ "Unknown WinSock error: " ++ show rc
         else peekCString pstr
 
--- | 'Mgr.withException', but raising a failure as other socket errors
---   are: the Winsock code in 'ioe_errno', with its 'IOErrorType'.
-throwWinIOError :: String -> IO (Mgr.IOResult a) -> IO a
-throwWinIOError name io = do
-    r <- io
+-- | Running an overlapped operation on the socket, which the start action
+--   begins and reports as @WSASend@ and friends do.  A failure comes back
+--   as a value rather than thrown by the I/O manager, which knows neither
+--   NTSTATUS nor Winsock codes, and is raised as other socket errors are,
+--   unless the last argument turns it into a result.
+withOverlappedSocket
+    :: String
+    -> CSocket
+    -> (Mgr.LPOVERLAPPED -> IO CInt)
+    -> (CInt -> Maybe Int)
+    -> IO Int
+withOverlappedSocket name fd start result = do
+    r <- Mgr.withOverlapped name (wordPtrToPtr $ fromIntegral fd) 0 startCB completionCB
     case r of
-        Mgr.IOSuccess a -> return a
+        Mgr.IOSuccess (Right n) -> return n
+        Mgr.IOSuccess (Left rc) -> throwSocketErrorCode name rc
         Mgr.IOFailed e -> throwSocketErrorCode name (maybe 0 fromIntegral e)
+  where
+    -- An overlapped socket queues a completion packet even when the call
+    -- succeeds at once, so the I/O manager resolves that case too.
+    startCB ov = do
+        ret <- start ov
+        if ret == 0 then return Mgr.CbPending else do
+            rc <- c_getLastError
+            return $ if rc == errorIoPending
+                then Mgr.CbPending
+                else Mgr.CbError (fromIntegral rc)
+    completionCB st bytes = Mgr.ioSuccess $ case c_winsock_code st of
+        0 -> Right $ fromIntegral bytes
+        rc -> maybe (Left rc) Right $ result rc
+    errorIoPending = 997
+
+-- The completion status as a Winsock code: an NTSTATUS when the operation
+-- completed through the port, a Winsock code when it failed at once.
+foreign import ccall unsafe "hsnet_winsock_code"
+  c_winsock_code :: Word32 -> CInt
 
 waitReadSocket, waitWriteSocket :: Socket -> CSocket -> IO ()
 waitReadSocket s _ = afdWait "waitReadSocket" afdRead s

@@ -79,6 +79,7 @@
 #ifdef _WIN32
 extern int   initWinSock ();
 extern const char* getWSErrorDescr(int err);
+extern int hsnet_winsock_code(unsigned long st);
 
 extern LPWSACMSGHDR
 cmsg_firsthdr(LPWSAMSG mhdr);
