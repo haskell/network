@@ -16,21 +16,17 @@ module Network.Socket.Unix (
 
 import Foreign.Marshal.Alloc (allocaBytes)
 import Network.Socket.Buffer
-import Network.Socket.Fcntl
 import Network.Socket.Imports
 import Network.Socket.Types
 import System.Posix.Types (Fd(..))
 
 #if defined(mingw32_HOST_OS)
-import qualified Control.Exception as E
-import Network.Socket.Name (getSocketName)
-import Network.Socket.Options
-import Network.Socket.Syscall
 import Network.Socket.Win32.Cmsg
+import qualified Network.Socket.Win32.Unix as P
 #else
-import Foreign.Marshal.Array (peekArray)
 import Network.Socket.Internal
 import Network.Socket.Posix.Cmsg
+import qualified Network.Socket.Posix.Unix as P
 #endif
 
 #if defined(HAVE_GETPEEREID)
@@ -144,7 +140,7 @@ sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
 
 -- | Receive a file descriptor over a UNIX-domain socket. Note that the resulting
 --   file descriptor may have to be put into non-blocking mode in order to be
---   used safely. See 'setNonBlockIfNeeded'.
+--   used safely. See 'Network.Socket.setNonBlockIfNeeded'.
 --   This function does not work on Windows.
 recvFd :: Socket -> IO CInt
 recvFd s = allocaBytes dummyBufSize $ \buf -> do
@@ -163,41 +159,4 @@ socketPair :: Family              -- Family Name (usually AF_UNIX)
            -> SocketType          -- Socket Type (usually Stream)
            -> ProtocolNumber      -- Protocol Number
            -> IO (Socket, Socket) -- unnamed and connected.
-#if defined(mingw32_HOST_OS)
-socketPair _ _ _ =
-    E.bracket (socket AF_INET Stream defaultProtocol) close $ \listenSock -> do
-        bind listenSock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
-        listen listenSock 10
-        addr :: SockAddr <- getSocketName listenSock
-        E.bracketOnError (socket AF_INET Stream defaultProtocol) close $ \clientSock -> do
-            connect clientSock addr
-            me :: SockAddr <- getSocketName clientSock
-            serverSock <- acceptFrom listenSock me
-            mapM_ prepare [clientSock, serverSock]
-            return (clientSock, serverSock)
-  where
-    -- Another process may connect to the port first; it is not our peer.
-    acceptFrom listenSock me = do
-        (sock, peer) <- accept listenSock
-        if peer == me
-            then return sock
-            else close sock >> acceptFrom listenSock me
-    prepare sock = do
-        setSocketOption sock NoDelay 1
-        withFdSocket sock setNonBlockIfNeeded
-#else
-socketPair family stype protocol =
-    allocaBytes (2 * sizeOf (1 :: CInt)) $ \ fdArr -> do
-      let c_stype = packSocketType stype
-      _rc <- throwSocketErrorIfMinus1Retry "Network.Socket.socketpair" $
-                  c_socketpair (packFamily family) c_stype protocol fdArr
-      [fd1,fd2] <- peekArray 2 fdArr
-      setNonBlockIfNeeded fd1
-      setNonBlockIfNeeded fd2
-      s1 <- mkSocket fd1
-      s2 <- mkSocket fd2
-      return (s1, s2)
-
-foreign import ccall unsafe "socketpair"
-  c_socketpair :: CInt -> CInt -> CInt -> Ptr CInt -> IO CInt
-#endif
+socketPair = P.socketPair
