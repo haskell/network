@@ -46,9 +46,6 @@ module Network.Socket.Internal
     , throwSocketErrorWaitWrite
     , waitReadSocket
     , waitWriteSocket
-#if defined(mingw32_HOST_OS)
-    , P.throwWinIOError
-#endif
 
     -- * Initialization
     , withSocketsDo
