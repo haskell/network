@@ -6,27 +6,21 @@ module Network.Socket.Syscall where
 
 import Data.Either (isRight)
 import qualified Control.Exception as E
-import Foreign.Marshal.Utils (with)
 import System.IO.Error (catchIOError)
-
-#if defined(mingw32_HOST_OS)
-import Foreign.Marshal.Alloc (alloca)
-import Network.Socket.Cbits
-import qualified GHC.Event.Windows as Mgr
-#else
-import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
-#endif
 
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
 import Network.Socket.Cbits
-#else
-import Network.Socket.Fcntl
 #endif
 
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Options
 import Network.Socket.Types
+#if defined(mingw32_HOST_OS)
+import qualified Network.Socket.Win32.Syscall as P
+#else
+import qualified Network.Socket.Posix.Syscall as P
+#endif
 
 -- ----------------------------------------------------------------------------
 -- On Windows, as on POSIX, sockets are non-blocking, and a call which would
@@ -69,10 +63,7 @@ socket family stype protocol = withSocketsDo $
     setProp fd = do
         -- Let's ensure that the socket (file descriptor) is closed even on
         -- asynchronous exceptions.
-        setNonBlock fd
-#if defined(mingw32_HOST_OS)
-        associateSocket fd
-#endif
+        P.setupSocket fd
         s <- mkSocket fd
         -- This socket is not managed by the IO manager yet.
         -- So, we don't have to call "close" which uses "closeFdWith".
@@ -88,12 +79,6 @@ socket family stype protocol = withSocketsDo $
     modifyFlag c_stype = c_stype .|. sockNonBlock
 #else
     modifyFlag c_stype = c_stype
-#endif
-
-#ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    setNonBlock _ = return ()
-#else
-    setNonBlock fd = setNonBlockIfNeeded fd
 #endif
 
 #if HAVE_DECL_IPV6_V6ONLY
@@ -134,15 +119,7 @@ socket family stype protocol = withSocketsDo $
 -- It is advice for datagrams alone and does nothing to any other socket,
 -- so the result is not worth looking at.
 reportConnReset :: Socket -> Bool -> IO ()
-#if defined(mingw32_HOST_OS)
-reportConnReset s report =
-    with (if report then 1 else 0 :: Word32) $ \val ->
-    alloca $ \ret ->
-      void $ withFdSocket s $ \fd ->
-        c_WSAIoctl fd sioUDPConnReset val 4 nullPtr 0 ret nullPtr nullPtr
-#else
-reportConnReset _ _ = return ()
-#endif
+reportConnReset = P.reportConnReset
 
 -----------------------------------------------------------------------------
 -- Binding a socket
@@ -188,19 +165,10 @@ connectLoop s p_sa sz whenWritable = withFdSocket s $ \fd -> loop fd
     loop fd = do
        r <- c_connect fd p_sa sz
        if r /= -1 then return (Right ()) else do
-#if defined(mingw32_HOST_OS)
-           rc <- c_getLastError
-           if rc == wsaEWOULDBLOCK
-               then whenWritable connected
-               else throwSocketErrorCode errLoc rc
-#else
-           err <- getErrno
-           case () of
-             _ | err == eINTR       -> loop fd
-             _ | err == eINPROGRESS -> whenWritable connected
---           _ | err == eAGAIN      -> whenWritable connected
-             _otherwise             -> throwSocketError errLoc
-#endif
+           next <- P.connectNext errLoc
+           case next of
+             P.ConnectRetry -> loop fd
+             P.ConnectWait  -> whenWritable connected
 
     connected = do
        err <- getSocketOption s SoError
@@ -237,52 +205,12 @@ listen s backlog = withFdSocket s listen' `annotateIOException` show s
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
- new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close $ \fd -> do
-#if defined(mingw32_HOST_OS)
-     associateSocket fd
-#endif
+ new_sock <- E.bracketOnError (P.acceptFd listing_sock listing_fd new_sa sz) c_close $ \fd -> do
+     P.setupAccepted fd
      mkSocket fd
  new_addr <- peekSocketAddress new_sa
  return (new_sock, new_addr)
-  where
-#if defined(mingw32_HOST_OS)
-     -- The listening socket is non-blocking, as on POSIX.
-     callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len ->
-       throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
-         (c_accept fd sa ptr_len)
-#else
-     callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len -> do
-# ifdef HAVE_ADVANCED_SOCKET_FLAGS
-       throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
-                        (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
-# else
-       new_fd <- throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
-                        (c_accept fd sa ptr_len)
-       setNonBlockIfNeeded new_fd
-       setCloseOnExecIfNeeded new_fd
-       return new_fd
-# endif /* HAVE_ADVANCED_SOCKET_FLAGS */
-#endif
 
-#if defined(mingw32_HOST_OS)
--- | Associate a socket with the I/O manager, skipping the completion port for
---   an operation that finishes at once.
-associateSocket :: CSocket -> IO ()
-associateSocket fd = do
-    let h = wordPtrToPtr $ fromIntegral fd
-    Mgr.associateHandle' h
-    -- Not FILE_SKIP_SET_EVENT_ON_HANDLE: cancelling waits on the handle.
-    ok <- c_SetFileCompletionNotificationModes h fileSkipCompletionPortOnSuccess
-    unless ok $ ioError (userError "associateSocket: SetFileCompletionNotificationModes failed")
-    throwSocketErrorIfMinus1_ "associateSocket" $ c_set_nonblock fd
-
-foreign import ccall unsafe "hsnet_set_nonblock"
-    c_set_nonblock :: CSocket -> IO CInt
-
-foreign import ccall unsafe "windows.h SetFileCompletionNotificationModes"
-    c_SetFileCompletionNotificationModes :: Ptr () -> Word8 -> IO Bool
-
-#endif
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CSocket
 foreign import CALLCONV unsafe "bind"
@@ -291,19 +219,3 @@ foreign import CALLCONV unsafe "connect"
   c_connect :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
   c_listen :: CSocket -> CInt -> IO CInt
-
-#ifdef HAVE_ADVANCED_SOCKET_FLAGS
-foreign import CALLCONV unsafe "accept4"
-  c_accept4 :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> CInt -> IO CSocket
-#else
-foreign import CALLCONV unsafe "accept"
-  c_accept :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CSocket
-#endif
-
-#if defined(mingw32_HOST_OS)
--- int WSAIoctl(SOCKET, DWORD, LPVOID, DWORD, LPVOID, DWORD, LPDWORD,
---              LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE)
-foreign import CALLCONV unsafe "WSAIoctl"
-  c_WSAIoctl :: CSocket -> Word32 -> Ptr Word32 -> Word32 -> Ptr () -> Word32
-             -> Ptr Word32 -> Ptr () -> Ptr () -> IO CInt
-#endif
