@@ -5,11 +5,13 @@
 module Network.Socket.Name (
     getPeerName
   , getSocketName
+  , peekReceivedAddress
   , socketPort
   , socketPortSafe
   ) where
 
 import Foreign.Marshal.Utils (with)
+import System.IO.Error (catchIOError)
 
 import Network.Socket.Imports
 import Network.Socket.Internal
@@ -22,8 +24,8 @@ getPeerName s =
    with (fromIntegral sz) $ \int_star -> withFdSocket s $ \fd -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getPeerName" $
        c_getpeername fd ptr int_star
-     _sz <- peek int_star
-     peekSocketAddress ptr
+     len <- peek int_star
+     peekSocketAddressLen ptr (fromIntegral len)
 
 -- | Getting my socket address.
 getSocketName :: SocketAddress sa => Socket -> IO sa
@@ -32,7 +34,17 @@ getSocketName s =
    with (fromIntegral sz) $ \int_star -> withFdSocket s $ \fd -> do
      throwSocketErrorIfMinus1Retry_ "Network.Socket.getSocketName" $
        c_getsockname fd ptr int_star
-     peekSocketAddress ptr
+     len <- peek int_star
+     peekSocketAddressLen ptr (fromIntegral len)
+
+-- | Reading the source address that a receive has returned with its
+--   length.  With none, as on a stream socket, it is the peer of a
+--   connected socket, or else an unnamed one.
+peekReceivedAddress :: SocketAddress sa => Socket -> Ptr sa -> Int -> IO sa
+peekReceivedAddress s ptr 0 =
+    getPeerName s `catchIOError` \_ -> peekSocketAddressLen ptr 0
+peekReceivedAddress s ptr len =
+    peekSocketAddressLen ptr len `catchIOError` \_ -> getPeerName s
 
 foreign import CALLCONV unsafe "getpeername"
   c_getpeername :: CSocket -> Ptr sa -> Ptr CInt -> IO CInt

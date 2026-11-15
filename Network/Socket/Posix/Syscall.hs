@@ -36,19 +36,21 @@ setupSocket = setNonBlockIfNeeded
 setupAccepted :: CSocket -> IO ()
 setupAccepted _ = return ()
 
--- | Accepting a connection on a non-blocking listening socket.
-acceptFd :: Socket -> CSocket -> Ptr sa -> Int -> IO CSocket
+-- | Accepting a connection on a non-blocking listening socket, with the
+--   length of the peer's address.
+acceptFd :: Socket -> CSocket -> Ptr sa -> Int -> IO (CSocket, Int)
 acceptFd listing_sock fd sa sz = with (fromIntegral sz) $ \ptr_len -> do
 #ifdef HAVE_ADVANCED_SOCKET_FLAGS
-    throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
+    new_fd <- throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
         (c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec))
 #else
     new_fd <- throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
         (c_accept fd sa ptr_len)
     setNonBlockIfNeeded new_fd
     setCloseOnExecIfNeeded new_fd
-    return new_fd
 #endif
+    len <- peek ptr_len
+    return (new_fd, fromIntegral len)
 
 -- | POSIX says nothing of an ICMP unreachable to an unconnected socket.
 reportConnReset :: Socket -> Bool -> IO ()

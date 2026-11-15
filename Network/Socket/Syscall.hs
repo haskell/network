@@ -206,10 +206,11 @@ listen s backlog = withFdSocket s listen' `annotateIOException` show s
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
- new_sock <- E.bracketOnError (P.acceptFd listing_sock listing_fd new_sa sz) c_close $ \fd -> do
+ (new_sock, len) <- E.bracketOnError (P.acceptFd listing_sock listing_fd new_sa sz) (c_close . fst) $ \(fd, len) -> do
      P.setupAccepted fd
-     mkSocket fd
- new_addr <- peekSocketAddress new_sa
+     sock <- mkSocket fd
+     return (sock, len)
+ new_addr <- peekSocketAddressLen new_sa len
  return (new_sock, new_addr)
 
 foreign import CALLCONV unsafe "socket"
