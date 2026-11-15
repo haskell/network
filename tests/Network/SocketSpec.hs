@@ -383,6 +383,7 @@ spec = do
                     (s3, s4) <- socketPair AF_UNIX Stream defaultProtocol
                     withFdSocket s1 $ \fd1 -> void $ sendFd s3 fd1
                     fd1' <- recvFd s4
+                    getCloseOnExec fd1' `shouldReturn` True
                     s1' <- mkSocket fd1'
                     void $ send s1' testMsg
                     recv s2 1024 `shouldReturn` testMsg

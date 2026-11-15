@@ -17,8 +17,12 @@ import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (with)
 import System.IO.Error (catchIOError)
+import System.Posix.Types (Fd (..))
 
+import Network.Socket.Cbits (msgCmsgCloexec)
+import Network.Socket.Posix.Cmsg
 import Network.Socket.Posix.CmsgHdr
+import Network.Socket.Posix.Fcntl (setCloseOnExecIfNeeded)
 import Network.Socket.Posix.MsgHdr
 import Network.Socket.Posix.IOVec
 
@@ -131,20 +135,32 @@ recvBufMsg s bufsizs clen flags = do
               , msgCtrlLen = fromIntegral clen
               , msgFlags   = 0
               }
-            _cflags = fromMsgFlag flags
+            -- Received descriptors are close-on-exec, as network's own are.
+            cflags = fromMsgFlag flags .|. msgCmsgCloexec
         withFdSocket s $ \fd -> do
           with msgHdr $ \msgHdrPtr -> do
             len <-
                 fmap fromIntegral <$>
                 throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmsg" $
-                      c_recvmsg fd msgHdrPtr _cflags
+                      c_recvmsg fd msgHdrPtr cflags
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
 
             cmsgs <- parseCmsgs msgHdrPtr
-            let flags' = MsgFlag $ fromIntegral $ msgFlags hdr
+            -- Without MSG_CMSG_CLOEXEC, marked here: later than the kernel
+            -- would, but before the caller could.
+            when (msgCmsgCloexec == 0) $
+                forM_ (receivedFds cmsgs) setCloseOnExecIfNeeded
+            -- Linux echoes MSG_CMSG_CLOEXEC, which the caller did not ask for.
+            let flags' = MsgFlag $ fromIntegral (msgFlags hdr) .&. complement msgCmsgCloexec
 
             return (sockaddr, len, cmsgs, flags')
+
+-- | The descriptors in SCM_RIGHTS control messages.
+receivedFds :: [Cmsg] -> [CInt]
+receivedFds cmsgs =
+    [ fd | c <- cmsgs, cmsgId c == CmsgIdFds
+         , Just fds <- [decodeCmsg c :: Maybe [Fd]], Fd fd <- fds ]
 
 foreign import ccall unsafe "send"
   c_send :: CSocket -> Ptr a -> CSize -> CInt -> IO CInt

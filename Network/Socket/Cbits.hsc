@@ -104,6 +104,13 @@ fdCloexec :: CInt
 fdCloexec = #const FD_CLOEXEC
 oNonBlock :: CInt
 oNonBlock = #const O_NONBLOCK
+-- | MSG_CMSG_CLOEXEC, or 0 where recvmsg has no such flag, as on macOS.
+msgCmsgCloexec :: CInt
+# if defined(MSG_CMSG_CLOEXEC)
+msgCmsgCloexec = #const MSG_CMSG_CLOEXEC
+# else
+msgCmsgCloexec = 0
+# endif
 # if defined(HAVE_ADVANCED_SOCKET_FLAGS)
 sockNonBlock :: CInt
 sockNonBlock = #const SOCK_NONBLOCK

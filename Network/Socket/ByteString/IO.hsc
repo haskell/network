@@ -365,6 +365,9 @@ sendMsgWith s addr bss cmsgs flags giveUp =
     withWritable s giveUp $ sendMsg s addr bss cmsgs flags
 
 -- | Receive data from the socket using recvmsg(2).
+--   Descriptors received in control messages are close-on-exec, as the
+--   sockets network creates are (atomically where @MSG_CMSG_CLOEXEC@ exists,
+--   right after the receive elsewhere, such as on macOS).
 recvMsg :: Socket  -- ^ Socket
         -> Int     -- ^ The maximum length of data to be received
                    --   If the total length is not large enough,
