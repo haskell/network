@@ -18,12 +18,8 @@ module Network.Socket.Win32.Load (
   , WSARecvMsgFn
   , getWSASendMsg
   , getWSARecvMsg
-  , mkSendMsgSafe
-  , mkRecvMsgSafe
-#if __IO_MANAGER_WINIO__ >= 2
   , mkSendMsgUnsafe
   , mkRecvMsgUnsafe
-#endif
   ) where
 
 #include "HsNetDef.h"
@@ -85,19 +81,12 @@ foreign import ccall unsafe "loadWSASendMsg"
 foreign import ccall unsafe "loadWSARecvMsg"
   c_loadWSARecvMsg :: CSocket -> IO (FunPtr WSARecvMsgFn)
 
--- | MIO blocks inside the call and so needs a safe wrapper.
-foreign import CALLCONV SAFE_ON_WIN "dynamic"
-  mkSendMsgSafe :: FunPtr WSASendMsgFn -> WSASendMsgFn
-foreign import CALLCONV SAFE_ON_WIN "dynamic"
-  mkRecvMsgSafe :: FunPtr WSARecvMsgFn -> WSARecvMsgFn
 
-#if __IO_MANAGER_WINIO__ >= 2
--- | WinIO returns immediately, so the unsafe wrapper is the right one.
+-- | The calls return at once: overlapped, or on a non-blocking socket.
 foreign import CALLCONV unsafe "dynamic"
   mkSendMsgUnsafe :: FunPtr WSASendMsgFn -> WSASendMsgFn
 foreign import CALLCONV unsafe "dynamic"
   mkRecvMsgUnsafe :: FunPtr WSARecvMsgFn -> WSARecvMsgFn
-#endif
 
 sendMsgCache :: TVar (Loaded (FunPtr WSASendMsgFn))
 sendMsgCache = unsafePerformIO $ newTVarIO Unloaded

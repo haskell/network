@@ -40,7 +40,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:  [ 'ubuntu-latest', 'macOS-latest', 'windows-latest' ]
+        # Windows needs a GHC with __IO_MANAGER_WINIO__ >= 2; put it back
+        # with 9.14.2 once that is released.
+        os:  [ 'ubuntu-latest', 'macOS-latest' ]
         ghc: [ '9.4', '9.6', '9.8', '9.10', '9.12', '9.14' ]
         # GitHub runs at most five macOS jobs at once.  What is OS-specific
         # here does not vary by compiler, so keep the oldest and newest off
@@ -50,10 +52,6 @@ jobs:
           - { os: macOS-latest,   ghc: '9.8'  }
           - { os: macOS-latest,   ghc: '9.10' }
           - { os: macOS-latest,   ghc: '9.12' }
-          - { os: windows-latest, ghc: '9.6'  }
-          - { os: windows-latest, ghc: '9.8'  }
-          - { os: windows-latest, ghc: '9.10' }
-          - { os: windows-latest, ghc: '9.12' }
 
     steps:
     - uses: actions/checkout@v4

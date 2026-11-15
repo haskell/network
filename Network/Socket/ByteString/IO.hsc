@@ -46,7 +46,7 @@ module Network.Socket.ByteString.IO
     , Cmsg(..)
     ) where
 
-import Control.Concurrent (threadWaitWrite, rtsSupportsBoundThreads)
+import Control.Concurrent (rtsSupportsBoundThreads)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (createAndTrim)
@@ -93,19 +93,14 @@ import Network.Socket.Win32.MsgHdr (MsgHdr(..))
 send :: Socket     -- ^ Connected socket
      -> ByteString  -- ^ Data to send
      -> IO Int      -- ^ Number of bytes sent
-send = sendOv nullPtr
-
--- The give-ups below issue their operations with an OVERLAPPED of their
--- own on Windows, through these: see 'Network.Socket.Buffer.sendBufToOv'.
-sendOv :: Ptr () -> Socket -> ByteString -> IO Int
-sendOv ov s xs = send' `annotateWithSocket` (s, Nothing)
+send s xs = send' `annotateWithSocket` (s, Nothing)
   where
     send' = unsafeUseAsCStringLen xs $ \(str, len) ->
-      sendBufOv ov s (castPtr str) len
+      sendBuf s (castPtr str) len
 
 waitWhen0 :: Int -> Socket -> IO ()
 waitWhen0 0 s = when rtsSupportsBoundThreads $
-    withFdSocket s $ \fd -> threadWaitWrite $ fromIntegral fd
+    withFdSocket s $ waitWriteSocket s
 waitWhen0 _ _ = return ()
 
 -- | Send data to the socket.  The socket must be connected to a
@@ -131,7 +126,7 @@ sendAll s bs0 = loop bs0
 --
 --   @since 3.2.12.0
 sendWith :: Socket -> ByteString -> STM a -> IO (Either a Int)
-sendWith s xs giveUp = withWritableOv s giveUp $ \ov -> sendOv ov s xs
+sendWith s xs giveUp = withWritable s giveUp $ send s xs
 
 -- | 'sendAll' which the caller can give up on.  Part of the data may
 --   have been sent before it gives up, so a stream given up on is to be
@@ -152,7 +147,7 @@ sendAllWith s bs giveUp = do
 sendToWith
     :: SocketAddress sa
     => Socket -> ByteString -> sa -> STM a -> IO (Either a Int)
-sendToWith s xs sa giveUp = withWritableOv s giveUp $ \ov -> sendToOv ov s xs sa
+sendToWith s xs sa giveUp = withWritable s giveUp $ sendTo s xs sa
 
 -- | Send data to the socket.  The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.
@@ -163,11 +158,8 @@ sendTo :: SocketAddress sa =>
        -> ByteString  -- ^ Data to send
        -> sa    -- ^ Recipient address
        -> IO Int      -- ^ Number of bytes sent
-sendTo = sendToOv nullPtr
-
-sendToOv :: SocketAddress sa => Ptr () -> Socket -> ByteString -> sa -> IO Int
-sendToOv ov s xs sa =
-    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufToOv ov s str len sa
+sendTo s xs sa =
+    unsafeUseAsCStringLen xs $ \(str, len) -> sendBufTo s str len sa
 
 -- | Send data to the socket. The recipient can be specified
 -- explicitly, so the socket need not be in a connected state.  Unlike
@@ -208,10 +200,7 @@ sendMany s cs = sendMany' `annotateWithSocket` (s, Nothing)
 
 -- One gathering write, which may send only part of the data.
 sendManyOnce :: Socket -> [ByteString] -> IO Int
-sendManyOnce = sendManyOnceOv nullPtr
-
-sendManyOnceOv :: Ptr () -> Socket -> [ByteString] -> IO Int
-sendManyOnceOv _ov s cs =
+sendManyOnce s cs =
 #if !defined(mingw32_HOST_OS)
       fmap fromIntegral . withIOVecfromBS cs $ \(iovsPtr, iovsLen) ->
           withFdSocket s $ \fd -> do
@@ -222,13 +211,10 @@ sendManyOnceOv _ov s cs =
       fmap fromIntegral . withWSABuffromBS cs $ \(wsabsPtr, wsabsLen) ->
           withFdSocket s $ \fd -> do
               let len =  fromIntegral wsabsLen
-              if _ov /= nullPtr
-                then throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
-                       c_ovl_sendv fd wsabsPtr len _ov
-                else alloca $ \send_ptr -> do
+              alloca $ \send_ptr -> do
                   _ <- throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendMany" $
                          c_wsasend fd wsabsPtr len send_ptr  0 nullPtr nullPtr
-                  fromIntegral <$> peek send_ptr
+                  peek send_ptr
 #endif
 
 -- | 'sendMany' which the caller can give up on.  Parts may have been
@@ -238,7 +224,7 @@ sendManyOnceOv _ov s cs =
 sendManyWith :: Socket -> [ByteString] -> STM a -> IO (Either a ())
 sendManyWith _ [] _ = return $ Right ()
 sendManyWith s cs giveUp = do
-    r <- withWritableOv s giveUp (\ov -> sendManyOnceOv ov s cs) `annotateWithSocket` (s, Nothing)
+    r <- withWritable s giveUp (sendManyOnce s cs) `annotateWithSocket` (s, Nothing)
     case r of
         Left a -> return $ Left a
         Right sent -> sendManyWith s (remainingChunks sent cs) giveUp
@@ -289,7 +275,7 @@ sendManyTo s cs addr = sendManyTo' `annotateWithSocket` (s, Nothing)
                 , msgFlags     = 0
                 }
           withFdSocket s $ \fd -> do
-              sendMsg <- mkSendMsgSafe <$> getWSASendMsg fd
+              sendMsg <- mkSendMsgUnsafe <$> getWSASendMsg fd
               with msgHdr $ \msgHdrPtr ->
                 alloca $ \send_ptr -> do
                   _ <- throwSocketErrorWaitWrite s "Network.Socket.ByteString.sendManyTo" $
@@ -327,19 +313,12 @@ sendManyWithFds s bss fds = sendManyWithFds' `annotateWithSocket` (s, Nothing)
 -- For TCP sockets, a zero length return value means the peer has
 -- closed its half side of the connection.
 --
--- Currently, the 'recv' family is blocked on Windows because a proper
--- IO manager is not implemented. To use with 'System.Timeout.timeout'
--- on Windows, use 'Network.Socket.setSocketOption' with
--- 'Network.Socket.RecvTimeOut' as well.
 recv :: Socket        -- ^ Connected socket
      -> Int            -- ^ Maximum number of bytes to receive
      -> IO ByteString  -- ^ Data received
 recv s nbytes
     | nbytes < 0 = ioError (mkInvalidRecvArgError "Network.Socket.ByteString.recv") `annotateWithSocket` (s, Nothing)
-    | otherwise  = recvOv nullPtr s nbytes
-
-recvOv :: Ptr () -> Socket -> Int -> IO ByteString
-recvOv ov s nbytes = createAndTrim nbytes $ \ptr -> recvBufOv ov s ptr nbytes `annotateWithSocket` (s, Nothing)
+    | otherwise  = createAndTrim nbytes $ \ptr -> recvBuf s ptr nbytes `annotateWithSocket` (s, Nothing)
 
 -- | Receive data from the socket.  The socket need not be in a
 -- connected state.  Returns @(bytes, address)@ where @bytes@ is a
@@ -351,12 +330,9 @@ recvFrom :: SocketAddress sa =>
             Socket                     -- ^ Socket
          -> Int                        -- ^ Maximum number of bytes to receive
          -> IO (ByteString, sa)  -- ^ Data received and sender address
-recvFrom = recvFromOv nullPtr
-
-recvFromOv :: SocketAddress sa => Ptr () -> Socket -> Int -> IO (ByteString, sa)
-recvFromOv ov sock nbytes =
+recvFrom sock nbytes =
     allocaBytes nbytes $ \ptr -> do
-        (len, sockaddr) <- recvBufFromOv ov sock ptr nbytes
+        (len, sockaddr) <- recvBufFrom sock ptr nbytes
         str <- B.packCStringLen (ptr, len)
         return (str, sockaddr)
 
@@ -379,7 +355,7 @@ recvWith s nbytes giveUp
                 `annotateWithSocket` (s, Nothing)
         case bs of
             Just b -> return $ Right b
-            Nothing -> withReadableOv s giveUp $ \ov -> recvOv ov s nbytes
+            Nothing -> withReadable s giveUp $ recv s nbytes
 
 -- | 'recvFrom' which the caller can give up on.
 --
@@ -390,7 +366,7 @@ recvFromWith
     -> Int
     -> STM a
     -> IO (Either a (ByteString, sa))
-recvFromWith s nbytes giveUp = withReadableOv s giveUp $ \ov -> recvFromOv ov s nbytes
+recvFromWith s nbytes giveUp = withReadable s giveUp $ recvFrom s nbytes
 
 -- A read which never waits: 'Nothing' when nothing is there yet.
 createAndTrim' :: Int -> (Ptr Word8 -> IO Int) -> IO (Maybe ByteString)
@@ -450,14 +426,11 @@ sendMsg :: Socket       -- ^ Socket
         -> [Cmsg]       -- ^ Control messages
         -> MsgFlag      -- ^ Message flags
         -> IO Int       -- ^ The length actually sent
-sendMsg = sendMsgOv nullPtr
-
-sendMsgOv :: Ptr () -> Socket -> SockAddr -> [ByteString] -> [Cmsg] -> MsgFlag -> IO Int
-sendMsgOv _ _ _    []  _ _ = return 0
-sendMsgOv ov s addr bss cmsgs flags = sendMsg' `annotateWithSocket` (s, Just addr)
+sendMsg _ _    []  _ _ = return 0
+sendMsg s addr bss cmsgs flags = sendMsg' `annotateWithSocket` (s, Just addr)
   where
     sendMsg' = withBufSizs bss $ \bufsizs ->
-      sendBufMsgOv ov s addr bufsizs cmsgs flags
+      sendBufMsg s addr bufsizs cmsgs flags
 
 -- | 'sendMsg' which the caller can give up on.
 --
@@ -471,7 +444,7 @@ sendMsgWith
     -> STM a
     -> IO (Either a Int)
 sendMsgWith s addr bss cmsgs flags giveUp =
-    withWritableOv s giveUp $ \ov -> sendMsgOv ov s addr bss cmsgs flags
+    withWritable s giveUp $ sendMsg s addr bss cmsgs flags
 
 -- | Receive data from the socket using recvmsg(2).
 recvMsg :: Socket  -- ^ Socket
@@ -483,15 +456,12 @@ recvMsg :: Socket  -- ^ Socket
                    --   'MSG_CTRUNC' is returned
         -> MsgFlag -- ^ Message flags
         -> IO (SockAddr, ByteString, [Cmsg], MsgFlag) -- ^ Source address, received data, control messages and message flags
-recvMsg = recvMsgOv nullPtr
-
-recvMsgOv :: Ptr () -> Socket -> Int -> Int -> MsgFlag -> IO (SockAddr, ByteString, [Cmsg], MsgFlag)
-recvMsgOv ov s siz clen flags = recvMsg' `annotateWithSocket` (s, Nothing)
+recvMsg s siz clen flags = recvMsg' `annotateWithSocket` (s, Nothing)
   where
     recvMsg' = do
         bs@(PS fptr _ _) <- create siz $ \ptr -> zeroMemory ptr (fromIntegral siz)
         withForeignPtr fptr $ \ptr -> do
-            (addr,len,cmsgs,flags') <- recvBufMsgOv ov s [(ptr,siz)] clen flags
+            (addr,len,cmsgs,flags') <- recvBufMsg s [(ptr,siz)] clen flags
             let bs' | len < siz = PS fptr 0 len
                     | otherwise = bs
             return (addr, bs', cmsgs, flags')
@@ -507,5 +477,5 @@ recvMsgWith
     -> STM a
     -> IO (Either a (SockAddr, ByteString, [Cmsg], MsgFlag))
 recvMsgWith s siz clen flags giveUp =
-    withReadableOv s giveUp $ \ov -> recvMsgOv ov s siz clen flags
+    withReadable s giveUp $ recvMsg s siz clen flags
 

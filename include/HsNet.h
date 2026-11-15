@@ -79,11 +79,6 @@
 #ifdef _WIN32
 extern int   initWinSock ();
 extern const char* getWSErrorDescr(int err);
-extern void* newAcceptParams(int sock,
-			     int sz,
-			     void* sockaddr);
-extern int   acceptNewSock(void* d);
-extern int   acceptDoProc(void* param);
 
 extern LPWSACMSGHDR
 cmsg_firsthdr(LPWSAMSG mhdr);

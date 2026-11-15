@@ -486,9 +486,8 @@ spec = do
             r <- tryIOError $ accept sock
             either isClosedSocketError (const False) r `shouldBe` True
 
-    -- On Windows these need WinIO; under MIO they are pending.
     describe "waiting for readiness" $ do
-        it "waits until data arrives, and leaves it to be read" $ readinessOr $
+        it "waits until data arrives, and leaves it to be read" $
             loopbackPair $ \c s -> do
                 (ready, _) <- waitAndCancelReadSocketSTM s
                 fires 100 ready `shouldReturn` False
@@ -496,19 +495,19 @@ spec = do
                 fires 2000 ready `shouldReturn` True
                 recv s 64 `shouldReturn` "hello"
 
-        it "is ready at once when data is there" $ readinessOr $
+        it "is ready at once when data is there" $
             loopbackPair $ \c s -> do
                 sendAll c "hello"
                 threadDelay 50000
                 (ready, _) <- waitAndCancelReadSocketSTM s
                 fires 2000 ready `shouldReturn` True
 
-        it "is ready at once for writing" $ readinessOr $
+        it "is ready at once for writing" $
             loopbackPair $ \_ s -> do
                 (ready, _) <- waitAndCancelWriteSocketSTM s
                 fires 2000 ready `shouldReturn` True
 
-        it "does not fire once cancelled, and the socket still works" $ readinessOr $
+        it "does not fire once cancelled, and the socket still works" $
             loopbackPair $ \c s -> do
                 (ready, cancel) <- waitAndCancelReadSocketSTM s
                 cancel
@@ -516,7 +515,7 @@ spec = do
                 fires 200 ready `shouldReturn` False
                 recv s 64 `shouldReturn` "after"
 
-        it "fires on a listening socket when a connection comes" $ readinessOr $
+        it "fires on a listening socket when a connection comes" $
             withListener $ \l port -> do
                 (ready, _) <- waitAndCancelReadSocketSTM l
                 fires 100 ready `shouldReturn` False
@@ -525,7 +524,7 @@ spec = do
                     fires 2000 ready `shouldReturn` True
                     accept l >>= close . fst
 
-        it "fires for a datagram, and leaves it to be read" $ readinessOr $
+        it "fires for a datagram, and leaves it to be read" $
             bracket (socket AF_INET Datagram defaultProtocol) close $ \u1 ->
             bracket (socket AF_INET Datagram defaultProtocol) close $ \u2 -> do
                 let lo p = SockAddrInet p $ tupleToHostAddress (127, 0, 0, 1)
@@ -537,7 +536,7 @@ spec = do
                 fires 2000 ready `shouldReturn` True
                 fst <$> recvFrom u1 64 `shouldReturn` "dgram"
 
-        it "survives many waits which finish at once or are cancelled" $ readinessOr $
+        it "survives many waits which finish at once or are cancelled" $
             loopbackPair $ \_ s -> do
                 replicateM_ 1000 $ do
                     (ready, _) <- waitAndCancelWriteSocketSTM s
@@ -794,11 +793,3 @@ loopbackPair action = withListener $ \l port ->
 -- Whether the STM action fires within the given milliseconds.
 fires :: Int -> STM () -> IO Bool
 fires ms ready = maybe False (const True) <$> timeout (ms * 1000) (atomically ready)
-
--- Runs the test where readiness is available, and marks it pending elsewhere.
-readinessOr :: Expectation -> Expectation
-readinessOr body = do
-    available <- bracket (socket AF_INET Datagram defaultProtocol) close $ \s ->
-        either (const False) (const True)
-            <$> tryIOError (waitAndCancelWriteSocketSTM s >>= snd)
-    if available then body else pendingWith "no readiness under this I/O manager"

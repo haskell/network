@@ -18,12 +18,6 @@ module Network.Socket.Buffer (
   , recvBufNoWaitOr
   , sendBufMsg
   , recvBufMsg
-  , sendBufToOv
-  , sendBufOv
-  , recvBufFromOv
-  , recvBufOv
-  , sendBufMsgOv
-  , recvBufMsgOv
   ) where
 
 #if !defined(mingw32_HOST_OS)
@@ -35,16 +29,11 @@ import GHC.IO.Exception (IOErrorType(InvalidArgument))
 import System.IO.Error (mkIOError, ioeSetErrorString, catchIOError)
 
 #if defined(mingw32_HOST_OS)
-import GHC.IO.FD (FD(..), readRawBufferPtr, writeRawBufferPtr)
+import qualified GHC.Event.Windows as Mgr
 import Network.Socket.Win32.CmsgHdr
 import Network.Socket.Win32.Load
 import Network.Socket.Win32.MsgHdr
 import Network.Socket.Win32.WSABuf
-## if __IO_MANAGER_WINIO__ >= 2
-import qualified GHC.Event.Windows as Mgr
-import GHC.IO.SubSystem ((<!>))
-import Foreign.Ptr (wordPtrToPtr)
-## endif
 #else
 import Network.Socket.Posix.CmsgHdr
 import Network.Socket.Posix.MsgHdr
@@ -94,28 +83,15 @@ sendBufTo :: SocketAddress sa =>
           -> Int         -- Data to send
           -> sa
           -> IO Int      -- Number of Bytes sent
-sendBufTo = sendBufToOv nullPtr
-
--- | 'sendBufTo' issued with an OVERLAPPED on Windows, unless it is
---   'nullPtr', so that cancelling it reaches nothing else.  The
---   OVERLAPPED is ignored elsewhere.  So are the others ending in @Ov@.
-sendBufToOv :: SocketAddress sa => Ptr () -> Socket -> Ptr a -> Int -> sa -> IO Int
 #if defined(mingw32_HOST_OS)
-sendBufToOv ov s ptr nbytes sa | ov /= nullPtr =
-  withSocketAddress sa $ \p_sa siz -> fmap fromIntegral $
-    withFdSocket s $ \fd ->
-      throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
-        c_ovl_sendto fd (castPtr ptr) (fromIntegral nbytes) (castPtr p_sa) (fromIntegral siz) ov
+sendBufTo = sendBufToWinIO
+#else
+sendBufTo = sendBufToPosix
 #endif
-sendBufToOv _ s ptr nbytes sa =
-##if __IO_MANAGER_WINIO__ >= 2
-    sendBufToMIO s ptr nbytes sa <!> sendBufToWinIO s ptr nbytes sa
-##else
-    sendBufToMIO s ptr nbytes sa
-##endif
 
-sendBufToMIO :: SocketAddress sa => Socket -> Ptr a -> Int -> sa -> IO Int
-sendBufToMIO s ptr nbytes sa =
+#if !defined(mingw32_HOST_OS)
+sendBufToPosix :: SocketAddress sa => Socket -> Ptr a -> Int -> sa -> IO Int
+sendBufToPosix s ptr nbytes sa =
   withSocketAddress sa $ \p_sa siz -> fromIntegral <$> do
     withFdSocket s $ \fd -> do
         let sz = fromIntegral siz
@@ -123,8 +99,9 @@ sendBufToMIO s ptr nbytes sa =
             flags = 0
         throwSocketErrorWaitWrite s "Network.Socket.sendBufTo" $
           c_sendto fd ptr n flags p_sa sz
+#endif
 
-##if __IO_MANAGER_WINIO__ >= 2
+#if defined(mingw32_HOST_OS)
 sendBufToWinIO :: SocketAddress sa => Socket -> Ptr a -> Int -> sa -> IO Int
 sendBufToWinIO s ptr nbytes sa =
   withSocketAddress sa $ \p_sa siz ->
@@ -144,15 +121,6 @@ sendBufToWinIO s ptr nbytes sa =
             (\err bytes -> if err == _ERROR_SUCCESS
               then Mgr.ioSuccess $ fromIntegral bytes
               else Mgr.ioFailed err)
-##endif
-
-#if defined(mingw32_HOST_OS)
-socket2FD :: Socket -> IO FD
-socket2FD s = do
-  fd <- unsafeFdSocket s
-  -- HACK, 1 means True
-  -- TODO: remove fromIntegral for WinIO
-  return $ FD{ fdFD = fromIntegral fd, fdIsSocket_ = 1 }
 #endif
 
 -- | Send data to the socket. The socket must be connected to a remote
@@ -162,24 +130,10 @@ sendBuf :: Socket    -- Bound/Connected Socket
         -> Ptr Word8  -- Pointer to the data to send
         -> Int        -- Length of the buffer
         -> IO Int     -- Number of Bytes sent
-sendBuf = sendBufOv nullPtr
-
--- | 'sendBuf' issued with an OVERLAPPED: see 'sendBufToOv'.
-sendBufOv :: Ptr () -> Socket -> Ptr Word8 -> Int -> IO Int
 #if defined(mingw32_HOST_OS)
-sendBufOv ov s str len | ov /= nullPtr =
-  fmap fromIntegral $ withFdSocket s $ \fd ->
-    throwSocketErrorWaitWrite s "Network.Socket.sendBuf" $
-      c_ovl_send fd (castPtr str) (fromIntegral len) ov
-#endif
-sendBufOv _ s str len =
-#if defined(mingw32_HOST_OS)
-## if __IO_MANAGER_WINIO__ >= 2
-    sendBufMIO s str len <!> sendBufWinIO s str len
-## else
-    sendBufMIO s str len
-## endif
+sendBuf = sendBufWinIO
 #else
+sendBuf s str len =
     fromIntegral <$> withFdSocket s (\fd -> do
         let flags = 0
             clen = fromIntegral len
@@ -188,18 +142,6 @@ sendBufOv _ s str len =
 #endif
 
 #if defined(mingw32_HOST_OS)
-sendBufMIO :: Socket -> Ptr Word8 -> Int -> IO Int
-sendBufMIO s str len = fromIntegral <$> do
--- writeRawBufferPtr is supposed to handle checking for errors, but it's broken
--- on x86_64 because of GHC bug #12010 so we duplicate the check here. The call
--- to throwSocketErrorIfMinus1Retry can be removed when no GHC version with the
--- bug is supported.
-    fd <- socket2FD s
-    let clen = fromIntegral len
-    throwSocketErrorIfMinus1Retry "Network.Socket.sendBuf" $
-      writeRawBufferPtr "Network.Socket.sendBuf" fd (castPtr str) 0 clen
-
-## if __IO_MANAGER_WINIO__ >= 2
 sendBufWinIO :: Socket -> Ptr Word8 -> Int -> IO Int
 sendBufWinIO s ptr len = withFdSocket s $ \sock ->
   with (WSABuf ptr (fromIntegral len)) $ \wbuf ->
@@ -216,7 +158,6 @@ sendBufWinIO s ptr len = withFdSocket s $ \sock ->
         (\err bytes -> if err == _ERROR_SUCCESS
           then Mgr.ioSuccess $ fromIntegral bytes
           else Mgr.ioFailed err)
-## endif
 #endif
 
 -- | Receive data from the socket, writing it into buffer instead of
@@ -228,34 +169,16 @@ sendBufWinIO s ptr len = withFdSocket s $ \sock ->
 -- If the first return value is zero, it means EOF.
 --
 -- For 'Stream' sockets, the second return value would be invalid.
---
--- NOTE: blocking on Windows unless you compile with -threaded (see
--- GHC ticket #1129)
 recvBufFrom :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
-recvBufFrom = recvBufFromOv nullPtr
-
--- | 'recvBufFrom' issued with an OVERLAPPED: see 'sendBufToOv'.
-recvBufFromOv :: SocketAddress sa => Ptr () -> Socket -> Ptr a -> Int -> IO (Int, sa)
-recvBufFromOv _ov s ptr nbytes
+recvBufFrom s ptr nbytes
     | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBufFrom")
 #if defined(mingw32_HOST_OS)
-    | _ov /= nullPtr =
-        withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
-            withFdSocket s $ \fd -> do
-                poke ptr_len (fromIntegral sz)
-                len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
-                         c_ovl_recvfrom fd (castPtr ptr) (fromIntegral nbytes) (castPtr ptr_sa) ptr_len _ov
-                sockaddr <- peekSocketAddress ptr_sa
-                    `catchIOError` \_ -> getPeerName s
-                return (fromIntegral len, sockaddr)
+    | otherwise   = recvBufFromWinIO s ptr nbytes
+#else
+    | otherwise   = recvBufFromImpl s ptr nbytes
 #endif
-    | otherwise   =
-##if __IO_MANAGER_WINIO__ >= 2
-        recvBufFromImpl s ptr nbytes <!> recvBufFromWinIO s ptr nbytes
-##else
-        recvBufFromImpl s ptr nbytes
-##endif
 
+#if !defined(mingw32_HOST_OS)
 recvBufFromImpl :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFromImpl s ptr nbytes =
     withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
@@ -268,8 +191,9 @@ recvBufFromImpl s ptr nbytes =
             sockaddr <- peekSocketAddress ptr_sa
                 `catchIOError` \_ -> getPeerName s
             return (fromIntegral len, sockaddr)
+#endif
 
-##if __IO_MANAGER_WINIO__ >= 2
+#if defined(mingw32_HOST_OS)
 recvBufFromWinIO :: SocketAddress sa => Socket -> Ptr a -> Int -> IO (Int, sa)
 recvBufFromWinIO s ptr nbytes =
     withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
@@ -316,7 +240,7 @@ recvBufFromWinIO s ptr nbytes =
         | err == _ERROR_OPERATION_ABORTED = Mgr.ioSuccess 0
         | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
         | otherwise                       = Mgr.ioFailed err
-##endif /* __IO_MANAGER_WINIO__ */
+#endif
 
 -- | Receive data from the socket.  The socket must be in a connected
 -- state. This function may return fewer bytes than specified.  If the
@@ -331,25 +255,12 @@ recvBufFromWinIO s ptr nbytes =
 -- EOF. Historical note: Version 2.8.x.y or earlier,
 -- an EOF error was thrown. This was changed in version 3.0.
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBuf = recvBufOv nullPtr
-
--- | 'recvBuf' issued with an OVERLAPPED: see 'sendBufToOv'.
-recvBufOv :: Ptr () -> Socket -> Ptr Word8 -> Int -> IO Int
-recvBufOv _ov s ptr nbytes
+recvBuf s ptr nbytes
  | nbytes <= 0 = ioError (mkInvalidRecvArgError "Network.Socket.recvBuf")
 #if defined(mingw32_HOST_OS)
- | _ov /= nullPtr = withFdSocket s $ \fd -> fromIntegral <$>
-    throwSocketErrorWaitRead s "Network.Socket.recvBuf"
-        (c_ovl_recv fd (castPtr ptr) (fromIntegral nbytes) _ov)
-#endif
- | otherwise   = do
-#if defined(mingw32_HOST_OS)
-## if __IO_MANAGER_WINIO__ >= 2
-    recvBufMIO s ptr nbytes <!> recvBufWinIO s ptr nbytes
-## else
-    recvBufMIO s ptr nbytes
-## endif
+ | otherwise   = recvBufWinIO s ptr nbytes
 #else
+ | otherwise   = do
     len <- withFdSocket s $ \fd ->
         throwSocketErrorWaitRead s "Network.Socket.recvBuf" $
              c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
@@ -357,17 +268,6 @@ recvBufOv _ov s ptr nbytes
 #endif
 
 #if defined(mingw32_HOST_OS)
--- MIO (old I/O manager) implementation
-recvBufMIO :: Socket -> Ptr Word8 -> Int -> IO Int
-recvBufMIO s ptr nbytes = do
-    -- see comment in sendBuf above.
-    fd <- socket2FD s
-    let cnbytes = fromIntegral nbytes
-    len <- throwSocketErrorIfMinus1Retry "Network.Socket.recvBuf" $
-             readRawBufferPtr "Network.Socket.recvBuf" fd ptr 0 cnbytes
-    return $ fromIntegral len
-
-## if __IO_MANAGER_WINIO__ >= 2
 recvBufWinIO :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
     fmap fromIntegral $ throwWinIOError "Network.Socket.recvBuf" $
@@ -409,7 +309,6 @@ recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
         | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
         | otherwise                       = Mgr.ioFailed err
 
-## endif /* __IO_MANAGER_WINIO__ */
 #endif /* mingw32_HOST_OS */
 
 -- | Receive data from the socket. This function returns immediately
@@ -473,12 +372,7 @@ sendBufMsg :: SocketAddress sa
            -> [Cmsg]            -- ^ Control messages
            -> MsgFlag           -- ^ Message flags
            -> IO Int            -- ^ The length actually sent
-sendBufMsg = sendBufMsgOv nullPtr
-
--- | 'sendBufMsg' issued with an OVERLAPPED: see 'sendBufToOv'.
-sendBufMsgOv :: SocketAddress sa
-             => Ptr () -> Socket -> sa -> [(Ptr Word8,Int)] -> [Cmsg] -> MsgFlag -> IO Int
-sendBufMsgOv _ov s sa bufsizs cmsgs flags = do
+sendBufMsg s sa bufsizs cmsgs flags = do
   sz <- withSocketAddress sa $ \addrPtr addrSize ->
 #if !defined(mingw32_HOST_OS)
     withIOVec bufsizs $ \(iovsPtr, iovsLen) -> do
@@ -504,13 +398,7 @@ sendBufMsgOv _ov s sa bufsizs cmsgs flags = do
         withFdSocket s $ \fd ->
           with msgHdr $ \msgHdrPtr ->
 #if defined(mingw32_HOST_OS)
-            if _ov /= nullPtr then sendBufMsgOvl s fd msgHdrPtr cflags _ov else
-## if __IO_MANAGER_WINIO__ >= 2
-            sendBufMsgMIO s fd msgHdrPtr cflags <!>
-              sendBufMsgWinIO fd msgHdrPtr cflags
-## else
-            sendBufMsgMIO s fd msgHdrPtr cflags
-## endif
+            sendBufMsgWinIO fd msgHdrPtr cflags
 #else
             throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
               c_sendmsg fd msgHdrPtr cflags
@@ -531,12 +419,7 @@ recvBufMsg :: SocketAddress sa
                                 --   'MSG_CTRUNC' is returned
            -> MsgFlag           -- ^ Message flags
            -> IO (sa,Int,[Cmsg],MsgFlag) -- ^ Source address, total bytes received, control messages and message flags
-recvBufMsg = recvBufMsgOv nullPtr
-
--- | 'recvBufMsg' issued with an OVERLAPPED: see 'sendBufToOv'.
-recvBufMsgOv :: SocketAddress sa
-             => Ptr () -> Socket -> [(Ptr Word8,Int)] -> Int -> MsgFlag -> IO (sa,Int,[Cmsg],MsgFlag)
-recvBufMsgOv _ov s bufsizs clen flags = do
+recvBufMsg s bufsizs clen flags = do
   withNewSocketAddress $ \addrPtr addrSize ->
     allocaBytes clen $ \ctrlPtr ->
 #if !defined(mingw32_HOST_OS)
@@ -570,12 +453,7 @@ recvBufMsgOv _ov s bufsizs clen flags = do
                 throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmsg" $
                       c_recvmsg fd msgHdrPtr _cflags
 #else
-                if _ov /= nullPtr then recvBufMsgOvl s fd msgHdrPtr _ov else
-## if __IO_MANAGER_WINIO__ >= 2
-                recvBufMsgMIO s fd msgHdrPtr <!> recvBufMsgWinIO s fd msgHdrPtr
-## else
-                recvBufMsgMIO s fd msgHdrPtr
-## endif
+                recvBufMsgWinIO fd msgHdrPtr
 #endif
             sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
@@ -602,9 +480,9 @@ foreign import ccall unsafe "sendmsg"
 foreign import ccall unsafe "recvmsg"
   c_recvmsg :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
 #else
-foreign import CALLCONV SAFE_ON_WIN "ioctlsocket"
+foreign import CALLCONV unsafe "ioctlsocket"
   c_ioctlsocket :: CSocket -> CLong -> Ptr CULong -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "WSAGetLastError"
+foreign import CALLCONV unsafe "WSAGetLastError"
   c_WSAGetLastError :: IO CInt
 foreign import CALLCONV unsafe "WSASend"
   c_WSASend :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
@@ -625,47 +503,6 @@ clearCtrlOnTruncation msgHdrPtr ret = when (ret == -1) $ do
         (#poke WSAMSG, Control.len) msgHdrPtr (0 :: Word32)
         (#poke WSAMSG, Control.buf) msgHdrPtr (nullPtr :: Ptr Word8)
 
-sendBufMsgMIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
-sendBufMsgMIO s fd msgHdrPtr cflags = do
-  sendMsg <- mkSendMsgSafe <$> getWSASendMsg fd
-  -- WSASendMsg returns 0 and puts the bytes sent here.
-  alloca $ \send_ptr -> do
-    _ <- throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
-      sendMsg fd (castPtr msgHdrPtr) (fromIntegral cflags) send_ptr nullPtr nullPtr
-    fromIntegral <$> peek send_ptr
-
--- The operations given an OVERLAPPED, under either IO manager: issued
--- with it and waited for in C, so that cancelling it reaches this alone.
-sendBufMsgOvl :: Socket -> CSocket -> Ptr (MsgHdr sa) -> CInt -> Ptr () -> IO CInt
-sendBufMsgOvl s fd msgHdrPtr cflags ov =
-  alloca $ \send_ptr -> do
-    fn <- getWSASendMsg fd
-    _ <- throwSocketErrorWaitWrite s "Network.Socket.Buffer.sendMsg" $
-      c_ovl_sendmsg fn fd msgHdrPtr (fromIntegral cflags) send_ptr ov
-    fromIntegral <$> peek send_ptr
-
-recvBufMsgOvl :: Socket -> CSocket -> Ptr (MsgHdr sa) -> Ptr () -> IO Int
-recvBufMsgOvl s fd msgHdrPtr ov =
-    alloca $ \len_ptr -> do
-      fn <- getWSARecvMsg fd
-      _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmsg" $
-              c_ovl_recvmsg fn fd msgHdrPtr len_ptr ov
-      fromIntegral <$> peek len_ptr
-
-foreign import ccall safe "hsnet_ovl_recv"
-  c_ovl_recv :: CSocket -> Ptr CChar -> CInt -> Ptr () -> IO CInt
-foreign import ccall safe "hsnet_ovl_send"
-  c_ovl_send :: CSocket -> Ptr CChar -> CInt -> Ptr () -> IO CInt
-foreign import ccall safe "hsnet_ovl_recvfrom"
-  c_ovl_recvfrom :: CSocket -> Ptr CChar -> CInt -> Ptr () -> Ptr CInt -> Ptr () -> IO CInt
-foreign import ccall safe "hsnet_ovl_sendto"
-  c_ovl_sendto :: CSocket -> Ptr CChar -> CInt -> Ptr () -> CInt -> Ptr () -> IO CInt
-foreign import ccall safe "hsnet_ovl_sendmsg"
-  c_ovl_sendmsg :: FunPtr WSASendMsgFn -> CSocket -> Ptr (MsgHdr sa) -> DWORD -> LPDWORD -> Ptr () -> IO CInt
-foreign import ccall safe "hsnet_ovl_recvmsg"
-  c_ovl_recvmsg :: FunPtr WSARecvMsgFn -> CSocket -> Ptr (MsgHdr sa) -> LPDWORD -> Ptr () -> IO CInt
-
-## if __IO_MANAGER_WINIO__ >= 2
 sendBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
 sendBufMsgWinIO fd msgHdrPtr cflags = do
   sendMsg <- mkSendMsgUnsafe <$> getWSASendMsg fd
@@ -683,22 +520,9 @@ sendBufMsgWinIO fd msgHdrPtr cflags = do
       (\err bytes -> if err == _ERROR_SUCCESS
         then Mgr.ioSuccess $ fromIntegral bytes
         else Mgr.ioFailed err)
-## endif
 
--- Helper functions for recvBufMsg on Windows
-recvBufMsgMIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> IO Int
-recvBufMsgMIO s fd msgHdrPtr = do
-    recvMsg <- mkRecvMsgSafe <$> getWSARecvMsg fd
-    alloca $ \len_ptr -> do
-      _ <- throwSocketErrorWaitReadBut (== #{const WSAEMSGSIZE}) s "Network.Socket.Buffer.recvmsg" $ do
-              ret <- recvMsg fd (castPtr msgHdrPtr) len_ptr nullPtr nullPtr
-              clearCtrlOnTruncation msgHdrPtr ret
-              return ret
-      fromIntegral <$> peek len_ptr
-
-## if __IO_MANAGER_WINIO__ >= 2
-recvBufMsgWinIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> IO Int
-recvBufMsgWinIO _ fd msgHdrPtr = do
+recvBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> IO Int
+recvBufMsgWinIO fd msgHdrPtr = do
     -- Perform async WSARecvMsg using withOverlapped
     -- (socket already associated in socket creation)
     recvMsg <- mkRecvMsgUnsafe <$> getWSARecvMsg fd
@@ -740,12 +564,13 @@ recvBufMsgWinIO _ fd msgHdrPtr = do
       | err == _ERROR_OPERATION_ABORTED = Mgr.ioSuccess 0
       | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
       | otherwise                       = Mgr.ioFailed err
-## endif /* __IO_MANAGER_WINIO__ */
 #endif /* mingw32_HOST_OS */
 
 foreign import ccall unsafe "recv"
   c_recv :: CSocket -> Ptr CChar -> CSize -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "sendto"
+#if !defined(mingw32_HOST_OS)
+foreign import ccall unsafe "sendto"
   c_sendto :: CSocket -> Ptr a -> CSize -> CInt -> Ptr sa -> CInt -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "recvfrom"
+foreign import ccall unsafe "recvfrom"
   c_recvfrom :: CSocket -> Ptr a -> CSize -> CInt -> Ptr sa -> Ptr CInt -> IO CInt
+#endif

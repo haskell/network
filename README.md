@@ -13,6 +13,19 @@ This means that the current stable version and two previous stable versions are 
 
 ### Windows
 
+Since version 4.0, `network` needs GHC's WinIO I/O manager on Windows, with
+a GHC whose WinIO handles overlapped I/O exceptions: 9.12.5 or later in 9.12,
+or 9.14.2 or later.  The I/O manager is chosen by the executable, so link it
+with
+
+```
+ghc-options: -threaded "-with-rtsopts=--io-manager=native"
+```
+
+or run it with `+RTS --io-manager=native -RTS`.  Under the old I/O manager
+(MIO), use `network` 3.2.  Sockets behind a non-IFS Layered Service Provider,
+deprecated since Windows 8, are not supported.
+
 We use MSYS to build this package on Windows.
 To use the `network` package on Cygwin, use `stack`.
 
@@ -20,7 +33,7 @@ To use the `network` package on Cygwin, use `stack`.
 
 ### .hs files
 
-If you need C macros created by "configure" or `CALLCONV`/`SAFE_ON_WIN`, put
+If you need C macros created by "configure" or `CALLCONV`, put
 
 ```
 #include "HsNetDef.h"
@@ -38,7 +51,7 @@ If you need `#peek`, `#poke` and others, create a `.hsc` file with
 
 `HsNet.h` includes `HsNefDef.h` and necessary C structures.
 Unfortunately, `hsc2hs` does not convert C macros.
-So, if you use `CALLCONV`/`SAFE_ON_WIN`, the following is also necessary:
+So, if you use `CALLCONV`, the following is also necessary:
 
 ```
 ##include "HsNetDef.h"

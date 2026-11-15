@@ -1,21 +1,14 @@
-{-# LANGUAGE CPP #-}
-
-#include "HsNetDef.h"
-
 -- | Waiting for a socket to become ready on Windows, through
 --   @IOCTL_AFD_POLL@ on the AFD driver beneath Winsock, as libuv,
 --   wepoll and mio do.  It completes on the I/O manager's port like any
---   overlapped operation on the socket, so it needs WinIO.
+--   overlapped operation on the socket.
 module Network.Socket.Win32.AfdPoll (
-#if __IO_MANAGER_WINIO__ >= 2
     afdRead,
     afdWrite,
     afdWait,
     afdWaitSTM,
-#endif
 ) where
 
-#if __IO_MANAGER_WINIO__ >= 2
 import Control.Concurrent (forkIO, killThread)
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, putTMVar, readTMVar, throwSTM)
 import qualified Control.Exception as E
@@ -69,4 +62,3 @@ foreign import ccall unsafe "hsnet_afd_poll_info_size"
     c_afd_poll_info_size :: IO CInt
 foreign import ccall unsafe "hsnet_afd_poll"
     c_afd_poll :: CSocket -> CULong -> Ptr () -> Ptr () -> IO CInt
-#endif
