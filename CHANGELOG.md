@@ -98,6 +98,8 @@ rather than taken for the end of the stream.
   [#643](https://github.com/haskell/network/pull/643)
 * Windows needs WinIO: remove the MIO code
   [#644](https://github.com/haskell/network/pull/644)
+* Support GHC 9.4 or later only
+  [#645](https://github.com/haskell/network/pull/645)
 
 ## Version 3.2.9.0
 
