@@ -100,6 +100,8 @@ rather than taken for the end of the stream.
   [#644](https://github.com/haskell/network/pull/644)
 * Support GHC 9.4 or later only
   [#645](https://github.com/haskell/network/pull/645)
+* Make CSocket as wide as SOCKET on Windows
+  [#646](https://github.com/haskell/network/pull/646)
 
 ## Version 3.2.9.0
 
