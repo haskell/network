@@ -80,3 +80,12 @@ hsnet_afd_poll_events(AFD_POLL_INFO *info)
 {
     return info->Handles[0].Events;
 }
+
+/* Non-blocking, as sockets are on POSIX.  Overlapped operations are not
+   affected; a plain call which would block says WSAEWOULDBLOCK. */
+int
+hsnet_set_nonblock(unsigned long sock)
+{
+    u_long on = 1;
+    return ioctlsocket((SOCKET) sock, FIONBIO, &on);
+}

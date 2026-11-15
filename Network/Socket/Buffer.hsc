@@ -42,7 +42,6 @@ import Network.Socket.Win32.MsgHdr
 import Network.Socket.Win32.WSABuf
 ## if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
-import Network.Socket.Options (getSocketType)
 import GHC.IO.SubSystem ((<!>))
 import Foreign.Ptr (wordPtrToPtr)
 ## endif
@@ -131,7 +130,7 @@ sendBufToWinIO s ptr nbytes sa =
   withSocketAddress sa $ \p_sa siz ->
     withFdSocket s $ \sock ->
       with (WSABuf (castPtr ptr) (fromIntegral nbytes)) $ \wbuf ->
-        fmap fromIntegral $ Mgr.withException "sendBufTo" $
+        fmap fromIntegral $ throwWinIOError "Network.Socket.sendBufTo" $
           Mgr.withOverlapped "sendBufTo" (wordPtrToPtr $ fromIntegral sock) 0
             (\lpOverlapped -> do
               ret <- c_WSASendTo sock wbuf 1 nullPtr 0 p_sa
@@ -204,7 +203,7 @@ sendBufMIO s str len = fromIntegral <$> do
 sendBufWinIO :: Socket -> Ptr Word8 -> Int -> IO Int
 sendBufWinIO s ptr len = withFdSocket s $ \sock ->
   with (WSABuf ptr (fromIntegral len)) $ \wbuf ->
-    fmap fromIntegral $ Mgr.withException "sendBuf" $
+    fmap fromIntegral $ throwWinIOError "Network.Socket.sendBuf" $
       Mgr.withOverlapped "sendBuf" (wordPtrToPtr $ fromIntegral sock) 0
         (\lpOverlapped -> do
           ret <- c_WSASend sock wbuf 1 nullPtr 0 (castPtr lpOverlapped) nullPtr
@@ -276,7 +275,7 @@ recvBufFromWinIO s ptr nbytes =
     withNewSocketAddress $ \ptr_sa sz -> alloca $ \ptr_len ->
         withFdSocket s $ \sock -> do
             poke ptr_len (fromIntegral sz)
-            len <- fmap fromIntegral $ Mgr.withException "recvBufFrom" $
+            len <- fmap fromIntegral $ throwWinIOError "Network.Socket.recvBufFrom" $
                 Mgr.withOverlapped "recvBufFrom" (wordPtrToPtr $ fromIntegral sock) 0
                     (startCB sock ptr_sa ptr_len) completionCB
             sockaddr <- peekSocketAddress ptr_sa
@@ -309,7 +308,7 @@ recvBufFromWinIO s ptr nbytes =
     completionCB err dwBytes
         | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
         | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
-        | err == _WSAECONNRESET           = connResetWinIO s (Mgr.ioFailed err)
+        | err == _WSAECONNRESET           = Mgr.ioFailed err
         | err == _WSAEDISCON              = Mgr.ioSuccess 0
         | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
         | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
@@ -371,7 +370,7 @@ recvBufMIO s ptr nbytes = do
 ## if __IO_MANAGER_WINIO__ >= 2
 recvBufWinIO :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
-    fmap fromIntegral $ Mgr.withException "recvBuf" $
+    fmap fromIntegral $ throwWinIOError "Network.Socket.recvBuf" $
         Mgr.withOverlapped "recvBuf" (wordPtrToPtr $ fromIntegral sock) 0 (startCB sock) completionCB
   where
     startCB :: CSocket -> Mgr.LPOVERLAPPED -> IO (Mgr.CbResult Int)
@@ -401,7 +400,7 @@ recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
     completionCB err dwBytes
         | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
         | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
-        | err == _WSAECONNRESET           = connResetWinIO s (Mgr.ioFailed err)
+        | err == _WSAECONNRESET           = Mgr.ioFailed err
         | err == _WSAEDISCON              = Mgr.ioSuccess 0
         | err == _ERROR_HANDLE_EOF        = Mgr.ioSuccess 0
         | err == _ERROR_BROKEN_PIPE       = Mgr.ioSuccess 0
@@ -410,12 +409,6 @@ recvBufWinIO s ptr nbytes = withFdSocket s $ \sock ->
         | err == _ERROR_IO_INCOMPLETE     = Mgr.ioSuccess 0
         | otherwise                       = Mgr.ioFailed err
 
--- WSAECONNRESET on a datagram socket reports an ICMP unreachable, which
--- POSIX gives as ECONNREFUSED: an error to raise, not the end of a stream.
-connResetWinIO :: Num a => Socket -> IO (Mgr.IOResult a) -> IO (Mgr.IOResult a)
-connResetWinIO s failed = do
-    stype <- getSocketType s
-    if stype == Datagram then failed else Mgr.ioSuccess 0
 ## endif /* __IO_MANAGER_WINIO__ */
 #endif /* mingw32_HOST_OS */
 
@@ -676,7 +669,7 @@ foreign import ccall safe "hsnet_ovl_recvmsg"
 sendBufMsgWinIO :: CSocket -> Ptr (MsgHdr sa) -> CInt -> IO CInt
 sendBufMsgWinIO fd msgHdrPtr cflags = do
   sendMsg <- mkSendMsgUnsafe <$> getWSASendMsg fd
-  fmap fromIntegral $ Mgr.withException "sendBufMsg" $
+  fmap fromIntegral $ throwWinIOError "Network.Socket.sendBufMsg" $
     Mgr.withOverlapped "sendBufMsg" (wordPtrToPtr $ fromIntegral fd) 0
       (\lpOverlapped -> do
         ret <- sendMsg fd (castPtr msgHdrPtr) (fromIntegral cflags) nullPtr
@@ -705,11 +698,11 @@ recvBufMsgMIO s fd msgHdrPtr = do
 
 ## if __IO_MANAGER_WINIO__ >= 2
 recvBufMsgWinIO :: Socket -> CSocket -> Ptr (MsgHdr sa) -> IO Int
-recvBufMsgWinIO s fd msgHdrPtr = do
+recvBufMsgWinIO _ fd msgHdrPtr = do
     -- Perform async WSARecvMsg using withOverlapped
     -- (socket already associated in socket creation)
     recvMsg <- mkRecvMsgUnsafe <$> getWSARecvMsg fd
-    fmap fromIntegral $ Mgr.withException "recvMsg" $
+    fmap fromIntegral $ throwWinIOError "Network.Socket.recvMsg" $
       Mgr.withOverlapped "recvMsg" (wordPtrToPtr $ fromIntegral fd) 0 (startCB recvMsg) completionCB
   where
     startCB :: WSARecvMsgFn -> Mgr.LPOVERLAPPED -> IO (Mgr.CbResult Int)
@@ -737,7 +730,7 @@ recvBufMsgWinIO s fd msgHdrPtr = do
       | err == _ERROR_SUCCESS           = Mgr.ioSuccess $ fromIntegral dwBytes
       | err == _WSAEMSGSIZE             = Mgr.ioSuccess $ fromIntegral dwBytes
       | err == _STATUS_BUFFER_OVERFLOW  = Mgr.ioSuccess $ fromIntegral dwBytes  -- truncated msg
-      | err == _WSAECONNRESET           = connResetWinIO s (Mgr.ioFailed err)
+      | err == _WSAECONNRESET           = Mgr.ioFailed err
       | err == _WSAECONNABORTED         = Mgr.ioSuccess 0
       | err == _WSAESHUTDOWN            = Mgr.ioSuccess 0
       | err == _WSAEDISCON              = Mgr.ioSuccess 0

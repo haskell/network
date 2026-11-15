@@ -46,6 +46,11 @@ module Network.Socket.Internal
     , throwSocketErrorWaitRead
     , throwSocketErrorWaitReadBut
     , throwSocketErrorWaitWrite
+    , waitReadSocket
+    , waitWriteSocket
+#if defined(mingw32_HOST_OS) && __IO_MANAGER_WINIO__ >= 2
+    , throwWinIOError
+#endif
 
     -- * Initialization
     , withSocketsDo
@@ -57,13 +62,17 @@ module Network.Socket.Internal
     , zeroMemory
     ) where
 
-import GHC.Conc (threadWaitRead, threadWaitWrite)
-
 #if defined(mingw32_HOST_OS)
 import qualified Control.Exception as E
 import System.IO.Unsafe (unsafePerformIO)
 import System.IO.Error (ioeSetErrorString, mkIOError)
+# if __IO_MANAGER_WINIO__ >= 2
+import qualified GHC.Event.Windows as Mgr
+import GHC.IO.SubSystem ((<!>))
+import Network.Socket.Win32.AfdPoll
+# endif
 #else
+import GHC.Conc (threadWaitRead, threadWaitWrite)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
                         throwErrnoIfMinus1RetryMayBlock, throwErrnoIfMinus1_,
                         Errno(..), errnoToIOError)
@@ -224,8 +233,8 @@ throwSocketErrorIfMinus1RetryMayBlock
     -> IO a    -- ^ the 'IO' operation to be executed
     -> IO a
 #if defined(mingw32_HOST_OS)
-throwSocketErrorIfMinus1RetryMayBlock name _ act
-  = throwSocketErrorIfMinus1Retry name act
+throwSocketErrorIfMinus1RetryMayBlock
+  = throwSocketErrorIfMinus1RetryMayBlockBut (const False)
 #else
 throwSocketErrorIfMinus1RetryMayBlock name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -249,8 +258,15 @@ throwSocketErrorIfMinus1RetryMayBlockBut
     -> IO a           -- ^ the 'IO' operation to be executed
     -> IO a
 #if defined(mingw32_HOST_OS)
-throwSocketErrorIfMinus1RetryMayBlockBut exempt name _ act
-  = throwSocketErrorIfMinus1ButRetry exempt name act
+-- Only a non-blocking socket, as WinIO's are, says WSAEWOULDBLOCK.
+throwSocketErrorIfMinus1RetryMayBlockBut exempt name on_block act = loop
+  where
+    loop = do
+        r <- throwSocketErrorIfMinus1ButRetry exempt' name act
+        if r /= -1 then return r else do
+            rc <- c_getLastError
+            if rc == wsaEWOULDBLOCK then on_block >> loop else return r
+    exempt' rc = rc == wsaEWOULDBLOCK || exempt rc
 #else
 throwSocketErrorIfMinus1RetryMayBlockBut _exempt name on_block act =
     throwErrnoIfMinus1RetryMayBlock name act on_block
@@ -303,8 +319,7 @@ winsockErrorString rc = do
 -- and try again.
 throwSocketErrorWaitRead :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitRead s name io = withFdSocket s $ \fd ->
-    throwSocketErrorIfMinus1RetryMayBlock name
-      (threadWaitRead $ fromIntegral fd) io
+    throwSocketErrorIfMinus1RetryMayBlock name (waitReadSocket s fd) io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be read-ready,
@@ -312,16 +327,42 @@ throwSocketErrorWaitRead s name io = withFdSocket s $ \fd ->
 -- ignore the error
 throwSocketErrorWaitReadBut :: (Eq a, Num a) => (CInt -> Bool) -> Socket -> String -> IO a -> IO a
 throwSocketErrorWaitReadBut exempt s name io = withFdSocket s $ \fd ->
-    throwSocketErrorIfMinus1RetryMayBlockBut exempt name
-      (threadWaitRead $ fromIntegral fd) io
+    throwSocketErrorIfMinus1RetryMayBlockBut exempt name (waitReadSocket s fd) io
 
 -- | Like 'throwSocketErrorIfMinus1Retry', but if the action fails with
 -- @EWOULDBLOCK@ or similar, wait for the socket to be write-ready,
 -- and try again.
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitWrite s name io = withFdSocket s $ \fd ->
-    throwSocketErrorIfMinus1RetryMayBlock name
-      (threadWaitWrite $ fromIntegral fd) io
+    throwSocketErrorIfMinus1RetryMayBlock name (waitWriteSocket s fd) io
+
+#if defined(mingw32_HOST_OS) && __IO_MANAGER_WINIO__ >= 2
+-- | 'Mgr.withException', but raising a failure as other socket errors
+--   are: the Winsock code in 'ioe_errno', with its 'IOErrorType'.
+throwWinIOError :: String -> IO (Mgr.IOResult a) -> IO a
+throwWinIOError name io = do
+    r <- io
+    case r of
+        Mgr.IOSuccess a -> return a
+        Mgr.IOFailed e -> throwSocketErrorCode name (maybe 0 fromIntegral e)
+#endif
+
+-- | Waiting for the socket to be readable, or writable: through the IO
+--   manager on POSIX, and through an AFD poll under WinIO.  Under MIO a
+--   socket blocks, so there is no wait to make.
+waitReadSocket, waitWriteSocket :: Socket -> CSocket -> IO ()
+#if defined(mingw32_HOST_OS)
+# if __IO_MANAGER_WINIO__ >= 2
+waitReadSocket s _ = return () <!> afdWait "waitReadSocket" afdRead s
+waitWriteSocket s _ = return () <!> afdWait "waitWriteSocket" afdWrite s
+# else
+waitReadSocket _ _ = return ()
+waitWriteSocket _ _ = return ()
+# endif
+#else
+waitReadSocket _ fd = threadWaitRead $ fromIntegral fd
+waitWriteSocket _ fd = threadWaitWrite $ fromIntegral fd
+#endif
 
 -- ---------------------------------------------------------------------------
 -- WinSock support

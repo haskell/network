@@ -11,11 +11,12 @@
 --   @evtClose@ by @closeFdWith@ nor an asynchronous exception reaching
 --   a blocking call is relied upon.
 --
---   __On Windows these need the threaded runtime.__  There is no
---   readiness to wait for there, so the operation is started and then
---   cancelled, and the thread it runs in blocks in a foreign call.
---   Without @-threaded@ that blocks every other thread too, including
---   the one which would have given up, and nothing returns at all.
+--   On Windows under WinIO they work as on POSIX, waiting for readiness
+--   through an AFD poll.  __Under MIO they need the threaded runtime.__
+--   There is no readiness to wait for there, so the operation is started
+--   and then cancelled, and the thread it runs in blocks in a foreign
+--   call.  Without @-threaded@ that blocks every other thread too,
+--   including the one which would have given up, and nothing returns.
 module Network.Socket.Wait (
     withReadable,
     withWritable,
@@ -57,6 +58,10 @@ import Network.Socket.Buffer
 #if defined(mingw32_HOST_OS)
 import Network.Socket.Cbits
 import Network.Socket.Win32.Cancel
+# if __IO_MANAGER_WINIO__ >= 2
+import GHC.IO.SubSystem ((<!>))
+import Network.Socket.STM
+# endif
 #else
 import Network.Socket.STM
 #endif
@@ -78,13 +83,13 @@ import Network.Socket.Win32.Cmsg
 --
 --   __The action must be an operation on this socket which returns
 --   without blocking once the socket is readable.__  The type does not
---   say so and nothing checks it.  On POSIX the action runs on the
---   calling thread after readiness and nothing interrupts it there: the
---   give-up ends the wait, not the action.  On Windows there is no
---   readiness to wait for, so the action is started at once on a thread
---   of its own and the give-up cancels it with @CancelIoEx@ on this
---   socket, which reaches nothing else -- an action blocked on anything
---   else would never end.  The cancel cannot tell the action from other
+--   say so and nothing checks it.  On POSIX, and on Windows under WinIO,
+--   the action runs on the calling thread after readiness and nothing
+--   interrupts it there: the give-up ends the wait, not the action.
+--   Under MIO there is no readiness to wait for, so the action is
+--   started at once on a thread of its own and the give-up cancels it
+--   with @CancelIoEx@ on this socket, which reaches nothing else -- an
+--   action blocked on anything else would never end.  The cancel cannot tell the action from other
 --   operations pending on the socket, so it ends those too, whichever
 --   thread issued them.  The give-ups for particular operations, such as
 --   'recvBufWith' and 'Network.Socket.ByteString.sendAllWith', cancel
@@ -107,9 +112,9 @@ withReadable s giveUp act = withReady Read False s giveUp $ const act
 --   writable, unless the 'STM' action fires first.  The same conditions
 --   hold, with one writer at a time in place of one reader.
 --
---   A send which is given up on may have sent part of its data on
---   Windows, where it is cancelled rather than never started, and the
---   socket cannot be sent on after that.  So a stream given up on in
+--   A send which is given up on may have sent part of its data under
+--   MIO on Windows, where it is cancelled rather than never started, and
+--   the socket cannot be sent on after that.  So a stream given up on in
 --   the middle of a send is to be closed.
 --
 --   @since 3.2.12.0
@@ -139,9 +144,18 @@ withReady _ready _own s giveUp act = do
         Nothing -> wait
   where
 #if !defined(mingw32_HOST_OS)
+    wait = readyWait
+#elif __IO_MANAGER_WINIO__ >= 2
+    -- WinIO has readiness, through the AFD poll, and waits as POSIX does.
+    wait = startThenCancel <!> readyWait
+#else
+    wait = startThenCancel
+#endif
+
+#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
     -- A socket which is ready already skips the IO manager, whose round
     -- trip costs several times the operation: a send usually finds room.
-    wait = do
+    readyWait = do
         now <- withFdSocket s $ \fd ->
             c_ready_now fd $ case _ready of
                 Read -> 0
@@ -163,10 +177,14 @@ withReady _ready _own s giveUp act = do
     -- gone, and there is nothing to do about that.
     gone :: E.IOException -> IO ()
     gone _ = return ()
-#else
-    -- Only an operation issued with an OVERLAPPED of its own can be
-    -- cancelled alone; any other cancel reaches the whole socket.
-    wait
+#endif
+
+#if defined(mingw32_HOST_OS)
+    -- Under MIO there is no readiness: the operation is started on a
+    -- thread of its own and cancelled.  Only an operation issued with an
+    -- OVERLAPPED of its own can be cancelled alone; any other cancel
+    -- reaches the whole socket.
+    startThenCancel
         | _own = withOverlapped waitOn
         | otherwise = waitOn nullPtr
     waitOn ov = do
@@ -189,9 +207,9 @@ withReady _ready _own s giveUp act = do
                 return $ Left a
 #endif
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
 foreign import ccall unsafe "hsnet_ready_now"
-    c_ready_now :: CInt -> CInt -> IO CInt
+    c_ready_now :: CSocket -> CInt -> IO CInt
 #endif
 
 -- | 'accept' which the caller can give up on.
@@ -268,13 +286,22 @@ sendBufMsgWith s sa bufsizs cmsgs flags giveUp =
 --   @since 3.2.12.0
 connectWith :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
 #if !defined(mingw32_HOST_OS)
-connectWith s sa giveUp = do
+connectWith = connectWithReady
+#elif __IO_MANAGER_WINIO__ >= 2
+connectWith s sa giveUp =
+    withWritable s giveUp (connect s sa) <!> connectWithReady s sa giveUp
+#else
+connectWith s sa giveUp = withWritable s giveUp $ connect s sa
+#endif
+
+#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
+-- A non-blocking connect, and a wait for it which the caller can give up on.
+connectWithReady :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
+connectWithReady s sa giveUp = do
     gaveUp <- atomically $ (Just <$> giveUp) `orElse` return Nothing
     case gaveUp of
         Just a -> return $ Left a
         Nothing -> connectWhenWritable s sa $ withWritable s giveUp
-#else
-connectWith s sa giveUp = withWritable s giveUp $ connect s sa
 #endif
 
 -- | Whether this is the error a socket operation gives once the socket has
