@@ -117,6 +117,8 @@ end of the stream.
   [#655](https://github.com/haskell/network/pull/655)
 * Make descriptors received by recvmsg close-on-exec
   [#653](https://github.com/haskell/network/pull/653)
+* Read socket addresses with the length the kernel returns
+  [#656](https://github.com/haskell/network/pull/656)
 
 ## Version 3.2.9.0
 

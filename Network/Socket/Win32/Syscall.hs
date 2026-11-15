@@ -35,11 +35,14 @@ setupAccepted fd = do
         c_SetHandleInformation (wordPtrToPtr $ fromIntegral fd) handleFlagInherit 0
     associateSocket "Network.Socket.accept" fd
 
--- | Accepting a connection on a non-blocking listening socket.
-acceptFd :: Socket -> CSocket -> Ptr sa -> Int -> IO CSocket
-acceptFd listing_sock fd sa sz = with (fromIntegral sz) $ \ptr_len ->
-    throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
+-- | Accepting a connection on a non-blocking listening socket, with the
+--   length of the peer's address.
+acceptFd :: Socket -> CSocket -> Ptr sa -> Int -> IO (CSocket, Int)
+acceptFd listing_sock fd sa sz = with (fromIntegral sz) $ \ptr_len -> do
+    new_fd <- throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
         (c_accept fd sa ptr_len)
+    len <- peek ptr_len
+    return (new_fd, fromIntegral len)
 
 -- | Associating a socket with the I/O manager, skipping the completion
 --   port for an operation that finishes at once, and making it

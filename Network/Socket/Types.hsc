@@ -1047,6 +1047,12 @@ class SocketAddress sa where
     sizeOfSocketAddress :: sa -> Int
     peekSocketAddress :: Ptr sa -> IO sa
     pokeSocketAddress  :: Ptr a -> sa -> IO ()
+    -- | Reading an address that the kernel has returned with its length.
+    --   The default ignores the length.
+    --
+    --   @since 4.0.0.0
+    peekSocketAddressLen :: Ptr sa -> Int -> IO sa
+    peekSocketAddressLen p _ = peekSocketAddress p
 
 -- sizeof(struct sockaddr_storage) which has enough space to contain
 -- sockaddr_in, sockaddr_in6 and sockaddr_un.
@@ -1117,6 +1123,8 @@ data SockAddr
         HostAddress6    -- sin6_addr (ditto)
         ScopeID         -- sin6_scope_id (ditto)
   -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
+  --   An unbound socket is @SockAddrUnix \"\"@.  On Linux, a path starting
+  --   with NUL is an abstract name, which ends at its length, not at NUL.
   | SockAddrUnix
         String           -- sun_path
   deriving (Eq, Ord)
@@ -1196,6 +1204,7 @@ instance SocketAddress SockAddr where
     sizeOfSocketAddress = sizeOfSockAddr
     peekSocketAddress   = peekSockAddr
     pokeSocketAddress   = pokeSockAddr
+    peekSocketAddressLen = peekSockAddrLen
 
 #if defined(mingw32_HOST_OS)
 type CSaFamily = (#type unsigned short)
@@ -1310,6 +1319,33 @@ peekSockAddr p = do
     _ -> ioError $ userError $
       "Network.Socket.Types.peekSockAddr: address family '" ++
       show family ++ "' not supported."
+
+-- | Read a 'SockAddr' that the kernel has returned with its length.
+-- A Unix address with no room for a path, as Linux returns for an
+-- unbound socket, is @SockAddrUnix \"\"@.
+peekSockAddrLen :: Ptr SockAddr -> Int -> IO SockAddr
+peekSockAddrLen p len
+  | len < familyEnd = return (SockAddrUnix "")
+  | otherwise = do
+      family <- (#peek struct sockaddr, sa_family) p
+      case family :: CSaFamily of
+        (#const AF_UNIX) -> SockAddrUnix <$> peekSunPath
+            ((#ptr struct sockaddr_un, sun_path) p)
+            (min unixPathMax (len - (#offset struct sockaddr_un, sun_path)))
+        _ -> peekSockAddr p
+  where
+    familyEnd = (#offset struct sockaddr, sa_family) + sizeOf (0 :: CSaFamily)
+
+-- A path ends at NUL or at the length.  A Linux abstract address starts
+-- with NUL and ends only at the length.
+peekSunPath :: Ptr CChar -> Int -> IO String
+peekSunPath ptr n = do
+    path <- peekCAStringLen (ptr, max 0 n)
+    return $ case path of
+# ifdef linux_HOST_OS
+        '\0':_ -> path
+# endif
+        _ -> takeWhile (/= '\0') path
 
 ------------------------------------------------------------------------
 

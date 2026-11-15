@@ -18,7 +18,6 @@ module Network.Socket.Win32.Buffer (
 
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (with)
-import System.IO.Error (catchIOError)
 
 import Network.Socket.Win32.CmsgHdr
 import Network.Socket.Win32.Load
@@ -83,8 +82,8 @@ recvBufFrom s ptr nbytes =
                       c_WSARecvFrom sock wbuf 1 nullPtr flags ptr_sa ptr_len
                           (castPtr ov) nullPtr)
                   (recvResult nbytes)
-            sockaddr <- peekSocketAddress ptr_sa
-                `catchIOError` \_ -> getPeerName s
+            sa_len <- peek ptr_len
+            sockaddr <- peekReceivedAddress s ptr_sa (fromIntegral sa_len)
             return (len, sockaddr)
 
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
@@ -174,8 +173,8 @@ recvBufMsg s bufsizs clen flags = do
         withFdSocket s $ \fd -> do
           with msgHdr $ \msgHdrPtr -> do
             len <- recvBufMsgWinIO fd msgHdrPtr (sum $ map snd bufsizs)
-            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
+            sockaddr <- peekReceivedAddress s addrPtr (fromIntegral $ msgNameLen hdr)
 
             let flags' = MsgFlag $ fromIntegral (msgFlags hdr)
             -- If the control buffer was truncated (MSG_CTRUNC), the

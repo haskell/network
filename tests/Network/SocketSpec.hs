@@ -122,6 +122,15 @@ datagramPair body =
   where
     localhost = tupleToHostAddress (127, 0, 0, 1)
 
+#if !defined(mingw32_HOST_OS)
+-- Two unbound Unix datagram sockets.
+withDatagramPair :: (Socket -> Socket -> IO a) -> IO a
+withDatagramPair body =
+    bracket (socket AF_UNIX Datagram defaultProtocol) close $ \s1 ->
+    bracket (socket AF_UNIX Datagram defaultProtocol) close $ \s2 ->
+        body s1 s2
+#endif
+
 spec :: Spec
 spec = do
     describe "connect" $ do
@@ -357,9 +366,32 @@ spec = do
                             recv sock 1024 `shouldReturn` testMsg
                             addr `shouldBe` (SockAddrUnix "")
                     test . setClientAction client $ unixWithUnlink unixAddr server
+
+            -- Linux returns no address for an unbound sender (#539).
+            it "receives datagrams from an unbound socket" $
+                withSystemTempDirectory "haskell-network" $ \path ->
+                    withDatagramPair $ \server client -> do
+                        let addr = SockAddrUnix $ path ++ "/socket-file"
+                        bind server addr
+                        void $ sendTo client testMsg addr
+                        recvFrom server 1024 `shouldReturn` (testMsg, SockAddrUnix "")
+                        void $ sendTo client testMsg addr
+                        (from, msg, _, _) <- recvMsg server 1024 0 mempty
+                        (from, msg) `shouldBe` (SockAddrUnix "", testMsg)
 #endif
 
 #ifdef linux_HOST_OS
+            -- Abstract names end at the length, not at NUL (#377).
+            it "returns the names of abstract sockets" $
+                withDatagramPair $ \server client -> do
+                    let name = SockAddrUnix "\0haskell/network/abstract-name"
+                        from = SockAddrUnix "\0haskell\0network\0abstract-from"
+                    bind server name
+                    bind client from
+                    getSocketName server `shouldReturn` name
+                    void $ sendTo client testMsg name
+                    recvFrom server 1024 `shouldReturn` (testMsg, from)
+
             it "can end-to-end with an abstract socket" $ do
                 let
                     abstractAddress = toEnum 0:"/haskell/network/abstract"

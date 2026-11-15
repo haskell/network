@@ -16,7 +16,6 @@ module Network.Socket.Posix.Buffer (
 import Foreign.C.Error (getErrno, eAGAIN, eWOULDBLOCK)
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (with)
-import System.IO.Error (catchIOError)
 import System.Posix.Types (Fd (..))
 
 import Network.Socket.Cbits (msgCmsgCloexec)
@@ -62,8 +61,8 @@ recvBufFrom s ptr nbytes =
                 flags = 0
             len <- throwSocketErrorWaitRead s "Network.Socket.recvBufFrom" $
                      c_recvfrom fd ptr cnbytes flags ptr_sa ptr_len
-            sockaddr <- peekSocketAddress ptr_sa
-                `catchIOError` \_ -> getPeerName s
+            sa_len <- peek ptr_len
+            sockaddr <- peekReceivedAddress s ptr_sa (fromIntegral sa_len)
             return (fromIntegral len, sockaddr)
 
 recvBuf :: Socket -> Ptr Word8 -> Int -> IO Int
@@ -143,8 +142,8 @@ recvBufMsg s bufsizs clen flags = do
                 fmap fromIntegral <$>
                 throwSocketErrorWaitRead s "Network.Socket.Buffer.recvmsg" $
                       c_recvmsg fd msgHdrPtr cflags
-            sockaddr <- peekSocketAddress addrPtr `catchIOError` \_ -> getPeerName s
             hdr <- peek msgHdrPtr
+            sockaddr <- peekReceivedAddress s addrPtr (fromIntegral $ msgNameLen hdr)
 
             cmsgs <- parseCmsgs msgHdrPtr
             -- Without MSG_CMSG_CLOEXEC, marked here: later than the kernel
