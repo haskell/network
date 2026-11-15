@@ -32,7 +32,7 @@
 #if defined(mingw32_HOST_OS)
 # if defined(i386_HOST_ARCH)
 #  define CALLCONV stdcall
-# elif defined(x86_64_HOST_ARCH)
+# elif defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #  define CALLCONV ccall
 # else
 #  error Unknown mingw32 arch
