@@ -2,6 +2,10 @@
 
 ## Version 4.0.0.0
 
+On Windows, sockets under WinIO are now non-blocking, as on POSIX, and a
+stream reset is raised as an error rather than taken for the end of the
+stream.
+
 * Basic support for WINIO
   [#509](https://github.com/haskell/network/pull/509)
 * Multicast support
@@ -88,6 +92,8 @@
   [#640](https://github.com/haskell/network/pull/640)
 * Wait for readiness on Windows through IOCTL_AFD_POLL under WinIO
   [#641](https://github.com/haskell/network/pull/641)
+* WinIO the POSIX way: non-blocking sockets, readiness-based give-ups
+  [#643](https://github.com/haskell/network/pull/643)
 
 ## Version 3.2.9.0
 
