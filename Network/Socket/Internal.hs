@@ -48,6 +48,9 @@ module Network.Socket.Internal
     , throwSocketErrorWaitWrite
     , waitReadSocket
     , waitWriteSocket
+#if defined(mingw32_HOST_OS) && __IO_MANAGER_WINIO__ >= 2
+    , throwWinIOError
+#endif
 
     -- * Initialization
     , withSocketsDo
@@ -64,6 +67,7 @@ import qualified Control.Exception as E
 import System.IO.Unsafe (unsafePerformIO)
 import System.IO.Error (ioeSetErrorString, mkIOError)
 # if __IO_MANAGER_WINIO__ >= 2
+import qualified GHC.Event.Windows as Mgr
 import GHC.IO.SubSystem ((<!>))
 import Network.Socket.Win32.AfdPoll
 # endif
@@ -331,6 +335,17 @@ throwSocketErrorWaitReadBut exempt s name io = withFdSocket s $ \fd ->
 throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitWrite s name io = withFdSocket s $ \fd ->
     throwSocketErrorIfMinus1RetryMayBlock name (waitWriteSocket s fd) io
+
+#if defined(mingw32_HOST_OS) && __IO_MANAGER_WINIO__ >= 2
+-- | 'Mgr.withException', but raising a failure as other socket errors
+--   are: the Winsock code in 'ioe_errno', with its 'IOErrorType'.
+throwWinIOError :: String -> IO (Mgr.IOResult a) -> IO a
+throwWinIOError name io = do
+    r <- io
+    case r of
+        Mgr.IOSuccess a -> return a
+        Mgr.IOFailed e -> throwSocketErrorCode name (maybe 0 fromIntegral e)
+#endif
 
 -- | Waiting for the socket to be readable, or writable: through the IO
 --   manager on POSIX, and through an AFD poll under WinIO.  Under MIO a
