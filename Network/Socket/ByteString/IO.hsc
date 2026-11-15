@@ -69,10 +69,6 @@ import System.Posix.Types (Fd(..))
 
 import Network.Socket.Flag
 import Network.Socket.SockAddr (annotateWithSocket)
-#if defined(mingw32_HOST_OS)
-import Network.Socket.Win32.Load
-#endif
-
 #if !defined(mingw32_HOST_OS)
 import Network.Socket.Posix.Cmsg
 import Network.Socket.Posix.IOVec
@@ -80,6 +76,7 @@ import Network.Socket.Posix.MsgHdr (MsgHdr(..))
 #else
 import Foreign.Marshal.Alloc (alloca)
 import Network.Socket.Win32.Cmsg
+import Network.Socket.Win32.Load
 import Network.Socket.Win32.WSABuf
 import Network.Socket.Win32.MsgHdr (MsgHdr(..))
 #endif
