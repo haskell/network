@@ -79,7 +79,7 @@ socket :: Family         -- Family Name (usually AF_INET)
        -> SocketType     -- Socket Type (usually Stream)
        -> ProtocolNumber -- Protocol Number (getProtocolByName to find value)
        -> IO Socket      -- Unconnected Socket
-socket family stype protocol =
+socket family stype protocol = withSocketsDo $
     E.bracketOnError create c_close setProp `annotateIOException` (show stype ++ " " ++ show protocol)
   where
     setProp fd = do

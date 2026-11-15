@@ -66,6 +66,7 @@ module Network.Socket.Internal
 import qualified Control.Exception as E
 import System.IO.Unsafe (unsafePerformIO)
 import System.IO.Error (ioeSetErrorString, mkIOError)
+import GHC.IO.SubSystem (IoSubSystem (..), ioSubSystem)
 # if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
 import GHC.IO.SubSystem ((<!>))
@@ -391,6 +392,13 @@ withSocketsDo act = E.evaluate withSocketsInit >> act
 withSocketsInit :: ()
 -- Use a CAF to make forcing it do initialisation once, but subsequent forces will be cheap
 withSocketsInit = unsafePerformIO $ do
+    -- The I/O manager is the executable's choice, made at start-up.
+    case ioSubSystem of
+        IoNative -> return ()
+        IoPOSIX -> ioError $ userError $
+            "Network.Socket: network needs the WinIO I/O manager on Windows: "
+                ++ "run with +RTS --io-manager=native -RTS, or link with "
+                ++ "-with-rtsopts=--io-manager=native"
     x <- initWinSock
     when (x /= 0) $ ioError $
       userError "Network.Socket.Internal.withSocketsDo: Failed to initialise WinSock"
