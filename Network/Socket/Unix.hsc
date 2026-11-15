@@ -141,6 +141,7 @@ sendFd s outfd = void $ allocaBytes dummyBufSize $ \buf -> do
 -- | Receive a file descriptor over a UNIX-domain socket. Note that the resulting
 --   file descriptor may have to be put into non-blocking mode in order to be
 --   used safely. See 'Network.Socket.setNonBlockIfNeeded'.
+--   It is close-on-exec, as with 'Network.Socket.ByteString.recvMsg'.
 --   This function does not work on Windows.
 recvFd :: Socket -> IO CInt
 recvFd s = allocaBytes dummyBufSize $ \buf -> do

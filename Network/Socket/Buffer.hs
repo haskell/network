@@ -112,6 +112,9 @@ sendBufMsg = P.sendBufMsg
 --   buffers are filled in order, with subsequent buffers used only
 --   after all the preceding buffers are full. If the message is short
 --   enough some of the supplied buffers may remain unused.
+--   Descriptors received in control messages are close-on-exec, as the
+--   sockets network creates are (atomically where @MSG_CMSG_CLOEXEC@ exists,
+--   right after the receive elsewhere, such as on macOS).
 recvBufMsg :: SocketAddress sa
            => Socket            -- ^ Socket
            -> [(Ptr Word8,Int)] -- ^ A list of (buffer, buffer-length) pairs.
