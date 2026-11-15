@@ -106,6 +106,8 @@ rather than taken for the end of the stream.
   [#647](https://github.com/haskell/network/pull/647)
 * Raise a SetFileCompletionNotificationModes failure with its reason
   [#648](https://github.com/haskell/network/pull/648)
+* HsNetDef.h: use ccall for aarch64 too
+  [#651](https://github.com/haskell/network/pull/651)
 
 ## Version 3.2.9.0
 
