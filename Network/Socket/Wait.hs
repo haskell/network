@@ -57,6 +57,10 @@ import Network.Socket.Buffer
 #if defined(mingw32_HOST_OS)
 import Network.Socket.Cbits
 import Network.Socket.Win32.Cancel
+# if __IO_MANAGER_WINIO__ >= 2
+import GHC.IO.SubSystem ((<!>))
+import Network.Socket.STM
+# endif
 #else
 import Network.Socket.STM
 #endif
@@ -139,9 +143,18 @@ withReady _ready _own s giveUp act = do
         Nothing -> wait
   where
 #if !defined(mingw32_HOST_OS)
+    wait = readyWait
+#elif __IO_MANAGER_WINIO__ >= 2
+    -- WinIO has readiness, through the AFD poll, and waits as POSIX does.
+    wait = startThenCancel <!> readyWait
+#else
+    wait = startThenCancel
+#endif
+
+#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
     -- A socket which is ready already skips the IO manager, whose round
     -- trip costs several times the operation: a send usually finds room.
-    wait = do
+    readyWait = do
         now <- withFdSocket s $ \fd ->
             c_ready_now fd $ case _ready of
                 Read -> 0
@@ -163,10 +176,14 @@ withReady _ready _own s giveUp act = do
     -- gone, and there is nothing to do about that.
     gone :: E.IOException -> IO ()
     gone _ = return ()
-#else
-    -- Only an operation issued with an OVERLAPPED of its own can be
-    -- cancelled alone; any other cancel reaches the whole socket.
-    wait
+#endif
+
+#if defined(mingw32_HOST_OS)
+    -- Under MIO there is no readiness: the operation is started on a
+    -- thread of its own and cancelled.  Only an operation issued with an
+    -- OVERLAPPED of its own can be cancelled alone; any other cancel
+    -- reaches the whole socket.
+    startThenCancel
         | _own = withOverlapped waitOn
         | otherwise = waitOn nullPtr
     waitOn ov = do
@@ -189,9 +206,9 @@ withReady _ready _own s giveUp act = do
                 return $ Left a
 #endif
 
-#if !defined(mingw32_HOST_OS)
+#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
 foreign import ccall unsafe "hsnet_ready_now"
-    c_ready_now :: CInt -> CInt -> IO CInt
+    c_ready_now :: CSocket -> CInt -> IO CInt
 #endif
 
 -- | 'accept' which the caller can give up on.
@@ -268,13 +285,22 @@ sendBufMsgWith s sa bufsizs cmsgs flags giveUp =
 --   @since 3.2.12.0
 connectWith :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
 #if !defined(mingw32_HOST_OS)
-connectWith s sa giveUp = do
+connectWith = connectWithReady
+#elif __IO_MANAGER_WINIO__ >= 2
+connectWith s sa giveUp =
+    withWritable s giveUp (connect s sa) <!> connectWithReady s sa giveUp
+#else
+connectWith s sa giveUp = withWritable s giveUp $ connect s sa
+#endif
+
+#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
+-- A non-blocking connect, and a wait for it which the caller can give up on.
+connectWithReady :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
+connectWithReady s sa giveUp = do
     gaveUp <- atomically $ (Just <$> giveUp) `orElse` return Nothing
     case gaveUp of
         Just a -> return $ Left a
         Nothing -> connectWhenWritable s sa $ withWritable s giveUp
-#else
-connectWith s sa giveUp = withWritable s giveUp $ connect s sa
 #endif
 
 -- | Whether this is the error a socket operation gives once the socket has

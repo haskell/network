@@ -178,6 +178,17 @@ hsnet_fcntl_get(int fd, int cmd)
 {
     return fcntl(fd, cmd);
 }
+#else
+/* Whether the socket is readable (or writable) now, without waiting. */
+INLINE int
+hsnet_ready_now(unsigned long sock, int write)
+{
+    WSAPOLLFD p;
+    p.fd = (SOCKET) sock;
+    p.events = write ? POLLWRNORM : POLLRDNORM;
+    p.revents = 0;
+    return WSAPoll(&p, 1, 0) > 0;
+}
 #endif
 
 #ifndef IOV_MAX
