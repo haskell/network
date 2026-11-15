@@ -41,13 +41,5 @@
 # define CALLCONV ccall
 #endif
 
-/* MIO requires safe, for WINIO we need to duplicate the
-   imports and provide unsafe ones.  Sadly we can't do this
-   dynamically.  */
-#if defined(mingw32_HOST_OS)
-# define SAFE_ON_WIN safe
-#else
-# define SAFE_ON_WIN unsafe
-#endif
 
 #endif /* HSNETDEF_H */

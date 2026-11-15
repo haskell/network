@@ -67,8 +67,6 @@ extra-source-files:
     include/HsNet.h
     include/HsNetDef.h
     include/afunix_compat.h
-    cbits/asyncAccept.c
-    cbits/overlapped.c
     cbits/afdpoll.c
     cbits/initWinSock.c
     cbits/winSockErr.c
@@ -166,14 +164,11 @@ library
         c-sources:
             cbits/initWinSock.c
             cbits/winSockErr.c
-            cbits/asyncAccept.c
-            cbits/overlapped.c
             cbits/afdpoll.c
 
         other-modules:
             Network.Socket.ByteString.Lazy.Windows
             Network.Socket.Win32.AfdPoll
-            Network.Socket.Win32.Cancel
             Network.Socket.Win32.Cmsg
             Network.Socket.Win32.CmsgHdr
             Network.Socket.Win32.HostName

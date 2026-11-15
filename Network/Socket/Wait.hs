@@ -9,19 +9,11 @@
 --   'Right' when the operation completed.  Nothing has to be closed or
 --   interrupted to make the thread return, so neither the delivery of
 --   @evtClose@ by @closeFdWith@ nor an asynchronous exception reaching
---   a blocking call is relied upon.
---
---   On Windows under WinIO they work as on POSIX, waiting for readiness
---   through an AFD poll.  __Under MIO they need the threaded runtime.__
---   There is no readiness to wait for there, so the operation is started
---   and then cancelled, and the thread it runs in blocks in a foreign
---   call.  Without @-threaded@ that blocks every other thread too,
---   including the one which would have given up, and nothing returns.
+--   a blocking call is relied upon.  On Windows the wait for readiness
+--   is an AFD poll.
 module Network.Socket.Wait (
     withReadable,
     withWritable,
-    withReadableOv,
-    withWritableOv,
     acceptWith,
     recvBufWith,
     recvBufFromWith,
@@ -57,14 +49,8 @@ import System.IO.Error (ioeGetErrorType)
 import Network.Socket.Buffer
 #if defined(mingw32_HOST_OS)
 import Network.Socket.Cbits
-import Network.Socket.Win32.Cancel
-# if __IO_MANAGER_WINIO__ >= 2
-import GHC.IO.SubSystem ((<!>))
-import Network.Socket.STM
-# endif
-#else
-import Network.Socket.STM
 #endif
+import Network.Socket.STM
 import Network.Socket.Flag
 import Network.Socket.Imports
 import Network.Socket.Syscall
@@ -83,17 +69,9 @@ import Network.Socket.Win32.Cmsg
 --
 --   __The action must be an operation on this socket which returns
 --   without blocking once the socket is readable.__  The type does not
---   say so and nothing checks it.  On POSIX, and on Windows under WinIO,
---   the action runs on the calling thread after readiness and nothing
---   interrupts it there: the give-up ends the wait, not the action.
---   Under MIO there is no readiness to wait for, so the action is
---   started at once on a thread of its own and the give-up cancels it
---   with @CancelIoEx@ on this socket, which reaches nothing else -- an
---   action blocked on anything else would never end.  The cancel cannot tell the action from other
---   operations pending on the socket, so it ends those too, whichever
---   thread issued them.  The give-ups for particular operations, such as
---   'recvBufWith' and 'Network.Socket.ByteString.sendAllWith', cancel
---   their own and leave the rest alone.
+--   say so and nothing checks it.  The action runs on the calling thread
+--   after readiness and nothing interrupts it there: the give-up ends the
+--   wait, not the action.
 --
 --   __One reader at a time__ is what keeps that condition.  A second
 --   thread taking the data between the readiness and the action leaves
@@ -106,70 +84,44 @@ import Network.Socket.Win32.Cmsg
 --   looks at it once more before a read which would not block.  Reading
 --   a 'TVar' is what it is for.
 withReadable :: Socket -> STM a -> IO b -> IO (Either a b)
-withReadable s giveUp act = withReady Read False s giveUp $ const act
+withReadable = withReady Read
 
 -- | 'withReadable' for writing: running an action once the socket is
 --   writable, unless the 'STM' action fires first.  The same conditions
 --   hold, with one writer at a time in place of one reader.
 --
---   A send which is given up on may have sent part of its data under
---   MIO on Windows, where it is cancelled rather than never started, and
---   the socket cannot be sent on after that.  So a stream given up on in
---   the middle of a send is to be closed.
---
 --   @since 3.2.12.0
 withWritable :: Socket -> STM a -> IO b -> IO (Either a b)
-withWritable s giveUp act = withReady Write False s giveUp $ const act
-
--- | 'withReadable' for an operation which takes an OVERLAPPED: on
---   Windows it is issued with one of its own and the give-up cancels it
---   alone.  'nullPtr' is passed elsewhere.
-withReadableOv :: Socket -> STM a -> (Ptr () -> IO b) -> IO (Either a b)
-withReadableOv = withReady Read True
-
--- | 'withWritable' for an operation which takes an OVERLAPPED.
-withWritableOv :: Socket -> STM a -> (Ptr () -> IO b) -> IO (Either a b)
-withWritableOv = withReady Write True
+withWritable = withReady Write
 
 data Ready = Read | Write
 
-withReady :: Ready -> Bool -> Socket -> STM a -> (Ptr () -> IO b) -> IO (Either a b)
-withReady _ready _own s giveUp act = do
-    -- Looking at the give-up first: on Windows 'wait' starts the
-    -- operation before it looks at any STM, and on POSIX this keeps a
-    -- caller which has given up off a descriptor close may have freed.
+withReady :: Ready -> Socket -> STM a -> IO b -> IO (Either a b)
+withReady ready s giveUp act = do
+    -- Looking at the give-up first keeps a caller which has given up off
+    -- a descriptor close may have freed.
     gaveUp <- atomically $ (Just <$> giveUp) `orElse` return Nothing
     case gaveUp of
         Just a -> return $ Left a
         Nothing -> wait
   where
-#if !defined(mingw32_HOST_OS)
-    wait = readyWait
-#elif __IO_MANAGER_WINIO__ >= 2
-    -- WinIO has readiness, through the AFD poll, and waits as POSIX does.
-    wait = startThenCancel <!> readyWait
-#else
-    wait = startThenCancel
-#endif
-
-#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
     -- A socket which is ready already skips the IO manager, whose round
     -- trip costs several times the operation: a send usually finds room.
-    readyWait = do
+    wait = do
         now <- withFdSocket s $ \fd ->
-            c_ready_now fd $ case _ready of
+            c_ready_now fd $ case ready of
                 Read -> 0
                 Write -> 1
-        if now /= 0 then Right <$> act nullPtr else waitIO
+        if now /= 0 then Right <$> act else waitIO
 
     waitIO = do
-        (ready, cancelWait) <- case _ready of
+        (isReady, cancelWait) <- case ready of
             Read -> waitAndCancelReadSocketSTM s
             Write -> waitAndCancelWriteSocketSTM s
         ev <-
-            atomically ((Left <$> giveUp) `orElse` (Right <$> ready))
+            atomically ((Left <$> giveUp) `orElse` (Right <$> isReady))
                 `E.finally` (cancelWait `E.catch` gone)
-        either (return . Left) (const $ Right <$> act nullPtr) ev
+        either (return . Left) (const $ Right <$> act) ev
 
     -- The cancel can throw, and from a finally that would replace the
     -- exception which ended the wait -- the timeout the caller is waiting
@@ -177,40 +129,9 @@ withReady _ready _own s giveUp act = do
     -- gone, and there is nothing to do about that.
     gone :: E.IOException -> IO ()
     gone _ = return ()
-#endif
 
-#if defined(mingw32_HOST_OS)
-    -- Under MIO there is no readiness: the operation is started on a
-    -- thread of its own and cancelled.  Only an operation issued with an
-    -- OVERLAPPED of its own can be cancelled alone; any other cancel
-    -- reaches the whole socket.
-    startThenCancel
-        | _own = withOverlapped waitOn
-        | otherwise = waitOn nullPtr
-    waitOn ov = do
-        (completed, cancelAct) <- windowsViaSTM s ov (act ov)
-        -- The operation wins a tie.  It has already read into the
-        -- caller's buffer by then, and answering Left would throw those
-        -- bytes away -- which for a stream loses them for good.
-        --
-        -- onException because the call runs in a thread of its own here:
-        -- an asynchronous exception arriving during the wait would
-        -- otherwise leave it blocked in a foreign call, holding the
-        -- socket and writing into a buffer the caller has let go of.
-        ev <-
-            atomically ((Right <$> completed) `orElse` (Left <$> giveUp))
-                `E.onException` cancelAct
-        case ev of
-            Right b -> return $ Right b
-            Left a -> do
-                cancelAct
-                return $ Left a
-#endif
-
-#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
 foreign import ccall unsafe "hsnet_ready_now"
     c_ready_now :: CSocket -> CInt -> IO CInt
-#endif
 
 -- | 'accept' which the caller can give up on.
 --
@@ -223,7 +144,7 @@ acceptWith s giveUp = withReadable s giveUp $ accept s
 --   @since 3.2.10.0
 recvBufWith :: Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a Int)
 recvBufWith s ptr nbytes giveUp =
-    withReadableOv s giveUp $ \ov -> recvBufOv ov s ptr nbytes
+    withReadable s giveUp $ recvBuf s ptr nbytes
 
 -- | 'recvBufFrom' which the caller can give up on.
 --
@@ -232,7 +153,7 @@ recvBufFromWith
     :: SocketAddress sa
     => Socket -> Ptr a -> Int -> STM b -> IO (Either b (Int, sa))
 recvBufFromWith s ptr nbytes giveUp =
-    withReadableOv s giveUp $ \ov -> recvBufFromOv ov s ptr nbytes
+    withReadable s giveUp $ recvBufFrom s ptr nbytes
 
 -- | 'sendBuf' which the caller can give up on.  See 'withWritable' for
 --   what is left of the stream after giving up.
@@ -240,7 +161,7 @@ recvBufFromWith s ptr nbytes giveUp =
 --   @since 3.2.12.0
 sendBufWith :: Socket -> Ptr Word8 -> Int -> STM a -> IO (Either a Int)
 sendBufWith s ptr nbytes giveUp =
-    withWritableOv s giveUp $ \ov -> sendBufOv ov s ptr nbytes
+    withWritable s giveUp $ sendBuf s ptr nbytes
 
 -- | 'sendBufTo' which the caller can give up on.
 --
@@ -249,7 +170,7 @@ sendBufToWith
     :: SocketAddress sa
     => Socket -> Ptr a -> Int -> sa -> STM b -> IO (Either b Int)
 sendBufToWith s ptr nbytes sa giveUp =
-    withWritableOv s giveUp $ \ov -> sendBufToOv ov s ptr nbytes sa
+    withWritable s giveUp $ sendBufTo s ptr nbytes sa
 
 -- | 'recvBufMsg' which the caller can give up on.
 --
@@ -263,7 +184,7 @@ recvBufMsgWith
     -> STM a
     -> IO (Either a (sa, Int, [Cmsg], MsgFlag))
 recvBufMsgWith s bufsizs clen flags giveUp =
-    withReadableOv s giveUp $ \ov -> recvBufMsgOv ov s bufsizs clen flags
+    withReadable s giveUp $ recvBufMsg s bufsizs clen flags
 
 -- | 'sendBufMsg' which the caller can give up on.
 --
@@ -278,31 +199,18 @@ sendBufMsgWith
     -> STM a
     -> IO (Either a Int)
 sendBufMsgWith s sa bufsizs cmsgs flags giveUp =
-    withWritableOv s giveUp $ \ov -> sendBufMsgOv ov s sa bufsizs cmsgs flags
+    withWritable s giveUp $ sendBufMsg s sa bufsizs cmsgs flags
 
 -- | 'connect' which the caller can give up on.  A socket given up on
 --   may still be connecting, so it is to be closed.
 --
 --   @since 3.2.12.0
 connectWith :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
-#if !defined(mingw32_HOST_OS)
-connectWith = connectWithReady
-#elif __IO_MANAGER_WINIO__ >= 2
-connectWith s sa giveUp =
-    withWritable s giveUp (connect s sa) <!> connectWithReady s sa giveUp
-#else
-connectWith s sa giveUp = withWritable s giveUp $ connect s sa
-#endif
-
-#if !defined(mingw32_HOST_OS) || __IO_MANAGER_WINIO__ >= 2
--- A non-blocking connect, and a wait for it which the caller can give up on.
-connectWithReady :: SocketAddress sa => Socket -> sa -> STM a -> IO (Either a ())
-connectWithReady s sa giveUp = do
+connectWith s sa giveUp = do
     gaveUp <- atomically $ (Just <$> giveUp) `orElse` return Nothing
     case gaveUp of
         Just a -> return $ Left a
         Nothing -> connectWhenWritable s sa $ withWritable s giveUp
-#endif
 
 -- | Whether this is the error a socket operation gives once the socket has
 --   been closed under it.

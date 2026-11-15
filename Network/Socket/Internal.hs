@@ -48,7 +48,7 @@ module Network.Socket.Internal
     , throwSocketErrorWaitWrite
     , waitReadSocket
     , waitWriteSocket
-#if defined(mingw32_HOST_OS) && __IO_MANAGER_WINIO__ >= 2
+#if defined(mingw32_HOST_OS)
     , throwWinIOError
 #endif
 
@@ -67,11 +67,8 @@ import qualified Control.Exception as E
 import System.IO.Unsafe (unsafePerformIO)
 import System.IO.Error (ioeSetErrorString, mkIOError)
 import GHC.IO.SubSystem (IoSubSystem (..), ioSubSystem)
-# if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
-import GHC.IO.SubSystem ((<!>))
 import Network.Socket.Win32.AfdPoll
-# endif
 #else
 import GHC.Conc (threadWaitRead, threadWaitWrite)
 import Foreign.C.Error (throwErrno, throwErrnoIfMinus1Retry,
@@ -259,7 +256,6 @@ throwSocketErrorIfMinus1RetryMayBlockBut
     -> IO a           -- ^ the 'IO' operation to be executed
     -> IO a
 #if defined(mingw32_HOST_OS)
--- Only a non-blocking socket, as WinIO's are, says WSAEWOULDBLOCK.
 throwSocketErrorIfMinus1RetryMayBlockBut exempt name on_block act = loop
   where
     loop = do
@@ -337,7 +333,7 @@ throwSocketErrorWaitWrite :: (Eq a, Num a) => Socket -> String -> IO a -> IO a
 throwSocketErrorWaitWrite s name io = withFdSocket s $ \fd ->
     throwSocketErrorIfMinus1RetryMayBlock name (waitWriteSocket s fd) io
 
-#if defined(mingw32_HOST_OS) && __IO_MANAGER_WINIO__ >= 2
+#if defined(mingw32_HOST_OS)
 -- | 'Mgr.withException', but raising a failure as other socket errors
 --   are: the Winsock code in 'ioe_errno', with its 'IOErrorType'.
 throwWinIOError :: String -> IO (Mgr.IOResult a) -> IO a
@@ -349,17 +345,11 @@ throwWinIOError name io = do
 #endif
 
 -- | Waiting for the socket to be readable, or writable: through the IO
---   manager on POSIX, and through an AFD poll under WinIO.  Under MIO a
---   socket blocks, so there is no wait to make.
+--   manager on POSIX, and through an AFD poll on Windows.
 waitReadSocket, waitWriteSocket :: Socket -> CSocket -> IO ()
 #if defined(mingw32_HOST_OS)
-# if __IO_MANAGER_WINIO__ >= 2
-waitReadSocket s _ = return () <!> afdWait "waitReadSocket" afdRead s
-waitWriteSocket s _ = return () <!> afdWait "waitWriteSocket" afdWrite s
-# else
-waitReadSocket _ _ = return ()
-waitWriteSocket _ _ = return ()
-# endif
+waitReadSocket s _ = afdWait "waitReadSocket" afdRead s
+waitWriteSocket s _ = afdWait "waitWriteSocket" afdWrite s
 #else
 waitReadSocket _ fd = threadWaitRead $ fromIntegral fd
 waitWriteSocket _ fd = threadWaitWrite $ fromIntegral fd

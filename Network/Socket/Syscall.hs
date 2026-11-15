@@ -10,15 +10,9 @@ import Foreign.Marshal.Utils (with)
 import System.IO.Error (catchIOError)
 
 #if defined(mingw32_HOST_OS)
-import Foreign (FunPtr)
 import Foreign.Marshal.Alloc (alloca)
-import GHC.Conc (asyncDoProc)
 import Network.Socket.Cbits
-# if __IO_MANAGER_WINIO__ >= 2
 import qualified GHC.Event.Windows as Mgr
-import Foreign.Ptr (wordPtrToPtr)
-import GHC.IO.SubSystem ((<!>))
-# endif
 #else
 import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
 #endif
@@ -35,19 +29,9 @@ import Network.Socket.Options
 import Network.Socket.Types
 
 -- ----------------------------------------------------------------------------
--- On Windows, our sockets are not put in non-blocking mode (non-blocking
--- is not supported for regular file descriptors on Windows, and it would
--- be a pain to support it only for sockets).  So there are two cases:
---
---  - the threaded RTS uses safe calls for socket operations to get
---    non-blocking I/O, just like the rest of the I/O library
---
---  - with the non-threaded RTS, only some operations on sockets will be
---    non-blocking.  Reads and writes go through the normal async I/O
---    system.  accept() uses asyncDoProc so is non-blocking.  A handful
---    of others (recvFrom, sendFd, recvFd) will block all threads - if this
---    is a problem, -threaded is the workaround.
---
+-- On Windows, as on POSIX, sockets are non-blocking, and a call which would
+-- block waits for readiness: through an AFD poll on the I/O manager's
+-- completion port, which needs WinIO.
 
 -----------------------------------------------------------------------------
 -- Connection Functions
@@ -86,9 +70,8 @@ socket family stype protocol = withSocketsDo $
         -- Let's ensure that the socket (file descriptor) is closed even on
         -- asynchronous exceptions.
         setNonBlock fd
-#if __IO_MANAGER_WINIO__ >= 2
-        -- Associate socket with I/O manager immediately if using WinIO
-        (return () <!> associateSocket fd)
+#if defined(mingw32_HOST_OS)
+        associateSocket fd
 #endif
         s <- mkSocket fd
         -- This socket is not managed by the IO manager yet.
@@ -206,7 +189,6 @@ connectLoop s p_sa sz whenWritable = withFdSocket s $ \fd -> loop fd
        r <- c_connect fd p_sa sz
        if r /= -1 then return (Right ()) else do
 #if defined(mingw32_HOST_OS)
-           -- A WinIO socket is non-blocking; one under MIO blocks.
            rc <- c_getLastError
            if rc == wsaEWOULDBLOCK
                then whenWritable connected
@@ -256,38 +238,18 @@ accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
  new_sock <- E.bracketOnError (callAccept listing_fd new_sa sz) c_close $ \fd -> do
-#if __IO_MANAGER_WINIO__ >= 2
-     -- Associate accepted socket with I/O manager if using WinIO
-     (return () <!> associateSocket fd)
+#if defined(mingw32_HOST_OS)
+     associateSocket fd
 #endif
      mkSocket fd
  new_addr <- peekSocketAddress new_sa
  return (new_sock, new_addr)
   where
 #if defined(mingw32_HOST_OS)
-     callAccept fd sa sz =
-# if __IO_MANAGER_WINIO__ >= 2
-         callAcceptMIO fd sa sz <!> callAcceptWinIO fd sa sz
-# else
-         callAcceptMIO fd sa sz
-# endif
-# if __IO_MANAGER_WINIO__ >= 2
      -- The listening socket is non-blocking, as on POSIX.
-     callAcceptWinIO fd sa sz = with (fromIntegral sz) $ \ ptr_len ->
+     callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len ->
        throwSocketErrorWaitRead listing_sock "Network.Socket.accept"
          (c_accept fd sa ptr_len)
-# endif
-     callAcceptMIO fd sa sz
-       | threaded  = with (fromIntegral sz) $ \ ptr_len ->
-                       throwSocketErrorIfMinus1Retry "Network.Socket.accept" $
-                         c_accept_safe fd sa ptr_len
-       | otherwise = do
-             E.bracket (c_newAcceptParams fd (fromIntegral sz) sa) c_free $ \paramData -> do
-                 rc     <- asyncDoProc c_acceptDoProc paramData
-                 new_fd <- c_acceptNewSock paramData
-                 when (rc /= 0) $
-                     throwSocketErrorCode "Network.Socket.accept" (fromIntegral rc)
-                 return new_fd
 #else
      callAccept fd sa sz = with (fromIntegral sz) $ \ ptr_len -> do
 # ifdef HAVE_ADVANCED_SOCKET_FLAGS
@@ -302,7 +264,7 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
 #endif
 
-#if __IO_MANAGER_WINIO__ >= 2
+#if defined(mingw32_HOST_OS)
 -- | Associate a socket with the I/O manager, skipping the completion port for
 --   an operation that finishes at once.
 associateSocket :: CSocket -> IO ()
@@ -325,7 +287,7 @@ foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CSocket
 foreign import CALLCONV unsafe "bind"
   c_bind :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
-foreign import CALLCONV SAFE_ON_WIN "connect"
+foreign import CALLCONV unsafe "connect"
   c_connect :: CSocket -> Ptr sa -> CInt{-CSockLen???-} -> IO CInt
 foreign import CALLCONV unsafe "listen"
   c_listen :: CSocket -> CInt -> IO CInt
@@ -344,16 +306,4 @@ foreign import CALLCONV unsafe "accept"
 foreign import CALLCONV unsafe "WSAIoctl"
   c_WSAIoctl :: CSocket -> Word32 -> Ptr Word32 -> Word32 -> Ptr () -> Word32
              -> Ptr Word32 -> Ptr () -> Ptr () -> IO CInt
-foreign import CALLCONV safe "accept"
-  c_accept_safe :: CSocket -> Ptr sa -> Ptr CInt{-CSockLen???-} -> IO CSocket
-foreign import ccall unsafe "rtsSupportsBoundThreads"
-  threaded :: Bool
-foreign import ccall unsafe "HsNet.h acceptNewSock"
-  c_acceptNewSock :: Ptr () -> IO CSocket
-foreign import ccall unsafe "HsNet.h newAcceptParams"
-  c_newAcceptParams :: CSocket -> CInt -> Ptr a -> IO (Ptr ())
-foreign import ccall unsafe "HsNet.h &acceptDoProc"
-  c_acceptDoProc :: FunPtr (Ptr () -> IO Int)
-foreign import ccall unsafe "free"
-  c_free:: Ptr a -> IO ()
 #endif
