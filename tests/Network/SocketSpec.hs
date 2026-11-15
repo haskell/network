@@ -16,6 +16,10 @@ import Foreign.Ptr (castPtr)
 import Data.List (nub)
 import Data.Maybe (fromJust)
 import Foreign.C.Types ()
+#if defined(mingw32_HOST_OS)
+import Foreign.Ptr (nullPtr)
+import Foreign.Storable (sizeOf)
+#endif
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
@@ -546,6 +550,14 @@ spec = do
                     (_, cancel) <- waitAndCancelReadSocketSTM s
                     cancel
 
+#if defined(mingw32_HOST_OS)
+    -- It used to be a CULong, 32 bits on Win64 (#426).
+    describe "withFdSocket" $
+        it "gives the whole SOCKET, as wide as a pointer" $
+            bracket (socket AF_INET Stream defaultProtocol) close $ \s ->
+                withFdSocket s (return . sizeOf) `shouldReturn` sizeOf nullPtr
+
+#endif
     describe "socketToFd" $ do
         it "socketToFd can send using fd" $ do
             let server sock = do
