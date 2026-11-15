@@ -99,7 +99,8 @@ bind' s sa = case sa of
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
--- On Unix, FD_CLOEXEC is set to the new 'Socket'.
+-- On Unix, FD_CLOEXEC is set to the new 'Socket'; on Windows, it is not
+-- inherited by child processes.
 accept :: Socket -> IO (Socket, SockAddr)
 accept s = accept' `annotateWithSocket` (s, Nothing)
   where

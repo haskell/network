@@ -114,6 +114,8 @@ rather than taken for the end of the stream.
   [#652](https://github.com/haskell/network/pull/652)
 * Windows: make accepted sockets non-inheritable, as on POSIX
   [#655](https://github.com/haskell/network/pull/655)
+* Make descriptors received by recvmsg close-on-exec
+  [#653](https://github.com/haskell/network/pull/653)
 
 ## Version 3.2.9.0
 

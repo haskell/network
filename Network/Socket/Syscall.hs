@@ -201,7 +201,8 @@ listen s backlog = withFdSocket s listen' `annotateIOException` show s
 -- address)@ where @conn@ is a new socket object usable to send and
 -- receive data on the connection, and @address@ is the address bound
 -- to the socket on the other end of the connection.
--- On Unix, FD_CLOEXEC is set to the new 'Socket'.
+-- On Unix, FD_CLOEXEC is set to the new 'Socket'; on Windows, it is not
+-- inherited by child processes.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
 accept listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
