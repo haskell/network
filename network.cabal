@@ -164,6 +164,7 @@ library
 
         other-modules:
             Network.Socket.ByteString.Lazy.Windows
+            Network.Socket.Win32.AfdPoll
             Network.Socket.Win32.Cancel
             Network.Socket.Win32.Cmsg
             Network.Socket.Win32.CmsgHdr
