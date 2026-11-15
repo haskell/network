@@ -104,6 +104,8 @@ rather than taken for the end of the stream.
   [#646](https://github.com/haskell/network/pull/646)
 * Split platform code into Posix and Win32 modules
   [#647](https://github.com/haskell/network/pull/647)
+* Raise a SetFileCompletionNotificationModes failure with its reason
+  [#648](https://github.com/haskell/network/pull/648)
 
 ## Version 3.2.9.0
 
