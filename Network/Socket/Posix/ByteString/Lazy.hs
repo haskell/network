@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.Socket.ByteString.Lazy.Posix (
+module Network.Socket.Posix.ByteString.Lazy (
     -- * Send data to a socket
     send,
     sendAll,
@@ -11,7 +11,7 @@ import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 import Foreign.Marshal.Array (allocaArray)
 
 import Network.Socket.ByteString.IO (waitWhen0)
-import Network.Socket.ByteString.Internal (c_writev)
+import Network.Socket.Posix.ByteString (c_writev)
 import Network.Socket.Imports
 import Network.Socket.Internal
 import Network.Socket.Posix.IOVec (IOVec (IOVec))

@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- |
 -- Module      : Network.Socket.ByteString.Internal
 -- Copyright   : (c) Johan Tibell 2007-2010
@@ -12,57 +10,26 @@
 module Network.Socket.ByteString.Internal
     (
       mkInvalidRecvArgError
-#if !defined(mingw32_HOST_OS)
-    , c_writev
-    , c_sendmsg
-    , c_recvmsg
-#else
-    , c_wsasend
-#endif
+    , withBufSizs
     ) where
 
-#include "HsNetDef.h"
-
+import Data.ByteString.Internal (ByteString (..))
+import Foreign.ForeignPtr (withForeignPtr)
 import GHC.IO.Exception (IOErrorType(..))
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
-#if !defined(mingw32_HOST_OS)
-import System.Posix.Types (CSsize(..))
-
 import Network.Socket.Imports
-import Network.Socket.Posix.IOVec (IOVec)
-import Network.Socket.Posix.MsgHdr (MsgHdr)
-import Network.Socket.Types
-#else
-import Data.Word
-import Foreign.C.Types
-import Foreign.Ptr
-
-import Network.Socket.Win32.WSABuf (WSABuf)
-import Network.Socket.Types
-
-type DWORD   = Word32
-type LPDWORD = Ptr DWORD
-#endif
 
 mkInvalidRecvArgError :: String -> IOError
 mkInvalidRecvArgError loc = ioeSetErrorString (mkIOError
                                     InvalidArgument
                                     loc Nothing Nothing) "non-positive length"
 
-#if !defined(mingw32_HOST_OS)
-foreign import ccall unsafe "writev"
-  c_writev :: CSocket -> Ptr IOVec -> CInt -> IO CSsize
-
-foreign import ccall unsafe "sendmsg"
-  c_sendmsg :: CSocket -> Ptr (MsgHdr SockAddr) -> CInt -> IO CSsize
-
-foreign import ccall unsafe "recvmsg"
-  c_recvmsg :: CSocket -> Ptr (MsgHdr SockAddr) -> CInt -> IO CSsize
-#else
-  -- fixme Handle for SOCKET, see #426
-foreign import CALLCONV unsafe "WSASend"
-  c_wsasend :: CSocket -> Ptr WSABuf -> DWORD -> LPDWORD -> DWORD -> Ptr () -> Ptr () -> IO CInt
--- WSASendMsg and WSARecvMsg are extension functions and cannot be
--- imported by name; see Network.Socket.Win32.Load.
-#endif
+-- | The buffers of the parts, with their lengths.
+withBufSizs :: [ByteString] -> ([(Ptr Word8, Int)] -> IO a) -> IO a
+withBufSizs bss0 f = loop bss0 id
+  where
+    loop []                    build = f $ build []
+    loop (PS fptr off len:bss) build = withForeignPtr fptr $ \ptr -> do
+        let ptr' = ptr `plusPtr` off
+        loop bss (build . ((ptr',len) :))

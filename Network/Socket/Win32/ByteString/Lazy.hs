@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.Socket.ByteString.Lazy.Windows (
+module Network.Socket.Win32.ByteString.Lazy (
     -- * Send data to a socket
     send,
     sendAll,
