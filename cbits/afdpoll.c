@@ -44,9 +44,8 @@ hsnet_afd_poll_info_size(void)
 /* Starts waiting for events on s.  Answers 0 when they are there already,
    ERROR_IO_PENDING when the wait has started, or a Win32 error code. */
 int
-hsnet_afd_poll(unsigned long sock, ULONG events, AFD_POLL_INFO *info, LPOVERLAPPED ov)
+hsnet_afd_poll(SOCKET s, ULONG events, AFD_POLL_INFO *info, LPOVERLAPPED ov)
 {
-    SOCKET s = (SOCKET) sock;
     if (pNtDeviceIoControlFile == NULL) {
         HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
         pRtlNtStatusToDosError = (RtlNtStatusToDosError_t)
@@ -84,8 +83,8 @@ hsnet_afd_poll_events(AFD_POLL_INFO *info)
 /* Non-blocking, as sockets are on POSIX.  Overlapped operations are not
    affected; a plain call which would block says WSAEWOULDBLOCK. */
 int
-hsnet_set_nonblock(unsigned long sock)
+hsnet_set_nonblock(SOCKET s)
 {
     u_long on = 1;
-    return ioctlsocket((SOCKET) sock, FIONBIO, &on);
+    return ioctlsocket(s, FIONBIO, &on);
 }

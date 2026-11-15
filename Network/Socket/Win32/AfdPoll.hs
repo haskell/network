@@ -12,7 +12,7 @@ module Network.Socket.Win32.AfdPoll (
 import Control.Concurrent (forkIO, killThread)
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, putTMVar, readTMVar, throwSTM)
 import qualified Control.Exception as E
-import Foreign.C.Types (CInt (..), CULong (..))
+import Foreign.C.Types (CInt (..), CUIntPtr (..), CULong (..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (Ptr, castPtr, wordPtrToPtr)
 import qualified GHC.Event.Windows as Mgr
