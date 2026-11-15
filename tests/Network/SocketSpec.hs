@@ -47,15 +47,14 @@ bounceWith
     -> IO (Maybe ByteString)
 bounceWith receive send' = do
     dead <- deadPort
-    sock <- socket AF_INET Datagram defaultProtocol
-    bind sock $ SockAddrInet 0 localhost
-    send' sock dead
-    -- Long enough for the unreachable to come back before the receive.
-    waitFor 300000
-    late <- registerDelay 300000
-    r <- receive sock $ check =<< readTVar late
-    close sock
-    return $ either (const Nothing) Just r
+    bracket (socket AF_INET Datagram defaultProtocol) close $ \sock -> do
+        bind sock $ SockAddrInet 0 localhost
+        send' sock dead
+        -- Long enough for the unreachable to come back before the receive.
+        waitFor 300000
+        late <- registerDelay 300000
+        r <- receive sock $ check =<< readTVar late
+        return $ either (const Nothing) Just r
   where
     localhost = tupleToHostAddress (127, 0, 0, 1)
     waitFor us = do
@@ -71,7 +70,7 @@ bounceWith receive send' = do
 
 -- | 'bounce', but with the receive waiting before the send: the
 --   unreachable completes a receive in progress.
-bounceWaiting :: IO (Maybe (Either IOError ByteString))
+bounceWaiting :: IO (Maybe ByteString)
 bounceWaiting = bracket (socket AF_INET Datagram defaultProtocol) close $ \sock -> do
     dead <- bracket (socket AF_INET Datagram defaultProtocol) close $ \s -> do
         bind s $ SockAddrInet 0 localhost
@@ -82,9 +81,32 @@ bounceWaiting = bracket (socket AF_INET Datagram defaultProtocol) close $ \sock 
     void $ forkIO $ tryIOError (recv sock 2048) >>= putMVar var
     threadDelay 100000
     void $ send sock "bounce"
-    timeout 1000000 $ takeMVar var
+    r <- timeout 1000000 $ takeMVar var
+    traverse (either ioError return) r
   where
     localhost = tupleToHostAddress (127, 0, 0, 1)
+
+-- | A bounce which must raise the unreachable.  Windows stops delivering
+--   unreachables for a while after many of them, so there a bounce which
+--   heard nothing is tried again, and the test is pending if none hears it.
+shouldBeUnreachable :: IO (Maybe ByteString) -> Expectation
+shouldBeUnreachable act = go attempts
+  where
+    go n = do
+        r <- tryIOError act
+        case r of
+            Left e -> e `shouldSatisfy` isPortUnreachableError
+            Right (Just bs) -> expectationFailure $ "received " ++ show bs
+            Right Nothing
+                | n > 1 -> threadDelay 2000000 >> go (n - 1)
+                | otherwise -> silence
+#if defined(mingw32_HOST_OS)
+    attempts = 3 :: Int
+    silence = pendingWith "Windows delivered no ICMP unreachable"
+#else
+    attempts = 1 :: Int
+    silence = expectationFailure "no ICMP unreachable"
+#endif
 
 -- | Two connected datagram sockets on the loopback: the reader, and the
 --   writer.
@@ -417,15 +439,14 @@ spec = do
             bounce (\sock dead -> void $ sendTo sock "bounce" dead)
                 `shouldReturn` Nothing
         it "is heard by a connected one" $
-            bounce connectSend `shouldThrow` isPortUnreachableError
+            shouldBeUnreachable $ bounce connectSend
         it "is heard by a connected one through recv" $
-            bounceWith (\sock -> recvWith sock 2048) connectSend
-                `shouldThrow` isPortUnreachableError
+            shouldBeUnreachable $
+                bounceWith (\sock -> recvWith sock 2048) connectSend
         it "is heard by a connected one through recvMsg" $
-            bounceWith recvMsg' connectSend `shouldThrow` isPortUnreachableError
-        it "is heard by a receive already waiting" $ do
-            r <- bounceWaiting
-            either isPortUnreachableError (const False) <$> r `shouldBe` Just True
+            shouldBeUnreachable $ bounceWith recvMsg' connectSend
+        it "is heard by a receive already waiting" $
+            shouldBeUnreachable bounceWaiting
 
     -- Winsock fails such a receive, and POSIX truncates the datagram.
     describe "a datagram too large for the buffer" $ do
