@@ -11,11 +11,12 @@
 --   @evtClose@ by @closeFdWith@ nor an asynchronous exception reaching
 --   a blocking call is relied upon.
 --
---   __On Windows these need the threaded runtime.__  There is no
---   readiness to wait for there, so the operation is started and then
---   cancelled, and the thread it runs in blocks in a foreign call.
---   Without @-threaded@ that blocks every other thread too, including
---   the one which would have given up, and nothing returns at all.
+--   On Windows under WinIO they work as on POSIX, waiting for readiness
+--   through an AFD poll.  __Under MIO they need the threaded runtime.__
+--   There is no readiness to wait for there, so the operation is started
+--   and then cancelled, and the thread it runs in blocks in a foreign
+--   call.  Without @-threaded@ that blocks every other thread too,
+--   including the one which would have given up, and nothing returns.
 module Network.Socket.Wait (
     withReadable,
     withWritable,
@@ -82,13 +83,13 @@ import Network.Socket.Win32.Cmsg
 --
 --   __The action must be an operation on this socket which returns
 --   without blocking once the socket is readable.__  The type does not
---   say so and nothing checks it.  On POSIX the action runs on the
---   calling thread after readiness and nothing interrupts it there: the
---   give-up ends the wait, not the action.  On Windows there is no
---   readiness to wait for, so the action is started at once on a thread
---   of its own and the give-up cancels it with @CancelIoEx@ on this
---   socket, which reaches nothing else -- an action blocked on anything
---   else would never end.  The cancel cannot tell the action from other
+--   say so and nothing checks it.  On POSIX, and on Windows under WinIO,
+--   the action runs on the calling thread after readiness and nothing
+--   interrupts it there: the give-up ends the wait, not the action.
+--   Under MIO there is no readiness to wait for, so the action is
+--   started at once on a thread of its own and the give-up cancels it
+--   with @CancelIoEx@ on this socket, which reaches nothing else -- an
+--   action blocked on anything else would never end.  The cancel cannot tell the action from other
 --   operations pending on the socket, so it ends those too, whichever
 --   thread issued them.  The give-ups for particular operations, such as
 --   'recvBufWith' and 'Network.Socket.ByteString.sendAllWith', cancel
@@ -111,9 +112,9 @@ withReadable s giveUp act = withReady Read False s giveUp $ const act
 --   writable, unless the 'STM' action fires first.  The same conditions
 --   hold, with one writer at a time in place of one reader.
 --
---   A send which is given up on may have sent part of its data on
---   Windows, where it is cancelled rather than never started, and the
---   socket cannot be sent on after that.  So a stream given up on in
+--   A send which is given up on may have sent part of its data under
+--   MIO on Windows, where it is cancelled rather than never started, and
+--   the socket cannot be sent on after that.  So a stream given up on in
 --   the middle of a send is to be closed.
 --
 --   @since 3.2.12.0
