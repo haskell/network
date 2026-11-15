@@ -93,6 +93,8 @@ winsockErrorType rc = case rc of
     _ -> OtherError
 fileSkipCompletionPortOnSuccess :: Word8
 fileSkipCompletionPortOnSuccess = #const FILE_SKIP_COMPLETION_PORT_ON_SUCCESS
+handleFlagInherit :: Word32
+handleFlagInherit = #const HANDLE_FLAG_INHERIT
 #else
 fGetFd :: CInt
 fGetFd = #const F_GETFD

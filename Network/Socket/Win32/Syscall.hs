@@ -27,8 +27,13 @@ setupSocket :: CSocket -> IO ()
 setupSocket = associateSocket "Network.Socket.socket"
 
 -- | Preparing an accepted socket: see 'associateSocket'.
+-- Clears the @HANDLE_FLAG_INHERIT@ flag, which is equivalent to setting @SOCK_CLOEXEC@ on POSIX
+-- to prevent child processes from inheriting the socket.
 setupAccepted :: CSocket -> IO ()
-setupAccepted = associateSocket "Network.Socket.accept"
+setupAccepted fd = do
+    failIfFalse_ "Network.Socket.accept: SetHandleInformation" $
+        c_SetHandleInformation (wordPtrToPtr $ fromIntegral fd) handleFlagInherit 0
+    associateSocket "Network.Socket.accept" fd
 
 -- | Accepting a connection on a non-blocking listening socket.
 acceptFd :: Socket -> CSocket -> Ptr sa -> Int -> IO CSocket
@@ -75,6 +80,9 @@ foreign import CALLCONV unsafe "accept"
 
 foreign import ccall unsafe "hsnet_set_nonblock"
     c_set_nonblock :: CSocket -> IO CInt
+
+foreign import ccall unsafe "windows.h SetHandleInformation"
+    c_SetHandleInformation :: Ptr () -> Word32 -> Word32 -> IO Bool
 
 foreign import ccall unsafe "windows.h SetFileCompletionNotificationModes"
     c_SetFileCompletionNotificationModes :: Ptr () -> Word8 -> IO Bool
