@@ -45,9 +45,9 @@ import System.Posix.Types (Fd (..))
 import Prelude hiding (getContents)
 
 #if defined(mingw32_HOST_OS)
-import Network.Socket.ByteString.Lazy.Windows  (send, sendAll)
+import Network.Socket.Win32.ByteString.Lazy (send, sendAll)
 #else
-import Network.Socket.ByteString.Lazy.Posix    (send, sendAll)
+import Network.Socket.Posix.ByteString.Lazy (send, sendAll)
 #endif
 
 import qualified Data.ByteString as S

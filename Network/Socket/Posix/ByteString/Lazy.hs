@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.Socket.ByteString.Lazy.Posix (
+module Network.Socket.Posix.ByteString.Lazy (
     -- * Send data to a socket
     send,
     sendAll,
