@@ -121,6 +121,8 @@ end of the stream.
   [#656](https://github.com/haskell/network/pull/656)
 * Windows: unmask the thread waiting for the AFD poll
   [#659](https://github.com/haskell/network/pull/659)
+* Windows: wait only for the events asked for
+  [#660](https://github.com/haskell/network/pull/660)
 
 ## Version 3.2.9.0
 
