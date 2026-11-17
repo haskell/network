@@ -423,6 +423,9 @@ module Network.Socket (
     sendBufToWith,
     sendBufMsgWith,
     recvBufMsgWith,
+    gracefulCloseWith,
+    unsafeGracefulCloseWith,
+    Drained (..),
 
     -- ** What a given-up operation can fail with
     isClosedSocketError,

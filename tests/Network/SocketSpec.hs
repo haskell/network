@@ -133,6 +133,14 @@ withDatagramPair body =
         body s1 s2
 #endif
 
+-- An action's result, and how long it took in seconds.
+timed :: IO a -> IO (a, Double)
+timed act = do
+    t0 <- getMonotonicTime
+    r <- act
+    t1 <- getMonotonicTime
+    return (r, t1 - t0)
+
 spec :: Spec
 spec = do
     describe "connect" $ do
@@ -533,6 +541,62 @@ spec = do
                     sendAll sock "PING"
                     threadDelay 10000
                     void $ recv sock 1024
+            tcpTest client server
+
+        it "waits about the timeout for a peer which does not close" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    (_, t) <- timed $ gracefulClose sock 200
+                    putMVar done ()
+                    t `shouldSatisfy` (\x -> x >= 0.19 && x < 1)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    void $ recv sock 1024 -- the server's FIN
+                    takeMVar done
+            tcpTest client server
+
+    describe "gracefulCloseWith" $ do
+        it "tells that the peer closed" $ do
+            let server sock = do
+                    void $ recv sock 1024
+                    gracefulCloseWith sock retry `shouldReturn` (Right PeerClosed :: Either () Drained)
+                -- test closes the client only after the server action.
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 10000
+                    sendAll sock "PING"
+                    void $ recv sock 1024
+                    close sock
+            tcpTest client server
+
+        it "gives up when told to, on a peer which does not close" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    late <- registerDelay 100000
+                    (r, t) <- timed $ gracefulCloseWith sock (readTVar late >>= check >> return ("late" :: String))
+                    putMVar done ()
+                    r `shouldBe` Left "late"
+                    t `shouldSatisfy` (\x -> x >= 0.09 && x < 1)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    void $ recv sock 1024
+                    takeMVar done
+            tcpTest client server
+
+        it "cuts off a peer which keeps sending" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    r <- gracefulCloseWith sock retry
+                    putMVar done ()
+                    r `shouldBe` (Right DrainLimit :: Either () Drained)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    -- The server's close may reset this.
+                    void $ tryIOError $ sendAll sock $ BS.replicate (256 * 1024) 0
+                    takeMVar done
             tcpTest client server
 
     describe "unsafeGracefulClose" $ do
