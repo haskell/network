@@ -9,7 +9,7 @@ module Network.Socket.Win32.AfdPoll (
     afdWaitSTM,
 ) where
 
-import Control.Concurrent (forkIO, killThread)
+import Control.Concurrent (forkIOWithUnmask, killThread)
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, putTMVar, readTMVar, throwSTM)
 import qualified Control.Exception as E
 import Foreign.C.Types (CInt (..), CUIntPtr (..), CULong (..))
@@ -49,12 +49,14 @@ afdWait name events s = withFdSocket s $ \fd -> do
     errorIoPending = 997
 
 -- | 'afdWait' as an STM action, and an action cancelling it.  The wait
---   runs in a thread of its own, which the cancel kills.
+--   runs in a thread of its own, which the cancel kills.  That thread is
+--   unmasked: one inheriting an uninterruptible mask could not be killed,
+--   and the cancel would wait for the poll.
 afdWaitSTM :: String -> CULong -> Socket -> IO (STM (), IO ())
 afdWaitSTM name events s = do
     var <- newEmptyTMVarIO
-    tid <- forkIO $ do
-        r <- E.try $ afdWait name events s
+    tid <- forkIOWithUnmask $ \unmask -> do
+        r <- E.try $ unmask $ afdWait name events s
         atomically $ putTMVar var (r :: Either E.IOException ())
     return (readTMVar var >>= either throwSTM return, killThread tid)
 

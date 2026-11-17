@@ -6,6 +6,7 @@ module Network.SocketSpec (main, spec) where
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
 import Control.Exception (bracket)
+import qualified Control.Exception as E
 import Control.Concurrent.STM
 import Control.Monad
 import Data.ByteString (ByteString)
@@ -23,6 +24,7 @@ import Foreign.Storable (sizeOf)
 import Network.Socket
 import Network.Socket.ByteString
 import Network.Test.Common
+import GHC.Clock (getMonotonicTime)
 import GHC.IO.Exception (IOErrorType (NoSuchThing, ResourceVanished))
 import System.IO.Error (ioeGetErrorString, ioeGetErrorType, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
@@ -563,6 +565,21 @@ spec = do
                 client sock = do
                     threadDelay 300000
                     void $ send sock testMsg
+            tcpTest client server
+
+        -- A wait which inherited the mask could not be cancelled.
+        it "ends a receive which is told to stop under uninterruptibleMask_" $ do
+            let server sock = do
+                    late <- registerDelay 100000
+                    t0 <- getMonotonicTime
+                    r <- E.uninterruptibleMask_ $
+                        recvWith sock 1024 (check =<< readTVar late)
+                    t1 <- getMonotonicTime
+                    r `shouldBe` Left ()
+                    (t1 - t0) `shouldSatisfy` (< 0.4)
+                -- Closing ends the poll, so a wait which cannot be
+                -- cancelled ends too, and the test fails rather than hangs.
+                client sock = threadDelay 800000 >> close sock
             tcpTest client server
 
         -- A tie goes to the data: answering Left would leave bytes
