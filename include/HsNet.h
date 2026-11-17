@@ -183,7 +183,12 @@ hsnet_ready_now(SOCKET s, int write)
     p.fd = s;
     p.events = write ? POLLWRNORM : POLLRDNORM;
     p.revents = 0;
-    return WSAPoll(&p, 1, 0) > 0;
+    if (WSAPoll(&p, 1, 0) <= 0)
+        return 0;
+    /* WSAPoll counts events not asked for: POLLHUP, the peer's FIN, does
+       not make room to write, and a send started on it would block. */
+    return (p.revents & (write ? (POLLWRNORM | POLLERR | POLLNVAL)
+                               : (POLLRDNORM | POLLHUP | POLLERR | POLLNVAL))) != 0;
 }
 #endif
 
