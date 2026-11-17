@@ -130,17 +130,21 @@ finishBy closer s gone wait =
 
 -- Waiting for the peer's FIN, draining what arrives before it.  The
 -- receive is given up on rather than interrupted: an asynchronous
--- exception does not reach a thread blocked in one on Windows.
+-- exception does not reach a thread blocked in one on Windows.  The read
+-- does not wait: if another thread took the data, this waits again, still
+-- under the give-up, rather than block past it (#590).
 drain :: Socket -> STM a -> Ptr Word8 -> IO (Either a Drained)
 drain s giveUp buf = loop 0
   where
     loop n0 = do
-        r <- E.try $ recvBufWith s buf bufSize giveUp
+        r <- E.try $ withReadable s giveUp $
+            recvBufNoWaitOr (throwSocketError "Network.Socket.gracefulClose") s buf bufSize
         case r of
             -- A reset: the connection is gone.
             Left (_ :: E.IOException) -> return $ Right PeerClosed
             Right (Left a) -> return $ Left a
             Right (Right 0) -> return $ Right PeerClosed
+            Right (Right (-1)) -> loop n0
             Right (Right n1)
                 | n < drainLimit -> loop n
                 | otherwise -> return $ Right DrainLimit

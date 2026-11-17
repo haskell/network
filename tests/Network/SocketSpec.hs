@@ -3,7 +3,7 @@
 
 module Network.SocketSpec (main, spec) where
 
-import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent (threadDelay, forkIO, yield)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
 import Control.Exception (bracket)
 import qualified Control.Exception as E
@@ -530,6 +530,19 @@ spec = do
         it "is reported as ResourceVanished by a receive already waiting" $
             resetBy $ \sock -> recv sock 1024
 
+    describe "recvBufNoWait" $ do
+        it "tells nothing to read yet (-1) from the end of the data (0)" $ do
+            (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
+            allocaBytes 16 $ \buf -> do
+                recvBufNoWait s2 buf 16 `shouldReturn` (-1)
+                void $ send s1 "x"
+                waitReadSocketSTM s2 >>= atomically
+                recvBufNoWait s2 buf 16 `shouldReturn` 1
+                close s1
+                waitReadSocketSTM s2 >>= atomically
+                recvBufNoWait s2 buf 16 `shouldReturn` 0
+            close s2
+
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do
             let server sock = do
@@ -582,6 +595,29 @@ spec = do
                 client sock = do
                     sendAll sock "GOAWAY"
                     void $ recv sock 1024
+                    takeMVar done
+            tcpTest client server
+
+        -- A read which waited here would block past the give-up (#590).
+        it "gives up even if another thread takes the data" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    -- Spinning, it takes the data before the drain's read.
+                    _ <- forkIO $ allocaBytes 1024 $ \buf ->
+                        let steal = do
+                                r <- tryIOError $ recvBufNoWait sock buf 1024
+                                when (r == Right (-1)) $ yield >> steal
+                         in steal
+                    late <- registerDelay 200000
+                    (r, t) <- timed $ gracefulCloseWith sock (readTVar late >>= check)
+                    putMVar done ()
+                    r `shouldBe` Left ()
+                    t `shouldSatisfy` (\x -> x >= 0.19 && x < 1)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 50000
+                    sendAll sock "PING"
                     takeMVar done
             tcpTest client server
 
