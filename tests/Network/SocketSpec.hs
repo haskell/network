@@ -582,6 +582,40 @@ spec = do
                 client sock = threadDelay 800000 >> close sock
             tcpTest client server
 
+        -- The peer's FIN does not make room to send (WSAPoll's POLLHUP).
+        it "ends a send to a peer which has shut down and does not read" $ do
+            let server sock = do
+                    threadDelay 100000 -- the client's FIN
+                    late <- registerDelay 300000
+                    let chunk = BS.replicate 65536 0
+                        loop = do
+                            r <- sendAllWith sock chunk (check =<< readTVar late)
+                            either return (const loop) r
+                    loop `shouldReturn` ()
+                client sock = do
+                    shutdown sock ShutdownSend
+                    threadDelay 900000
+            tcpTest client server
+
+        -- A poll for reading can end with SEND alone, from the other
+        -- direction; it is not a reason to read.
+        it "ends a receive while another thread sends" $ do
+            let server sock = do
+                    late <- registerDelay 300000
+                    stop <- newTVarIO False
+                    _ <- forkIO $
+                        let send' = do
+                                r <- sendAllWith sock "ping" (check =<< readTVar stop)
+                                either return (const $ threadDelay 1000 >> send') r
+                         in send'
+                    r <- recvWith sock 1024 (check =<< readTVar late)
+                    atomically $ writeTVar stop True
+                    r `shouldBe` Left ()
+                client sock = do
+                    threadDelay 900000
+                    close sock
+            tcpTest client server
+
         -- A tie goes to the data: answering Left would leave bytes
         -- already received unread, which for a stream loses them.
         it "takes what is there even once the caller has given up" $ do

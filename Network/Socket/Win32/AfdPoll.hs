@@ -10,6 +10,8 @@ module Network.Socket.Win32.AfdPoll (
 ) where
 
 import Control.Concurrent (forkIOWithUnmask, killThread)
+import Control.Monad (when)
+import Data.Bits ((.&.))
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, putTMVar, readTMVar, throwSTM)
 import qualified Control.Exception as E
 import Foreign.C.Types (CInt (..), CUIntPtr (..), CULong (..))
@@ -30,11 +32,19 @@ afdWrite = 0x0004 + 0x0100 + 0x0010 + 0x0020
 
 -- | Blocking until one of the events is reported on the socket.  An
 --   asynchronous exception ends the wait: 'Mgr.withOverlapped' cancels
---   the poll.
+--   the poll.  A poll can end with events not asked for, such as SEND
+--   for a read; it is then made again, as wepoll and mio do.
 afdWait :: String -> CULong -> Socket -> IO ()
 afdWait name events s = withFdSocket s $ \fd -> do
     size <- c_afd_poll_info_size
-    allocaBytes (fromIntegral size) $ \info -> fmap (const ()) $
+    allocaBytes (fromIntegral size) $ \info -> do
+        let loop = do
+                pollOnce fd info
+                got <- c_afd_poll_events info
+                when (got .&. events == 0) loop
+        loop
+  where
+    pollOnce fd info = fmap (const ()) $
         Mgr.withException name $
             Mgr.withOverlapped name (wordPtrToPtr $ fromIntegral fd) 0
                 (\ov -> do
@@ -45,7 +55,6 @@ afdWait name events s = withFdSocket s $ \fd -> do
                             else Mgr.CbError (fromIntegral rc))
                 (\err _ ->
                     if err == 0 then Mgr.ioSuccess 0 else Mgr.ioFailed err)
-  where
     errorIoPending = 997
 
 -- | 'afdWait' as an STM action, and an action cancelling it.  The wait
@@ -64,3 +73,5 @@ foreign import ccall unsafe "hsnet_afd_poll_info_size"
     c_afd_poll_info_size :: IO CInt
 foreign import ccall unsafe "hsnet_afd_poll"
     c_afd_poll :: CSocket -> CULong -> Ptr () -> Ptr () -> IO CInt
+foreign import ccall unsafe "hsnet_afd_poll_events"
+    c_afd_poll_events :: Ptr () -> IO CULong
