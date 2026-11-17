@@ -119,6 +119,8 @@ end of the stream.
   [#653](https://github.com/haskell/network/pull/653)
 * Read socket addresses with the length the kernel returns
   [#656](https://github.com/haskell/network/pull/656)
+* Windows: unmask the thread waiting for the AFD poll
+  [#659](https://github.com/haskell/network/pull/659)
 
 ## Version 3.2.9.0
 
