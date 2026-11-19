@@ -310,7 +310,8 @@ getAddrInfoNE hints node service =
 --   that getaddrinfo(3) reported rather than throwing it.
 --
 --   'withSocketsDo' can still throw on Windows, and so can a
---   getaddrinfo(3) which succeeds with no address, which POSIX rules out.
+--   getaddrinfo(3) which succeeds with no address, which POSIX rules out,
+--   or with an address of a family which 'SockAddr' does not support.
 --
 --   @since 4.0.0.0
 getaddrinfo
