@@ -69,6 +69,8 @@ import qualified Network.Socket.Win32.Internal as P
 import qualified Network.Socket.Posix.Internal as P
 #endif
 
+-- | Run an action, appending the errno name, if any, and the given
+--   annotation to the description of an 'IOException' it throws.
 annotateIOException :: IO a -> String -> IO a
 annotateIOException io anno = modifyIOError f io
   where

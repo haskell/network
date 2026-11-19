@@ -1114,19 +1114,30 @@ type ScopeID = Word32
 --  that socket address type is supported on your system: see
 -- 'isSupportedSockAddr'.
 data SockAddr
-  = SockAddrInet
-        PortNumber      -- sin_port
-        HostAddress     -- sin_addr  (ditto)
-  | SockAddrInet6
-        PortNumber      -- sin6_port
-        FlowInfo        -- sin6_flowinfo (ditto)
-        HostAddress6    -- sin6_addr (ditto)
-        ScopeID         -- sin6_scope_id (ditto)
-  -- | The path must have fewer than 104 characters. All of these characters must have code points less than 256.
-  --   An unbound socket is @SockAddrUnix \"\"@.  On Linux, a path starting
-  --   with NUL is an abstract name, which ends at its length, not at NUL.
-  | SockAddrUnix
-        String           -- sun_path
+  = -- | An IPv4 address.
+    SockAddrInet
+        PortNumber      -- ^ port (sin_port)
+        HostAddress     -- ^ address (sin_addr)
+  | -- | An IPv6 address.
+    SockAddrInet6
+        PortNumber      -- ^ port (sin6_port)
+        FlowInfo        -- ^ flow information (sin6_flowinfo)
+        HostAddress6    -- ^ address (sin6_addr)
+        ScopeID         -- ^ scope, e.g. the interface of a link-local address (sin6_scope_id)
+  | -- | A UNIX-domain socket address, i.e. a file system path, which is
+    --   passed to the OS as it is: an absolute path starts from the root,
+    --   and a relative one from the current directory at the time of
+    --   'bind' or 'connect'.
+    --
+    --   Each 'Char' becomes one byte, so a code point of 256 or more is
+    --   cut to its low 8 bits: encode a non-ASCII path (e.g. to UTF-8)
+    --   first.  The path must be shorter than @sun_path@, which is 104
+    --   bytes on macOS and the BSDs, and 108 on Linux and Windows.
+    --
+    --   An unbound socket is @SockAddrUnix \"\"@.  On Linux, a path starting
+    --   with NUL is an abstract name, which ends at its length, not at NUL.
+    SockAddrUnix
+        String          -- ^ path (sun_path)
   deriving (Eq, Ord)
 
 instance NFData SockAddr where
