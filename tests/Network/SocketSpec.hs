@@ -28,7 +28,7 @@ import Network.Socket.ByteString
 import Network.Test.Common
 import GHC.Clock (getMonotonicTime)
 import GHC.IO.Exception (IOErrorType (NoSuchThing, ResourceVanished))
-import System.IO.Error (ioeGetErrorString, ioeGetErrorType, tryIOError)
+import System.IO.Error (ioeGetErrorString, ioeGetErrorType, isDoesNotExistError, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performGC)
 import System.Posix.Types (Fd(..))
@@ -299,6 +299,7 @@ spec = do
             case r :: Either IOError [AddrInfo] of
                 Left e -> do
                     ioeGetErrorType e `shouldBe` NoSuchThing
+                    isDoesNotExistError e `shouldBe` True
                     ioeGetErrorString e `shouldNotContain` "not supported"
                 Right _ -> expectationFailure "resolved a name which is not numeric"
 
