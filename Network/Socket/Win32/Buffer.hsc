@@ -98,27 +98,15 @@ recvBuf s ptr nbytes = withFdSocket s $ \sock ->
 
 recvBufNoWaitOr :: IO CInt -> Socket -> Ptr Word8 -> Int -> IO Int
 recvBufNoWaitOr onError s ptr nbytes = withFdSocket s $ \fd -> do
-    alloca $ \ptr_bytes -> do
-      res <- c_ioctlsocket fd #{const FIONREAD} ptr_bytes
-      avail <- peek ptr_bytes
-      let failed = do
-              err <- c_WSAGetLastError
-              if err == #{const WSAEWOULDBLOCK}
-                  || err == #{const WSAEINPROGRESS} then
-                  return (-1)
-                else
-                  onError
-      r <- if res == #{const NO_ERROR} && avail > 0 then do
-               -- A pending error, such as an ICMP unreachable, counts as
-               -- something to read, and recv takes it.
-               n <- c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
-               if n == -1 then failed else return n
-           else if avail == 0 then
-               -- Socket would block, could also mean socket is closed but
-               -- can't distinguish
-               return (-1)
-           else failed
-      return $ fromIntegral r
+    -- The socket is non-blocking, as on POSIX, so recv tells the end of
+    -- the data (0) from nothing to read yet (WSAEWOULDBLOCK).
+    n <- c_recv fd (castPtr ptr) (fromIntegral nbytes) 0{-flags-}
+    r <- if n /= -1 then return n else do
+        err <- c_WSAGetLastError
+        if err == #{const WSAEWOULDBLOCK} || err == #{const WSAEINPROGRESS}
+            then return (-1)
+            else onError
+    return $ fromIntegral r
 
 sendBufMsg :: SocketAddress sa
            => Socket            -- ^ Socket
@@ -185,8 +173,6 @@ recvBufMsg s bufsizs clen flags = do
 
             return (sockaddr, len, cmsgs, flags')
 
-foreign import CALLCONV unsafe "ioctlsocket"
-  c_ioctlsocket :: CSocket -> CLong -> Ptr CULong -> IO CInt
 foreign import CALLCONV unsafe "WSAGetLastError"
   c_WSAGetLastError :: IO CInt
 foreign import CALLCONV unsafe "WSASend"

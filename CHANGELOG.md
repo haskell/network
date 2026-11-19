@@ -123,6 +123,8 @@ end of the stream.
   [#659](https://github.com/haskell/network/pull/659)
 * Windows: wait only for the events asked for
   [#660](https://github.com/haskell/network/pull/660)
+* Add gracefulCloseWith, given up on through STM
+  [#658](https://github.com/haskell/network/pull/658)
 
 ## Version 3.2.9.0
 

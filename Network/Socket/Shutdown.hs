@@ -8,6 +8,9 @@ module Network.Socket.Shutdown (
   , shutdown
   , gracefulClose
   , unsafeGracefulClose
+  , Drained (..)
+  , gracefulCloseWith
+  , unsafeGracefulCloseWith
   ) where
 
 import Control.Concurrent (rtsSupportsBoundThreads, yield)
@@ -49,13 +52,15 @@ foreign import CALLCONV unsafe "shutdown"
   c_shutdown :: CSocket -> CInt -> IO CInt
 
 -- | Closing a socket gracefully.
---   This sends TCP FIN and check if TCP FIN is received from the peer.
---   The second argument is time out to receive TCP FIN in millisecond.
+--   This sends TCP FIN and reads and discards what the peer sends, up to
+--   128 KiB, until its FIN arrives or the timeout expires: data left
+--   unread would make the close send RST.
+--   The second argument is the timeout in milliseconds.
 --   In both normal cases and error cases, socket is deallocated finally.
 --
 --   Since: 3.1.1.0
 gracefulClose :: Socket -> Int -> IO ()
-gracefulClose = gracefulCloseWith close
+gracefulClose = gracefulCloseBy close
 
 -- | 'gracefulClose' which ends with 'unsafeClose' rather than 'close',
 --   for a caller which knows that no other thread is waiting on the
@@ -63,10 +68,53 @@ gracefulClose = gracefulCloseWith close
 --
 --   @since 3.2.12.0
 unsafeGracefulClose :: Socket -> Int -> IO ()
-unsafeGracefulClose = gracefulCloseWith unsafeClose
+unsafeGracefulClose = gracefulCloseBy unsafeClose
 
-gracefulCloseWith :: (Socket -> IO ()) -> Socket -> Int -> IO ()
-gracefulCloseWith closer s tmout0 =
+-- | How a graceful close which was not given up on ended.
+--
+--   @since 4.0.0.0
+data Drained
+    = -- | The peer's FIN arrived, or the connection was already gone.
+      PeerClosed
+    | -- | The peer sent 128 KiB without closing, and was cut off.
+      DrainLimit
+    deriving (Eq, Show)
+
+-- | 'gracefulClose' which the caller gives up on through an 'STM'
+--   action rather than a timeout: 'Left' when it did, as in
+--   'recvBufWith'.  Either way, the socket is closed at the end.  A
+--   deadline is a 'registerDelay'; a server can also cut short the
+--   oldest of its pending closes by writing a 'TVar'.  A give-up which
+--   has already fired ends the wait at once, even if the FIN is there.
+--   'registerDelay' needs @-threaded@, as does the give-up on Windows.
+--
+--   @since 4.0.0.0
+gracefulCloseWith :: Socket -> STM a -> IO (Either a Drained)
+gracefulCloseWith = gracefulCloseWithBy close
+
+-- | 'gracefulCloseWith' which ends with 'unsafeClose', as
+--   'unsafeGracefulClose' does.
+--
+--   @since 4.0.0.0
+unsafeGracefulCloseWith :: Socket -> STM a -> IO (Either a Drained)
+unsafeGracefulCloseWith = gracefulCloseWithBy unsafeClose
+
+gracefulCloseBy :: (Socket -> IO ()) -> Socket -> Int -> IO ()
+gracefulCloseBy closer s tmout0
+    | rtsSupportsBoundThreads = do
+        -- millisecond to microsecond
+        late <- registerDelay $ tmout0 * 1000
+        void $ gracefulCloseWithBy closer s (check =<< readTVar late)
+    | otherwise = finishBy closer s () $ recvEOFtimeout s tmout0
+
+gracefulCloseWithBy :: (Socket -> IO ()) -> Socket -> STM a -> IO (Either a Drained)
+gracefulCloseWithBy closer s giveUp =
+    finishBy closer s (Right PeerClosed) $ drain s giveUp
+
+-- Sending FIN, waiting with the given action, and closing however that
+-- ends.  If FIN cannot be sent, the connection is gone: nothing to wait.
+finishBy :: (Socket -> IO ()) -> Socket -> r -> (Ptr Word8 -> IO r) -> IO r
+finishBy closer s gone wait =
     (sendRecvFIN `E.finally` closer s) `annotateIOException` show s
   where
     sendRecvFIN = do
@@ -74,34 +122,36 @@ gracefulCloseWith closer s tmout0 =
         ex <- E.tryIOError $ shutdown s ShutdownSend
         case ex of
           -- Don't catch asynchronous exceptions
-          Left _ -> return ()
+          Left _ -> return gone
           Right () -> do
               -- Giving CPU time to other threads hoping that
               -- FIN arrives meanwhile.
               yield
               -- Waiting TCP FIN.
-              E.bracket (mallocBytes bufSize) free (recvEOF s tmout0)
+              E.bracket (mallocBytes bufSize) free wait
 
 -- Waiting for the peer's FIN, draining what arrives before it.  The
 -- receive is given up on rather than interrupted: an asynchronous
--- exception does not reach a thread blocked in one on Windows.
-recvEOF :: Socket -> Int -> Ptr Word8 -> IO ()
-recvEOF s tmout0 buf
-    | not rtsSupportsBoundThreads = recvEOFtimeout s tmout0 buf
-    | otherwise = do
-        -- millisecond to microsecond
-        late <- registerDelay $ tmout0 * 1000
-        loop late 0
+-- exception does not reach a thread blocked in one on Windows.  The read
+-- does not wait: if another thread took the data, this waits again, still
+-- under the give-up, rather than block past it (#590).
+drain :: Socket -> STM a -> Ptr Word8 -> IO (Either a Drained)
+drain s giveUp buf = loop 0
   where
-    loop late n0 = do
-        r <- E.try $ recvBufWith s buf bufSize $ check =<< readTVar late
+    loop n0 = do
+        r <- E.try $ withReadable s giveUp $
+            recvBufNoWaitOr (throwSocketError "Network.Socket.gracefulClose") s buf bufSize
         case r of
-            Left (_ :: E.IOException) -> return ()
-            -- The deadline.
-            Right (Left ()) -> return ()
-            Right (Right n1) -> when (n1 > 0) $ do
-                let n = n0 + n1
-                when (n < drainLimit) $ loop late n
+            -- An error, such as a reset: the connection is gone.
+            Left (_ :: E.IOException) -> return $ Right PeerClosed
+            Right (Left a) -> return $ Left a
+            Right (Right 0) -> return $ Right PeerClosed
+            Right (Right (-1)) -> loop n0
+            Right (Right n1)
+                | n < drainLimit -> loop n
+                | otherwise -> return $ Right DrainLimit
+              where
+                n = n0 + n1
 
 -- registerDelay needs -threaded, and so does the give-up on Windows --
 -- where this cannot cut a receive short either, but nothing else works

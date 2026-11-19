@@ -3,7 +3,7 @@
 
 module Network.SocketSpec (main, spec) where
 
-import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent (threadDelay, forkIO, yield)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar, takeMVar)
 import Control.Exception (bracket)
 import qualified Control.Exception as E
@@ -132,6 +132,14 @@ withDatagramPair body =
     bracket (socket AF_UNIX Datagram defaultProtocol) close $ \s2 ->
         body s1 s2
 #endif
+
+-- An action's result, and how long it took in seconds.
+timed :: IO a -> IO (a, Double)
+timed act = do
+    t0 <- getMonotonicTime
+    r <- act
+    t1 <- getMonotonicTime
+    return (r, t1 - t0)
 
 spec :: Spec
 spec = do
@@ -522,6 +530,19 @@ spec = do
         it "is reported as ResourceVanished by a receive already waiting" $
             resetBy $ \sock -> recv sock 1024
 
+    describe "recvBufNoWait" $ do
+        it "tells nothing to read yet (-1) from the end of the data (0)" $ do
+            (s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
+            allocaBytes 16 $ \buf -> do
+                recvBufNoWait s2 buf 16 `shouldReturn` (-1)
+                void $ send s1 "x"
+                waitReadSocketSTM s2 >>= atomically
+                recvBufNoWait s2 buf 16 `shouldReturn` 1
+                close s1
+                waitReadSocketSTM s2 >>= atomically
+                recvBufNoWait s2 buf 16 `shouldReturn` 0
+            close s2
+
     describe "gracefulClose" $ do
         it "does not send TCP RST back" $ do
             let server sock = do
@@ -533,6 +554,85 @@ spec = do
                     sendAll sock "PING"
                     threadDelay 10000
                     void $ recv sock 1024
+            tcpTest client server
+
+        it "waits about the timeout for a peer which does not close" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    (_, t) <- timed $ gracefulClose sock 200
+                    putMVar done ()
+                    t `shouldSatisfy` (\x -> x >= 0.19 && x < 1)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    void $ recv sock 1024 -- the server's FIN
+                    takeMVar done
+            tcpTest client server
+
+    describe "gracefulCloseWith" $ do
+        it "tells that the peer closed" $ do
+            let server sock = do
+                    void $ recv sock 1024
+                    gracefulCloseWith sock retry `shouldReturn` (Right PeerClosed :: Either () Drained)
+                -- test closes the client only after the server action.
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 10000
+                    sendAll sock "PING"
+                    void $ recv sock 1024
+                    close sock
+            tcpTest client server
+
+        it "gives up when told to, on a peer which does not close" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    late <- registerDelay 100000
+                    (r, t) <- timed $ gracefulCloseWith sock (readTVar late >>= check >> return ("late" :: String))
+                    putMVar done ()
+                    r `shouldBe` Left "late"
+                    t `shouldSatisfy` (\x -> x >= 0.09 && x < 1)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    void $ recv sock 1024
+                    takeMVar done
+            tcpTest client server
+
+        -- A read which waited here would block past the give-up (#590).
+        it "gives up even if another thread takes the data" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    -- Spinning, it takes the data before the drain's read.
+                    _ <- forkIO $ allocaBytes 1024 $ \buf ->
+                        let steal = do
+                                r <- tryIOError $ recvBufNoWait sock buf 1024
+                                when (r == Right (-1)) $ yield >> steal
+                         in steal
+                    late <- registerDelay 200000
+                    (r, t) <- timed $ gracefulCloseWith sock (readTVar late >>= check)
+                    putMVar done ()
+                    r `shouldBe` Left ()
+                    t `shouldSatisfy` (\x -> x >= 0.19 && x < 1)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    threadDelay 50000
+                    sendAll sock "PING"
+                    takeMVar done
+            tcpTest client server
+
+        it "cuts off a peer which keeps sending" $ do
+            done <- newEmptyMVar
+            let server sock = do
+                    void $ recv sock 1024
+                    r <- gracefulCloseWith sock retry
+                    putMVar done ()
+                    r `shouldBe` (Right DrainLimit :: Either () Drained)
+                client sock = do
+                    sendAll sock "GOAWAY"
+                    -- The server's close may reset this.
+                    void $ tryIOError $ sendAll sock $ BS.replicate (256 * 1024) 0
+                    takeMVar done
             tcpTest client server
 
     describe "unsafeGracefulClose" $ do
