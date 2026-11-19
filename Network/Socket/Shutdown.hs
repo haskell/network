@@ -84,7 +84,9 @@ data Drained
 --   action rather than a timeout: 'Left' when it did, as in
 --   'recvBufWith'.  Either way, the socket is closed at the end.  A
 --   deadline is a 'registerDelay'; a server can also cut short the
---   oldest of its pending closes by writing a 'TVar'.  Needs @-threaded@.
+--   oldest of its pending closes by writing a 'TVar'.  A give-up which
+--   has already fired ends the wait at once, even if the FIN is there.
+--   'registerDelay' needs @-threaded@, as does the give-up on Windows.
 --
 --   @since 4.0.0.0
 gracefulCloseWith :: Socket -> STM a -> IO (Either a Drained)
@@ -140,7 +142,7 @@ drain s giveUp buf = loop 0
         r <- E.try $ withReadable s giveUp $
             recvBufNoWaitOr (throwSocketError "Network.Socket.gracefulClose") s buf bufSize
         case r of
-            -- A reset: the connection is gone.
+            -- An error, such as a reset: the connection is gone.
             Left (_ :: E.IOException) -> return $ Right PeerClosed
             Right (Left a) -> return $ Left a
             Right (Right 0) -> return $ Right PeerClosed
