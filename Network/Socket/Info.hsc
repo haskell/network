@@ -382,8 +382,8 @@ foreign import ccall safe "hsnet_freeaddrinfo"
 
 -- | An @EAI_*@ code, as getaddrinfo(3) and getnameinfo(3) return it.
 --   Only network makes one: match it with the patterns below, and with
---   @_@ for codes they do not name.  'EAI_SYSTEM' carries the errno it
---   stands for.  On Windows, the codes are Winsock codes.
+--   'GaiErrorCode' or @_@ for codes they do not name.  'EAI_SYSTEM'
+--   carries the errno it stands for.  On Windows, the codes are Winsock codes.
 --
 --   @since 4.0.0.0
 data GaiError = GaiCode CInt | GaiSystem Errno
@@ -428,6 +428,13 @@ pattern EAI_NODATA     = GaiCode (#const EAI_NODATA)
 pattern EAI_SYSTEM :: Errno -> GaiError
 pattern EAI_SYSTEM errno = GaiSystem errno
 
+-- | Any code but 'EAI_SYSTEM', by its number, e.g. one the patterns
+--   above do not name.  It only matches: make codes with the patterns.
+--
+--   @since 4.0.0.0
+pattern GaiErrorCode :: CInt -> GaiError
+pattern GaiErrorCode rc <- GaiCode rc
+
 -- | The @EAI_*@ code itself.
 --
 --   @since 4.0.0.0
@@ -464,7 +471,7 @@ instance Show GaiError where
     showsPrec d e@(GaiCode rc) = case lookup e gaiErrorTable of
         Just (name, _) -> showString name
         Nothing        -> showParen (d > 10) $
-            showString "GaiError " . showsPrec 11 rc
+            showString "GaiErrorCode " . showsPrec 11 rc
 
 instance Exception GaiError where
     displayException = gaiErrorString

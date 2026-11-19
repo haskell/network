@@ -363,7 +363,8 @@ module Network.Socket (
         EAI_OVERFLOW,
         EAI_SERVICE,
         EAI_SOCKTYPE,
-        EAI_SYSTEM
+        EAI_SYSTEM,
+        GaiErrorCode
     ),
     gaiErrorCode,
     gaiErrorString,

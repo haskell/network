@@ -346,6 +346,8 @@ spec = do
         it "shows the names of the codes" $ do
             show EAI_NONAME `shouldBe` "EAI_NONAME"
             show (EAI_SYSTEM (Errno 5)) `shouldBe` "EAI_SYSTEM (Errno 5)"
+        it "matches codes by their numbers, except EAI_SYSTEM" $ do
+            [rc | GaiErrorCode rc <- named] `shouldBe` map gaiErrorCode (init named)
         it "describes the codes" $
             gaiErrorString EAI_NONAME `shouldBe` "Name or service not known"
 
