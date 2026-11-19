@@ -15,9 +15,7 @@ import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
 import Foreign.C.Error (Errno (..), errnoToIOError, getErrno)
 import GHC.IO.Exception (IOErrorType (..), IOException (..))
-#if defined(mingw32_HOST_OS)
 import System.IO.Unsafe (unsafePerformIO)
-#endif
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
 import Network.Socket.Imports
@@ -473,7 +471,7 @@ instance Exception GaiError where
 
 -- | What the code means, for people.  The named codes are described in
 --   English, whatever the locale; 'EAI_SYSTEM' by its errno, as base
---   describes errnos.
+--   describes errnos; other codes as the OS describes them.
 --
 --   @since 4.0.0.0
 gaiErrorString :: GaiError -> String
@@ -484,6 +482,12 @@ gaiErrorString e@(GaiCode rc) = case lookup e gaiErrorTable of
 #if defined(mingw32_HOST_OS)
     -- Winsock codes; the table holds constant strings.
     Nothing -> unsafePerformIO $ winsockErrorString rc
+#elif defined(HAVE_GAI_STRERROR)
+    -- Codes only some OSes have, such as EAI_BADHINTS on the BSDs.
+    Nothing -> unsafePerformIO $ c_gai_strerror rc >>= peekCString
+
+foreign import ccall unsafe "gai_strerror"
+    c_gai_strerror :: CInt -> IO CString
 #else
     Nothing -> "Unknown error " ++ show rc
 #endif
