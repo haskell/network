@@ -2,7 +2,7 @@
 
 ## Version 4.0.0.0
 
-On Windows, network now needs GHC's WinIO I/O manager (GHC 9.12.5 or
+On Windows, network now supports only WinIO version 2 (GHC 9.12.5 or
 later in 9.12, or 9.14.2 or later): link executables with
 `-with-rtsopts=--io-manager=native`.  With No IO Manager (before WinIO,
 `--io-manager=posix`), use network 3.2.  Sockets are non-blocking, as on

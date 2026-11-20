@@ -12,9 +12,10 @@ Since version 4.0, the `network` package supports GHC 9.4 or later.
 
 ### Windows
 
-Since version 4.0, `network` needs GHC's WinIO I/O manager on Windows, with
-a GHC whose WinIO handles overlapped I/O exceptions: 9.12.5 or later in 9.12,
-or 9.14.2 or later.  The I/O manager is chosen by the executable, so link it
+Since version 4.0, `network` supports only WinIO version 2 on Windows: GHC's
+WinIO I/O manager which handles overlapped I/O exceptions
+(`__IO_MANAGER_WINIO__` 2), in GHC 9.12.5 or later in 9.12, or 9.14.2 or
+later.  The I/O manager is chosen by the executable, so link it
 with
 
 ```
