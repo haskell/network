@@ -438,11 +438,11 @@ module Network.Socket (
     waitWriteSocketSTM,
     waitAndCancelWriteSocketSTM,
 
-    -- * Deprecated
-    withSocketsDo,
-
     -- * Multicast Group
     MulticastGroup (..),
+
+    -- * Deprecated
+    withSocketsDo,
 )
 where
 
