@@ -295,15 +295,14 @@ getAddrInfoNE
 getAddrInfoNE hints node service =
     getaddrinfo hints node service >>= either (throwGaiError message) return
   where
-    message = concat [
-        "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
-      , maybe "Nothing" show hints
-      , ", host name: "
-      , maybe "Nothing" show node
-      , ", service name: "
-      , maybe "Nothing" show service
-      , ")"
-      ]
+    -- Only the arguments which were given.
+    message = case catMaybes
+        [ ("preferred socket type/protocol: " ++) . show <$> hints
+        , ("host name: " ++) . show <$> node
+        , ("service name: " ++) . show <$> service
+        ] of
+        [] -> "Network.Socket.getAddrInfo"
+        xs -> "Network.Socket.getAddrInfo (called with " ++ intercalate ", " xs ++ ")"
 
 -- | Resolve a host or service name to one or more addresses, as
 --   'getAddrInfo' does, but returning a failure as the @EAI_*@ code
