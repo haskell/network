@@ -21,9 +21,9 @@ description:
     === High-Level Packages
     Other packages provide higher level interfaces:
     .
-    * connection
+    * crypton-connection
     * hookup
-    * network-simple
+    * network-run
     .
     === Extended Packages
     @network@ seeks to provide a cross-platform core for networking. As such some
@@ -32,16 +32,11 @@ description:
     .
     ==== @network-bsd@
     In @network-3.0.0.0@ the @Network.BSD@ module was split off into its own
-    package, @network-bsd-3.0.0.0@.
+    package, @network-bsd@.
     .
     ==== @network-uri@
-    In @network-2.6@ the @Network.URI@ module was split off into its own package,
-    @network-uri-2.6@. If you're using the @Network.URI@ module you can
-    automatically get it from the right package by adding this to your @.cabal@
-    file:
-    .
-    > library
-    >   build-depends: network-uri-flag
+    In @network-2.6@ the @Network.URI@ module was split off into its own
+    package, @network-uri@.
 
 category:           Network
 build-type:         Configure
