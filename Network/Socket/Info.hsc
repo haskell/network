@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 #include "HsNet.h"
@@ -6,16 +8,14 @@
 
 module Network.Socket.Info where
 
-import Control.Exception (mask, onException)
+import Control.Exception (Exception (..), mask, onException)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Foreign.Marshal.Alloc (alloca, allocaBytes)
 import Foreign.Marshal.Utils (maybeWith, with)
-#if defined(mingw32_HOST_OS)
-import GHC.IO.Exception (IOErrorType(NoSuchThing), IOException(..))
-#else
-import GHC.IO.Exception (IOErrorType(NoSuchThing))
-#endif
+import Foreign.C.Error (Errno (..), errnoToIOError, getErrno)
+import GHC.IO.Exception (IOErrorType (..), IOException (..))
+import System.IO.Unsafe (unsafePerformIO)
 import System.IO.Error (ioeSetErrorString, mkIOError)
 
 import Network.Socket.Imports
@@ -292,30 +292,47 @@ getAddrInfoNE
     -> Maybe HostName -- ^ host name to look up
     -> Maybe ServiceName -- ^ service name to look up
     -> IO (NonEmpty AddrInfo) -- ^ resolved addresses, with "best" first
-getAddrInfoNE hints node service = alloc getaddrinfo
+getAddrInfoNE hints node service =
+    getaddrinfo hints node service >>= either (throwGaiError message) return
+  where
+    -- Only the arguments which were given.
+    message = case catMaybes
+        [ ("preferred socket type/protocol: " ++) . show <$> hints
+        , ("host name: " ++) . show <$> node
+        , ("service name: " ++) . show <$> service
+        ] of
+        [] -> "Network.Socket.getAddrInfo"
+        xs -> "Network.Socket.getAddrInfo (called with " ++ intercalate ", " xs ++ ")"
+
+-- | Resolve a host or service name to one or more addresses, as
+--   'getAddrInfo' does, but returning a failure as the @EAI_*@ code
+--   that getaddrinfo(3) reported rather than throwing it.
+--
+--   'withSocketsDo' can still throw on Windows, and so can a
+--   getaddrinfo(3) which succeeds with no address, which POSIX rules out,
+--   or with an address of a family which 'SockAddr' does not support.
+--
+--   @since 4.0.0.0
+getaddrinfo
+    :: Maybe AddrInfo -- ^ preferred socket type or protocol
+    -> Maybe HostName -- ^ host name to look up
+    -> Maybe ServiceName -- ^ service name to look up
+    -> IO (Either GaiError (NonEmpty AddrInfo)) -- ^ resolved addresses, with "best" first
+getaddrinfo hints node service = alloc resolve
   where
     alloc body = withSocketsDo $ maybeWith withCString node $ \c_node ->
         maybeWith withCString service                       $ \c_service ->
             maybeWith with filteredHints                    $ \c_hints ->
                   alloca                                    $ \ptr_ptr_addrs ->
                       body c_node c_service c_hints ptr_ptr_addrs
-    getaddrinfo c_node c_service c_hints ptr_ptr_addrs = mask $ \release -> do
+    resolve c_node c_service c_hints ptr_ptr_addrs = mask $ \release -> do
         ret <- c_getaddrinfo c_node c_service c_hints ptr_ptr_addrs
         if ret == 0 then do
             ptr_addrs <- peek ptr_ptr_addrs
             ais       <- release (followAddrInfo ptr_addrs) `onException` c_freeaddrinfo ptr_addrs
             c_freeaddrinfo ptr_addrs
-            return ais
-          else gaiError message ret
-    message = concat [
-        "Network.Socket.getAddrInfo (called with preferred socket type/protocol: "
-      , maybe "Nothing" show hints
-      , ", host name: "
-      , maybe "Nothing" show node
-      , ", service name: "
-      , maybe "Nothing" show service
-      , ")"
-      ]
+            return $ Right ais
+          else Left <$> toGaiError ret
 #if defined(darwin_HOST_OS)
     -- Leaving out the service and using AI_NUMERICSERV causes a
     -- segfault on OS X 10.8.2. This code removes AI_NUMERICSERV
@@ -363,31 +380,142 @@ foreign import ccall safe "hsnet_getaddrinfo"
 foreign import ccall safe "hsnet_freeaddrinfo"
     c_freeaddrinfo :: Ptr AddrInfo -> IO ()
 
--- | The error which getaddrinfo(3) or getnameinfo(3) reported as @rc@.
---   On Windows the code is a Winsock code, kept in 'ioe_errno' as for
---   other socket errors.
-gaiError :: String -> CInt -> IO a
-gaiError loc rc = do
-    err <- gai_strerror rc
-    let ioe = mkIOError NoSuchThing loc Nothing Nothing
-#if defined(mingw32_HOST_OS)
-    ioError $ ioeSetErrorString ioe{ioe_errno = Just rc} err
-#else
-    ioError $ ioeSetErrorString ioe err
+-- | An @EAI_*@ code, as getaddrinfo(3) and getnameinfo(3) return it.
+--   Only network makes one: match it with the patterns below, and with
+--   'GaiErrorCode' or @_@ for codes they do not name.  'EAI_SYSTEM'
+--   carries the errno it stands for.  On Windows, the codes are Winsock codes.
+--
+--   @since 4.0.0.0
+data GaiError = GaiCode CInt | GaiSystem Errno
+    deriving Eq
+
+-- Codes an OS lacks (only Windows lacks any) get values that no OS
+-- returns, each its own, so that they match nothing real.
+#ifndef EAI_ADDRFAMILY
+# define EAI_ADDRFAMILY (-2147483647)
+#endif
+#ifndef EAI_NODATA
+# define EAI_NODATA (-2147483646)
+#endif
+#ifndef EAI_OVERFLOW
+# define EAI_OVERFLOW (-2147483645)
+#endif
+#ifndef EAI_SYSTEM
+# define EAI_SYSTEM (-2147483644)
 #endif
 
-gai_strerror :: CInt -> IO String
-#if defined(mingw32_HOST_OS)
--- gai_strerror is a macro in mingw, which the configure check misses,
--- and it writes to a static buffer.
-gai_strerror = winsockErrorString
-#elif defined(HAVE_GAI_STRERROR)
-gai_strerror n = c_gai_strerror n >>= peekCString
+-- | POSIX codes.
+pattern EAI_AGAIN, EAI_BADFLAGS, EAI_FAIL, EAI_FAMILY, EAI_MEMORY,
+        EAI_NONAME, EAI_OVERFLOW, EAI_SERVICE, EAI_SOCKTYPE :: GaiError
+pattern EAI_AGAIN    = GaiCode (#const EAI_AGAIN)
+pattern EAI_BADFLAGS = GaiCode (#const EAI_BADFLAGS)
+pattern EAI_FAIL     = GaiCode (#const EAI_FAIL)
+pattern EAI_FAMILY   = GaiCode (#const EAI_FAMILY)
+pattern EAI_MEMORY   = GaiCode (#const EAI_MEMORY)
+pattern EAI_NONAME   = GaiCode (#const EAI_NONAME)
+-- | Not on Windows.
+pattern EAI_OVERFLOW = GaiCode (#const EAI_OVERFLOW)
+pattern EAI_SERVICE  = GaiCode (#const EAI_SERVICE)
+pattern EAI_SOCKTYPE = GaiCode (#const EAI_SOCKTYPE)
 
-foreign import ccall safe "gai_strerror"
+-- | Not POSIX, but returned by glibc and others; 'EAI_ADDRFAMILY' is
+--   not on Windows.
+pattern EAI_ADDRFAMILY, EAI_NODATA :: GaiError
+pattern EAI_ADDRFAMILY = GaiCode (#const EAI_ADDRFAMILY)
+pattern EAI_NODATA     = GaiCode (#const EAI_NODATA)
+
+-- | The system call failed with this errno.  Not on Windows.
+pattern EAI_SYSTEM :: Errno -> GaiError
+pattern EAI_SYSTEM errno = GaiSystem errno
+
+-- | Any code but 'EAI_SYSTEM', by its number, e.g. one the patterns
+--   above do not name.  It only matches: make codes with the patterns.
+--
+--   @since 4.0.0.0
+pattern GaiErrorCode :: CInt -> GaiError
+pattern GaiErrorCode rc <- GaiCode rc
+
+-- | The @EAI_*@ code itself.
+--
+--   @since 4.0.0.0
+gaiErrorCode :: GaiError -> CInt
+gaiErrorCode (GaiCode rc)  = rc
+gaiErrorCode (GaiSystem _) = #const EAI_SYSTEM
+
+-- The code that the C call has just returned.  errno is read at once:
+-- GHC keeps it for the Haskell thread across the safe call.
+toGaiError :: CInt -> IO GaiError
+toGaiError rc
+    | rc == #{const EAI_SYSTEM} = GaiSystem <$> getErrno
+    | otherwise                 = return $ GaiCode rc
+
+-- The names and, in glibc's English, the meanings of the named codes.
+gaiErrorTable :: [(GaiError, (String, String))]
+gaiErrorTable =
+    [ (EAI_ADDRFAMILY, ("EAI_ADDRFAMILY", "Address family for hostname not supported"))
+    , (EAI_AGAIN,      ("EAI_AGAIN",      "Temporary failure in name resolution"))
+    , (EAI_BADFLAGS,   ("EAI_BADFLAGS",   "Bad value for ai_flags"))
+    , (EAI_FAIL,       ("EAI_FAIL",       "Non-recoverable failure in name resolution"))
+    , (EAI_FAMILY,     ("EAI_FAMILY",     "ai_family not supported"))
+    , (EAI_MEMORY,     ("EAI_MEMORY",     "Memory allocation failure"))
+    , (EAI_NODATA,     ("EAI_NODATA",     "No address associated with hostname"))
+    , (EAI_NONAME,     ("EAI_NONAME",     "Name or service not known"))
+    , (EAI_OVERFLOW,   ("EAI_OVERFLOW",   "Argument buffer overflow"))
+    , (EAI_SERVICE,    ("EAI_SERVICE",    "Servname not supported for ai_socktype"))
+    , (EAI_SOCKTYPE,   ("EAI_SOCKTYPE",   "ai_socktype not supported"))
+    ]
+
+instance Show GaiError where
+    showsPrec d (GaiSystem (Errno n)) = showParen (d > 10) $
+        showString "EAI_SYSTEM (Errno " . shows n . showChar ')'
+    showsPrec d e@(GaiCode rc) = case lookup e gaiErrorTable of
+        Just (name, _) -> showString name
+        Nothing        -> showParen (d > 10) $
+            showString "GaiErrorCode " . showsPrec 11 rc
+
+instance Exception GaiError where
+    displayException = gaiErrorString
+
+-- | What the code means, for people.  The named codes are described in
+--   English, whatever the locale; 'EAI_SYSTEM' by its errno, as base
+--   describes errnos; other codes as the OS describes them.
+--
+--   @since 4.0.0.0
+gaiErrorString :: GaiError -> String
+gaiErrorString (GaiSystem errno) =
+    ioe_description $ errnoToIOError "" errno Nothing Nothing
+gaiErrorString e@(GaiCode rc) = case lookup e gaiErrorTable of
+    Just (_, str) -> str
+#if defined(mingw32_HOST_OS)
+    -- Winsock codes; the table holds constant strings.
+    Nothing -> unsafePerformIO $ winsockErrorString rc
+#elif defined(HAVE_GAI_STRERROR)
+    -- Codes only some OSes have, such as EAI_BADHINTS on the BSDs.
+    Nothing -> unsafePerformIO $ c_gai_strerror rc >>= peekCString
+
+foreign import ccall unsafe "gai_strerror"
     c_gai_strerror :: CInt -> IO CString
 #else
-gai_strerror n = return $ "error " ++ show n
+    Nothing -> "Unknown error " ++ show rc
+#endif
+
+-- | Throwing a 'GaiError' as an 'IOException', as 'getAddrInfo' and
+--   'getNameInfo' do: 'EAI_SYSTEM' as its errno, 'EAI_AGAIN' as
+--   'ResourceExhausted' (as @EAGAIN@ is), and others as 'NoSuchThing'.
+--   On Windows the code is kept in 'ioe_errno', as for other socket
+--   errors.
+throwGaiError :: String -> GaiError -> IO a
+throwGaiError loc (GaiSystem errno) = ioError $ errnoToIOError loc errno Nothing Nothing
+throwGaiError loc e = ioError $ ioeSetErrorString ioe' (gaiErrorString e)
+  where
+    typ = case e of
+        EAI_AGAIN -> ResourceExhausted
+        _         -> NoSuchThing
+    ioe = mkIOError typ loc Nothing Nothing
+#if defined(mingw32_HOST_OS)
+    ioe' = ioe{ioe_errno = Just (gaiErrorCode e)}
+#else
+    ioe' = ioe
 #endif
 
 -----------------------------------------------------------------------------
@@ -418,14 +546,62 @@ getNameInfo
     -> Bool -- ^ whether to look up a service name
     -> SockAddr -- ^ the address to look up
     -> IO (Maybe HostName, Maybe ServiceName)
-getNameInfo flags doHost doService addr = alloc getnameinfo
+getNameInfo flags doHost doService addr =
+    nameInfo flags doHost doService addr >>= either (throwGaiError message) return
+  where
+    message = concat [
+        "Network.Socket.getNameInfo (called with flags: "
+      , show flags
+      , ", hostname lookup: "
+      , show doHost
+      , ", service name lookup: "
+      , show doService
+      , ", socket address: "
+      , show addr
+      , ")"
+      ]
+
+-- | What 'getnameinfo' looks up, and so what it returns.
+--
+--   @since 4.0.0.0
+data NameInfoQuery a where
+    QueryHost           :: NameInfoQuery HostName
+    QueryService        :: NameInfoQuery ServiceName
+    QueryHostAndService :: NameInfoQuery (HostName, ServiceName)
+
+-- | Resolve an address to a host or service name, as 'getNameInfo'
+--   does, but returning a failure as the @EAI_*@ code that getnameinfo(3)
+--   reported rather than throwing it.  Unlike getnameinfo(3), it takes
+--   what to look up as a 'NameInfoQuery'.  Flags which do not apply to
+--   the query, such as 'NI_NAMEREQD' with 'QueryService', are ignored.
+--
+--   'withSocketsDo' can still throw on Windows, and so can a
+--   'SockAddrUnix' whose path is too long.
+--
+--   @since 4.0.0.0
+getnameinfo
+    :: [NameInfoFlag] -- ^ flags to control lookup behaviour
+    -> NameInfoQuery a -- ^ what to look up
+    -> SockAddr -- ^ the address to look up
+    -> IO (Either GaiError a)
+getnameinfo flags query addr = case query of
+    QueryHost           -> fmap (fromJust . fst) <$> nameInfo flags True False addr
+    QueryService        -> fmap (fromJust . snd) <$> nameInfo flags False True addr
+    QueryHostAndService ->
+        fmap (\(h, sv) -> (fromJust h, fromJust sv)) <$> nameInfo flags True True addr
+
+-- A result is 'Just' exactly when it was asked for.
+nameInfo
+    :: [NameInfoFlag] -> Bool -> Bool -> SockAddr
+    -> IO (Either GaiError (Maybe HostName, Maybe ServiceName))
+nameInfo flags doHost doService addr = alloc lookupName
   where
     alloc body = withSocketsDo $
         withCStringIf doHost (# const NI_MAXHOST)        $ \c_hostlen c_host ->
             withCStringIf doService (# const NI_MAXSERV) $ \c_servlen c_serv ->
                 withSockAddr addr                        $ \ptr_addr sz ->
                   body c_hostlen c_host c_servlen c_serv ptr_addr sz
-    getnameinfo c_hostlen c_host c_servlen c_serv ptr_addr sz = do
+    lookupName c_hostlen c_host c_servlen c_serv ptr_addr sz = do
         ret <- c_getnameinfo ptr_addr
                              (fromIntegral sz)
                              c_host
@@ -438,19 +614,8 @@ getNameInfo flags doHost doService addr = alloc getnameinfo
                     if doIf then Just <$> peekCString c_val else return Nothing
             host <- peekIf doHost c_host
             serv <- peekIf doService c_serv
-            return (host, serv)
-          else gaiError message ret
-    message = concat [
-        "Network.Socket.getNameInfo (called with flags: "
-      , show flags
-      , ", hostname lookup: "
-      , show doHost
-      , ", service name lookup: "
-      , show doService
-      , ", socket address: "
-      , show addr
-      , ")"
-      ]
+            return $ Right (host, serv)
+          else Left <$> toGaiError ret
 
 foreign import ccall safe "hsnet_getnameinfo"
     c_getnameinfo :: Ptr SockAddr -> CInt{-CSockLen???-} -> CString -> CSize -> CString
