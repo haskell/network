@@ -26,9 +26,14 @@ import Network.Socket.Internal
 import Network.Socket.Types
 import Network.Socket.Wait
 
-data ShutdownCmd = ShutdownReceive
-                 | ShutdownSend
-                 | ShutdownBoth
+-- | Which directions 'shutdown' closes.
+data ShutdownCmd
+    = -- | Receiving (@SHUT_RD@).
+      ShutdownReceive
+    | -- | Sending (@SHUT_WR@): the peer reads the end of the stream.
+      ShutdownSend
+    | -- | Both (@SHUT_RDWR@).
+      ShutdownBoth
 
 sdownCmdToInt :: ShutdownCmd -> CInt
 sdownCmdToInt ShutdownReceive = 0

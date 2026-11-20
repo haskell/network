@@ -112,12 +112,25 @@ aiFlagMapping =
 addrInfoFlagImplemented :: AddrInfoFlag -> Bool
 addrInfoFlagImplemented f = packBits aiFlagMapping [f] /= 0
 
+-- | An address which 'getAddrInfo' returns, with what is needed to open
+--   a socket for it (@struct addrinfo@).  Given to 'getAddrInfo' as
+--   hints, usually 'defaultHints' with some fields changed, it narrows
+--   the lookup; 'addrAddress' and 'addrCanonName' are then ignored.
 data AddrInfo = AddrInfo {
+    -- | Flags: in hints, how to look up; in results, as the OS sets them
+    --   (usually those of the hints).
     addrFlags :: [AddrInfoFlag]
+    -- | Address family, e.g. 'AF_INET' or 'AF_INET6'; 'AF_UNSPEC' in
+    --   hints for any.
   , addrFamily :: Family
+    -- | Socket type, e.g. 'Stream'; 'NoSocketType' in hints for any.
   , addrSocketType :: SocketType
+    -- | Protocol; 'defaultProtocol' in hints for any.
   , addrProtocol :: ProtocolNumber
+    -- | The address.
   , addrAddress :: SockAddr
+    -- | The canonical name of the host, in the first result only, and
+    --   only with 'AI_CANONNAME' in the hints.
   , addrCanonName :: Maybe String
   } deriving (Eq, Show)
 

@@ -389,6 +389,7 @@ pattern UnsupportedSocketType  = SocketType (-1)
 pattern NoSocketType        :: SocketType
 pattern NoSocketType         = SocketType 0
 
+-- | @SOCK_STREAM@: A reliable, connected byte stream, e.g. TCP.
 pattern Stream              :: SocketType
 #ifdef SOCK_STREAM
 pattern Stream               = SocketType (#const SOCK_STREAM)
@@ -396,6 +397,7 @@ pattern Stream               = SocketType (#const SOCK_STREAM)
 pattern Stream               = UnsupportedSocketType
 #endif
 
+-- | @SOCK_DGRAM@: Datagrams, connectionless and unreliable, e.g. UDP.
 pattern Datagram            :: SocketType
 #ifdef SOCK_DGRAM
 pattern Datagram             = SocketType (#const SOCK_DGRAM)
@@ -403,6 +405,7 @@ pattern Datagram             = SocketType (#const SOCK_DGRAM)
 pattern Datagram             = UnsupportedSocketType
 #endif
 
+-- | @SOCK_RAW@: Raw access to a network protocol.
 pattern Raw                 :: SocketType
 #ifdef SOCK_RAW
 pattern Raw                  = SocketType (#const SOCK_RAW)
@@ -410,6 +413,7 @@ pattern Raw                  = SocketType (#const SOCK_RAW)
 pattern Raw                  = UnsupportedSocketType
 #endif
 
+-- | @SOCK_RDM@: Reliably delivered messages, in no particular order.
 pattern RDM                 :: SocketType
 #ifdef SOCK_RDM
 pattern RDM                  = SocketType (#const SOCK_RDM)
@@ -417,6 +421,7 @@ pattern RDM                  = SocketType (#const SOCK_RDM)
 pattern RDM                  = UnsupportedSocketType
 #endif
 
+-- | @SOCK_SEQPACKET@: A reliable, connected stream of records.
 pattern SeqPacket           :: SocketType
 #ifdef SOCK_SEQPACKET
 pattern SeqPacket            = SocketType (#const SOCK_SEQPACKET)
@@ -439,7 +444,10 @@ pattern SeqPacket            = UnsupportedSocketType
 --
 -- Some of the defined patterns may be unsupported on some systems:
 -- see 'isSupportedFamily'.
-newtype Family = Family { packFamily :: CInt } deriving (Eq, Ord)
+newtype Family = Family
+    { -- | Convert 'Family' to 'CInt'.
+      packFamily :: CInt
+    } deriving (Eq, Ord)
 
 
 -- | Does one of the AF_ constants correspond to a known address family on this
@@ -1594,8 +1602,15 @@ zeroMemory dest nbytes = memset dest 0 (fromIntegral nbytes)
 ------------------------------------------------------------------------
 -- Multicast Group
 
+-- | An IPv4 multicast group to join or leave, with 'AddMembership' or
+--   'DropMembership' (@struct ip_mreq@).
+--
+--   @since 4.0.0.0
 data MulticastGroup = MulticastGroup
-    { groupAddress :: HostAddress
+    { -- | The address of the group.
+      groupAddress :: HostAddress
+      -- | The address of the local interface to use; 'Nothing' lets the
+      --   OS choose one.
     , localAddress :: Maybe HostAddress
     } deriving (Show, Eq)
 
