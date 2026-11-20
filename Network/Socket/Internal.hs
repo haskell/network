@@ -71,6 +71,8 @@ import qualified Network.Socket.Posix.Internal as P
 
 -- | Run an action, appending the errno name, if any, and the given
 --   annotation to the description of an 'IOException' it throws.
+--
+--   @since 4.0.0.0
 annotateIOException :: IO a -> String -> IO a
 annotateIOException io anno = modifyIOError f io
   where
@@ -217,6 +219,8 @@ throwSocketErrorWaitWrite s name io = withFdSocket s $ \fd ->
 
 -- | Waiting for the socket to be readable, or writable: through the IO
 --   manager on POSIX, and through an AFD poll on Windows.
+--
+--   @since 4.0.0.0
 waitReadSocket, waitWriteSocket :: Socket -> CSocket -> IO ()
 waitReadSocket = P.waitReadSocket
 waitWriteSocket = P.waitWriteSocket

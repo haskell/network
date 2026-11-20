@@ -258,10 +258,14 @@ invalidateSocket (Socket ref _ _) errorAction normalAction = do
 -- | Labeling a socket. The function in the second argument takes the
 -- old label and returns the new label. The initial value of the label
 -- is "sock \<CInt\>".
+--
+-- @since 4.0.0.0
 labelSocket :: Socket -> (String -> String) -> IO ()
 labelSocket (Socket _ _ ref) = modifyIORef' ref
 
 -- | Read the label of a socket.
+--
+-- @since 4.0.0.0
 socketLabel :: Socket -> IO String
 socketLabel (Socket _ _ ref) = readIORef ref
 
@@ -1605,7 +1609,7 @@ zeroMemory dest nbytes = memset dest 0 (fromIntegral nbytes)
 -- | An IPv4 multicast group to join or leave, with 'AddMembership' or
 --   'DropMembership' (@struct ip_mreq@).
 --
---   @since 4.0.0.0
+--   @since 3.2.10.0
 data MulticastGroup = MulticastGroup
     { -- | The address of the group.
       groupAddress :: HostAddress

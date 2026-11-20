@@ -84,6 +84,8 @@ recvBuf s ptr nbytes
 --   involved. The length of data is returned if received.
 --   -1 is returned in the case of EAGAIN or EWOULDBLOCK.
 --   -2 is returned in other error cases.
+--
+--   @since 3.2.9.0
 recvBufNoWait :: Socket -> Ptr Word8 -> Int -> IO Int
 recvBufNoWait = recvBufNoWaitOr $ return (-2)
 
