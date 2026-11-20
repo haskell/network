@@ -15,6 +15,10 @@ import Network.Socket.Types
 
 -- -----------------------------------------------------------------------------
 -- Sending
+-- | Send data to the socket, as much as one system call takes, and
+--   return the number of bytes sent: use 'sendAll' to send them all.  On
+--   POSIX, it sends up to 1024 chunks, stopping after the one which
+--   reaches 4 MiB; on Windows, only the first chunk.
 send
     :: Socket
     -- ^ Connected socket
@@ -27,6 +31,7 @@ send s lbs = case L.toChunks lbs of
     [] -> fromIntegral <$> Socket.send s S.empty
     (x : _) -> fromIntegral <$> Socket.send s x
 
+-- | Send all the data to the socket, calling 'send' until it is sent.
 sendAll
     :: Socket
     -- ^ Connected socket

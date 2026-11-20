@@ -113,6 +113,7 @@ instance Read SocketOption where
 
 ----------------------------------------------------------------
 
+-- | An option this system does not have; every such option equals it.
 pattern UnsupportedSocketOption :: SocketOption
 pattern UnsupportedSocketOption = SockOpt (-1) (-1)
 
@@ -559,7 +560,7 @@ instance Storable StructLinger where
 -- | A type that can hold any 'Storable' socket option value (e.g.
 -- 'StructLinger' and 'CInt')
 --
--- See 'setSocOptValue'
+-- See 'setSockOptValue'
 data SockOptValue where
   SockOptValue :: Storable a => a -> SockOptValue
 

@@ -28,7 +28,9 @@ import qualified Text.Read as P
 
 -- | Control message (ancillary data) including a pair of level and type.
 data Cmsg = Cmsg {
+    -- | Which control message this is.
     cmsgId   :: CmsgId
+    -- | Its data, as the OS lays it out: see 'decodeCmsg'.
   , cmsgData :: ByteString
   } deriving (Eq, Show)
 
@@ -178,8 +180,12 @@ instance ControlMessage IPv6TClass where
 
 ----------------------------------------------------------------
 
--- | Network interface ID and local IPv4 address.
-data IPv4PktInfo = IPv4PktInfo Int HostAddress HostAddress deriving (Eq)
+-- | Network interface ID and IPv4 addresses (@struct in_pktinfo@).
+data IPv4PktInfo = IPv4PktInfo
+    Int         -- ^ interface index (ipi_ifindex)
+    HostAddress -- ^ the local address (ipi_spec_dst)
+    HostAddress -- ^ the destination address in the packet's header (ipi_addr)
+    deriving (Eq)
 
 instance Show IPv4PktInfo where
     show (IPv4PktInfo n sa ha) = "IPv4PktInfo " ++ show n ++ " " ++ show (hostAddressToTuple sa) ++ " " ++ show (hostAddressToTuple ha)
@@ -211,8 +217,12 @@ instance Storable IPv4PktInfo where
 
 ----------------------------------------------------------------
 
--- | Network interface ID and local IPv4 address.
-data IPv6PktInfo = IPv6PktInfo Int HostAddress6 deriving (Eq)
+-- | Network interface ID and IPv6 address (@struct in6_pktinfo@).
+data IPv6PktInfo = IPv6PktInfo
+    Int          -- ^ interface index (ipi6_ifindex)
+    HostAddress6 -- ^ the destination address of a received packet, or
+                 --   the source address of one to send (ipi6_addr)
+    deriving (Eq)
 
 instance Show IPv6PktInfo where
     show (IPv6PktInfo n ha6) = "IPv6PktInfo " ++ show n ++ " " ++ show (hostAddress6ToTuple ha6)

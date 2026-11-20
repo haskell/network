@@ -73,6 +73,9 @@ throwSocketErrorIfMinus1RetryMayBlockBut exempt name on_block act = loop
             if rc == wsaEWOULDBLOCK then on_block >> loop else return r
     exempt' rc = rc == wsaEWOULDBLOCK || exempt rc
 
+-- | Throw the current Winsock error if the action returns @-1@, unless
+--   the predicate exempts its code: then return @-1@.  If Winsock was
+--   not initialized, initialize it and run the action once more.
 throwSocketErrorIfMinus1ButRetry
     :: (Eq a, Num a) => (CInt -> Bool) -> String -> IO a -> IO a
 throwSocketErrorIfMinus1ButRetry exempt name act = do
@@ -89,6 +92,7 @@ throwSocketErrorIfMinus1ButRetry exempt name act = do
                     if exempt rc then return r else throwSocketError name
         else return r
 
+-- | The current Winsock error code (@WSAGetLastError@).
 foreign import CALLCONV unsafe "WSAGetLastError"
   c_getLastError :: IO CInt
 
