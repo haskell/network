@@ -62,6 +62,7 @@ data SocketOption = SockOpt
 socketOptionBijection :: Bijection SocketOption String
 socketOptionBijection =
     [ (UnsupportedSocketOption, "UnsupportedSocketOption")
+    , (AcceptConn, "AcceptConn")
     , (Debug, "Debug")
     , (ReuseAddr, "ReuseAddr")
     , (SoDomain, "SoDomain")
@@ -131,9 +132,12 @@ whenSupported s action
 ----------------------------------------------------------------
 
 #ifdef SOL_SOCKET
--- | SO_ACCEPTCONN, read-only
+-- | SO_ACCEPTCONN, read-only: 1 if the socket is listening, 0 if not.
+--   Unsupported on macOS, whose getsockopt(2) rejects it.
+--
+-- @since 3.2.16.0
 pattern AcceptConn :: SocketOption
-#ifdef SO_ACCEPTCONN
+#if defined(SO_ACCEPTCONN) && !defined(__APPLE__)
 pattern AcceptConn     = SockOpt (#const SOL_SOCKET) (#const SO_ACCEPTCONN)
 #else
 pattern AcceptConn     = SockOpt (-1) (-1)
