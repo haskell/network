@@ -22,7 +22,9 @@ import System.Mem (performGC)
 import GHC.IO.Exception (IOErrorType (NoSuchThing, ResourceVanished))
 import System.IO.Error (ioeGetErrorString, ioeGetErrorType, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
+#if !defined(mingw32_HOST_OS)
 import System.Posix.Types (Fd(..))
+#endif
 import Foreign.C.Types ()
 import System.Timeout (timeout)
 
@@ -478,6 +480,26 @@ spec = do
                     connect cli $ SockAddrInet port $ tupleToHostAddress (127, 0, 0, 1)
                     bracket (fst <$> accept sock) close $ \_ -> return ()
 
+        -- One connection wakes both waiters; the one which finds it taken
+        -- must still keep to its give-up rather than wait for the next.
+        it "keeps to the give-up of an accept which another thread beat" $
+            withListener $ \sock port -> do
+                stops <- replicateM 2 $ newTVarIO False
+                done <- newEmptyMVar
+                forM_ (zip [0 :: Int ..] stops) $ \(i, stop) -> forkIO $ do
+                    r <- acceptWith sock (check =<< readTVar stop)
+                    case r :: Either () (Socket, SockAddr) of
+                        Left () -> putMVar done (i, False)
+                        Right (s, _) -> close s >> putMVar done (i, True)
+                threadDelay 100000
+                bracket (socket AF_INET Stream defaultProtocol) close $ \cli -> do
+                    connect cli $ SockAddrInet port $ tupleToHostAddress (127, 0, 0, 1)
+                    (winner, True) <- takeMVar done
+                    let loser = 1 - winner
+                    threadDelay 100000
+                    atomically $ writeTVar (stops !! loser) True
+                    timeout 1000000 (takeMVar done) `shouldReturn` Just (loser, False)
+
         it "tells a socket closed under an accept from other errors" $ do
             sock <- socket AF_INET Stream defaultProtocol
             bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
@@ -660,8 +682,10 @@ sockoptGen = biasedGen (\g -> SockOpt <$> g <*> g) sockoptPatterns arbitrary
 cmsgidGen :: Gen CmsgId
 cmsgidGen = biasedGen (\g -> CmsgId <$> g <*> g) cmsgidPatterns arbitrary
 
+#if !defined(mingw32_HOST_OS)
 genFds :: Gen [Fd]
 genFds = listOf (Fd <$> arbitrary)
+#endif
 
 -- pruned lists of pattern synonym values for each type to generate values from
 
