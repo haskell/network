@@ -29,7 +29,9 @@ import GHC.IO.Exception (IOErrorType (NoSuchThing, ResourceVanished))
 import System.IO.Error (ioeGetErrorString, ioeGetErrorType, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performGC)
+#if !defined(_WIN32)
 import System.Posix.Types (Fd(..))
+#endif
 import System.Timeout (timeout)
 
 import Test.Hspec
@@ -1015,8 +1017,10 @@ sockoptGen = biasedGen (\g -> SockOpt <$> g <*> g) sockoptPatterns arbitrary
 cmsgidGen :: Gen CmsgId
 cmsgidGen = biasedGen (\g -> CmsgId <$> g <*> g) cmsgidPatterns arbitrary
 
+#if !defined(_WIN32)
 genFds :: Gen [Fd]
 genFds = listOf (Fd <$> arbitrary)
+#endif
 
 -- pruned lists of pattern synonym values for each type to generate values from
 
