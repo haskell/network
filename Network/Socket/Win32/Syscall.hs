@@ -7,6 +7,7 @@ module Network.Socket.Win32.Syscall (
     setupSocket,
     setupAccepted,
     acceptFd,
+    acceptFdNoWait,
     reportConnReset,
     ConnectNext (..),
     connectNext,
@@ -43,6 +44,15 @@ acceptFd listing_sock fd sa sz = with (fromIntegral sz) $ \ptr_len -> do
         (c_accept fd sa ptr_len)
     len <- peek ptr_len
     return (new_fd, fromIntegral len)
+
+-- | 'acceptFd' which does not wait: 'Nothing' if no connection is queued.
+acceptFdNoWait :: CSocket -> Ptr sa -> Int -> IO (Maybe (CSocket, Int))
+acceptFdNoWait fd sa sz = with (fromIntegral sz) $ \ptr_len -> do
+    new_fd <- throwSocketErrorIfMinus1ButRetry (== wsaEWOULDBLOCK)
+        "Network.Socket.accept" (c_accept fd sa ptr_len)
+    if new_fd == -1 then return Nothing else do
+        len <- peek ptr_len
+        return $ Just (new_fd, fromIntegral len)
 
 -- | Associating a socket with the I/O manager, skipping the completion
 --   port for an operation that finishes at once, and making it

@@ -35,7 +35,9 @@ import qualified Data.List.NonEmpty as NE
 import Network.Socket
 import System.Directory
 import System.Timeout (timeout)
+#if !defined(mingw32_HOST_OS)
 import Test.Hspec
+#endif
 
 serverAddr :: String
 serverAddr = "127.0.0.1"
