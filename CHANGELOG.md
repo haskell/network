@@ -1,5 +1,10 @@
 # CHANGELOG for network
 
+## Version 3.2.15.0
+
+* acceptWith: keep to the give-up when another waiter takes the connection
+  [#663](https://github.com/haskell/network/pull/663)
+
 ## Version 3.2.14.0
 
 * dontfrag for WINE
