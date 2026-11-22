@@ -9,6 +9,12 @@ later in 9.12, or 9.14.2 or later): link executables with
 POSIX, and a stream reset is raised as an error rather than taken for the
 end of the stream.
 
+getAddrInfo raises EAI_AGAIN, which glibc returns when it is offline, as
+ResourceExhausted rather than NoSuchThing: code which catches its errors
+with isDoesNotExistError no longer catches this one.  EAI_SYSTEM is raised
+as its errno.  The messages of the codes which network names are glibc's
+English on every OS, Windows included, rather than gai_strerror's.
+
 * Basic support for WINIO
   [#509](https://github.com/haskell/network/pull/509)
 * Multicast support
@@ -125,6 +131,8 @@ end of the stream.
   [#660](https://github.com/haskell/network/pull/660)
 * Add gracefulCloseWith, given up on through STM
   [#658](https://github.com/haskell/network/pull/658)
+* Add getaddrinfo and getnameinfo returning GaiError
+  [#657](https://github.com/haskell/network/pull/657)
 
 ## Version 3.2.9.0
 

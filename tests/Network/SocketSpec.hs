@@ -15,6 +15,8 @@ import qualified Data.ByteString.Unsafe as BU
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr (castPtr)
 import Data.List (nub)
+import Data.List.NonEmpty (NonEmpty (..))
+import Foreign.C.Error (Errno (..), eOK)
 import Data.Maybe (fromJust)
 import Foreign.C.Types ()
 #if defined(mingw32_HOST_OS)
@@ -26,7 +28,7 @@ import Network.Socket.ByteString
 import Network.Test.Common
 import GHC.Clock (getMonotonicTime)
 import GHC.IO.Exception (IOErrorType (NoSuchThing, ResourceVanished))
-import System.IO.Error (ioeGetErrorString, ioeGetErrorType, tryIOError)
+import System.IO.Error (ioeGetErrorString, ioeGetErrorType, isDoesNotExistError, tryIOError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performGC)
 import System.Posix.Types (Fd(..))
@@ -297,6 +299,7 @@ spec = do
             case r :: Either IOError [AddrInfo] of
                 Left e -> do
                     ioeGetErrorType e `shouldBe` NoSuchThing
+                    isDoesNotExistError e `shouldBe` True
                     ioeGetErrorString e `shouldNotContain` "not supported"
                 Right _ -> expectationFailure "resolved a name which is not numeric"
 
@@ -311,6 +314,43 @@ spec = do
         it "does not cause segfault on macOS 10.8.2 due to AI_NUMERICSERV" $ do
             let hints = defaultHints { addrFlags = [AI_NUMERICSERV] }
             void (getAddrInfo (Just hints) (Just "localhost") Nothing :: IO [AddrInfo])
+
+    describe "getaddrinfo" $ do
+        it "returns the addresses" $ do
+            let hints = defaultHints { addrFlags = [AI_NUMERICHOST] }
+            r <- getaddrinfo (Just hints) (Just "127.128.129.130") Nothing
+            case r of
+                Right (AddrInfo{addrAddress = SockAddrInet _ hostAddr} :| _) ->
+                    hostAddressToTuple hostAddr `shouldBe` (0x7f, 0x80, 0x81, 0x82)
+                _ -> expectationFailure $ "unexpected " ++ show r
+
+        it "returns EAI_NONAME for a name it cannot resolve" $ do
+            let hints = defaultHints { addrFlags = [AI_NUMERICHOST] }
+            r <- getaddrinfo (Just hints) (Just "no-such-host.invalid") Nothing
+            either Just (const Nothing) r `shouldBe` Just EAI_NONAME
+
+    describe "getnameinfo" $ do
+        let addr = SockAddrInet 80 (tupleToHostAddress (127, 0, 0, 1))
+            flags = [NI_NUMERICHOST, NI_NUMERICSERV]
+        it "returns what the query asks for" $ do
+            getnameinfo flags QueryHost addr `shouldReturn` Right "127.0.0.1"
+            getnameinfo flags QueryService addr `shouldReturn` Right "80"
+            getnameinfo flags QueryHostAndService addr
+                `shouldReturn` Right ("127.0.0.1", "80")
+
+    describe "GaiError" $ do
+        let named = [ EAI_ADDRFAMILY, EAI_AGAIN, EAI_BADFLAGS, EAI_FAIL
+                    , EAI_FAMILY, EAI_MEMORY, EAI_NODATA, EAI_NONAME
+                    , EAI_OVERFLOW, EAI_SERVICE, EAI_SOCKTYPE, EAI_SYSTEM eOK ]
+        it "gives each named code its own value" $
+            length (nub $ map gaiErrorCode named) `shouldBe` length named
+        it "shows the names of the codes" $ do
+            show EAI_NONAME `shouldBe` "EAI_NONAME"
+            show (EAI_SYSTEM (Errno 5)) `shouldBe` "EAI_SYSTEM (Errno 5)"
+        it "matches codes by their numbers, except EAI_SYSTEM" $ do
+            [rc | GaiErrorCode rc <- named] `shouldBe` map gaiErrorCode (init named)
+        it "describes the codes" $
+            gaiErrorString EAI_NONAME `shouldBe` "Name or service not known"
 
 #if defined(mingw32_HOST_OS)
     let lpdevname = "loopback_0"

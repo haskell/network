@@ -116,6 +116,7 @@
 module Network.Socket (
     -- * Address information
     getAddrInfo,
+    getaddrinfo,
 
     -- ** Types
     ServiceName,
@@ -345,7 +346,28 @@ module Network.Socket (
 
     -- * Name information
     getNameInfo,
+    getnameinfo,
+    NameInfoQuery (..),
     NameInfoFlag (..),
+
+    -- * Errors of getaddrinfo and getnameinfo
+    GaiError (
+        EAI_ADDRFAMILY,
+        EAI_AGAIN,
+        EAI_BADFLAGS,
+        EAI_FAIL,
+        EAI_FAMILY,
+        EAI_MEMORY,
+        EAI_NODATA,
+        EAI_NONAME,
+        EAI_OVERFLOW,
+        EAI_SERVICE,
+        EAI_SOCKTYPE,
+        EAI_SYSTEM,
+        GaiErrorCode
+    ),
+    gaiErrorCode,
+    gaiErrorString,
 
     -- * Host name information
     getHostName,
