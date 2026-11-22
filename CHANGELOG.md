@@ -1,5 +1,10 @@
 # CHANGELOG for network
 
+## Version 3.2.16.0
+
+* Export AcceptConn
+  [#665](https://github.com/haskell/network/pull/665)
+
 ## Version 3.2.15.0
 
 * acceptWith: keep to the give-up when another waiter takes the connection
