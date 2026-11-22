@@ -16,7 +16,7 @@ import Foreign.Marshal.Alloc (alloca)
 import GHC.Conc (asyncDoProc)
 import Network.Socket.Cbits
 #else
-import Foreign.C.Error (getErrno, eINTR, eINPROGRESS)
+import Foreign.C.Error (getErrno, eAGAIN, eINTR, eINPROGRESS, eWOULDBLOCK)
 import GHC.Conc (threadWaitWrite)
 #endif
 
@@ -277,6 +277,33 @@ accept listing_sock = withNewSocketAddress $ \new_sa sz ->
        setCloseOnExecIfNeeded new_fd
        return new_fd
 # endif /* HAVE_ADVANCED_SOCKET_FLAGS */
+#endif
+
+#if !defined(mingw32_HOST_OS)
+-- | 'accept' which does not wait: 'Nothing' if no connection is queued.
+acceptNoWait :: SocketAddress sa => Socket -> IO (Maybe (Socket, sa))
+acceptNoWait listing_sock = withNewSocketAddress $ \new_sa sz ->
+    withFdSocket listing_sock $ \listing_fd -> do
+ r <- E.bracketOnError (with (fromIntegral sz) $ tryAccept listing_fd new_sa)
+                       (mapM_ c_close) $ mapM $ \new_fd -> do
+# ifndef HAVE_ADVANCED_SOCKET_FLAGS
+     setNonBlockIfNeeded new_fd
+     setCloseOnExecIfNeeded new_fd
+# endif
+     mkSocket new_fd
+ forM r $ \new_sock -> (,) new_sock <$> peekSocketAddress new_sa
+  where
+    tryAccept fd sa ptr_len = do
+# ifdef HAVE_ADVANCED_SOCKET_FLAGS
+      new_fd <- c_accept4 fd sa ptr_len (sockNonBlock .|. sockCloexec)
+# else
+      new_fd <- c_accept fd sa ptr_len
+# endif
+      if new_fd /= -1 then return (Just new_fd) else do
+        err <- getErrno
+        if err == eINTR then tryAccept fd sa ptr_len
+        else if err == eAGAIN || err == eWOULDBLOCK then return Nothing
+        else throwSocketError "Network.Socket.accept"
 #endif
 
 foreign import CALLCONV unsafe "socket"
