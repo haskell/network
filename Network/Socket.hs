@@ -145,6 +145,7 @@ module Network.Socket (
     SocketOption (
         SockOpt,
         UnsupportedSocketOption,
+        AcceptConn,
         Debug,
         ReuseAddr,
         SoDomain,
