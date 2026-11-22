@@ -11,7 +11,6 @@ import System.IO.Error (catchIOError)
 
 #if defined(mingw32_HOST_OS)
 import Control.Exception (bracket)
-import Foreign (FunPtr)
 import Foreign.Marshal.Alloc (alloca)
 import GHC.Conc (asyncDoProc)
 import Network.Socket.Cbits
