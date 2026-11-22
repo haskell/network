@@ -202,6 +202,16 @@ spec = do
               getSocketOption sock UserTimeout `shouldReturn` 2000
               close sock
 
+    describe "AcceptConn" $ do
+        it "tells whether the socket is listening" $ do
+            when (isSupportedSocketOption AcceptConn) $ do
+              sock <- socket AF_INET Stream defaultProtocol
+              bind sock $ SockAddrInet 0 $ tupleToHostAddress (127, 0, 0, 1)
+              getSocketOption sock AcceptConn `shouldReturn` 0
+              listen sock 1
+              getSocketOption sock AcceptConn `shouldReturn` 1
+              close sock
+
     describe "DontFragment" $ do
         it "can be set" $ do
             sock <- socket AF_INET Stream defaultProtocol
@@ -717,7 +727,7 @@ socktypePatterns = nub
 sockoptPatterns :: [SocketOption]
 sockoptPatterns = nub
     [UnsupportedSocketOption
-    ,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
+    ,AcceptConn,Debug,ReuseAddr,SoDomain,Type,SoProtocol,SoError,DontRoute
     ,Broadcast,SendBuffer,RecvBuffer,KeepAlive,KeepInit,OOBInline
     ,TimeToLive,MaxSegment,NoDelay,Cork,Linger,ReusePort
     ,RecvLowWater,SendLowWater,RecvTimeOut,SendTimeOut
