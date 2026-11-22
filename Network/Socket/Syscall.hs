@@ -5,6 +5,9 @@
 module Network.Socket.Syscall where
 
 import Data.Either (isRight)
+import Data.Foldable (traverse_)
+import Data.Functor.Identity (Identity (..))
+import Data.Traversable (for)
 import qualified Control.Exception as E
 import System.IO.Error (catchIOError)
 
@@ -204,14 +207,25 @@ listen s backlog = withFdSocket s listen' `annotateIOException` show s
 -- On Unix, FD_CLOEXEC is set to the new 'Socket'; on Windows, it is not
 -- inherited by child processes.
 accept :: SocketAddress sa => Socket -> IO (Socket, sa)
-accept listing_sock = withNewSocketAddress $ \new_sa sz ->
+accept listing_sock = runIdentity <$> acceptBy
+    (\fd sa sz -> Identity <$> P.acceptFd listing_sock fd sa sz) listing_sock
+
+-- | 'accept' which does not wait: 'Nothing' if no connection is queued.
+acceptNoWait :: SocketAddress sa => Socket -> IO (Maybe (Socket, sa))
+acceptNoWait = acceptBy P.acceptFdNoWait
+
+acceptBy
+    :: (SocketAddress sa, Traversable f)
+    => (CSocket -> Ptr sa -> Int -> IO (f (CSocket, Int)))
+    -> Socket -> IO (f (Socket, sa))
+acceptBy acceptFd listing_sock = withNewSocketAddress $ \new_sa sz ->
     withFdSocket listing_sock $ \listing_fd -> do
- (new_sock, len) <- E.bracketOnError (P.acceptFd listing_sock listing_fd new_sa sz) (c_close . fst) $ \(fd, len) -> do
-     P.setupAccepted fd
-     sock <- mkSocket fd
-     return (sock, len)
- new_addr <- peekSocketAddressLen new_sa len
- return (new_sock, new_addr)
+        r <- E.bracketOnError (acceptFd listing_fd new_sa sz) (traverse_ (c_close . fst)) $
+            traverse $ \(fd, len) -> do
+                P.setupAccepted fd
+                sock <- mkSocket fd
+                return (sock, len)
+        for r $ \(new_sock, len) -> (,) new_sock <$> peekSocketAddressLen new_sa len
 
 foreign import CALLCONV unsafe "socket"
   c_socket :: CInt -> CInt -> CInt -> IO CSocket

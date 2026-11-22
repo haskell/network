@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 
 #include "HsNetDef.h"
 
@@ -137,7 +138,14 @@ foreign import ccall unsafe "hsnet_ready_now"
 --
 --   @since 3.2.10.0
 acceptWith :: SocketAddress sa => Socket -> STM a -> IO (Either a (Socket, sa))
-acceptWith s giveUp = withReadable s giveUp $ accept s
+acceptWith s giveUp = loop
+  where
+    -- Another waiter may take the connection first: then wait again,
+    -- still under the give-up, rather than block in accept.
+    loop = withReadable s giveUp (acceptNoWait s) >>= \case
+        Left a -> return $ Left a
+        Right (Just r) -> return $ Right r
+        Right Nothing -> loop
 
 -- | 'recvBuf' which the caller can give up on.
 --
